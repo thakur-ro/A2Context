@@ -9,18 +9,23 @@ let conversationThreadKey;
 let conversationEvidenceOpen = true;
 let conversationReturn;
 let renderedConversationEvidence;
+const langSmithMessagePath = /^(inputs\.messages(?:\[0\])?)\[(0|[1-9]\d*)\](?:\.(?:kwargs|data))?\.content(?:\[(0|[1-9]\d*)\])?$/;
+const openInferenceMessagePath = /^(llm\.input_messages)\.(0|[1-9]\d*)\.message\.(?:content|contents\.(0|[1-9]\d*)\.message_content\.text)$/;
 
 function isUserText(item) {
   return item.role === "user" && ["message", "text", "message_part"].includes(item.kind);
 }
 
 function transcriptPosition({ field, span_id, message_index, part_index }, source) {
+  let path;
   if (source === "langsmith" || source?.startsWith("langsmith:")) {
-    const path = /^(inputs\.messages(?:\[0\])?)\[(0|[1-9]\d*)\](?:\.(?:kwargs|data))?\.content(?:\[(0|[1-9]\d*)\])?$/.exec(field);
-    if (path) {
-      const [, stream, index, part] = path;
-      return { stream, span_id, index: Number(index), part: part === undefined ? null : Number(part) };
-    }
+    path = langSmithMessagePath.exec(field);
+  } else if (source === "otlp") {
+    path = openInferenceMessagePath.exec(field);
+  }
+  if (path) {
+    const [, stream, index, part] = path;
+    return { stream, span_id, index: Number(index), part: part === undefined ? null : Number(part) };
   }
   return { stream: field, span_id, index: message_index, part: part_index };
 }

@@ -85,6 +85,24 @@ test("keeps distinct LangSmith message streams separate", () => {
   assert.equal(capturedUserInput({ context }, true, "langsmith").text, "Latest input.");
 });
 
+test("groups OpenInference text parts in numeric order using their flattened paths", () => {
+  const context = [
+    message(null, "Prior question.", { field: "llm.input_messages.7.message.content" }),
+    message(null, "Prior reply.", { field: "llm.input_messages.8.message.content", role: "assistant" }),
+    message(null, "Check the price.", { field: "llm.input_messages.9.message.content" }),
+    message(null, "19.", { field: "llm.input_messages.10.message.contents.10.message_content.text" }),
+    message(null, "Product ID:", { field: "llm.input_messages.10.message.contents.2.message_content.text" }),
+  ];
+  const call = { id: "openinference-call", turn_id: "price-check", context };
+  const [turn] = conversationTurns([{ runIndex: 0, run: { source: "otlp", conversation_id: "thread" }, call }]);
+  assert.equal(turn.input, "Check the price.\n\nProduct ID:\n19.");
+  context[2].availability = "redacted";
+  context[2].text = null;
+  assert.equal(capturedUserInput(call, true, "otlp").text, "Product ID:\n19.");
+  assert.equal(capturedUserInput(call, true, "different-exporter").text, "Product ID:");
+  assert.equal(context[4].evidence.field, "llm.input_messages.10.message.contents.2.message_content.text");
+});
+
 function entry(id, turn_id, runIndex, conversation_id, text, message_index, extras = []) {
   const input = {
     kind: "text", role: "user", availability: "included", text,

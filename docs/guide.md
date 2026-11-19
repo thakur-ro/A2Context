@@ -196,6 +196,8 @@ cargo run --locked -- serve data/openinference-evidence.json
 
 Open **Timeline** and choose `openinference-inventory` to follow a synthetic workflow from the routing decision through the tool result and guardrail. Structured decision and guardrail responses retain their recorded JSON. For JSON requests, top-level fields appear as context with anchors such as `input.value#/state`. The fixture opts into original request capture on its routing span, so you can replay a change to `/state` and score just the `/route` outcome field. [OpenInference decision spans](https://raw.githubusercontent.com/Arize-ai/openinference/main/spec/decision_spans.md)
 
+In **Conversation**, adjacent user messages in an identified OpenInference turn use the message and text-part positions in the flattened paths. A redacted message ends the group. The original paths remain available in the evidence pane.
+
 ### Follow the recorded execution tree
 
 For threads with parent span data, open **Timeline → View → Execution tree**. The tree shows the recorded parent of each call, including wrapper spans that have no normalized decision. Select an inspectable span to open its context and outcome. **Show in execution tree** on the call goes back to that span. The OpenInference fixture includes separate **Stock branch** and **Response checks** spans.
