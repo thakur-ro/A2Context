@@ -245,7 +245,7 @@ function renderActivationOccurrences(parent, group, occurrences, name, block, pe
   for (const item of occurrences.slice().sort(compareTimes)) {
     const row = node("li");
     const anchor = occurrenceButton(item.location, item.conversation_id || item.location.run_id, {
-      activation_id: item.report_id, checkpoint_index: item.checkpoint_index, block,
+      activation_id: item.report_id, checkpoint_index: item.checkpoint_index, block, source_swap: item.context_id,
     });
     const owner = [item.organization_id, item.user_id].filter(Boolean).join(" / ");
     const scores = activationMargin.format(item.baseline_margin) + " → " + activationMargin.format(item.patched_margins[block]) + " log odds";

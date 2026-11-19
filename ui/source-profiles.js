@@ -54,13 +54,13 @@ function restoreSourceProfileLink(params) {
   return valid;
 }
 
-function openSourceHistory(sourceId) {
+function openSourceHistory(sourceId, evidenceFilter = "all") {
   state.view = "patterns";
   state.patternThread = "";
   state.patternScope = defaultPatternScope;
   patternComparison.scope = "";
   patternComparison.thread = "";
-  restoreSourceProfileLink(new URLSearchParams({ source_id: sourceId }));
+  restoreSourceProfileLink(new URLSearchParams({ source_id: sourceId, evidence_filter: evidenceFilter }));
   element("pattern-type").value = "sources";
   element("pattern-search").value = "";
   linkNotice();
@@ -155,6 +155,7 @@ function appendSourceProfileSummary(container, profile) {
   const evidenceTypes = [
     [profile.replayed_occurrences, "with a measured replay"],
     [profile.masked_occurrences, "with a source mask"],
+    [profile.activation_swap_occurrences, "with decoder-block source swaps"],
     [profile.candidate_probed_occurrences, "with candidate scores"],
     [profile.shadow_probed_occurrences, "with a shadow comparison"],
     [profile.shadow_unavailable_occurrences, "with an unavailable shadow comparison"],
@@ -218,6 +219,14 @@ function renderSourceOccurrences(container, occurrences) {
     }
     if (item.replay_example) {
       evidence.append(sourceProfileEvidenceLink(item.replay_example.inspector_path, "Open replay · " + effectText(item.replay_example.difference_pp)));
+    }
+    if (item.activation_swap_example) {
+      const { position, block, change_log_odds, inspector_path } = item.activation_swap_example;
+      const prediction = position.output_token === undefined ? "prediction position " + position.prediction_position
+        : position.label + " · token " + (position.output_token + 1);
+      evidence.append(sourceProfileEvidenceLink(inspector_path, "Largest source swap · " + prediction
+        + " · block " + block + " · " + activationMargin.format(change_log_odds) + " log odds"));
+      evidence.append(node("small", countLabel(item.activation_swap_count, "measured prediction"), "anchor"));
     }
     const masks = masksBySourceItem.get(sourceItemKey(item)) || [];
     appendSourceMaskEvidence(evidence, masks);

@@ -82,6 +82,7 @@ struct Counts<'a> {
 struct EvidenceCoverage {
     replayed_occurrences: usize,
     masked_occurrences: usize,
+    activation_swap_occurrences: usize,
     candidate_probed_occurrences: usize,
     shadow_probed_occurrences: usize,
     shadow_unavailable_occurrences: usize,
@@ -354,6 +355,7 @@ fn summarize<'a>(
         if let Some(entry) = evidence.get(&input_key(row)) {
             coverage.replayed_occurrences += usize::from(entry.replay_count > 0);
             coverage.masked_occurrences += usize::from(entry.mask_count > 0);
+            coverage.activation_swap_occurrences += usize::from(entry.activation_swap_count > 0);
             coverage.candidate_probed_occurrences += usize::from(entry.candidate_count > 0);
             coverage.shadow_probed_occurrences += usize::from(entry.shadow_count > 0);
             coverage.shadow_unavailable_occurrences += usize::from(entry.shadow_unavailable > 0);

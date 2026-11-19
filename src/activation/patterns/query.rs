@@ -221,7 +221,9 @@ fn evidence(item: &Occurrence<'_>, block: usize) -> Value {
         "conversation_id": item.conversation_id, "turn_id": item.turn_id, "started_at": item.started_at,
         "original_log_odds": item.baseline_margin, "patched_log_odds": patched,
         "change_log_odds": patched - item.baseline_margin,
-        "inspector_path": crate::activation::activation_path(location, item.report_id, "checkpoint", checkpoint, block),
+        "inspector_path": crate::activation::source_swaps::inspector_path(
+            location, item.report_id, "checkpoint", checkpoint, block, item.context_id,
+        ),
         "source_inspector_path": format!("{path}&context={context}"),
     })
 }

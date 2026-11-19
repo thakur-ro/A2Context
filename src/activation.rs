@@ -3,6 +3,7 @@
 pub mod generation_branches;
 pub mod output_scores;
 pub mod patterns;
+pub(crate) mod source_swaps;
 pub mod visibility;
 
 use crate::{replay::Location, Availability, Call, Decision, Run};

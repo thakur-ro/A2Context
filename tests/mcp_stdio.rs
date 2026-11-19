@@ -319,7 +319,7 @@ fn activation_tool_queries_and_drills_into_only_the_host_scoped_measurements() {
         assert!(occurrence["inspector_path"]
             .as_str()
             .unwrap()
-            .ends_with("&checkpoint=1&block=0"));
+            .ends_with("&checkpoint=1&block=0&source_swap=returns%2Dpolicy"));
         assert!(occurrence["source_inspector_path"]
             .as_str()
             .unwrap()

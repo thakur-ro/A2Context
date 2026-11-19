@@ -1,4 +1,4 @@
-use nexusweave::{langsmith, replay::Trial, source_profiles, Run};
+use nexusweave::{activation, langsmith, replay::Trial, source_profiles, Run};
 use serde_json::{json, Value};
 
 const PROBE_TRACE: &str =
@@ -15,6 +15,89 @@ fn source_query(request: Value, runs: &[Run]) -> Value {
         &[],
     )
     .unwrap()
+}
+
+#[test]
+fn compares_measured_source_swaps_in_scoped_source_histories() {
+    let runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/local-mlx-timeline/cohort/evidence.json"
+    ))
+    .unwrap();
+    let mut reports: Vec<activation::Report> = serde_json::from_str(include_str!(
+        "../examples/local-mlx-timeline/cohort/activation-reports.json"
+    ))
+    .unwrap();
+    reports.retain(|report| report.location().run_id != "local-model-return-instructions-b");
+    for report in &reports {
+        report.validate(&runs).unwrap();
+    }
+    let mut input = json!({
+        "version":1, "source_id":"returns-policy",
+        "scope":{"kind":"user","organization_id":"demo-retail-north","user_id":"customer-01"},
+        "compare":{"scope":{"kind":"organization","organization_id":"demo-retail-south"}}
+    });
+    let query = |input| {
+        source_profiles::query::query(
+            &serde_json::from_value(input).unwrap(),
+            runs.iter(),
+            &[],
+            &reports,
+        )
+        .unwrap()
+    };
+    let view = query(input.clone());
+    assert_eq!(view["scope_a"]["total_occurrences"], 3);
+    assert_eq!(view["scope_a"]["source"]["activation_swap_occurrences"], 2);
+    assert_eq!(view["scope_a"]["source"]["measured_occurrences"], 2);
+    assert_eq!(view["scope_b"]["total_occurrences"], 2);
+    assert_eq!(view["scope_b"]["source"]["activation_swap_occurrences"], 2);
+    let first = &view["scope_a"]["rows"][0];
+    assert_eq!(first["activation_swap_count"], 2);
+    let swap = &first["activation_swap_example"];
+    assert_eq!(swap["position"]["label"], "Refund timing");
+    assert_eq!(swap["block"], 1);
+    assert_eq!(swap["change_log_odds"], -12.25);
+    assert!(swap["inspector_path"]
+        .as_str()
+        .unwrap()
+        .contains("&checkpoint=1&block=1&source_swap=returns%2Dpolicy"));
+    assert_eq!(view["scope_a"]["rows"][1]["activation_swap_count"], 0);
+    assert!(view["scope_a"]["rows"][1]
+        .get("activation_swap_example")
+        .is_none());
+    assert!(!view.to_string().contains("edited_outcome"));
+
+    input["evidence_filter"] = json!("activation_swaps");
+    let measured = query(input.clone());
+    assert_eq!(measured["scope_a"]["total_occurrences"], 2);
+    input["evidence_filter"] = json!("unmeasured");
+    let missing = query(input);
+    assert_eq!(missing["scope_a"]["total_occurrences"], 1);
+    assert!(missing["scope_b"].is_null());
+}
+
+#[test]
+fn links_a_single_prediction_source_swap() {
+    let mut runs: Vec<Run> =
+        serde_json::from_str(include_str!("../examples/local-mlx/evidence.json")).unwrap();
+    let report: activation::Report =
+        serde_json::from_str(include_str!("../examples/local-mlx/activation-report.json")).unwrap();
+    runs[0].calls[0].context[0].source_id = Some("returns-policy".into());
+    report.validate(&runs).unwrap();
+    let view = source_profiles::query::query(
+        &serde_json::from_value(json!({"version":1,"source_id":"returns-policy"})).unwrap(),
+        runs.iter(),
+        &[],
+        &[report],
+    )
+    .unwrap();
+    assert_eq!(view["rows"][0]["activation_swap_count"], 1);
+    let swap = &view["rows"][0]["activation_swap_example"];
+    let point = swap["position"]["prediction_position"].as_u64().unwrap();
+    assert!(swap["inspector_path"]
+        .as_str()
+        .unwrap()
+        .contains(&format!("&point={point}&block=")));
 }
 
 fn probe_trace() -> Run {

@@ -810,7 +810,19 @@ Try `return-preference` in the support fixture to see two included versions and 
 
 Use **Evidence → Rule conflicts** to find occurrences with disagreeing declared values. On the [returns demo](#show-preflight-alongside-the-recorded-answer), open `retail/returns-policy` to see its preflight and decision conflicts with the archived FAQ. Each link opens the source or the exact rule pair. The summary counts an occurrence once even when it has evidence from both stages.
 
-Use **Measured effects** to find usable comparisons from verified candidate and shadow probes, replays, or source masks. A measured zero counts. **Without measurements** includes occurrences whose shadow trials left the comparison unavailable. Try `request-type` in the [shadow routing cohort](#find-recurring-shadow-proposal-shifts) and compare the organizations. Open the stock-only call from the occurrence table to see its zero change beside the tested replacement. Choose **Compare with** and use the thread and date controls to narrow either side.
+Use **Measured effects** to find usable comparisons from verified candidate and shadow probes, replays, decoder-block source swaps, or source masks. A measured zero counts. **Without measurements** includes occurrences whose shadow trials left the comparison unavailable. Try `request-type` in the [shadow routing cohort](#find-recurring-shadow-proposal-shifts) and compare the organizations. Open the stock-only call from the occurrence table to see its zero change beside the tested replacement. Choose **Compare with** and use the thread and date controls to narrow either side.
+
+### Follow a measured source swap across conversations
+
+```sh
+cargo run --locked -- serve \
+  --activation-report examples/local-mlx-timeline/cohort/activation-reports.json \
+  examples/local-mlx-timeline/cohort/evidence.json
+```
+
+In **Patterns → Context sources**, open `returns-policy` and set **Evidence** to **Decoder-block source swaps**. Compare **User · demo-retail-north / customer-01** with **Organization · demo-retail-south**. The saved cohort contains measurements in three conversations for that north user and two for the south organization. Each listed call includes two measured predictions. On the first north call, the largest absolute change for this source was −12.25 log odds at the refund checkpoint, from a swap at block 1.
+
+Select **Largest source swap** to open the exact source row, prediction, and block. Open **Source history** on the report to return to the named source across conversations. The same coverage and links are available through `query_context_sources` in MCP and `POST /api/context-sources`, using `evidence_filter: "activation_swaps"`. The occurrence table shows the largest absolute shift from a swap at the source's prompt tokens. Use **Patterns → Activation effects** to compare matching models, edits, and output contrasts at the same block. [How the cohort was measured](inference-attribution-plan.md#compare-the-measured-pattern-across-conversations)
 
 Use local `POST /api/context-sources` or MCP `query_context_sources` with `source_id` to return paginated occurrences and evidence links. Specify `evidence_filter` as `conflicts`, `measured`, or `unmeasured` to narrow both scopes. The source query returns counts and references. Use turn evidence with captured excerpts enabled to read the underlying text through MCP. [Query schema](../schema/context-source-query-1.json)
 

@@ -1,6 +1,7 @@
 use crate::{
     activation::{
         decision_path, decision_view_path,
+        source_swaps::{self, SourceSwap},
         visibility::query::{measured_masks, SourceMask},
         Report,
     },
@@ -28,6 +29,7 @@ pub(super) enum Filter {
     Conflicts,
     Measured,
     Unmeasured,
+    ActivationSwaps,
 }
 
 impl Filter {
@@ -37,6 +39,7 @@ impl Filter {
             Self::Conflicts => evidence.is_some_and(InputEvidence::conflicted),
             Self::Measured => evidence.is_some_and(InputEvidence::measured),
             Self::Unmeasured => !evidence.is_some_and(InputEvidence::measured),
+            Self::ActivationSwaps => evidence.is_some_and(|entry| entry.activation_swap_count > 0),
         }
     }
 }
@@ -45,12 +48,14 @@ impl Filter {
 pub(super) struct InputEvidence<'a> {
     pub replay_count: usize,
     pub mask_count: usize,
+    pub activation_swap_count: usize,
     pub candidate_count: usize,
     pub shadow_count: usize,
     pub shadow_unavailable: usize,
     pub decision_conflicts: usize,
     replay: Option<(&'a replay::Replay, &'a replay::Variant)>,
     mask: Option<SourceMask<'a>>,
+    activation_swap: Option<SourceSwap<'a>>,
     candidate: Option<(&'a str, f64)>,
     shadow: Option<(&'a str, Option<f64>)>,
     preflight: Option<Conflict<'a>>,
@@ -89,6 +94,7 @@ impl InputEvidence<'_> {
     pub(super) fn measured(&self) -> bool {
         self.replay_count > 0
             || self.mask_count > 0
+            || self.activation_swap_count > 0
             || self.candidate_count > 0
             || self.shadow_count > 0
     }
@@ -104,6 +110,7 @@ impl InputEvidence<'_> {
     pub(super) fn describe(&self, key @ (run, call, context): Input<'_>, value: &mut Value) {
         value["replay_measurement_count"] = json!(self.replay_count);
         value["mask_measurement_count"] = json!(self.mask_count);
+        value["activation_swap_count"] = json!(self.activation_swap_count);
         value["candidate_measurement_count"] = json!(self.candidate_count);
         value["shadow_measurement_count"] = json!(self.shadow_count);
         value["shadow_unavailable_count"] = json!(self.shadow_unavailable);
@@ -120,6 +127,9 @@ impl InputEvidence<'_> {
         }
         if let Some(mask) = &self.mask {
             value["mask_example"] = mask.reference();
+        }
+        if let Some(swap) = self.activation_swap {
+            value["activation_swap_example"] = swap.reference();
         }
         if let Some((report, shift)) = self.candidate {
             value["candidate_example"] = json!({
@@ -170,6 +180,23 @@ pub(super) fn index<'a>(
             let entry = index.entry(key).or_default();
             entry.mask_count += 1;
             entry.mask.get_or_insert(mask);
+        }
+    }
+    for swap in source_swaps::measured(reports) {
+        let key = (
+            swap.location.run_id.as_str(),
+            swap.location.call_id.as_str(),
+            swap.context_id,
+        );
+        if eligible.contains(&key) {
+            let entry = index.entry(key).or_default();
+            entry.activation_swap_count += 1;
+            if entry
+                .activation_swap
+                .is_none_or(|previous| swap.change().abs() > previous.change().abs())
+            {
+                entry.activation_swap = Some(swap);
+            }
         }
     }
     let calls: BTreeSet<_> = eligible.iter().map(|&(run, call, _)| (run, call)).collect();

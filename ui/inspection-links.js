@@ -78,7 +78,9 @@ function writeReference(params, reference, position) {
     }
     if (reference.output_token !== undefined) params.set("token", reference.output_token);
     else if (reference.branch_index !== undefined) params.set("branch", reference.branch_index);
+    else if (reference.prediction_position !== undefined) params.set("point", reference.prediction_position);
     else params.set("checkpoint", reference.checkpoint_index);
+    if (reference.source_swap !== undefined) params.set("source_swap", reference.source_swap);
     params.set("block", reference.block);
   }
 }
@@ -88,11 +90,13 @@ function readReference(params, position) {
   if (params.has("document")) return { retrieved_document_id: params.get("document") };
   if (params.has("capture")) return { capture_profile: true };
   if (params.has("activation")) {
-    const keys = ["token", "branch", "checkpoint", "visibility"].filter((key) => params.has(key));
+    const keys = ["token", "branch", "checkpoint", "point", "visibility"].filter((key) => params.has(key));
     if (keys.length !== 1) return null;
     const [key] = keys;
     const index = params.get(key);
     if (!/^\d+$/.test(index || "")) return null;
+    const sourceSwap = params.get("source_swap");
+    if (sourceSwap !== null && (!sourceSwap || !["point", "checkpoint"].includes(key))) return null;
     if (key === "visibility") {
       const pair = params.get("pair");
       const source = params.get("mask");
@@ -107,11 +111,12 @@ function readReference(params, position) {
       };
     }
     if (params.has("pair") || params.has("mask") || params.has("continuation") || !/^\d+$/.test(params.get("block") || "")) return null;
-    const fields = { token: "output_token", branch: "branch_index", checkpoint: "checkpoint_index" };
+    const fields = { token: "output_token", branch: "branch_index", checkpoint: "checkpoint_index", point: "prediction_position" };
     return {
       activation_id: params.get("activation"),
       [fields[key]]: Number(index),
       block: Number(params.get("block")),
+      source_swap: sourceSwap ?? undefined,
     };
   }
   if (params.has("replay")) {

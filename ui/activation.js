@@ -21,6 +21,7 @@ function renderActivationReports(parent, reports, call) {
       parent.append(panel);
       continue;
     }
+    panel.dataset.predictionPosition = report.prediction_position;
     const [first, second] = report.alternatives;
     panel.append(node("h3", first + " or " + second + " at the next token"));
     panel.append(node("p", "Positive log odds favor " + first + ". Negative log odds favor " + second + ".", "muted"));
@@ -33,6 +34,7 @@ function renderActivationReports(parent, reports, call) {
       labels.set(source.context_id, label);
       const term = node("dt");
       term.append(activationSourceLink(report, call, source));
+      appendActivationSourceHistory(term, call, source);
       summary.append(term, node("dd", formatOutcome(source.edited_outcome)));
     }
     panel.append(summary);
@@ -250,6 +252,12 @@ function openActivationCheckpoint(reference) {
   }
   const picker = panel?.querySelector(".activation-picker select");
   if (!picker?.options[reference.block]) return;
+  if (reference.prediction_position !== undefined) {
+    if (panel.dataset.predictionPosition !== String(reference.prediction_position)) return;
+    picker.value = String(reference.block);
+    picker.dispatchEvent(new Event("change"));
+    return reference.source_swap === undefined ? picker : sourceSwapCell(panel, reference);
+  }
   if (reference.branch_index !== undefined) {
     const branches = panel.querySelector(".activation-branches");
     const select = branches?.querySelector("select");
@@ -276,7 +284,14 @@ function openActivationCheckpoint(reference) {
   picker.value = String(reference.block);
   checkpoints[reference.checkpoint_index].click();
   picker.dispatchEvent(new Event("change"));
-  return panel.querySelector(".activation-checkpoint h4");
+  const detail = panel.querySelector(".activation-checkpoint");
+  return reference.source_swap === undefined ? detail.querySelector("h4") : sourceSwapCell(detail, reference);
+}
+
+function sourceSwapCell(container, reference) {
+  const row = [...container.querySelectorAll("[data-source-swap]")]
+    .find((item) => item.dataset.sourceSwap === reference.source_swap);
+  return row?.cells[reference.block + 1];
 }
 
 function activationEditLabel(source) {
@@ -290,6 +305,16 @@ function activationSourceLink(report, call, source) {
   const link = occurrenceButton(report.location, name + " · " + edit, { context_item_id: source.context_id });
   link.setAttribute("aria-label", "Open context for " + name + " edit " + edit);
   return link;
+}
+
+function appendActivationSourceHistory(parent, call, source) {
+  const name = call.context.find(({ id }) => id === source.context_id).source_id;
+  if (!name?.trim()) return;
+  const history = node("button", "Source history", "evidence-link");
+  history.type = "button";
+  history.setAttribute("aria-label", "View source history for " + name);
+  history.addEventListener("click", () => openSourceHistory(name, "activation_swaps"));
+  parent.append(history);
 }
 
 function activationProvenance(report) {
@@ -360,6 +385,7 @@ function renderActivationContrasts(panel, report, call, blockPicker) {
     const heading = node("th");
     heading.scope = "row";
     heading.append(activationSourceLink(report, call, source));
+    appendActivationSourceHistory(heading, call, source);
     row.append(heading);
     return report.checkpoints.map((step) => ({
       cell: row.insertCell(),
@@ -437,6 +463,7 @@ function activationSweep(layerCount, sweeps, baseline, labels) {
     const label = labels.get(sweep.source_context_id)
       + (sweep.target === "prediction_token" ? " at prediction token" : " at source tokens");
     const row = body.insertRow();
+    if (sweep.target === "source_tokens") row.dataset.sourceSwap = sweep.source_context_id;
     const heading = node("th", label);
     heading.scope = "row";
     row.append(heading);

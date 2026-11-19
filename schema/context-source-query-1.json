@@ -47,9 +47,9 @@
     "source_version": { "type": ["string", "null"], "description": "Optional exact recorded source version." },
     "search": { "type": ["string", "null"], "description": "Case-insensitive substring of the named source, recorded version, or trace source. A match in either scope retains both results." },
     "evidence_filter": {
-      "enum": ["all", "conflicts", "measured", "unmeasured"],
+      "enum": ["all", "conflicts", "measured", "unmeasured", "activation_swaps"],
       "default": "all",
-      "description": "Filter occurrences in both scopes. Conflicts include verified preflight and scoped recorded decisions. Measured effects include usable zero results."
+      "description": "Filter occurrences in both scopes. Conflicts include verified preflight and scoped recorded decisions. Measured effects include usable zero results. Activation swaps require a decoder-block sweep at the captured source tokens."
     },
     "after": { "type": ["string", "null"], "format": "date-time", "description": "Inclusive recorded call start in RFC 3339." },
     "before": { "type": ["string", "null"], "format": "date-time", "description": "Exclusive recorded call start in RFC 3339." },
