@@ -478,21 +478,10 @@ pub fn inspect(runs: &[Run]) -> Result<Inspection<'_>, String> {
     let mut groups = BTreeMap::new();
 
     for run in unique.values() {
-        let mut earlier_tools = BTreeMap::new();
+        context_links.extend(context_links::link_run(run));
         for (index, call) in run.calls.iter().enumerate() {
-            context_links.extend(context_links::link_call(&run.id, call, &earlier_tools));
             for decision in &call.decisions {
                 if let Some(id) = &decision.tool_call_id {
-                    if decision.kind == "tool_call" {
-                        earlier_tools
-                            .entry(id.as_str())
-                            .and_modify(|origin| *origin = None)
-                            .or_insert(Some(context_links::ToolOrigin {
-                                call_id: &call.id,
-                                decision_id: &decision.id,
-                                tool: &decision.label,
-                            }));
-                    }
                     if let Some((result_call, result)) = nearest_result(run, index, id) {
                         tool_links.push(ToolLink {
                             run_id: &run.id,
@@ -596,7 +585,7 @@ pub fn inspect(runs: &[Run]) -> Result<Inspection<'_>, String> {
     let context_patterns = context_patterns::group(unique.values().copied(), &context_links);
     Ok(Inspection {
         document_handoffs: document_handoffs::link(unique.values().copied()),
-        source_profiles: source_profiles::group(unique.values().copied(), &context_patterns),
+        source_profiles: source_profiles::group(unique.values().copied(), &context_links),
         capture_profiles: replay::capture_profiles(unique.values().copied())?,
         context_history: context_changes::history(unique.values().copied()),
         context_patterns,

@@ -768,6 +768,123 @@ fn visibility_targets_align_different_prefixes_and_keep_exact_span_links() {
 }
 
 #[test]
+fn context_source_queries_scope_recorded_coverage_and_link_measurements() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("one-report.json");
+    let batch: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-cohort/reports.json"
+    ))
+    .unwrap();
+    std::fs::write(&path, batch[0].to_string()).unwrap();
+    let cohort = "examples/runtime-comparison/visibility-cohort/evidence.json";
+    let mut client = Client::start(
+        &[
+            "--activation-report",
+            path.to_str().unwrap(),
+            "--replay",
+            "examples/local-mlx-tool/report.json",
+            cohort,
+            "examples/local-mlx-tool/evidence.json",
+        ],
+        true,
+    );
+    let name = "query_context_sources";
+    let listed = client.request("tools/list", json!({}));
+    let definition = listed["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|tool| tool["name"] == name)
+        .unwrap();
+    assert_eq!(definition["annotations"]["readOnlyHint"], true);
+    let output = client.call(name, json!({"version":1, "limit":1}));
+    assert_eq!(
+        output["structuredContent"]["kind"],
+        "context_source_profiles"
+    );
+    assert_eq!(output["structuredContent"]["next_offset"], 1);
+    assert_eq!(
+        output["structuredContent"]["rows"][0]["source_id"],
+        "format-instruction"
+    );
+
+    let mut request = json!({"version":1, "source_id":"refund-policy-copy", "limit":1});
+    let result = client.call(name, request.clone());
+    let page = &result["structuredContent"];
+    assert_eq!(page["kind"], "context_source_occurrences");
+    assert_eq!(page["source"]["occurrence_count"], 4);
+    assert_eq!(page["source"]["conversation_count"], 4);
+    assert_eq!(page["source"]["organization_count"], 2);
+    assert_eq!(page["source"]["user_count"], 3);
+    assert_eq!(page["source"]["linked_decision_count"], 0);
+    assert_eq!(page["source"]["replayed_occurrences"], 0);
+    assert_eq!(page["source"]["masked_occurrences"], 1);
+    assert_eq!(page["next_offset"], 1);
+    let first = &page["rows"][0];
+    assert_eq!(first["conversation_id"], "north-1");
+    assert_eq!(first["mask_measurement_count"], 1);
+    assert_eq!(first["mask_example"]["output_token"], 3);
+    assert!(first["mask_example"]["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&visibility=3&mask=refund%2Dpolicy%2Dcopy"));
+    assert!(first.get("text").is_none());
+
+    request["after"] = "2026-11-05T12:00:00Z".into();
+    request["before"] = "2026-11-08T12:00:00Z".into();
+    request["source_version"] = "v1".into();
+    let later = client.call(name, request.clone());
+    let later = &later["structuredContent"];
+    assert_eq!(later["total_occurrences"], 1);
+    assert_eq!(later["source"]["masked_occurrences"], 0);
+    assert_eq!(later["rows"][0]["conversation_id"], "north-2");
+    assert!(later["rows"][0].get("mask_example").is_none());
+
+    let replay = client.call(name, json!({"version":1, "source_id":"get_store_hours"}));
+    let replay = &replay["structuredContent"];
+    assert_eq!(replay["source"]["replayed_occurrences"], 1);
+    assert_eq!(replay["rows"][0]["replay_example"]["difference_pp"], 0.0);
+    assert!(replay["rows"][0]["replay_example"]["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&variant=get%5Fstore%5Fhours"));
+    let linked = client.call(name, json!({"version":1, "source_id":"look_up_inventory"}));
+    assert_eq!(
+        linked["structuredContent"]["source"]["linked_decision_count"],
+        1
+    );
+
+    let scope = temp.path().join("scope.json");
+    std::fs::write(
+        &scope,
+        r#"{"kind":"organization","organization_id":"retail-south"}"#,
+    )
+    .unwrap();
+    let mut restricted = Client::start(
+        &[
+            "--scope",
+            scope.to_str().unwrap(),
+            "--activation-report",
+            path.to_str().unwrap(),
+            cohort,
+        ],
+        true,
+    );
+    let mut args = json!({"version":1, "source_id":"refund-policy-copy"});
+    let south = restricted.call(name, args.clone());
+    assert_eq!(south["structuredContent"]["total_occurrences"], 1);
+    assert_eq!(
+        south["structuredContent"]["source"]["masked_occurrences"],
+        0
+    );
+    args["thread"] = json!({"trace_source":"local-transformers","organization_id":"retail-north",
+        "user_id":"sample-user","conversation_id":"north-1"});
+    let outside = restricted.call(name, args);
+    assert_eq!(outside["structuredContent"]["total_occurrences"], 0);
+    assert!(outside["structuredContent"]["source"].is_null());
+}
+
+#[test]
 fn legacy_client_gets_the_cli_counts_and_cannot_widen_host_scope() {
     let dir = tempfile::tempdir().unwrap();
     let scope = dir.path().join("scope.json");
@@ -777,7 +894,7 @@ fn legacy_client_gets_the_cli_counts_and_cannot_widen_host_scope() {
     let mut client = Client::start(&["--scope", scope.to_str().unwrap(), evidence], false);
     let listed = client.request("tools/list", json!({}));
     let tools = listed["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 3);
+    assert_eq!(tools.len(), 4);
     assert!(tools
         .iter()
         .all(|tool| tool["annotations"]["readOnlyHint"] == true));

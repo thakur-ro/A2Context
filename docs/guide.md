@@ -275,6 +275,7 @@ Use the same request schemas as the MCP tools. These routes accept HTTP `POST` w
 | [`/api/generation-branches`](../schema/generation-branches-request-1.json) | Measured continuations after an activation swap, including the zero-based index of the first token that differs from the recorded output. |
 | [`/api/source-visibility`](../schema/source-visibility-query-1.json) | A timeline of measured attention-mask effects, ranked source effects at a token, or paired-mask comparisons at that token. |
 | [`/api/visibility-patterns`](../schema/visibility-pattern-query-1.json) | Recurring source effects or pair interactions at a matching output token, with links to each contributing decision. |
+| [`/api/context-sources`](../schema/context-source-query-1.json) | Named source coverage, decision links, and example replay or mask measurements. |
 
 ```sh
 curl -fsS http://127.0.0.1:8040/api/activation-effects \
@@ -412,6 +413,18 @@ Groups keep the decision kind, label, trace source, and relationship basis. Exac
 Open **Investigate context** on a turn in **Conversation** or **Decisions** to see recorded links, rule findings, and measurements beside each input. When a source mask report is loaded, **Measured inputs** includes the inputs measured by that probe. Each mask or pair button opens the token with the largest absolute effect for that input in its report. The single-source and paired effects stay labeled separately from replay results.
 
 **Patterns → Context sources** shows how many recorded occurrences have a measured replay or a source mask in the selected workspace, organization, user, or thread. Open a source's occurrences to see which calls have each kind of measurement and jump to those results. A single occurrence can count in both methods.
+
+Use [`query_context_sources`](../schema/context-source-query-1.json) in MCP or `POST /api/context-sources` to query the same coverage. Omit `source_id` to list named sources, ordered by distinct calls. Pass a source ID to read its occurrences in chronological order. Use `source_version`, `scope`, `thread`, and an inclusive `after` or exclusive `before` to narrow the results.
+
+```json
+{
+  "version": 1,
+  "source_id": "refund-policy-copy",
+  "scope": {"kind": "organization", "organization_id": "retail-north"}
+}
+```
+
+Each occurrence is one captured input on one call, even if several decisions link to or measure it. The result includes the captured input path, linked decision IDs, and counts of individual mask and replay measurements. Each method includes one example link when measurements are available. A replay with a measured zero change counts as measured. The tool returns source metadata and references, while captured text is available through the separate turn evidence query under the host's excerpt settings.
 
 An exact match is a request string, JSON container, or declared text fragment that equals the captured entry. Open **Test this context** on a matched entry to plan an edit. Multiple matches require choosing the field to change. The inventory is scoped to entries present in the trace. The inspection JSON exposes these records under `capture_profiles`. `matching_fields` is omitted when the original request or entry value is unavailable. The browser's inspection response includes the request's evidence anchor. The replay planner loads the original request when you select **Use captured request**.
 

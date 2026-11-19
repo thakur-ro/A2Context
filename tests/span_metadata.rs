@@ -360,6 +360,21 @@ fn combines_versioned_rule_findings_across_importers_and_verifies_captured_repla
     assert_eq!(first.source_version, second.source_version);
     assert_eq!(first.text_sha256, second.text_sha256);
     assert_eq!(first.linked_decision_ids.len(), 1);
+    let query = serde_json::from_value(json!({
+        "version":1, "source_id":"retail/return-policy", "source_version":"v12",
+        "scope":{"kind":"user","organization_id":"retail","user_id":"shopper"}
+    }))
+    .unwrap();
+    let coverage =
+        nexusweave::source_profiles::query::query(&query, runs.iter(), &[], &[]).unwrap();
+    assert_eq!(coverage["source"]["occurrence_count"], 2);
+    assert_eq!(coverage["source"]["conversation_count"], 2);
+    assert_eq!(coverage["source"]["linked_decision_count"], 2);
+    assert_eq!(coverage["source"]["masked_occurrences"], 0);
+    assert_ne!(
+        coverage["rows"][0]["trace_source"],
+        coverage["rows"][1]["trace_source"]
+    );
     assert_eq!(second.linked_decision_ids.len(), 1);
 }
 

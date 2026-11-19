@@ -1,9 +1,8 @@
 //! Named context exposure across traces, including context without decision links.
 
-use crate::{
-    context_patterns::{fingerprint, ContextPattern, ContextSource},
-    Availability, Run,
-};
+pub mod query;
+
+use crate::{context_links::ContextLink, context_patterns::fingerprint, Availability, Run};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -32,24 +31,29 @@ pub struct SourceOccurrence<'a> {
 
 pub(crate) fn group<'a>(
     runs: impl Iterator<Item = &'a Run>,
-    patterns: &[ContextPattern<'a>],
+    links: &[ContextLink<'a>],
 ) -> Vec<SourceProfile<'a>> {
     let mut linked = BTreeMap::<_, BTreeSet<_>>::new();
-    for pattern in patterns
-        .iter()
-        .filter(|pattern| matches!(pattern.key.source, ContextSource::Named { .. }))
-    {
-        for item in &pattern.occurrences {
-            linked
-                .entry((item.run_id, item.call_id, item.context_id))
-                .or_default()
-                .insert(item.decision_id);
-        }
+    for link in links {
+        linked
+            .entry((link.run_id, link.call_id, link.context_id))
+            .or_default()
+            .insert(link.decision_id);
     }
 
     let mut profiles = BTreeMap::<_, Vec<_>>::new();
     for run in runs {
         for call in &run.calls {
+            for annotation in &call.relationships {
+                linked
+                    .entry((
+                        run.id.as_str(),
+                        call.id.as_str(),
+                        annotation.context_id.as_str(),
+                    ))
+                    .or_default()
+                    .insert(annotation.decision_id.as_str());
+            }
             for item in &call.context {
                 let Some(source_id) = item.source_id.as_deref().filter(|id| !id.trim().is_empty())
                 else {

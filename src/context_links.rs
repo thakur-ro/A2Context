@@ -2,7 +2,7 @@
 
 mod outcomes;
 
-use crate::{Availability, Call, ContextItem, Decision};
+use crate::{Availability, Call, ContextItem, Decision, Run};
 use serde::Serialize;
 use serde_json::Value;
 use std::borrow::Cow;
@@ -74,7 +74,32 @@ pub(crate) fn tool_definition_name<'a>(
     Some((Cow::Owned(name.to_owned()), Some(path)))
 }
 
-pub(crate) fn link_call<'a>(
+pub(crate) fn link_run(run: &Run) -> Vec<ContextLink<'_>> {
+    let mut earlier_tools = BTreeMap::new();
+    let mut links = Vec::new();
+    for call in &run.calls {
+        links.extend(link_call(&run.id, call, &earlier_tools));
+        for decision in call
+            .decisions
+            .iter()
+            .filter(|decision| decision.kind == "tool_call")
+        {
+            if let Some(id) = decision.tool_call_id.as_deref() {
+                earlier_tools
+                    .entry(id)
+                    .and_modify(|origin| *origin = None)
+                    .or_insert(Some(ToolOrigin {
+                        call_id: &call.id,
+                        decision_id: &decision.id,
+                        tool: &decision.label,
+                    }));
+            }
+        }
+    }
+    links
+}
+
+fn link_call<'a>(
     run_id: &'a str,
     call: &'a Call,
     earlier_tools: &BTreeMap<&'a str, Option<ToolOrigin<'a>>>,

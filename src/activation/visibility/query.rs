@@ -50,6 +50,53 @@ pub fn available(reports: &[activation::Report]) -> bool {
         .any(|report| matches!(report, activation::Report::Visibility(_)))
 }
 
+pub(crate) struct SourceMask<'a> {
+    report: &'a Report,
+    source: &'a Measurement,
+}
+
+pub(crate) fn measured_masks(
+    reports: &[activation::Report],
+) -> impl Iterator<Item = SourceMask<'_>> {
+    reports
+        .iter()
+        .filter_map(|entry| match entry {
+            activation::Report::Visibility(report) => Some(report),
+            _ => None,
+        })
+        .flat_map(|report| {
+            report
+                .sources
+                .iter()
+                .filter_map(Source::measured)
+                .map(move |source| SourceMask { report, source })
+        })
+}
+
+impl<'a> SourceMask<'a> {
+    pub(crate) fn input(&self) -> (&'a Location, &'a str) {
+        (&self.report.location, &self.source.context_id)
+    }
+
+    pub(crate) fn reference(&self) -> Value {
+        let (token, effect) = self
+            .source
+            .masked_log_probs
+            .iter()
+            .enumerate()
+            .rev()
+            .map(|(token, masked)| (token, masked - self.report.baseline_log_probs[token]))
+            .max_by(|a, b| a.1.abs().total_cmp(&b.1.abs()))
+            .expect("validated source report has at least one token");
+        json!({
+            "location": self.report.location, "report_id": self.report.id,
+            "output_token": token, "change_in_log_probability": effect,
+            "inspector_path": source_mask_path(self.report, token, &self.source.context_id),
+            "source_inspector_path": source_path(self.report, &self.source.context_id),
+        })
+    }
+}
+
 pub fn for_decision(
     reports: &[activation::Report],
     run: &str,

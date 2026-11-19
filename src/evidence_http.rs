@@ -1,6 +1,6 @@
 //! Serve paginated evidence queries over the inspector's current data.
 
-use nexusweave::{activation, replay, turn_evidence, Run};
+use nexusweave::{activation, replay, source_profiles, turn_evidence, Run};
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use tiny_http::{Method, Request};
@@ -36,6 +36,9 @@ pub fn route<'a>(
         }),
         "/api/visibility-patterns" => query(request, |input| {
             activation::visibility::patterns::query(input, runs, reports)
+        }),
+        "/api/context-sources" => query(request, |input| {
+            source_profiles::query::query(input, runs, replays, reports)
         }),
         _ => return None,
     };

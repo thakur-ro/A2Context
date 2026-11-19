@@ -20,11 +20,23 @@ pub enum Report {
     Visibility(visibility::Report),
 }
 
-fn decision_path(location: &Location) -> String {
-    let run = utf8_percent_encode(&location.run_id, NON_ALPHANUMERIC);
-    let call = utf8_percent_encode(&location.call_id, NON_ALPHANUMERIC);
-    let decision = utf8_percent_encode(&location.decision_id, NON_ALPHANUMERIC);
-    format!("/#v=1&view=decisions&run={run}&call={call}&decision={decision}")
+pub(crate) fn decision_path(location: &Location) -> String {
+    decision_view_path(
+        &location.run_id,
+        &location.call_id,
+        Some(&location.decision_id),
+    )
+}
+
+pub(crate) fn decision_view_path(run_id: &str, call_id: &str, decision_id: Option<&str>) -> String {
+    let run = utf8_percent_encode(run_id, NON_ALPHANUMERIC);
+    let call = utf8_percent_encode(call_id, NON_ALPHANUMERIC);
+    let mut path = format!("/#v=1&view=decisions&run={run}&call={call}");
+    if let Some(id) = decision_id {
+        let decision = utf8_percent_encode(id, NON_ALPHANUMERIC);
+        path.push_str(&format!("&decision={decision}"));
+    }
+    path
 }
 
 fn activation_path(
