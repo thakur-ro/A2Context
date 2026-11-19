@@ -1,4 +1,5 @@
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::{
     io::{BufRead, BufReader, Write},
     process::{Child, ChildStdin, Command, Stdio},
@@ -243,6 +244,42 @@ fn live_mcp_applies_host_scope_as_trace_identity_arrives() {
     let visible = client.call("get_turn_evidence", location);
     assert_eq!(visible["structuredContent"]["user_id"], "inventory-user");
     assert_eq!(visible["structuredContent"]["call_id"], "0000000000000002");
+}
+
+#[test]
+fn live_mcp_reads_replays_published_after_startup() {
+    let directory = tempfile::tempdir().unwrap();
+    let journal = directory.path().to_str().unwrap();
+    let mut client = Client::start(
+        &[
+            "--otlp-store",
+            journal,
+            "examples/context-screening/replay/evidence.json",
+        ],
+        false,
+    );
+    let raw = include_str!("../examples/context-screening/replay/report.json");
+    let report: nexusweave::replay::Replay = serde_json::from_str(raw).unwrap();
+    let location = serde_json::to_value(&report.location).unwrap();
+    let before = client.call("get_turn_evidence", location.clone());
+    assert_eq!(before["structuredContent"]["counts"]["replay_tests"], 0);
+
+    let reports = directory.path().join("replay-reports");
+    std::fs::create_dir(&reports).unwrap();
+    let identity = serde_json::to_vec(&(&report.location, &report.id)).unwrap();
+    let path = reports.join(format!("{:x}.json", Sha256::digest(identity)));
+    std::fs::write(path, raw).unwrap();
+
+    let after = client.call("get_turn_evidence", location.clone());
+    let rows = after["structuredContent"]["rows"].as_array().unwrap();
+    assert!(rows.iter().any(|row| {
+        row["kind"] == "replay_test"
+            && row["report_id"] == report.id
+            && row["result"]["context_id"] == "return-faq"
+            && row["result"]["difference_pp"].as_f64() == Some(-100.0)
+    }));
+    assert_eq!(after["structuredContent"]["counts"]["replay_tests"], 3);
+    assert_eq!(client.call("get_turn_evidence", location), after);
 }
 
 #[test]

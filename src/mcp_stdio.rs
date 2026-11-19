@@ -1,6 +1,6 @@
 //! MCP transport for pending requests, evidence files, and live inspector journals.
 
-use super::{activation_http, otlp_http};
+use super::{otlp_http, report_store};
 use nexusweave::{
     activation, conflict_query, context_screening, pending, replay, source_profiles, turn_evidence,
     Run,
@@ -104,7 +104,8 @@ pub fn serve(mut args: &[&str]) -> super::Result<()> {
             fixed_ids,
             scope: scope.unwrap_or_default(),
             traces: otlp_http::Reader::open(store)?,
-            reports: activation_http::Reader::new(store),
+            activations: report_store::Reader::new(store),
+            replays: report_store::Reader::new(store),
         };
         live.refresh()?;
         Source::Live(Arc::new(Mutex::new(live)))
@@ -133,16 +134,17 @@ struct LiveEvidence {
     fixed_ids: BTreeSet<String>,
     scope: conflict_query::Scope,
     traces: otlp_http::Reader,
-    reports: activation_http::Reader,
+    activations: report_store::Reader<activation::Report>,
+    replays: report_store::Reader<replay::Replay>,
 }
 
 impl LiveEvidence {
     fn refresh(&mut self) -> super::Result<()> {
         self.traces.refresh(&self.fixed_ids)?;
-        self.reports.refresh(
-            self.evidence.runs.iter().chain(self.traces.runs()),
-            &mut self.evidence.activations,
-        )
+        let runs = || self.evidence.runs.iter().chain(self.traces.runs());
+        self.replays.refresh(runs(), &mut self.evidence.replays)?;
+        self.activations
+            .refresh(runs(), &mut self.evidence.activations)
     }
 
     fn runs(&self) -> impl Iterator<Item = &Run> {

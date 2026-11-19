@@ -633,12 +633,17 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
         .into());
     }
     let initial = inspection_runs(&fixed, journal.as_ref());
-    let replays = read_replays(&options.reports, &initial)?;
+    let mut replays = read_replays(&options.reports, &initial)?;
     let mut activations = read_activation_reports(&options.activation_reports, &initial)?;
-    let activation_store = options
-        .otlp_store
-        .map(|path| activation_http::Store::open(Path::new(path), &initial, &mut activations))
-        .transpose()?;
+    let (activation_store, replay_store) = if let Some(path) = options.otlp_store {
+        let root = Path::new(path);
+        (
+            Some(report_store::Store::open(root, &initial, &mut activations)?),
+            Some(report_store::Store::open(root, &initial, &mut replays)?),
+        )
+    } else {
+        (None, None)
+    };
     let mut data = Some(serialize_inspection(
         &initial,
         &replays,
@@ -708,16 +713,21 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                     .iter()
                     .chain(journal.iter().flat_map(|journal| journal.runs()))
             };
-            activation_store
+            let report_reply = activation_store
                 .as_ref()
-                .and_then(|store| {
-                    let previous = activations.len();
-                    let reply = store.route(&mut request, runs(), &mut activations);
-                    if activations.len() != previous {
-                        data = None;
-                    }
-                    reply
-                })
+                .and_then(|store| store.route(&mut request, runs(), &mut activations))
+                .or_else(|| {
+                    replay_store
+                        .as_ref()?
+                        .route(&mut request, runs(), &mut replays)
+                });
+            if report_reply
+                .as_ref()
+                .is_some_and(|(status, _)| *status == 201)
+            {
+                data = None;
+            }
+            report_reply
                 .or_else(|| context_http::route(&request, runs()))
                 .or_else(|| context_http::preflight(&mut request))
                 .or_else(|| context_http::pending(&mut request))
@@ -910,9 +920,9 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
 fn header(name: &str, value: &str) -> Header {
     Header::from_bytes(name, value).expect("static valid header")
 }
-mod activation_http;
 mod context_http;
 mod evidence_http;
 mod mcp_stdio;
 mod otlp_http;
 mod replay_http;
+mod report_store;

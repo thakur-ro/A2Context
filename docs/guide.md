@@ -469,7 +469,7 @@ Start the [local OTLP receiver](#receive-live-opentelemetry-traces), then give t
 }
 ```
 
-MCP reads newly saved batches and activation reports when a tool runs. It opens the journal in read-only mode while the inspector continues receiving data. Measurement tools are discoverable from startup. A query can return no measurements until a report arrives. Scope and excerpt settings apply to live data as well. If the inspector also loads separate evidence files, add those paths to the MCP configuration to query them and any reports attached to their decisions.
+MCP reads newly saved batches, activation reports, and controlled replay reports when a tool runs. It opens the journal in read-only mode while the inspector continues receiving data. Measurement tools are discoverable from startup. A query can return no measurements until a report arrives. Scope and excerpt settings apply to live data as well. If the inspector also loads separate evidence files, add those paths to the MCP configuration to query them and any reports attached to their decisions.
 
 Try the [saved Qwen experiment](#attach-activation-measurements-after-a-trace-arrives) while the MCP client is running. Query `query_activation_effects` in `qwen-demo-org`. Open a contributing `location` with `get_turn_evidence`, then use that location and its report ID to read the affected tokens or continuations. Tool results include paths to the same checkpoints in the browser inspector.
 
@@ -678,7 +678,27 @@ Set the optional `nexusweave.request.body` string attribute on the inference spa
 python3 examples/send_otlp_inventory.py --capture-request
 ```
 
-Refresh the inspector, select `sdk-inventory-captured-thread`, and open the first call. In **Plan replay**, choose **Use captured request**. Use **Download call evidence** to save the selected call as a standalone evidence file. Download the case after selecting an intervention. Pass both files to the `replay` command with your runner. To view the resulting report on the original trace, start the inspector with its original store and add `--replay <report.json>`.
+Refresh the inspector, select `sdk-inventory-captured-thread`, and open the first call. In **Plan replay**, choose **Use captured request**. Use **Download call evidence** to save the selected call as a standalone evidence file. Download the case after selecting an intervention. Pass both files to the `replay` command with your runner. [Run a controlled replay](#test-a-context-item-with-a-controlled-replay)
+
+### Attach a controlled replay after a trace arrives
+
+With `serve --otlp-store` running, send the report produced by `nexusweave replay` once the inference span is in the store. The report uses the original run, call, decision, and context IDs. The inspector verifies the baseline against the captured request, checks the source edits, and recomputes the match rates from the reported trial outcomes. Your runner supplies the trial outcomes.
+
+```sh
+curl -fsS -H 'Content-Type: application/json' \
+  --data-binary @report.json http://127.0.0.1:8040/api/replay-reports
+```
+
+The endpoint accepts one uncompressed JSON report up to 16 MiB. It returns `201` for a new report, `200` for an identical retry, and `400` for an invalid report, including an unavailable or mismatched captured request. A `409` means the decision is unavailable or another report already uses that ID at the decision. If the decision is still on its way, send the trace and retry. Accepted reports persist in `replay-reports/` inside the OTLP store. Reports for decisions loaded from an evidence file need that file again after restart.
+
+Select **Refresh traces** in the browser, then open **Replay results** on the recorded turn. **Patterns → Replay effects** groups comparable measurements across calls. A live MCP client reads the same report on its next `get_turn_evidence` call. [Compare effects across conversations](#compare-measured-effects-across-conversations)
+
+Try the [saved Qwen replay](../examples/send_otlp_replay.py) without running a model. The example sends the original inference as OTLP and attaches its saved trials. Follow the printed link to the FAQ edit. The baseline matched the recorded 60-day answer in one of one greedy trials, and the edited request matched in zero of one. Run the example again with a different conversation ID to see how the inspector groups the same measurement across two threads.
+
+```sh
+python3 examples/send_otlp_replay.py
+python3 examples/send_otlp_replay.py --conversation-id journal-live-replay-second-thread
+```
 
 ## Declare context sources and decision scope
 
