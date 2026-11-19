@@ -1,5 +1,6 @@
 //! Measure changes in recorded token scores when a prompt source is masked.
 
+mod continuations;
 pub mod patterns;
 pub mod query;
 
@@ -38,6 +39,8 @@ pub struct Report {
     pairs: Vec<Pair>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     targets: Vec<Target>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    continuations: Vec<continuations::MaskContinuation>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -252,6 +255,7 @@ impl Report {
             );
         }
         self.validate_pairs(&measured)?;
+        continuations::validate(self, &measured)?;
         Ok(())
     }
 

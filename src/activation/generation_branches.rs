@@ -22,21 +22,21 @@ pub(super) struct Branch {
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
-struct Continuation {
-    text: String,
-    token_ids: Vec<u32>,
-    stop_reason: StopReason,
+pub(super) struct Continuation {
+    pub(super) text: String,
+    pub(super) token_ids: Vec<u32>,
+    pub(super) stop_reason: StopReason,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
-enum StopReason {
+pub(super) enum StopReason {
     EndOfSequence,
     TokenLimit,
 }
 
 impl Continuation {
-    fn steps(&self, prefix: &[u32], maximum: usize) -> Option<usize> {
+    pub(super) fn steps(&self, prefix: &[u32], maximum: usize) -> Option<usize> {
         let generated = self.token_ids.strip_prefix(prefix)?.len();
         match self.stop_reason {
             StopReason::EndOfSequence if generated < maximum => Some(generated + 1),
@@ -91,7 +91,7 @@ pub(super) fn validate(
     Ok(())
 }
 
-fn first_difference(baseline: &[u32], observed: &[u32]) -> Option<usize> {
+pub(super) fn first_difference(baseline: &[u32], observed: &[u32]) -> Option<usize> {
     baseline
         .iter()
         .zip(observed)

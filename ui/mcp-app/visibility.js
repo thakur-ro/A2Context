@@ -22,6 +22,8 @@ export function visibilityTitle(data) {
     case "visibility_sources":
     case "visibility_pairs":
       return "Output token " + (data.token.output_token + 1);
+    case "visibility_continuations":
+      return "Decoding with sources masked";
   }
 }
 
@@ -38,6 +40,8 @@ export function visibilityBackLabel(kind) {
     case "visibility_sources":
     case "visibility_pairs":
       return "Back to measured token";
+    case "visibility_continuations":
+      return "Back to masked continuations";
   }
 }
 
@@ -118,6 +122,10 @@ function periodLabel(unit, period) {
 export function renderVisibility(parent, page, requestPage, pageControls) {
   const { args, data, back } = page;
   const drill = { page, previous: back };
+  if (page.kind === "visibility_continuations") {
+    renderMaskContinuations(parent, page, requestPage, pageControls);
+    return;
+  }
   if (page.kind === "visibility_sources" || page.kind === "visibility_pairs") {
     renderMeasurement(parent, page, requestPage, drill);
     return;
@@ -204,7 +212,40 @@ function renderOccurrence(parent, item, metric, requestPage, back) {
     measurementTool, { version: 1, location: item.location, report_id: item.report_id, view },
     "Output token " + first, back,
   )));
+  for (const branch of item.mask_continuations || []) {
+    row.append(button("Open masked continuation", () => requestPage(measurementTool, {
+      version: 1, location: item.location, report_id: item.report_id,
+      view: { kind: "continuations", output_token: branch.start_output_token, context_ids: branch.context_ids },
+    }, "Decoding with sources masked", back)));
+  }
   parent.append(row);
+}
+
+function renderMaskContinuations(parent, page, requestPage, pageControls) {
+  const { data, args, back, title } = page;
+  const outcomes = {
+    changed_tool: "Tool changed", changed_arguments: "Arguments changed",
+    same_proposal: "Same tool proposal", unparsed_proposal: "No parsed proposal",
+    changed_output: "Output tokens changed", same_output: "Same output tokens", token_limit: "Token limit reached",
+  };
+  if (data.captured_excerpts_enabled && !args.include_excerpts) {
+    parent.append(button("Show generated text", () => requestPage(measurementTool, { ...args, include_excerpts: true }, title, back)));
+  }
+  for (const value of data.rows) {
+    const row = element("section", undefined, "row");
+    const changed = value.first_changed_output_token;
+    row.append(element("h2", value.context_ids.join(" + ")));
+    row.append(element("p", "Decoding resumes at token " + (value.start_output_token + 1), "muted"));
+    row.append(element("p", outcomes[value.outcome] + (changed == null ? "" : " · First change at token " + (changed + 1))));
+    if (value.text_excerpt) row.append(element("pre", value.text_excerpt.text + (value.text_excerpt.truncated ? "…" : "")));
+    const paths = element("details");
+    paths.append(element("summary", "Local inspector paths"), element("p", value.inspector_path, "inspector-path"));
+    for (const path of value.source_inspector_paths) paths.append(element("p", path, "inspector-path"));
+    row.append(paths);
+    parent.append(row);
+  }
+  if (!data.rows.length) parent.append(element("p", "No saved continuations match this selection.", "muted"));
+  if (args.version === 1) pageControls(page, measurementTool, back);
 }
 
 function renderMeasurement(parent, page, requestPage, drill) {
@@ -242,6 +283,9 @@ function renderMeasurement(parent, page, requestPage, drill) {
     paths.append(element("p", data.token.inspector_path, "inspector-path"));
   }
   const actions = element("div", undefined, "actions");
+  if (data.report.measured_continuations) actions.append(button("View saved continuations", () => requestPage(
+    measurementTool, { ...args, offset: 0, view: { kind: "continuations" } }, "Decoding with sources masked", drill,
+  )));
   actions.append(button("Open turn evidence", () => requestPage("get_turn_evidence", data.location, "Turn evidence", drill)));
   parent.append(paths, actions);
 }

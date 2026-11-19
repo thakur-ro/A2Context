@@ -1,7 +1,7 @@
 """Measure source visibility on a recorded Qwen2 answer or tool proposal."""
 
 import argparse
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from hashlib import sha256
 from itertools import combinations
 import json
@@ -94,15 +94,19 @@ def aligned_source(runtime, prompt, tokens, offsets, messages, tools, item):
     return source
 
 
-def masked_scores(runtime, tokens, readouts, ranges=()):
+def mask_inputs(runtime, length, ranges):
     torch = runtime.torch
-    attention = torch.ones((1, len(tokens)), dtype=torch.long)
-    positions = torch.arange(len(tokens)).unsqueeze(0)
+    attention = torch.ones((1, length), dtype=torch.long)
+    for start, end in ranges:
+        attention[:, start:end] = 0
+    return {"attention_mask": attention, "position_ids": torch.arange(length).unsqueeze(0)}
+
+
+@contextmanager
+def verify_mask(runtime, ranges):
+    torch = runtime.torch
     with ExitStack() as hooks:
         if ranges:
-            for start, end in ranges:
-                attention[:, start:end] = 0
-
             def check_mask(_layer, _args, inputs):
                 mask = inputs["attention_mask"]
                 for start, end in ranges:
@@ -113,7 +117,68 @@ def masked_scores(runtime, tokens, readouts, ranges=()):
             for layer in runtime.model.model.layers:
                 hook = layer.register_forward_pre_hook(check_mask, with_kwargs=True)
                 hooks.callback(hook.remove)
-        return runtime.scores(tokens, readouts, {}, attention_mask=attention, position_ids=positions)
+        yield
+
+
+def masked_scores(runtime, tokens, readouts, ranges=()):
+    with verify_mask(runtime, ranges):
+        return runtime.scores(tokens, readouts, {}, **mask_inputs(runtime, len(tokens), ranges))
+
+
+def masked_continuation(runtime, prompt, prefix, maximum, ranges=()):
+    output = list(prefix)
+    stop = "token_limit"
+    with verify_mask(runtime, ranges):
+        for _ in range(maximum):
+            tokens = prompt + output
+            logits = runtime.model(
+                input_ids=runtime.torch.tensor([tokens]), use_cache=False, logits_to_keep=1,
+                **mask_inputs(runtime, len(tokens), ranges),
+            ).logits
+            token = logits[0, -1].argmax().item()
+            if token in runtime.generation_config.eos_token_id:
+                stop = "end_of_sequence"
+                break
+            output.append(token)
+    return {"text": runtime.tokenizer.decode(output, skip_special_tokens=False),
+            "token_ids": output, "stop_reason": stop}
+
+
+def measure_continuations(runtime, report, tokens, request, specs):
+    ranges = {(item["context_id"],): [item["token_range"]]
+              for item in report["sources"] if "token_range" in item}
+    for pair in report.get("pairs", []):
+        ids = tuple(pair["context_ids"])
+        ranges[ids] = [ranges[(context_id,)][0] for context_id in ids]
+    baseline = report["output_token_ids"]
+    controls = {}
+    seen = set()
+    result = []
+    for start_arg, *context_ids in specs:
+        start, ids = int(start_arg), tuple(sorted(context_ids))
+        if not 0 <= start < len(baseline) or ids not in ranges or (start, ids) in seen:
+            raise ValueError("Each continuation needs a distinct output start and measured source or pair.")
+        seen.add((start, ids))
+        maximum = request["max_tokens"] - start
+        prefix = baseline[:start]
+        if start not in controls:
+            clean = masked_continuation(runtime, tokens, prefix, maximum)
+            if (clean["token_ids"] != baseline or clean["text"] != report["baseline_answer"]
+                    or clean["stop_reason"] != "end_of_sequence"):
+                raise ValueError("The all-visible continuation did not reproduce the recorded output.")
+            controls[start] = clean
+        masked = masked_continuation(runtime, tokens, prefix, maximum, ranges[ids])
+        replay = {"context_ids": ids, "start_output_token": start, "max_new_tokens": maximum,
+                  "clean": controls[start], "masked": masked}
+        if report.get("baseline_tool_call") and masked["stop_reason"] == "end_of_sequence":
+            try:
+                proposal, _ = runtime.parse_proposal(masked["text"], request["tools"])
+            except ValueError:
+                proposal = None
+            if proposal is not None:
+                replay["tool_call"] = proposal
+        result.append(replay)
+    return result
 
 
 def disjoint(first, second):
@@ -140,7 +205,8 @@ def pair_plan(sources, requested, include_duplicates):
     return [(ids, [measured[key]["token_range"] for key in ids]) for ids in sorted(plan)]
 
 
-def measure(runtime, model_path, model_id, revision, location, call, decision, *, pairs=(), pair_duplicates=False):
+def measure(runtime, model_path, model_id, revision, location, call, decision, *,
+            pairs=(), pair_duplicates=False, continuations=()):
     request = json.loads(call["recorded_request"]["body"])
     messages = request["messages"]
     tools = request.get("tools")
@@ -198,6 +264,11 @@ def measure(runtime, model_path, model_id, revision, location, call, decision, *
         ]
         digest = sha256(json.dumps([ids for ids, _ in plan], separators=(",", ":")).encode()).hexdigest()
         report["id"] += "-" + digest[:16]
+    if continuations:
+        report["continuations"] = measure_continuations(runtime, report, tokens, request, continuations)
+        selection = [(item["start_output_token"], item["context_ids"]) for item in report["continuations"]]
+        digest = sha256(json.dumps(selection, separators=(",", ":")).encode()).hexdigest()
+        report["id"] += "-continuation-" + digest[:16]
     return report
 
 
@@ -226,6 +297,8 @@ def main():
                         help="Also test pairs with identical captured text and separate token ranges.")
     parser.add_argument("--target", action="append", nargs=3, default=[], metavar=("KEY", "START", "END"),
                         help="Name an output token range by zero-based start and exclusive end.")
+    parser.add_argument("--continue-mask", action="append", nargs="+", default=[], metavar="START_OR_CONTEXT",
+                        help="Continue greedily from zero-based START with one measured source or pair masked.")
     args = parser.parse_args()
     runs = json.loads(args.evidence.read_text(encoding="utf-8"))
     run = next((run for run in runs if run["id"] == args.run_id), None)
@@ -237,7 +310,7 @@ def main():
     runtime = load_runtime(args.model)
     with runtime.torch.inference_mode():
         report = measure(runtime, args.model, args.model_id, args.revision, location, call, decision,
-                         pairs=args.pair, pair_duplicates=args.pair_duplicates)
+                         pairs=args.pair, pair_duplicates=args.pair_duplicates, continuations=args.continue_mask)
     if args.target:
         try:
             report["targets"] = output_targets(args.target, len(report["output_token_ids"]))

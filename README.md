@@ -47,6 +47,8 @@ Inspect how a source swap changed the probability of any recorded output token, 
 
 Compare what the model generates after a source swap at a selected point in an answer. [Try the continuation view](docs/guide.md#continue-decoding-after-a-source-swap)
 
+Continue decoding with a source or pair masked to see whether a recorded tool name or argument changes. [Try a masked continuation](docs/guide.md#continue-decoding-with-sources-masked)
+
 ![NexusWeave decision view showing a recorded answer, its captured inputs, and a replay that tests the returns policy against a store-name control](docs/media/decision-inspector.png)
 
 ## Inspect your workflow

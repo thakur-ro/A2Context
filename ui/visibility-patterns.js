@@ -417,6 +417,9 @@ function renderVisibilityOccurrences(parent, occurrences) {
     const first = row.output_token + 1;
     const tokens = row.output_token_end > first ? "tokens " + first + "–" + row.output_token_end : "token " + first;
     links.append(patternEvidenceLink(row.inspector_path, "Open " + tokens));
+    for (const branch of row.mask_continuations || []) {
+      links.append(patternEvidenceLink(branch.inspector_path, "Open masked continuation"));
+    }
     row.source_inspector_paths.forEach((path, index) => links.append(patternEvidenceLink(path, row.context_ids[index])));
     line.append(node("strong", visibilityEffectFormat.format(row.effect)), links);
     if (row.output_prefix_sha256) line.append(node("small", "Prefix " + row.output_prefix_sha256.slice(0, 8), "anchor"));

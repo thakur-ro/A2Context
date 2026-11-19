@@ -179,3 +179,15 @@ We reproduced seven recorded `stock` or `price` proposals on the same Qwen2.5 ch
 | Price definition | +0.00019 | −7.97884 to −3.13614 |
 
 Each value is a change in log probability at the recorded tool-name token. The selected tool's definition had the largest negative effect on the name within each of the two cohorts when masked. In the follow-up, masking the prior assistant reply lowered the recorded `price` score by 1.08491 log units. The earlier output tokens stayed fixed. The ranges describe these seven measurements and the ownership labels let readers exercise the scope filters. [Inspect the cohort](guide.md#compare-measured-tool-routes)
+
+## Let the model decode with sources masked
+
+We used the original stock lookup to compare the recorded `stock(product_id=42)` proposal with greedy continuations under the same masks. The all-visible controls reproduced the recorded token sequence from both starting points. [Saved continuations](../examples/runtime-comparison/visibility-routing/continuations.json)
+
+| Masked source | Resume at | Measured proposal |
+| --- | --- | --- |
+| Stock definition | Tool name | `price(product_id=42)` |
+| Both tool definitions | Tool name | `stock(product_id="42", tool="stock")` |
+| Product ID | First digit | `stock(product_id=12345)` |
+
+Masking both definitions left the recorded `stock` token score near baseline. The continuation kept that tool and changed the argument type and fields. This shows why a score at one token can miss a change later in the output. These results describe one recorded request, two fixed prefixes, and one greedy model. The adapter parses proposals without checking their argument schemas. [Reproduce the continuations](guide.md#continue-decoding-with-sources-masked)

@@ -14,6 +14,55 @@ const ROUTING: &str = include_str!("../examples/local-mlx-routing/activation-rep
 const ROUTING_EVIDENCE: &str = include_str!("../examples/local-mlx-routing/evidence.json");
 
 #[test]
+fn masked_continuations_require_a_measured_mask_and_a_reproduced_prefix() {
+    let runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/evidence.json"
+    ))
+    .unwrap();
+    let report: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/continuations.json"
+    ))
+    .unwrap();
+    let validate = |value: Value| {
+        serde_json::from_value::<Report>(value)
+            .unwrap()
+            .validate(&runs)
+    };
+    validate(report.clone()).unwrap();
+    for (field, value, message) in [
+        (
+            "context_ids",
+            serde_json::json!(["tool-stock", "product-id"]),
+            "measured source or pair",
+        ),
+        (
+            "clean",
+            report["continuations"][0]["masked"].clone(),
+            "all-visible continuation",
+        ),
+        (
+            "masked",
+            serde_json::json!({"text":"bad","token_ids":[0],"stop_reason":"end_of_sequence"}),
+            "fixed prefix",
+        ),
+    ] {
+        let mut invalid = report.clone();
+        invalid["continuations"][0][field] = value;
+        assert!(validate(invalid).unwrap_err().contains(message));
+    }
+    let mut duplicated = report;
+    let mut reversed = duplicated["continuations"][1].clone();
+    reversed["context_ids"].as_array_mut().unwrap().reverse();
+    duplicated["continuations"]
+        .as_array_mut()
+        .unwrap()
+        .push(reversed);
+    assert!(validate(duplicated)
+        .unwrap_err()
+        .contains("distinct measured source or pair"));
+}
+
+#[test]
 fn visibility_requires_a_reproduced_tool_name_and_arguments() {
     let runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/visibility-routing/evidence.json"

@@ -73,6 +73,7 @@ function writeReference(params, reference, position) {
       params.set("visibility", reference.visibility_token);
       if (reference.visibility_pair !== undefined) params.set("pair", reference.visibility_pair);
       if (reference.visibility_source !== undefined) params.set("mask", reference.visibility_source);
+      if (reference.visibility_continuation !== undefined) params.set("continuation", reference.visibility_continuation);
       return;
     }
     if (reference.output_token !== undefined) params.set("token", reference.output_token);
@@ -95,14 +96,17 @@ function readReference(params, position) {
     if (key === "visibility") {
       const pair = params.get("pair");
       const source = params.get("mask");
-      if (params.has("block") || (pair !== null && (!/^\d+$/.test(pair) || source !== null)) || source === "") return null;
+      const continuation = params.get("continuation");
+      if (params.has("block") || (pair !== null && (!/^\d+$/.test(pair) || source !== null)) || source === ""
+        || (continuation !== null && (!/^\d+$/.test(continuation) || pair !== null || source !== null))) return null;
       return {
         activation_id: params.get("activation"), visibility_token: Number(index),
         visibility_pair: pair === null ? undefined : Number(pair),
         visibility_source: source ?? undefined,
+        visibility_continuation: continuation === null ? undefined : Number(continuation),
       };
     }
-    if (params.has("pair") || params.has("mask") || !/^\d+$/.test(params.get("block") || "")) return null;
+    if (params.has("pair") || params.has("mask") || params.has("continuation") || !/^\d+$/.test(params.get("block") || "")) return null;
     const fields = { token: "output_token", branch: "branch_index", checkpoint: "checkpoint_index" };
     return {
       activation_id: params.get("activation"),

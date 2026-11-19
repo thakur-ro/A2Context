@@ -38,6 +38,10 @@ enum View {
         output_token: usize,
         context_ids: Option<[String; 2]>,
     },
+    Continuations {
+        output_token: Option<usize>,
+        context_ids: Option<Vec<String>>,
+    },
 }
 
 fn default_limit() -> usize {
@@ -131,6 +135,9 @@ fn summary(report: &Report) -> Value {
     }
     if report.baseline_tool_call.is_some() {
         result["decision_kind"] = json!("tool_call");
+    }
+    if !report.continuations.is_empty() {
+        result["measured_continuations"] = json!(report.continuations.len());
     }
     result
 }
@@ -276,13 +283,44 @@ pub fn query(
             })).collect();
             ("visibility_pairs", ranked.len(), Some(output_token), rows)
         }
+        View::Continuations {
+            output_token,
+            ref context_ids,
+        } if output_token.is_none_or(|index| index < token_count) => {
+            let ids = context_ids
+                .as_ref()
+                .map(|ids| ids.iter().map(String::as_str).collect::<Vec<_>>());
+            if ids.as_ref().is_some_and(|ids| {
+                !(1..=2).contains(&ids.len()) || ids.len() == 2 && ids[0] == ids[1]
+            }) {
+                return Err(
+                    "Select one source or two distinct sources for a mask continuation.".into(),
+                );
+            }
+            let matching = report.continuations.iter().enumerate().filter(|(_, row)| {
+                output_token.is_none_or(|index| row.start_output_token == index)
+                    && ids.as_ref().is_none_or(|ids| row.matches(ids))
+            });
+            let total = matching.clone().count();
+            let rows = matching
+                .skip(request.offset)
+                .take(request.limit)
+                .map(|(index, row)| row.query_row(report, index, request.include_excerpts))
+                .collect();
+            ("visibility_continuations", total, None, rows)
+        }
         _ => return Err("The requested output token is unavailable.".into()),
     };
     let rows: Vec<Value> = rows;
     let next = request.offset.saturating_add(rows.len());
+    let readout = if kind == "visibility_continuations" {
+        "masked_greedy_continuation"
+    } else {
+        "fixed_prefix_token_log_probability"
+    };
     let mut result = json!({
         "version": 1, "kind": kind, "location": report.location, "report": summary(report),
-        "readout": "fixed_prefix_token_log_probability", "captured_excerpts_enabled": allow_excerpts,
+        "readout": readout, "captured_excerpts_enabled": allow_excerpts,
         "total_rows": total, "rows": rows,
         "next_offset": (next < total).then_some(next),
     });

@@ -669,5 +669,18 @@ fn evidence(item: &Occurrence<'_>) -> Value {
     if let Some(proposal) = &item.report.baseline_tool_call {
         row["tool_name"] = json!(proposal.name);
     }
+    let continuations: Vec<_> = item
+        .report
+        .continuations
+        .iter()
+        .enumerate()
+        .filter(|(_, branch)| {
+            (start..end).contains(&branch.start_output_token) && branch.matches(&item.context_ids)
+        })
+        .map(|(index, branch)| branch.query_row(item.report, index, false))
+        .collect();
+    if !continuations.is_empty() {
+        row["mask_continuations"] = json!(continuations);
+    }
     row
 }

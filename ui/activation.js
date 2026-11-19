@@ -162,6 +162,7 @@ function renderSourceVisibility(panel, report, call) {
   const actions = node("div", undefined, "decision-actions");
   actions.append(compare, evidenceLinkButton(reference, "this visibility measurement"));
   panel.append(table, actions, targets, provenance);
+  if (report.continuations?.length) panel.append(renderMaskContinuations(report, names, sourceButton));
 }
 
 function sourceVisibilityPairs(report, names, sourceButton, precision) {
@@ -221,6 +222,17 @@ function openActivationCheckpoint(reference) {
   if (reference.visibility_token !== undefined) {
     const token = panel?.querySelector("[data-visibility-token]");
     const pair = panel?.querySelector("[data-visibility-pair]");
+    if (reference.visibility_continuation !== undefined) {
+      const details = panel?.querySelector(".visibility-continuations");
+      const select = details?.querySelector("[data-visibility-continuation]");
+      if (select?.options[reference.visibility_continuation]?.dataset.start !== String(reference.visibility_token)) return;
+      token.value = String(reference.visibility_token);
+      token.dispatchEvent(new Event("change"));
+      details.open = true;
+      select.value = String(reference.visibility_continuation);
+      select.dispatchEvent(new Event("change"));
+      return select;
+    }
     if (!token?.options[reference.visibility_token]
       || (reference.visibility_pair !== undefined && !pair?.options[reference.visibility_pair])) return;
     token.value = String(reference.visibility_token);

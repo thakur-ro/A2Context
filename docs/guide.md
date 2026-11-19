@@ -817,6 +817,31 @@ python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-
   --pair-duplicates --pair refund-policy store-name > paired-visibility.json
 ```
 
+### Continue decoding with sources masked
+
+Load the saved routing continuations to compare what the model generated with each selected mask. The probe keeps the earlier output tokens and prompt positions fixed, then lets the model pick every remaining token. An all-visible run from each selected start must reproduce the recorded output. The adapter checks the mask at every decoder block and generation step. Tool proposals are recorded as text and are never executed. [Experiment results](inference-attribution-plan.md#let-the-model-decode-with-sources-masked)
+
+```sh
+cargo run --locked -- serve \
+  --activation-report examples/runtime-comparison/visibility-routing/continuations.json \
+  examples/runtime-comparison/visibility-routing/evidence.json
+```
+
+In **Decisions**, open **Activation probe → Context visibility test → Decoding with sources masked**. Pick a source or pair and starting token. The inspector shows the recorded and masked outputs side by side. In **Patterns**, a contributing turn links to its continuation when the mask and starting token match the measured source and output span.
+
+Use `view.kind` of `continuations` with `query_source_visibility` or `POST /api/source-visibility`. Optionally filter by `output_token` and `context_ids`. Results give the first changed token, stopping condition, and whether the parsed tool name or arguments changed. Generated text requires `include_excerpts: true` and the MCP host's `--include-excerpts` flag. [Query schema](../schema/source-visibility-query-1.json)
+
+```sh
+python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-comparison/visibility-routing/evidence.json \
+  --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 \
+  --run-id qwen-product-route --call-id model-inference --decision-id product-route \
+  --target routing.tool 7 8 --target routing.product_id 17 19 \
+  --pair request-type product-id --pair tool-stock tool-price \
+  --pair routing-instruction request-type --pair routing-instruction tool-stock \
+  --continue-mask 7 tool-stock --continue-mask 7 tool-stock tool-price \
+  --continue-mask 17 product-id > routing-continuations.json
+```
+
 ### Query masked-source effects from an agent
 
 `get_turn_evidence` and `/api/turn-evidence` list `source_visibility_reports` for the selected decision, including the number of captured sources, measured sources, and measured pairs. Use its location and report ID with [`query_source_visibility`](../schema/source-visibility-query-1.json) or `POST /api/source-visibility`. The default timeline returns the strongest measured source and pair at each recorded output token. The `sources` view ranks by the absolute change in log probability and retains unavailable entries. Measured rows include the JSON Pointer or extra boundary whitespace when recorded. The `pairs` view ranks by absolute interaction and returns both individual scores and the joint score. Pass `next_offset` as `offset` with the same view to continue.

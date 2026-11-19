@@ -578,6 +578,70 @@ fn visibility_patterns_group_scoped_measurements_and_link_chronological_occurren
 }
 
 #[test]
+fn mask_continuations_link_exact_occurrences_and_gate_generated_text() {
+    let fixtures = [
+        "--activation-report",
+        "examples/runtime-comparison/visibility-routing/continuations.json",
+        "examples/runtime-comparison/visibility-routing/evidence.json",
+    ];
+    let mut client = Client::start(&fixtures, true);
+    let location = json!({"run_id":"qwen-product-route","call_id":"model-inference","decision_id":"product-route"});
+    let turn = client.call("get_turn_evidence", location.clone());
+    let report = &turn["structuredContent"]["source_visibility_reports"][0];
+    assert_eq!(report["measured_continuations"], 3);
+    let mut args = json!({
+        "version":1,"location":location,"report_id":report["report_id"],"limit":1,
+        "view":{"kind":"continuations","output_token":7}
+    });
+    let page = client.call("query_source_visibility", args.clone());
+    let page = &page["structuredContent"];
+    assert_eq!(page["readout"], "masked_greedy_continuation");
+    assert_eq!(page["total_rows"], 2);
+    assert_eq!(page["next_offset"], 1);
+    let row = &page["rows"][0];
+    assert_eq!(row["outcome"], "changed_tool");
+    assert_eq!(row["first_changed_output_token"], 7);
+    assert!(row.get("text_excerpt").is_none() && row.get("proposed_tool").is_none());
+    assert!(row["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&visibility=7&continuation=0"));
+    let mut pattern_args = json!({"version":1,"target":"routing.tool","source_id":"stock"});
+    let groups = client.call("query_visibility_patterns", pattern_args.clone());
+    pattern_args["group"] = groups["structuredContent"]["groups"][0]["key"].clone();
+    let detail = client.call("query_visibility_patterns", pattern_args);
+    assert_eq!(
+        detail["structuredContent"]["occurrences"][0]["mask_continuations"][0],
+        *row
+    );
+
+    args["view"]["context_ids"] = json!(["tool-stock", "tool-price"]);
+    let pair = client.call("query_source_visibility", args.clone());
+    assert_eq!(pair["structuredContent"]["total_rows"], 1);
+    assert_eq!(
+        pair["structuredContent"]["rows"][0]["outcome"],
+        "changed_arguments"
+    );
+    args["include_excerpts"] = true.into();
+    assert_eq!(
+        client.call("query_source_visibility", args.clone())["isError"],
+        true
+    );
+
+    let mut client = Client::start(&[&["--include-excerpts"][..], &fixtures].concat(), true);
+    args["view"] = json!({"kind":"continuations","output_token":17,"context_ids":["product-id"]});
+    let product = client.call("query_source_visibility", args);
+    let row = &product["structuredContent"]["rows"][0];
+    assert_eq!(row["outcome"], "changed_arguments");
+    assert_eq!(row["first_changed_output_token"], 17);
+    assert_eq!(row["proposed_tool"]["text"], "stock");
+    assert!(row["text_excerpt"]["text"]
+        .as_str()
+        .unwrap()
+        .contains("12345"));
+}
+
+#[test]
 fn routing_patterns_compare_recorded_tools_and_keep_exact_scoped_turns() {
     let mut client = Client::start(
         &[
