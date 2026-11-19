@@ -40,6 +40,7 @@ function openPage(page, back, focus = false) {
   else if (page.kind === "evidence") renderEvidence(page, back);
   else if (page.kind === "activation_groups") renderActivationGroups(page, back);
   else if (page.kind === "activation_evidence") renderActivationEvidence(page, back);
+  else if (page.kind.startsWith("candidate_pattern_")) renderCandidatePatterns(page, back);
   else if (page.kind.startsWith("visibility_")) renderVisibility(result, page, requestPage, pageControls);
   else renderTurn(page);
   if (focus) {
@@ -143,6 +144,64 @@ function renderEvidence(page, back) {
 
 function turnLocation({ run_id, call_id, decision }) {
   return { run_id, call_id, decision_id: decision?.id };
+}
+
+const candidatePatternTool = "query_candidate_patterns";
+
+function candidateGroupName({ source_id, source_version, candidate_ids }) {
+  return [source_id, source_version, candidate_ids.join(" vs ")].filter(Boolean).join(" · ");
+}
+
+function appendCandidateStats(parent, stats, label) {
+  if (label) parent.append(element("h3", label));
+  if (!stats) {
+    parent.append(element("p", "No comparable measurements", "muted"));
+    return;
+  }
+  const range = stats.min_change_log_odds === stats.max_change_log_odds
+    ? signed.format(stats.min_change_log_odds)
+    : signed.format(stats.min_change_log_odds) + " to " + signed.format(stats.max_change_log_odds);
+  parent.append(element("p", stats.reversals + " of " + stats.measurements + " edits reversed preference · " + range + " log odds"),
+    element("p", [countLabel(stats.calls, "call"), countLabel(stats.conversations, "identified conversation"),
+      countLabel(stats.organizations, "organization")].join(" · "), "muted"));
+}
+
+function renderCandidatePatterns(page, back) {
+  const data = page.data;
+  if (data.kind === "candidate_pattern_groups") {
+    result.append(element("p", countLabel(data.total_groups, "probe setup"), "muted"));
+    for (const group of data.groups) {
+      const row = element("section", undefined, "row");
+      const title = candidateGroupName(group.setup);
+      row.append(button(title, () => requestPage(candidatePatternTool,
+        { ...page.args, group: group.key, offset: 0, compare_offset: 0 }, title, { page, previous: back })));
+      row.append(element("p", group.setup.model_id + " · " + group.setup.model_revision, "muted"));
+      appendCandidateStats(row, group.primary, data.compared ? "Scope A" : "");
+      if (data.compared) appendCandidateStats(row, group.comparison, "Scope B");
+      result.append(row);
+    }
+    pageControls(page, candidatePatternTool, back);
+    return;
+  }
+  const sides = data.compared ? [data.primary, data.comparison] : [data.primary];
+  sides.forEach((side, index) => {
+    const section = element("section", undefined, "row");
+    const stats = index ? data.group.comparison : data.group.primary;
+    appendCandidateStats(section, stats, data.compared ? "Scope " + (index ? "B" : "A") : "");
+    for (const item of side.rows) {
+      const label = item.conversation_id || item.run_id;
+      section.append(button(label, () => requestPage("get_turn_evidence", { run_id: item.run_id, call_id: item.call_id }, label, { page, previous: back })),
+        element("p", [item.started_at, item.organization_id, item.user_id, item.context_id].filter(Boolean).join(" · "), "muted"),
+        element("p", signed.format(item.baseline_log_odds) + " → " + signed.format(item.edited_log_odds) + " log odds"));
+      const path = element("details");
+      path.append(element("summary", "Local source link"), element("code", item.inspector_path));
+      section.append(path);
+    }
+    pageControls(page, candidatePatternTool, back, {
+      container: section, offsetKey: index ? "compare_offset" : "offset", next: side.next_offset,
+    });
+    result.append(section);
+  });
 }
 
 function renderTurn(page) {
@@ -365,6 +424,8 @@ app.ontoolresult = (response) => {
         : data.phase === "preflight" ? "Contributing checks" : "Contributing decisions",
       activation_groups: () => "Recurring activation effects",
       activation_evidence: () => activationTitle(data.group),
+      candidate_pattern_groups: () => "Candidate preference shifts",
+      candidate_pattern_evidence: () => candidateGroupName(data.group.setup),
       turn_evidence: () => "Turn evidence",
     };
     const title = Object.hasOwn(titles, data.kind) ? titles[data.kind]() : visibilityTitle(data);

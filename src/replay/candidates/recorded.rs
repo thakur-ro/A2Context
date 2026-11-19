@@ -2,6 +2,7 @@
 
 use super::{
     margin, prepare_edit, sha256, validate_case, validate_scores, Candidate, Effect, Report,
+    ScoringResult,
 };
 use crate::{replay::Operation, Call, ContextItem, Evidence, TextRange};
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,8 @@ pub enum Verification<'a> {
 /// The reported model comparison resolved to captured sources on this call.
 #[derive(Debug, Serialize)]
 pub struct Measurement<'a> {
+    #[serde(skip)]
+    pub(super) scores: &'a ScoringResult,
     pub scorer_id: &'a str,
     pub model_id: &'a str,
     pub model_revision: &'a str,
@@ -51,6 +54,10 @@ pub struct Measurement<'a> {
 /// The preference shift and exact request location of one source edit.
 #[derive(Debug, Serialize)]
 pub struct RecordedEffect<'a> {
+    #[serde(skip)]
+    pub(super) context: &'a ContextItem,
+    #[serde(skip)]
+    pub(super) captured_context_sha256: String,
     pub context_id: &'a str,
     pub source_id: Option<&'a str>,
     pub source_version: Option<&'a str>,
@@ -159,7 +166,8 @@ fn verify<'a>(
         let mut edited = request.clone();
         let mut intervention = effect.intervention.clone();
         intervention.context_id.clone_from(&item.id);
-        prepare_edit(call, &intervention)?.apply(&mut edited)?;
+        let prepared = prepare_edit(call, &intervention)?;
+        prepared.apply(&mut edited)?;
         if sha256(edited.to_string().as_bytes()) != effect.request_sha256 {
             return Err(format!(
                 "The edited request for {} differs from the candidate probe.",
@@ -177,6 +185,8 @@ fn verify<'a>(
             ));
         }
         effects.push(RecordedEffect {
+            context: item,
+            captured_context_sha256: prepared.captured_context_sha256,
             context_id: &item.id,
             source_id: item.source_id.as_deref(),
             source_version: item.source_version.as_deref(),
@@ -191,6 +201,7 @@ fn verify<'a>(
     }
 
     Ok(Measurement {
+        scores: &report.scores,
         scorer_id: &report.scorer_id,
         model_id: &report.scores.model_id,
         model_revision: &report.scores.model_revision,

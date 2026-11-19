@@ -37,6 +37,9 @@ pub fn route<'a>(
         "/api/visibility-patterns" => query(request, |input| {
             activation::visibility::patterns::query(input, runs, reports)
         }),
+        "/api/candidate-patterns" => query(request, |input| {
+            replay::candidates::patterns::query(input, runs)
+        }),
         "/api/context-sources" => query(request, |input| {
             source_profiles::query::query(input, runs, replays, reports)
         }),

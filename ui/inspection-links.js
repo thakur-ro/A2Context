@@ -147,6 +147,10 @@ function inspectionLink(reference = state.reference) {
   switch (state.view) {
     case "conversation":
       writeLocation(params, state);
+      if (state.candidateLink) {
+        params.set("probe", state.candidateLink.report);
+        params.set("probe_source", state.candidateLink.source);
+      }
       if (reference) {
         params.set("view", "decisions");
         writeReference(params, reference, state);
@@ -174,6 +178,7 @@ function inspectionLink(reference = state.reference) {
       }
       if (kind === "breakdown") writeConflictBreakdownLink(params);
       else if (kind === "visibility") writeVisibilityPatternLink(params);
+      else if (kind === "candidates") writeCandidatePatternLink(params);
       else if (element("pattern-search").value) params.set("q", element("pattern-search").value);
       if (kind === "sources") writeSourceProfileLink(params);
       if (kind === "context") {
@@ -249,6 +254,7 @@ function restorePatternLink(params) {
   if (activation) activationPatternBlock = Number(params.get("block")) || 0;
   const datesAvailable = activation ? restoreActivationDateLink(params)
     : kind === "sources" ? restoreSourceProfileLink(params)
+    : kind === "candidates" ? restoreCandidatePatternLink(params)
     : kind !== "visibility" || restoreVisibilityPatternLink(params);
   const compare = supportsScopeComparison(element("pattern-type").value);
   const comparisonScope = compare ? params.get("scope_b") ?? "" : "";
@@ -291,7 +297,11 @@ function restoreInspectionLink() {
         return false;
       }
       openConversation(position.run, position.call, position.decision);
-      currentConversationRow()?.button.focus();
+      if (params.has("probe") || params.has("probe_source")) {
+        if (!focusCandidateSource(params.get("probe"), params.get("probe_source"))) {
+          unavailableLink("The linked candidate probe source is unavailable on this call.");
+        }
+      } else currentConversationRow()?.button.focus();
       return true;
     }
     case "decisions": {

@@ -1306,6 +1306,50 @@ fn legacy_client_gets_the_cli_counts_and_cannot_widen_host_scope() {
 }
 
 #[test]
+fn candidate_comparison_and_drilldown_respect_the_host_scope() {
+    let dir = tempfile::tempdir().unwrap();
+    let scope = dir.path().join("scope.json");
+    let path = dir.path().join("routing-cohort.json");
+    let restricted = json!({"kind":"organization","organization_id":"retail-north"});
+    std::fs::write(&scope, restricted.to_string()).unwrap();
+    let export = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/cohort.json"
+    ))
+    .unwrap();
+    let runs = nexusweave::langsmith::import(&export).unwrap();
+    std::fs::write(&path, serde_json::to_vec(&runs).unwrap()).unwrap();
+    let mut client = Client::start(
+        &["--scope", scope.to_str().unwrap(), path.to_str().unwrap()],
+        false,
+    );
+    let listed = client.request("tools/list", json!({}));
+    assert!(listed["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tool| tool["name"] == "query_candidate_patterns"));
+    let mut spec = json!({
+        "version": 1, "source_id": "request-type",
+        "compare": {"scope": {"kind":"organization","organization_id":"retail-south"}},
+    });
+    let result = client.call("query_candidate_patterns", spec.clone());
+    let group = &result["structuredContent"]["groups"][0];
+    assert_eq!(group["primary"]["reversals"], 2);
+    assert_eq!(group["primary"]["conversations"], 2);
+    assert!(group["comparison"].is_null());
+    spec["group"] = group["key"].clone();
+    let result = client.call("query_candidate_patterns", spec);
+    let evidence = &result["structuredContent"];
+    assert_eq!(evidence["comparison"]["rows"], json!([]));
+    assert_eq!(evidence["primary"]["rows"].as_array().unwrap().len(), 2);
+    assert!(evidence["primary"]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|row| row["organization_id"] == "retail-north"));
+}
+
+#[test]
 fn modern_client_can_follow_a_turn_and_read_measured_replays() {
     let mut client = Client::start(
         &[

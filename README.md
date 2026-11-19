@@ -14,6 +14,8 @@ The report flags a conflict between a 30-day policy and a 60-day FAQ in the same
 
 A candidate probe measures how a source edit shifts the model's preference between two fixed choices before the workflow commits to either. The saved local experiments cover a return window and a tool name. [Run a candidate probe](docs/guide.md#measure-candidate-preference-before-a-decision)
 
+Compare verified preference shifts across users, organizations, and time windows, then open the edited source on a contributing turn. [Explore the measured routing cohort](docs/guide.md#find-recurring-candidate-preference-shifts)
+
 ## Try the conversation inspector
 
 With a stable Rust toolchain, run this from the repository root.

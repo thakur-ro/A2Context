@@ -236,7 +236,7 @@ function currentConversationRow() {
 }
 
 function selectConversationStep({ run, call, decision }) {
-  Object.assign(state, { run, call, decision, reference: undefined });
+  Object.assign(state, { run, call, decision, reference: undefined, candidateLink: undefined });
 }
 
 function openConversation(run, call, decision = 0) {
@@ -322,6 +322,7 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
     const context = new Map(call.context.map((item) => [item.id, item]));
     for (const probe of probes) {
       const card = node("article", undefined, "finding");
+      card.dataset.probeReport = probe.report_id ?? "";
       if (probe.status === "unverified") {
         card.append(node("h3", "Could not verify candidate probe"), node("p", probe.issue));
       } else {
@@ -338,9 +339,15 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
         card.append(setup);
         for (const effect of effects) {
           const source = contextDetails(context.get(effect.context_id), false);
+          source.dataset.probeSource = effect.context_id;
           source.append(node("small", "Edited request path " + requestFieldLabel(effect.pointer, effect.text_range), "anchor"),
             node("p", effect.operation.replaceAll("_", " ")),
             node("pre", effect.replacement || "Empty replacement"));
+          if (effect.source_id?.trim()) {
+            const recurring = node("button", "Find recurring shifts");
+            recurring.addEventListener("click", () => openCandidatePatterns(run, effect.source_id));
+            source.append(recurring);
+          }
           const row = node("div", undefined, "conversation-link");
           row.append(source, node("p", "After edit · " + preference(effect.log_odds)),
             node("small", "Shift " + activationMargin.format(effect.change_log_odds) + " log odds", "muted"));
@@ -351,6 +358,18 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
       section.append(card);
     }
   });
+}
+
+function focusCandidateSource(report, source) {
+  const card = [...element("conversation-details").querySelectorAll("[data-probe-report]")]
+    .find((item) => item.dataset.probeReport === report);
+  const detail = card && [...card.querySelectorAll("[data-probe-source]")].find((item) => item.dataset.probeSource === source);
+  if (!detail) return false;
+  card.closest("details").open = true;
+  detail.open = true;
+  detail.querySelector("summary").focus();
+  state.candidateLink = { report, source };
+  return true;
 }
 
 function renderTurnEvidence() {

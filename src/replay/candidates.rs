@@ -4,6 +4,7 @@
 //! scores both candidates at the same assistant prefix for every condition.
 
 use super::{prepare_edit, sha256, Intervention};
+pub mod patterns;
 mod recorded;
 
 pub(crate) use recorded::recorded;

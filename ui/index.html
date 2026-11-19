@@ -28,6 +28,7 @@
   <script src="/activation-patterns.js" defer></script>
   <script src="/conflict-breakdown.js" defer></script>
   <script src="/visibility-patterns.js" defer></script>
+  <script src="/candidate-patterns.js" defer></script>
 </head>
 <body>
   <header class="masthead">
@@ -144,6 +145,7 @@
             <option value="controls">Controlled attribution</option>
             <option value="activation">Activation effects</option>
             <option value="visibility">Masked-source effects</option>
+            <option value="candidates">Candidate preference shifts</option>
           </select>
         </label>
         <label id="pattern-thread-filter" hidden>Thread <select id="pattern-thread"></select></label>
@@ -207,6 +209,17 @@
             <label>Before B (UTC) <input id="visibility-pattern-before_b" type="date" max="9999-12-31"></label>
           </div>
           <label class="visibility-repeat-filter"><span><input id="visibility-pattern-repeat" type="checkbox"> Recurring only</span></label>
+        </div>
+        <div class="breakdown-configuration" id="candidate-pattern-filters" hidden>
+          <label>Source <input id="candidate-pattern-source" type="search" list="candidate-sources" placeholder="All named sources"></label>
+          <datalist id="candidate-sources"></datalist>
+          <label>From (UTC) <input id="candidate-pattern-after" type="date" max="9999-12-31"></label>
+          <label>Before (UTC) <input id="candidate-pattern-before" type="date" max="9999-12-31"></label>
+          <div id="candidate-pattern-compare-dates" class="breakdown-configuration" hidden>
+            <label>From B (UTC) <input id="candidate-pattern-after_b" type="date" max="9999-12-31"></label>
+            <label>Before B (UTC) <input id="candidate-pattern-before_b" type="date" max="9999-12-31"></label>
+          </div>
+          <label class="visibility-repeat-filter"><span><input id="candidate-pattern-recurring" type="checkbox"> Recurring only</span></label>
         </div>
       </div>
       <details id="source-profile-dates" class="activation-dates" hidden>

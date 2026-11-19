@@ -266,7 +266,7 @@ fn candidate_rows<'a>(
     })))
 }
 
-fn inspector_path(run: &str, call: &str, decision: Option<&str>) -> String {
+pub(crate) fn inspector_path(run: &str, call: &str, decision: Option<&str>) -> String {
     let run = utf8_percent_encode(run, NON_ALPHANUMERIC);
     let call = utf8_percent_encode(call, NON_ALPHANUMERIC);
     let mut path = format!("/#v=1&view=conversation&run={run}&call={call}");

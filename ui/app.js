@@ -664,7 +664,8 @@ function renderPatterns() {
   element("pattern-thread-filter").hidden = patternType === "tools" || patternType === "breakdown";
   element("breakdown-configuration").hidden = patternType !== "breakdown";
   element("visibility-pattern-filters").hidden = patternType !== "visibility";
-  element("pattern-search-field").hidden = patternType === "breakdown" || patternType === "visibility";
+  element("candidate-pattern-filters").hidden = patternType !== "candidates";
+  element("pattern-search-field").hidden = ["breakdown", "visibility", "candidates"].includes(patternType);
   element("pattern-search").placeholder = patternType === "sources" ? "Source, version, or trace type" : "Tool, source, or finding";
   element("context-replay-filter").hidden = patternType !== "context";
   element("context-view-filter").hidden = patternType !== "context";
@@ -678,6 +679,10 @@ function renderPatterns() {
   }
   if (patternType === "visibility") {
     renderVisibilityPatterns(list, primaryScope, scopes);
+    return;
+  }
+  if (patternType === "candidates") {
+    renderCandidatePatterns(list, primaryScope, scopes);
     return;
   }
   if (patternType === "context") {
@@ -831,7 +836,7 @@ function updatePatternThreadFilter(groups) {
 }
 
 function supportsScopeComparison(patternType) {
-  return patternType === "changes" || patternType === "controls" || patternType === "visibility" || patternType === "sources";
+  return ["changes", "controls", "visibility", "sources", "candidates"].includes(patternType);
 }
 
 function comparisonPatternFilter(scopes, patterns) {
@@ -1404,6 +1409,7 @@ async function start() {
     state.patternScope = defaultPatternScope;
     setupConflictBreakdown();
     setupVisibilityPatterns();
+    setupCandidatePatterns();
     setupSourceProfileDates();
     const share = element("copy-view-link");
     share.hidden = false;
@@ -1453,6 +1459,7 @@ async function start() {
       state.patternScope = event.target.value;
       conflictGroup = null;
       visibilityPatternGroup = null;
+      candidatePatternGroup = null;
       linkNotice();
       renderPatterns();
     });
@@ -1468,18 +1475,21 @@ async function start() {
       linkNotice();
       state.patternThread = event.target.value;
       visibilityPatternGroup = null;
+      candidatePatternGroup = null;
       renderPatterns();
     });
     element("pattern-compare-scope").addEventListener("change", (event) => {
       patternComparison.scope = event.target.value;
       patternComparison.thread = "";
       visibilityPatternGroup = null;
+      candidatePatternGroup = null;
       linkNotice();
       renderPatterns();
     });
     element("pattern-compare-thread").addEventListener("change", (event) => {
       patternComparison.thread = event.target.value;
       visibilityPatternGroup = null;
+      candidatePatternGroup = null;
       linkNotice();
       renderPatterns();
     });

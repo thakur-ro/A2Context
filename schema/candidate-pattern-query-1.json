@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave candidate pattern query",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": { "const": 1 },
+    "selection": { "$ref": "#/$defs/selection" },
+    "compare": { "anyOf": [{ "$ref": "#/$defs/selection" }, { "type": "null" }] },
+    "source_id": { "type": ["string", "null"], "description": "Match a declared source ID exactly." },
+    "min_conversations": { "type": "integer", "minimum": 0, "default": 0 },
+    "group": { "type": ["string", "null"], "description": "Copy the key from a groups page to list its contributing turns." },
+    "offset": { "type": "integer", "minimum": 0, "default": 0 },
+    "compare_offset": { "type": "integer", "minimum": 0, "default": 0, "description": "Page offset for the comparison turns of a selected group." },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+  },
+  "$defs": {
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "oneOf": [
+            { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "workspace" } } },
+            {
+              "type": "object", "additionalProperties": false, "required": ["kind", "organization_id"],
+              "properties": { "kind": { "const": "organization" }, "organization_id": { "type": "string" } }
+            },
+            {
+              "type": "object", "additionalProperties": false, "required": ["kind", "user_id"],
+              "properties": { "kind": { "const": "user" }, "organization_id": { "type": ["string", "null"] }, "user_id": { "type": "string" } }
+            }
+          ]
+        },
+        "thread": {
+          "type": ["object", "null"], "additionalProperties": false, "required": ["trace_source", "conversation_id"],
+          "properties": {
+            "trace_source": { "type": "string" }, "conversation_id": { "type": "string" },
+            "organization_id": { "type": ["string", "null"] }, "user_id": { "type": ["string", "null"] }
+          }
+        },
+        "after": { "type": ["string", "null"], "format": "date-time", "description": "Inclusive call start in RFC 3339." },
+        "before": { "type": ["string", "null"], "format": "date-time", "description": "Exclusive call start in RFC 3339." }
+      }
+    }
+  }
+}

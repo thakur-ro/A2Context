@@ -97,6 +97,33 @@ cargo run --locked -- serve "$demo_dir/evidence.json"
 
 In **Conversation**, open the turn evidence and expand **Candidate probes**. The original request favors `stock`. Editing the request type shifts the score to `price`. Expand that source to inspect the captured text, JSON Pointer, UTF-8 byte range, and replacement. The same evidence is available on the call in **Timeline**, in **Decisions**, and through MCP `get_turn_evidence`. MCP includes the exact prefix, continuations, and replacement text when you enable and request captured excerpts. [Open the local inspector](http://127.0.0.1:8040)
 
+### Find recurring candidate preference shifts
+
+The routing cohort contains three measured Qwen2.5 probes whose requests vary the product ID and surrounding question. Its organizations, user, thread IDs, and timestamps are synthetic. Each probe favors `stock` on the original request and `price` after the request-type edit. The saved reports let you explore these patterns without loading a model. [Routing cohort](../examples/runtime-comparison/pending-routing/cohort.json)
+
+```sh
+demo_dir=$(mktemp -d)
+cargo run --locked -- import-langsmith examples/runtime-comparison/pending-routing/cohort.json "$demo_dir/evidence.json"
+cargo run --locked -- serve "$demo_dir/evidence.json"
+```
+
+Open **Patterns → Candidate preference shifts**. Select the `retail-north / routing-demo` user, enter `request-type` under **Source**, and select the `retail-south` organization under **Compare with**. The group has two contributing conversations in Scope A and one in Scope B. Use the thread and UTC date filters to narrow either side. **See contributing turns** lists the calls in time order. **Open source on turn** expands the exact probe and edited source in Conversation. On an individual probe, **Find recurring shifts** opens the source's patterns in that user's scope. [Open the local inspector](http://127.0.0.1:8040)
+
+A group requires verified reports, a stable source ID, and the same captured source content, version, role, edit, ordered candidates, fixed prefix, tokenizer, scorer, and model revision. Surrounding context can vary across calls. A reversal counts a change in which candidate is favored. Each scope reports its own measurements, distinct calls, identified conversations, organizations, and range of log-odds shifts. **Recurring only** requires at least two identified conversations in either selected scope. Date windows use the recorded call start time.
+
+The same query is available through the CLI, local HTTP, and MCP.
+
+```json
+{
+  "version": 1,
+  "source_id": "request-type",
+  "selection": { "scope": { "kind": "user", "organization_id": "retail-north", "user_id": "routing-demo" } },
+  "compare": { "scope": { "kind": "organization", "organization_id": "retail-south" } }
+}
+```
+
+Save this view as `candidate-view.json` and use `nexusweave query-candidate-patterns candidate-view.json <evidence.json>`, `POST /api/candidate-patterns`, or MCP `query_candidate_patterns`. Pass a returned `key` as `group` to page through contributing calls. [Candidate pattern query schema](../schema/candidate-pattern-query-1.json)
+
 ## Try a decision replay
 
 ```sh

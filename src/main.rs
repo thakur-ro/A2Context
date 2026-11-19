@@ -25,6 +25,7 @@ const USAGE: &str = "Usage:
   nexusweave preflight <request.json|->
   nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
   nexusweave query-conflicts <view.json> <evidence.json> [...]
+  nexusweave query-candidate-patterns <view.json> <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
   nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
@@ -146,6 +147,14 @@ fn run(args: Vec<String>) -> Result<()> {
             validate_loaded_runs(&runs)?;
             let spec = serde_json::from_reader(fs::File::open(spec)?)?;
             let page = nexusweave::conflict_query::query(&spec, &runs)?;
+            serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
+            println!();
+        }
+        ["query-candidate-patterns", spec, paths @ ..] if !paths.is_empty() => {
+            let runs = read_runs(paths)?;
+            validate_loaded_runs(&runs)?;
+            let spec = serde_json::from_reader(fs::File::open(spec)?)?;
+            let page = replay::candidates::patterns::query(&spec, &runs)?;
             serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
             println!();
         }
@@ -704,6 +713,11 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 200,
                 "text/javascript; charset=utf-8",
                 include_bytes!("../ui/visibility-patterns.js").as_slice(),
+            ),
+            (true, &Method::Get, "/candidate-patterns.js") => (
+                200,
+                "text/javascript; charset=utf-8",
+                include_bytes!("../ui/candidate-patterns.js").as_slice(),
             ),
             (true, &Method::Get, "/styles.css") => (
                 200,

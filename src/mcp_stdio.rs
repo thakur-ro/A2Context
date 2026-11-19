@@ -28,6 +28,7 @@ const OUTPUT_SCORES: &str = "get_output_token_effects";
 const GENERATION_BRANCHES: &str = "get_generation_branches";
 const SOURCE_VISIBILITY: &str = "query_source_visibility";
 const VISIBILITY_PATTERNS: &str = "query_visibility_patterns";
+const CANDIDATE_PATTERNS: &str = "query_candidate_patterns";
 const APP_URI: &str = "ui://nexusweave/conflict-evidence.html";
 const APP_MIME: &str = "text/html;profile=mcp-app";
 const APP: &str = include_str!("../ui/mcp-app.html");
@@ -157,9 +158,16 @@ struct Inspector {
 
 impl Inspector {
     fn new(source: Source, allow_excerpts: bool) -> serde_json::Result<Self> {
-        let file_reports = match &source {
-            Source::Files(evidence) => Some(evidence.activations.as_slice()),
-            Source::Live(_) => None,
+        let (file_reports, has_candidates) = match &source {
+            Source::Files(evidence) => (
+                Some(evidence.activations.as_slice()),
+                evidence
+                    .runs
+                    .iter()
+                    .flat_map(|run| &run.calls)
+                    .any(|call| call.candidate_probes.is_some()),
+            ),
+            Source::Live(_) => (None, true),
         };
         let conflict: JsonObject =
             serde_json::from_str(include_str!("../schema/conflict-view-1.json"))?;
@@ -188,6 +196,11 @@ impl Inspector {
             tool(CONTEXT_SOURCES, "List or compare named context sources and their replay and mask coverage by scope or date range. Pass a source ID for contributing calls, decision links, and measurement references.",
                 serde_json::from_str(include_str!("../schema/context-source-query-1.json"))?),
         ];
+        if has_candidates {
+            definitions.push(tool(CANDIDATE_PATTERNS,
+                "Find recurring candidate preference shifts for comparable probe setups. Select a group key for contributing turns. Compare scopes or time windows without pooling their measurements.",
+                serde_json::from_str(include_str!("../schema/candidate-pattern-query-1.json"))?).with_meta(ui()));
+        }
         if file_reports
             .is_none_or(|reports| reports.iter().any(activation::Report::has_checkpoints))
         {
@@ -341,6 +354,7 @@ fn execute_query<'a>(
         VISIBILITY_PATTERNS => {
             activation::visibility::patterns::query(&from_arguments(args)?, runs, reports)
         }
+        CANDIDATE_PATTERNS => replay::candidates::patterns::query(&from_arguments(args)?, runs),
         _ => Err("This tool is unavailable.".into()),
     }
 }
