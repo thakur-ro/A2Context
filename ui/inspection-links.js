@@ -166,6 +166,7 @@ function inspectionLink(reference = state.reference) {
         if (patternComparison.thread) params.set("thread_b", patternComparison.thread);
       }
       if (kind === "breakdown") writeConflictBreakdownLink(params);
+      else if (kind === "visibility") writeVisibilityPatternLink(params);
       else if (element("pattern-search").value) params.set("q", element("pattern-search").value);
       if (kind === "context") {
         params.set("presentation", element("context-view").value);
@@ -223,10 +224,12 @@ function restorePatternLink(params) {
   state.patternScope = scope;
   state.patternThread = thread;
   selectLinkValue("pattern-type", params.get("pattern"));
-  if (element("pattern-type").value === "breakdown") restoreConflictBreakdownLink(params);
-  const activation = element("pattern-type").value === "activation";
+  const kind = element("pattern-type").value;
+  if (kind === "breakdown") restoreConflictBreakdownLink(params);
+  const activation = kind === "activation";
   if (activation) activationPatternBlock = Number(params.get("block")) || 0;
-  const datesAvailable = !activation || restoreActivationDateLink(params);
+  const datesAvailable = activation ? restoreActivationDateLink(params)
+    : kind !== "visibility" || restoreVisibilityPatternLink(params);
   const compare = supportsScopeComparison(element("pattern-type").value);
   const comparisonScope = compare ? params.get("scope_b") ?? "" : "";
   const comparisonThread = compare ? params.get("thread_b") ?? "" : "";
@@ -239,7 +242,7 @@ function restorePatternLink(params) {
   selectLinkValue("capture-status", params.get("capture_status") ?? "");
   render();
   if (!datesAvailable) {
-    unavailableLink("The linked activation dates are invalid.");
+    unavailableLink(activation ? "The linked activation dates are invalid." : "The linked comparison dates are invalid.");
     element("pattern-list").replaceChildren();
   } else if (thread !== state.patternThread) {
     unavailableLink("The linked thread is unavailable for this pattern and scope.");

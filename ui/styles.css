@@ -261,7 +261,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.5 ui-monosp
 .conflict > .badge, .insufficient_evidence > .badge { background: var(--warning-surface); color: var(--warning); }
 .pattern { margin-bottom: .75rem; }
 .breakdown-configuration { display: flex; flex-wrap: wrap; gap: .8rem; }
-.breakdown-configuration input { width: 14rem; }
+.breakdown-configuration input:not([type="checkbox"]) { width: 14rem; }
 .breakdown-results, .breakdown-evidence { margin-bottom: .75rem; }
 .breakdown-table-scroll { overflow-x: auto; margin: .75rem 0; }
 .breakdown-table { width: 100%; min-width: 31rem; border-collapse: collapse; }
@@ -273,6 +273,15 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.5 ui-monosp
 .breakdown-table button[aria-expanded="true"] { background: var(--accent-surface); }
 .breakdown-contributor { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; padding: .4rem 0; }
 .breakdown-pages { display: flex; gap: .45rem; margin-top: .65rem; }
+.visibility-repeat-filter { align-self: end; padding-block: .55rem; }
+.visibility-repeat-filter span { display: flex; align-items: center; gap: .4rem; }
+.visibility-repeat-filter input { margin: 0; }
+#visibility-pattern-token { width: 6.5rem; }
+.visibility-pattern-results > button { margin-bottom: .75rem; }
+.visibility-pattern-row { padding-block: .8rem; border-top: 1px solid var(--line); }
+.visibility-pattern-row :is(h3, p) { margin: .25rem 0; }
+.visibility-pattern-links { display: flex; flex-wrap: wrap; gap: .35rem .75rem; margin-top: .35rem; }
+.visibility-pattern-links a { color: var(--accent); }
 .breakdown-evidence h3 { margin-top: .75rem; }
 .pattern .badge { margin-bottom: .35rem; }
 .context-replay-coverage { display: flex; gap: .55rem; align-items: center; flex-wrap: wrap; color: var(--muted); }

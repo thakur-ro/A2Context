@@ -113,12 +113,17 @@ function renderSourceVisibility(panel, report, call) {
   }
   select.addEventListener("change", draw);
   draw();
+  const compare = node("button", "Find recurring effects");
+  compare.type = "button";
+  compare.addEventListener("click", () => openVisibilityPatterns(report, Number(select.value)));
   const provenance = activationProvenance(report);
   provenance.append(node("p", countLabel(report.sources.filter((source) => source.masked_log_probs).length, "measured source")
     + " of " + report.sources.length + ". The all-visible control reproduced the original scores within 0.00001 log units.", "muted"));
   panel.append(label);
   if (paired) panel.append(paired.panel);
-  panel.append(table, evidenceLinkButton(reference, "this visibility measurement"), provenance);
+  const actions = node("div", undefined, "decision-actions");
+  actions.append(compare, evidenceLinkButton(reference, "this visibility measurement"));
+  panel.append(table, actions, provenance);
 }
 
 function sourceVisibilityPairs(report, names, sourceButton, precision, reference) {

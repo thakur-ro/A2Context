@@ -806,6 +806,8 @@ curl -fsS http://127.0.0.1:8040/api/visibility-patterns \
   --data '{"version":1,"kind":"pair","output_token":13,"source_id":"refund-policy-copy","min_conversations":2}'
 ```
 
+In the browser, open **Patterns → Masked-source effects**. Choose **Pair interactions** at token 14, then select `refund-policy-copy` to find the same group. Open it to see its contributing turns in order and follow their token and source links. From a visibility report, **Find recurring effects** opens this view at the selected token and uses the captured user or organization scope when available. **Copy view link** preserves the filters and open group.
+
 The default `source` kind reports single-mask changes in log probability. The `pair` kind reports joint interactions in log units. Use `scope` to select a user or organization, `thread` for an exact conversation identity, or `after` and `before` for an inclusive-start, exclusive-end RFC 3339 time window. Copy a group `key` into `group` to page through chronological occurrences and open their exact token, pair, or captured source links.
 
 Groups require the same model revision, runtime, tokenizer, decision label, emitted token prefix through the scored token, and source identities. Each identity uses the declared source ID, version, kind, role, captured text digest, and masked token count. Captures without declared source IDs are counted as unavailable for grouping. The summaries count distinct identified conversations, users, and organizations, alongside decisions and measurements. The cohort's dates and ownership labels are synthetic. Across its four measured decisions the refund policy pair's interaction ranges from −5.84 to −5.18 log units at the recorded refund digit. The range describes those measured decisions.

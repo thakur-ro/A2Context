@@ -82,18 +82,18 @@ function conflictGroupLabel(key, dimensions) {
   }).join(" → ");
 }
 
-async function showConflictPage(container, spec, renderPage) {
-  const pending = node("p", "Loading conflict evidence…", "muted");
+async function showPatternPage(container, endpoint, spec, renderPage) {
+  const pending = node("p", "Loading evidence…", "muted");
   pending.setAttribute("role", "status");
   container.replaceChildren(pending);
   try {
-    const response = await fetch("/api/conflict-query", {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(spec),
     });
     const page = await response.json();
-    if (!response.ok) throw new Error(page.message || "Could not load conflict evidence.");
+    if (!response.ok) throw new Error(page.message || "Could not load evidence.");
     if (!pending.isConnected) return;
     container.replaceChildren();
     renderPage(page);
@@ -102,7 +102,7 @@ async function showConflictPage(container, spec, renderPage) {
   }
 }
 
-function conflictPager(container, offset, next, load) {
+function patternPager(container, offset, next, load) {
   if (!offset && next === null) return;
   const nav = node("div", undefined, "breakdown-pages");
   for (const [label, target] of [["Previous page", offset ? Math.max(0, offset - 20) : null], ["Next page", next]]) {
@@ -113,6 +113,12 @@ function conflictPager(container, offset, next, load) {
     nav.append(button);
   }
   container.append(nav);
+}
+
+function patternApiScope({ organization, user }) {
+  if (user !== null) return { kind: "user", organization_id: organization, user_id: user };
+  if (organization !== null) return { kind: "organization", organization_id: organization };
+  return { kind: "workspace" };
 }
 
 function renderConflictBreakdown(list, scope) {
@@ -134,8 +140,7 @@ function renderConflictBreakdown(list, scope) {
   const rule = element("conflict-rule").value.trim();
   const spec = {
     version: 1,
-    scope: user !== null ? { kind: "user", organization_id: organization, user_id: user }
-      : organization !== null ? { kind: "organization", organization_id: organization } : { kind: "workspace" },
+    scope: patternApiScope(scope),
     group_by,
     filters: rule ? { rule } : {},
     limit: 20,
@@ -152,7 +157,7 @@ function renderConflictBreakdown(list, scope) {
       button.setAttribute("aria-expanded", String(button.dataset.groupKey === JSON.stringify(group)));
     }
     evidence.hidden = false;
-    showConflictPage(evidence, { ...spec, group, offset }, ({ rows, next_offset }) => {
+    showPatternPage(evidence, "/api/conflict-query", { ...spec, group, offset }, ({ rows, next_offset }) => {
       const heading = node("h2", conflictGroupLabel(group, group_by));
       heading.tabIndex = -1;
       evidence.append(heading);
@@ -172,13 +177,13 @@ function renderConflictBreakdown(list, scope) {
         }
       }
       if (!rows.length) evidence.append(node("p", "No conflicting decisions in this group.", "muted"));
-      conflictPager(evidence, offset, next_offset, (next) => loadEvidence(group, next, true));
+      patternPager(evidence, offset, next_offset, (next) => loadEvidence(group, next, true));
       if (focus && state.view === "patterns") heading.focus();
     });
   }
 
   function loadGroups(offset = 0, focus = false) {
-    showConflictPage(results, { ...spec, offset }, ({ totals, rows, next_offset }) => {
+    showPatternPage(results, "/api/conflict-query", { ...spec, offset }, ({ totals, rows, next_offset }) => {
       const heading = node("h2", "Conflicts across recorded decisions");
       heading.tabIndex = -1;
       results.append(heading);
@@ -229,7 +234,7 @@ function renderConflictBreakdown(list, scope) {
       scroll.setAttribute("aria-label", "Conflict groups and coverage");
       scroll.append(table);
       results.append(scroll, node("p", "Comparable decisions have at least two captured rule values. A decision can appear in several source groups.", "muted"));
-      conflictPager(results, offset, next_offset, (next) => loadGroups(next, true));
+      patternPager(results, offset, next_offset, (next) => loadGroups(next, true));
       if (focus && state.view === "patterns") heading.focus();
     });
   }

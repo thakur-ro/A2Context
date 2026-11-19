@@ -662,7 +662,8 @@ function renderPatterns() {
   element("activation-dates").hidden = patternType !== "activation";
   element("pattern-thread-filter").hidden = patternType === "tools" || patternType === "breakdown";
   element("breakdown-configuration").hidden = patternType !== "breakdown";
-  element("pattern-search-field").hidden = patternType === "breakdown";
+  element("visibility-pattern-filters").hidden = patternType !== "visibility";
+  element("pattern-search-field").hidden = patternType === "breakdown" || patternType === "visibility";
   element("context-replay-filter").hidden = patternType !== "context";
   element("context-view-filter").hidden = patternType !== "context";
   element("capture-filter").hidden = patternType !== "capture";
@@ -671,6 +672,10 @@ function renderPatterns() {
   if (patternType === "breakdown") {
     state.patternThread = "";
     renderConflictBreakdown(list, primaryScope);
+    return;
+  }
+  if (patternType === "visibility") {
+    renderVisibilityPatterns(list, primaryScope);
     return;
   }
   if (patternType === "context") {
@@ -1381,6 +1386,7 @@ async function start() {
     }
     state.patternScope = defaultPatternScope;
     setupConflictBreakdown();
+    setupVisibilityPatterns();
     const share = element("copy-view-link");
     share.hidden = false;
     share.addEventListener("click", () => copyInspectionLink());
@@ -1428,6 +1434,7 @@ async function start() {
       }
       state.patternScope = event.target.value;
       conflictGroup = null;
+      visibilityPatternGroup = null;
       linkNotice();
       renderPatterns();
     });
@@ -1441,6 +1448,7 @@ async function start() {
     element("pattern-thread").addEventListener("change", (event) => {
       linkNotice();
       state.patternThread = event.target.value;
+      visibilityPatternGroup = null;
       renderPatterns();
     });
     element("pattern-compare-scope").addEventListener("change", (event) => {

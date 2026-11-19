@@ -26,6 +26,7 @@
   <script src="/activation-branches.js" defer></script>
   <script src="/activation-patterns.js" defer></script>
   <script src="/conflict-breakdown.js" defer></script>
+  <script src="/visibility-patterns.js" defer></script>
 </head>
 <body>
   <header class="masthead">
@@ -141,6 +142,7 @@
             <option value="effects">Replay effects</option>
             <option value="controls">Controlled attribution</option>
             <option value="activation">Activation effects</option>
+            <option value="visibility">Masked-source effects</option>
           </select>
         </label>
         <label id="pattern-thread-filter" hidden>Thread <select id="pattern-thread"></select></label>
@@ -178,6 +180,17 @@
           <label>Then by <select id="conflict-then-by"></select></label>
           <label>Rule key <input id="conflict-rule" type="search" list="conflict-rules" placeholder="All rules"></label>
           <datalist id="conflict-rules"></datalist>
+        </div>
+        <div class="breakdown-configuration" id="visibility-pattern-filters" hidden>
+          <label>Measure <select id="visibility-pattern-kind">
+            <option value="source">Single-source effects</option>
+            <option value="pair">Pair interactions</option>
+          </select></label>
+          <label>Output token <input id="visibility-pattern-token" type="number" min="1" step="1" value="1" required></label>
+          <label>Source <select id="visibility-pattern-source"><option value="">All named sources</option></select></label>
+          <label>From (UTC) <input id="visibility-pattern-after" type="date" max="9999-12-31"></label>
+          <label>Before (UTC) <input id="visibility-pattern-before" type="date" max="9999-12-31"></label>
+          <label class="visibility-repeat-filter"><span><input id="visibility-pattern-repeat" type="checkbox"> Recurring only</span></label>
         </div>
       </div>
       <details id="activation-dates" class="activation-dates" hidden>

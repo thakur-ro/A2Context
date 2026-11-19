@@ -649,6 +649,11 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 "text/javascript; charset=utf-8",
                 include_bytes!("../ui/conflict-breakdown.js").as_slice(),
             ),
+            (true, &Method::Get, "/visibility-patterns.js") => (
+                200,
+                "text/javascript; charset=utf-8",
+                include_bytes!("../ui/visibility-patterns.js").as_slice(),
+            ),
             (true, &Method::Get, "/styles.css") => (
                 200,
                 "text/css; charset=utf-8",
