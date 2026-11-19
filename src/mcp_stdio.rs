@@ -213,7 +213,7 @@ impl Inspector {
         }
         if has_screening {
             definitions.push(tool(SCREENING_PATTERNS,
-                "Find recurring screening flags and compare the same captured source pair across scopes or date ranges. Copy a group key to list the contributing turns.",
+                "Find recurring screening flags and verified replay coverage for captured source pairs. Compare scopes or date ranges and use a group key to list the contributing turns and tested decisions.",
                 serde_json::from_str(include_str!("../schema/screening-pattern-query-1.json"))?).with_meta(ui()));
         }
         if file_reports
@@ -371,9 +371,12 @@ fn execute_query<'a>(
         }
         CANDIDATE_PATTERNS => replay::candidates::patterns::query(&from_arguments(args)?, runs),
         SHADOW_PATTERNS => replay::shadow::patterns::query(&from_arguments(args)?, runs, false),
-        SCREENING_PATTERNS => {
-            context_screening::patterns::query(&from_arguments(args)?, runs, false)
-        }
+        SCREENING_PATTERNS => context_screening::patterns::query_with_replays(
+            &from_arguments(args)?,
+            runs,
+            &evidence.replays,
+            false,
+        ),
         _ => Err("This tool is unavailable.".into()),
     }
 }

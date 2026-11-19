@@ -109,7 +109,7 @@ cargo run --locked -- serve \
   examples/context-screening/replay/evidence.json
 ```
 
-Open the answer in **Conversation**. Under **Context screening**, expand the possible conflict between `journal-policy` and `journal-faq`. The sources specify 30 and 60 days. MiniLM scored contradiction at about 92% from policy to FAQ and 99% from FAQ to policy. Expand each source to see its individual replay and open **Joint effect measured** for the pair. [How screening and replay fit together](architecture.md#from-a-possible-conflict-to-a-measured-effect)
+Open the `journal-return-support` conversation. Under **Context screening**, expand the possible conflict between `journal-policy` and `journal-faq`. The sources specify 30 and 60 days. MiniLM scored contradiction at about 92% from policy to FAQ and 99% from FAQ to policy. Expand each source to see its individual replay and open **Joint effect measured** for the pair. [How screening and replay fit together](architecture.md#from-a-possible-conflict-to-a-measured-effect)
 
 | Qwen replay condition | Returned answer in days | Change in recorded-answer match rate |
 | --- | ---: | ---: |
@@ -153,6 +153,21 @@ The CLI, HTTP, and MCP use the same versioned query. Save this example as `scree
   "compare": { "scope": { "kind": "organization", "organization_id": "retail-south" } }
 }
 ```
+
+### Compare replay coverage on recurring pairs
+
+```sh
+cargo run --locked -- serve \
+  --replay examples/context-screening/replay/report.json \
+  --replay examples/context-screening/replay/report-policy.json \
+  examples/context-screening/replay/evidence.json
+```
+
+In **Patterns → Screened context pairs**, compare **User · journal-north / support-17** with **Organization · journal-south**. The same pair was flagged in all three conversations. The two north calls have measured replays. Editing the FAQ lowered the recorded-answer match rate on both calls. The south call has a recorded answer and a screening flag. The loaded evidence has no replay for that call. The conversation and ownership labels are synthetic. [Saved captures](../examples/context-screening/replay/evidence.json) · [Second replay case](../examples/context-screening/replay/case-policy.json)
+
+The view counts distinct flagged calls with at least one measurable edit, a nonzero change in match rate, or a measurable edit of both exact sources. Each replay must match the original captured request and decision. A measured zero contributes to coverage. Replays with unscored trials, a failed baseline, or a missing captured request cannot contribute a measured effect. The counts show where an edit had an observed effect. Each decision retains the tested edit, outcome rule, runner, and trials.
+
+Choose **See contributing turns** and use the replay link to open the exact pair on the tested decision. Filter by thread or date to focus the comparison. The CLI accepts the same `--replay` flags after the query file. The HTTP and MCP endpoints use the reports loaded by their server. [Query schema](../schema/screening-pattern-query-1.json)
 
 ## Measure candidate preference before a decision
 

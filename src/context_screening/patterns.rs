@@ -2,7 +2,7 @@
 
 use super::{recorded, Assessment, Pair, Report, Scorer, Source, Suggestion, Verification};
 use crate::{
-    replay::sha256,
+    replay::{self, sha256},
     scoped_calls::{self, conversation_key, next_offset, ScopedCall, Selection},
     turn_evidence::{excerpt, inspector_path},
     Call, Run,
@@ -65,13 +65,31 @@ struct PairKey<'a> {
     scorer: Option<&'a Scorer>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct Occurrence<'a> {
     run: &'a Run,
     call: &'a Call,
     time: Option<OffsetDateTime>,
     sources: [&'a Source; 2],
     pair: &'a Pair,
+    replay_decisions: BTreeMap<&'a str, ReplayCoverage>,
+}
+
+#[derive(Clone, Copy, Default, Serialize)]
+struct ReplayCoverage {
+    measured: bool,
+    changed: bool,
+    joint_measured: bool,
+}
+
+impl ReplayCoverage {
+    fn add(&mut self, difference_pp: Option<f64>, joint: bool) {
+        if let Some(difference) = difference_pp {
+            self.measured = true;
+            self.changed |= difference != 0.0;
+            self.joint_measured |= joint;
+        }
+    }
 }
 
 impl Occurrence<'_> {
@@ -86,12 +104,24 @@ impl Occurrence<'_> {
         .to_string();
         let anchor = utf8_percent_encode(&anchor, NON_ALPHANUMERIC);
         let path = inspector_path(&self.run.id, &self.call.id, None);
+        let replay_decisions: Vec<_> = self
+            .replay_decisions
+            .iter()
+            .map(|(id, coverage)| {
+                let path = inspector_path(&self.run.id, &self.call.id, Some(id));
+                json!({
+                    "decision_id": id, "coverage": coverage,
+                    "inspector_path": format!("{path}&screen_pair={anchor}"),
+                })
+            })
+            .collect();
         json!({
             "run_id": self.run.id, "call_id": self.call.id, "trace_source": self.run.source,
             "organization_id": self.run.organization_id, "user_id": self.run.user_id,
             "conversation_id": self.run.conversation_id, "turn_id": self.call.turn_id,
             "started_at": self.call.started_at, "suggestion": self.pair.suggestion,
             "assessment": self.pair.assessment, "sources": self.sources,
+            "replay_decisions": replay_decisions,
             "inspector_path": format!("{path}&screen_pair={anchor}"),
         })
     }
@@ -118,6 +148,9 @@ struct Counts {
     flagged_calls: usize,
     flagged_conversations: usize,
     flagged_organizations: usize,
+    replay_measured_calls: usize,
+    replay_changed_calls: usize,
+    joint_replay_measured_calls: usize,
 }
 
 fn summarize(rows: &[Occurrence<'_>], relation: Option<Suggestion>) -> Option<Counts> {
@@ -129,6 +162,9 @@ fn summarize(rows: &[Occurrence<'_>], relation: Option<Suggestion>) -> Option<Co
     let mut flagged = BTreeSet::new();
     let mut conversations = BTreeSet::new();
     let mut organizations = BTreeSet::new();
+    let mut replay_measured = BTreeSet::new();
+    let mut replay_changed = BTreeSet::new();
+    let mut joint_replay_measured = BTreeSet::new();
     for row in rows {
         let call = (&row.run.id, &row.call.id);
         screened.insert(call);
@@ -139,6 +175,17 @@ fn summarize(rows: &[Occurrence<'_>], relation: Option<Suggestion>) -> Option<Co
             flagged.insert(call);
             conversations.extend(conversation_key(row.run));
             organizations.extend(row.run.organization_id.as_deref());
+            for coverage in row.replay_decisions.values() {
+                if coverage.measured {
+                    replay_measured.insert(call);
+                }
+                if coverage.changed {
+                    replay_changed.insert(call);
+                }
+                if coverage.joint_measured {
+                    joint_replay_measured.insert(call);
+                }
+            }
         }
     }
     Some(Counts {
@@ -149,6 +196,9 @@ fn summarize(rows: &[Occurrence<'_>], relation: Option<Suggestion>) -> Option<Co
         flagged_calls: flagged.len(),
         flagged_conversations: conversations.len(),
         flagged_organizations: organizations.len(),
+        replay_measured_calls: replay_measured.len(),
+        replay_changed_calls: replay_changed.len(),
+        joint_replay_measured_calls: joint_replay_measured.len(),
     })
 }
 
@@ -214,8 +264,27 @@ pub fn query<'a>(
     runs: impl IntoIterator<Item = &'a Run>,
     include_excerpts: bool,
 ) -> Result<Value, String> {
+    query_with_replays(request, runs, &[], include_excerpts)
+}
+
+/// Compare screened pairs and coverage from replays verified against captured requests.
+/// Pass only runs and reports the caller is authorized to read.
+pub fn query_with_replays<'a>(
+    request: &Request,
+    runs: impl IntoIterator<Item = &'a Run>,
+    replays: &'a [replay::Replay],
+    include_excerpts: bool,
+) -> Result<Value, String> {
     if request.version != 1 || !(1..=50).contains(&request.limit) {
         return Err("Use screening pattern version 1 and a page size from 1 to 50.".into());
+    }
+    let mut replays_by_call = BTreeMap::<_, Vec<_>>::new();
+    for replay in replays {
+        let location = &replay.location;
+        replays_by_call
+            .entry((location.run_id.as_str(), location.call_id.as_str()))
+            .or_default()
+            .push(replay);
     }
     let mut groups = BTreeMap::<_, Group<'_>>::new();
     scoped_calls::visit(
@@ -235,6 +304,16 @@ pub fn query<'a>(
             let Verification::Matched { report } = screen.verification else {
                 return Ok(());
             };
+            let replays: Vec<_> = replays_by_call
+                .get(&(run.id.as_str(), call.id.as_str()))
+                .into_iter()
+                .flatten()
+                .copied()
+                .filter(|report| {
+                    call.recorded_request.is_some()
+                        && replay::validate_report(report, std::slice::from_ref(run)).is_ok()
+                })
+                .collect();
             for pair in &report.pairs {
                 let sources = pair.sources.map(|index| &report.sources[index]);
                 if request.source_id.as_deref().is_some_and(|source| {
@@ -261,11 +340,18 @@ pub fn query<'a>(
                     time,
                     sources,
                     pair,
+                    replay_decisions: if pair.suggestion.is_some() {
+                        replay_coverage(&replays, sources.map(|source| source.context_id.as_str()))
+                    } else {
+                        BTreeMap::new()
+                    },
                 };
                 if primary {
+                    if comparison {
+                        group.comparison.push(row.clone());
+                    }
                     group.primary.push(row);
-                }
-                if comparison {
+                } else {
                     group.comparison.push(row);
                 }
             }
@@ -320,6 +406,38 @@ pub fn query<'a>(
         "groups": rows.iter().skip(request.offset).take(request.limit).map(|row| row.summary(include_excerpts, request.relation)).collect::<Vec<_>>(),
         "next_offset": next_offset(request.offset, request.limit, rows.len()),
     }))
+}
+
+fn replay_coverage<'a>(
+    replays: &[&'a replay::Replay],
+    context_ids: [&str; 2],
+) -> BTreeMap<&'a str, ReplayCoverage> {
+    let mut decisions = BTreeMap::<_, ReplayCoverage>::new();
+    for report in replays {
+        let mut matched = 0;
+        let mut coverage = ReplayCoverage::default();
+        for variant in &report.variants {
+            if context_ids.contains(&variant.intervention.context_id.as_str()) {
+                matched += 1;
+                coverage.add(variant.difference_pp, false);
+            }
+        }
+        if matched == 2 {
+            coverage.add(
+                report.pair.as_ref().and_then(|pair| pair.difference_pp),
+                true,
+            );
+        }
+        if matched > 0 {
+            let decision = decisions
+                .entry(report.location.decision_id.as_str())
+                .or_default();
+            decision.measured |= coverage.measured;
+            decision.changed |= coverage.changed;
+            decision.joint_measured |= coverage.joint_measured;
+        }
+    }
+    decisions
 }
 
 fn comparable_scorer<'a>(report: &'a Report, pair: &Pair) -> Option<Option<&'a Scorer>> {

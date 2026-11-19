@@ -480,6 +480,7 @@ fn replay_tests(report: &replay::Replay) -> impl Iterator<Item = Value> + '_ {
         "summary": variant.summary, "difference_pp": variant.difference_pp,
         "difference_95_interval_pp": variant.difference_95_interval_pp,
     }))).chain(report.pair.as_ref().map(move |pair| row("pair", json!({
+        "context_ids": report.variants.iter().map(|variant| &variant.intervention.context_id).collect::<Vec<_>>(),
         "summary": pair.summary, "difference_pp": pair.difference_pp,
         "difference_95_interval_pp": pair.difference_95_interval_pp, "interaction_pp": pair.interaction_pp,
     })))).chain(report.control_comparison.as_ref().map(move |control| row("negative_control", json!(control))))

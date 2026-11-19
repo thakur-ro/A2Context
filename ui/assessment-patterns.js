@@ -112,6 +112,19 @@ function renderScreeningPatternStats(parent, stats) {
   if (stats.unscored_calls) counts.push(countLabel(stats.unscored_calls, "call") + " without scores");
   parent.append(node("p", stats.flagged_calls + " of " + stats.assessed_calls + " assessed calls flagged"),
     node("p", counts.join(" · "), "muted"));
+  if (stats.flagged_calls) {
+    parent.append(node("p", stats.replay_measured_calls + " of " + stats.flagged_calls + " flagged calls with a measured replay", "muted"));
+    if (stats.replay_measured_calls) {
+      parent.append(node("p", stats.replay_changed_calls + " with a match-rate change · " +
+        stats.joint_replay_measured_calls + " with a measured joint edit", "muted"));
+    }
+  }
+}
+
+function screeningReplayLabel(coverage) {
+  if (!coverage.measured) return "Replay effect unavailable";
+  const change = coverage.changed ? "Replay changed the match rate" : "Replay match rate unchanged";
+  return change + (coverage.joint_measured ? " · joint edit measured" : "");
 }
 
 function assessmentPresentation(kind) {
@@ -201,9 +214,19 @@ function renderAssessmentPatterns(list, scope, scopes, kind) {
           row.append(node("h4", owner.join(" · ")),
             node("p", (item.started_at || "Date unavailable") + (item.turn_id ? " · " + item.turn_id : ""), "muted"),
             node("p", view.evidence(item)));
-          const open = node("a", view.openLabel);
-          open.href = item.inspector_path;
-          row.append(open);
+          if (screening && item.replay_decisions?.length) {
+            for (const decision of item.replay_decisions) {
+              const link = node("a", "Open replay on " + decision.decision_id);
+              link.href = decision.inspector_path;
+              const replay = node("p", screeningReplayLabel(decision.coverage) + " · ");
+              replay.append(link);
+              row.append(replay);
+            }
+          } else {
+            const open = node("a", view.openLabel);
+            open.href = item.inspector_path;
+            row.append(open);
+          }
           column.append(row);
         }
         if (!side.rows.length) column.append(node("p", screening ? "No screened pairs on this page." : "No matching measurements on this page.", "muted"));

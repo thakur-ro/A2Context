@@ -10,7 +10,7 @@ type Reply = (u16, Vec<u8>);
 pub fn route<'a>(
     request: &mut Request,
     runs: impl Iterator<Item = &'a Run>,
-    replays: &[replay::Replay],
+    replays: &'a [replay::Replay],
     reports: &'a [activation::Report],
 ) -> Option<Reply> {
     if request.method() != &Method::Post {
@@ -44,7 +44,7 @@ pub fn route<'a>(
             replay::shadow::patterns::query(input, runs, true)
         }),
         "/api/screening-patterns" => query(request, |input| {
-            context_screening::patterns::query(input, runs, true)
+            context_screening::patterns::query_with_replays(input, runs, replays, true)
         }),
         "/api/context-sources" => query(request, |input| {
             source_profiles::query::query(input, runs, replays, reports)

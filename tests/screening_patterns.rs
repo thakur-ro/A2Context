@@ -1,6 +1,6 @@
 use nexusweave::{
     context_screening::{self as screening, patterns, Assessment, Report, Suggestion, Unscored},
-    Run,
+    replay, Run,
 };
 use serde_json::{json, Value};
 
@@ -228,4 +228,96 @@ fn counts_repeated_slots_within_a_call_once() {
     assert_eq!(page["groups"][0]["primary"]["pairs"], 2);
     assert_eq!(page["groups"][0]["primary"]["flagged_calls"], 1);
     assert_eq!(page["groups"][0]["primary"]["flagged_conversations"], 1);
+}
+
+#[test]
+fn counts_verified_replays_per_flagged_call_and_links_the_tested_decision() {
+    let mut runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/context-screening/replay/evidence.json"
+    ))
+    .unwrap();
+    runs.truncate(1);
+    runs[0].organization_id = Some("north".into());
+    let mut independent = runs[0].clone();
+    independent.id = "another-run".into();
+    independent.organization_id = Some("south".into());
+    independent.conversation_id = Some("another-conversation".into());
+    runs.push(independent);
+
+    let saved = include_str!("../examples/context-screening/replay/report.json");
+    let mut case: replay::Case = serde_json::from_str(include_str!(
+        "../examples/context-screening/replay/case.json"
+    ))
+    .unwrap();
+    case.location.run_id = "another-run".into();
+    case.interventions[1].context_id = "question".into();
+    case.interventions[1].pointer = "/messages/3/content".into();
+    let recorded = replay::Choice {
+        kind: "model_output".into(),
+        label: "Model answer".into(),
+        outcome: json!("60"),
+    };
+    let unrelated_pair = replay::execute(&case, &runs, |_| Some(recorded.clone())).unwrap();
+    assert_eq!(
+        unrelated_pair.pair.as_ref().unwrap().difference_pp,
+        Some(0.0)
+    );
+    let mut stale: replay::Replay = serde_json::from_str(saved).unwrap();
+    stale.id = "wrong-baseline".into();
+    stale.location.run_id = "another-run".into();
+    stale.baseline_request_sha256 = "0".repeat(64);
+    let mut legacy = runs[1].clone();
+    legacy.id = "capture-without-body".into();
+    legacy.conversation_id = Some("old-conversation".into());
+    legacy.calls[0].recorded_request = None;
+    runs.push(legacy);
+    let mut unverified: replay::Replay = serde_json::from_str(saved).unwrap();
+    unverified.location.run_id = "capture-without-body".into();
+    assert!(replay::validate_report(&unverified, &runs).is_ok());
+    let reports = [
+        serde_json::from_str(saved).unwrap(),
+        serde_json::from_str(saved).unwrap(),
+        unrelated_pair,
+        stale,
+        unverified,
+    ];
+    let mut input = json!({
+        "version":1, "relation":"possible_conflict",
+        "selection":{"scope":{"kind":"organization","organization_id":"north"}},
+        "compare":{"scope":{"kind":"organization","organization_id":"south"}}
+    });
+    let query = |input| {
+        patterns::query_with_replays(
+            &serde_json::from_value(input).unwrap(),
+            &runs,
+            &reports,
+            false,
+        )
+        .unwrap()
+    };
+    let page = query(input.clone());
+    let group = &page["groups"][0];
+    assert_eq!(group["primary"]["flagged_calls"], 1);
+    assert_eq!(group["primary"]["replay_measured_calls"], 1);
+    assert_eq!(group["primary"]["replay_changed_calls"], 1);
+    assert_eq!(group["primary"]["joint_replay_measured_calls"], 1);
+    assert_eq!(group["comparison"]["flagged_calls"], 2);
+    assert_eq!(group["comparison"]["replay_measured_calls"], 1);
+    assert_eq!(group["comparison"]["replay_changed_calls"], 0);
+    assert_eq!(group["comparison"]["joint_replay_measured_calls"], 0);
+
+    input["group"] = group["key"].clone();
+    let page = query(input);
+    let tested = &page["primary"]["rows"][0]["replay_decisions"][0];
+    assert_eq!(tested["decision_id"], "return-window");
+    assert!(tested["inspector_path"]
+        .as_str()
+        .unwrap()
+        .contains("&decision=return%2Dwindow&screen_pair="));
+    assert_eq!(
+        page["comparison"]["rows"][0]["replay_decisions"][0]["coverage"],
+        json!({"measured":true,"changed":false,"joint_measured":false})
+    );
+    assert_eq!(page["comparison"]["rows"][1]["replay_decisions"], json!([]));
+    assert!(!page.to_string().contains("The maximum return period"));
 }

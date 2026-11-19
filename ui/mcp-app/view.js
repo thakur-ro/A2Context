@@ -190,6 +190,13 @@ function appendScreeningStats(parent, stats, label) {
   if (stats.unscored_calls) counts.push(countLabel(stats.unscored_calls, "call") + " without scores");
   parent.append(element("p", stats.flagged_calls + " of " + stats.assessed_calls + " assessed calls flagged"),
     element("p", counts.join(" · "), "muted"));
+  if (stats.flagged_calls) {
+    parent.append(element("p", stats.replay_measured_calls + " of " + stats.flagged_calls + " flagged calls with a measured replay", "muted"));
+    if (stats.replay_measured_calls) {
+      parent.append(element("p", stats.replay_changed_calls + " with a match-rate change · " +
+        stats.joint_replay_measured_calls + " with a measured joint edit", "muted"));
+    }
+  }
 }
 
 function renderAssessmentPatterns(page, back) {
@@ -229,6 +236,17 @@ function renderAssessmentPatterns(page, back) {
         const pair = element("details");
         pair.append(element("summary", screeningPairLabel(item)));
         appendScreeningPair(pair, item.assessment, item.sources);
+        for (const { decision_id, coverage } of item.replay_decisions || []) {
+          let label = "Replay effect unavailable";
+          if (coverage.measured) {
+            label = coverage.changed ? "Replay changed the match rate" : "Replay match rate unchanged";
+            if (coverage.joint_measured) label += " · joint edit measured";
+          }
+          pair.append(element("p", label),
+            button("Open replay on " + decision_id, () => requestPage("get_turn_evidence", {
+              run_id: item.run_id, call_id: item.call_id, decision_id,
+            }, decision_id, { page, previous: back })));
+        }
         section.append(pair);
       } else {
         section.append(element("p", shadow ? shadowCounts(item.baseline) + " → " + shadowCounts(item.edited) + " · " + proposalShift(item.difference_pp)
@@ -378,6 +396,8 @@ function renderTurn(page) {
     } else if (item.kind === "replay_test") {
       const change = item.result.difference_pp ?? item.result.target_minus_control_pp;
       row.append(element("h2", "Replay · " + item.test), element("p", change == null ? "Effect unavailable" : change + " percentage points"));
+      const sources = item.result.context_ids || [item.result.context_id].filter(Boolean);
+      if (sources.length) row.append(element("p", sources.join(" · "), "muted"));
     } else if (item.kind === "recorded_call") {
       calls.append(element("li", item.call_id));
       continue;
