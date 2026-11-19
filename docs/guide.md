@@ -824,7 +824,23 @@ In **Patterns → Context sources**, open `returns-policy` and set **Evidence** 
 
 Select **Largest source swap** to open the exact source row, prediction, and block. Open **Source history** on the report to return to the named source across conversations. The same coverage and links are available through `query_context_sources` in MCP and `POST /api/context-sources`, using `evidence_filter: "activation_swaps"`. The occurrence table shows the largest absolute shift from a swap at the source's prompt tokens. Use **Patterns → Activation effects** to compare matching models, edits, and output contrasts at the same block. [How the cohort was measured](inference-attribution-plan.md#compare-the-measured-pattern-across-conversations)
 
-Use local `POST /api/context-sources` or MCP `query_context_sources` with `source_id` to return paginated occurrences and evidence links. Specify `evidence_filter` as `conflicts`, `measured`, or `unmeasured` to narrow both scopes. The source query returns counts and references. Use turn evidence with captured excerpts enabled to read the underlying text through MCP. [Query schema](../schema/context-source-query-1.json)
+Use local `POST /api/context-sources` or MCP `query_context_sources` with `source_id` to return paginated occurrences and evidence links. Use `evidence_filter` to narrow both scopes. The source query returns counts and references. Use turn evidence with captured excerpts enabled to read the underlying text through MCP. [Query schema](../schema/context-source-query-1.json)
+
+#### Compare source histories inline in MCP
+
+In a host that supports MCP Apps, call `query_context_sources` to display source coverage, versions, and measurements inline. Set `compare` to show two scopes or time windows side by side. Open a source to page through each side's turns independently. Use **Open turn evidence** to inspect the call. When a measurement names a tested decision, use its decision button or open **Local inspector paths** to find its exact checkpoint, source, or replay.
+
+Start with the activation cohort above and send the following query to compare the same policy across a user and an organization. The inline view also links to source history from captured inputs and from activation-effect groups.
+
+```json
+{
+  "version": 1,
+  "search": "returns-policy",
+  "scope": { "kind": "user", "organization_id": "demo-retail-north", "user_id": "customer-01" },
+  "compare": { "scope": { "kind": "organization", "organization_id": "demo-retail-south" } },
+  "evidence_filter": "activation_swaps"
+}
+```
 
 ## Compare two recorded decisions
 

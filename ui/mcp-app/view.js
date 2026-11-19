@@ -1,5 +1,6 @@
 import { App } from "@modelcontextprotocol/ext-apps";
 import { button, countLabel, element } from "./dom.js";
+import { renderSourceHistory, sourceHistoryBackLabel, sourceHistoryTitle } from "./source-history.js";
 import { renderVisibility, visibilityBackLabel, visibilityTitle } from "./visibility.js";
 
 const app = new App({ name: "NexusWeave evidence", version: "1.0.0" });
@@ -27,7 +28,7 @@ function openPage(page, back, focus = false) {
   if (back) {
     const screenBack = back.page.kind.startsWith("screening_")
       ? (back.page.kind.endsWith("_groups") ? "Back to screened pairs" : "Back to contributing turns") : null;
-    const label = screenBack ?? visibilityBackLabel(back.page.kind) ?? (back.page.kind === "turn" ? "Back to turn evidence" :
+    const label = screenBack ?? sourceHistoryBackLabel(back.page.kind) ?? visibilityBackLabel(back.page.kind) ?? (back.page.kind === "turn" ? "Back to turn evidence" :
       page.kind === "turn" ? "Back to contributing decisions" :
       page.kind === "activation_evidence" ? "Back to activation groups" : "Back to conflict groups");
     const control = button(label, () => {
@@ -44,6 +45,7 @@ function openPage(page, back, focus = false) {
   else if (page.kind === "activation_evidence") renderActivationEvidence(page, back);
   else if (/^(candidate|shadow|screening)_pattern_/.test(page.kind)) renderAssessmentPatterns(page, back);
   else if (page.kind.startsWith("visibility_")) renderVisibility(result, page, requestPage, pageControls);
+  else if (page.kind.startsWith("context_source_")) renderSourceHistory(result, page, requestPage, pageControls);
   else if (page.kind === "pending_evidence") renderPending(page);
   else renderTurn(page);
   if (focus) {
@@ -282,7 +284,8 @@ function appendScreeningPair(parent, assessment, inputs) {
 }
 
 function renderTurn(page) {
-  const { counts } = page.data;
+  const { counts, decision } = page.data;
+  if (decision?.label && decision.label !== page.title) result.append(element("p", decision.label, "muted"));
   result.append(element("p", [
     countLabel(counts.rule_findings, "finding"),
     countLabel(counts.context_links, "context link"),
@@ -419,6 +422,12 @@ function renderRequestEvidence(page, tool) {
     } else if (item.kind === "recorded_call") {
       calls.append(element("li", item.call_id));
       continue;
+    } else if (item.kind === "recorded_decision") {
+      const location = { ...turnLocation(page.data), decision_id: item.decision_id };
+      row.append(button("Open " + item.label, () => requestPage(
+        "get_turn_evidence", { ...location, include_excerpts: page.args.include_excerpts ?? false },
+        item.label, { page, previous: page.back },
+      )));
     } else if (item.input) {
       inputs.append(element("p", [item.input.source_id || item.input.context_id, item.input.availability, item.input.anchor?.field].filter(Boolean).join(" · ")));
       for (const { pointer, text_range } of item.request_fields || []) {
@@ -426,6 +435,12 @@ function renderRequestEvidence(page, tool) {
         inputs.append(element("p", pointer + range, "muted"));
       }
       appendExcerpt(inputs, item.input.excerpt);
+      if (!pending && item.kind === "captured_input" && item.input.source_id?.trim()) {
+        const id = item.input.source_id;
+        inputs.append(button("View source history for " + id, () => requestPage(
+          "query_context_sources", { version: 1, source_id: id }, id, { page, previous: page.back },
+        )));
+      }
       continue;
     } else {
       continue;
@@ -537,6 +552,15 @@ function renderActivationEvidence(page, back) {
     + " · decoder block " + page.data.block, "muted"));
   activationSummary(result, page.data.group);
   activationExcerptsButton(page, back);
+  const { source_id, source_version } = page.data.group;
+  if (source_id) {
+    const selection = Object.fromEntries(["scope", "thread", "after", "before"]
+      .filter((key) => Object.hasOwn(page.args, key)).map((key) => [key, page.args[key]]));
+    result.append(button("View source history for " + source_id, () => requestPage(
+      "query_context_sources", { version: 1, source_id, source_version, ...selection, evidence_filter: "activation_swaps" },
+      source_id, { page, previous: back },
+    )));
+  }
   for (const item of page.data.occurrences) {
     const row = element("section", undefined, "row");
     const title = item.conversation_id || item.location.run_id;
@@ -579,7 +603,7 @@ app.ontoolresult = (response) => {
       pending_evidence: () => "Before inference",
       turn_evidence: () => "Turn evidence",
     };
-    const title = Object.hasOwn(titles, data.kind) ? titles[data.kind]() : visibilityTitle(data);
+    const title = Object.hasOwn(titles, data.kind) ? titles[data.kind]() : sourceHistoryTitle(data, args) ?? visibilityTitle(data);
     if (!title) throw new Error("This result has no supported evidence view.");
     openPage({ kind: turn ? "turn" : data.kind, title, args, data });
   } catch (error) {

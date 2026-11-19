@@ -1165,6 +1165,9 @@ fn context_source_queries_scope_recorded_coverage_and_link_measurements() {
         .find(|tool| tool["name"] == name)
         .unwrap();
     assert_eq!(definition["annotations"]["readOnlyHint"], true);
+    let uri = definition["_meta"]["ui"]["resourceUri"].as_str().unwrap();
+    let app = client.request("resources/read", json!({"uri":uri}));
+    assert_eq!(app["contents"][0]["mimeType"], "text/html;profile=mcp-app");
     let output = client.call(name, json!({"version":1, "limit":1}));
     assert_eq!(
         output["structuredContent"]["kind"],
