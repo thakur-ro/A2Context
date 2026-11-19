@@ -206,6 +206,24 @@ pub struct Report {
 ///
 /// The callback receives exact text from nonidentical pairs. Return `Ok(None)`
 /// to use exact matching only. Exact copies bypass the scorer.
+///
+/// ```
+/// use nexusweave::context_screening::{screen_pending, Selection, Suggestion};
+///
+/// let request = serde_json::from_str(include_str!(concat!(
+///     env!("CARGO_MANIFEST_DIR"),
+///     "/examples/context-screening/request.json"
+/// )))?;
+/// let report = screen_pending(request, &Selection::default(), |_| Ok(None))?;
+/// assert_eq!(report.total_pairs, 21);
+/// let repeated = report.pairs.iter()
+///     .find(|pair| pair.suggestion == Some(Suggestion::ExactTextReuse))
+///     .expect("the request repeats one excerpt");
+/// let [first, second] = repeated.sources.map(|index| &report.sources[index]);
+/// assert_eq!(first.text_sha256, second.text_sha256);
+/// assert_ne!(first.context_id, second.context_id);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn screen_pending(
     request: preflight::Request,
     selection: &Selection,

@@ -456,7 +456,7 @@ function renderDecision() {
   renderRecordedPreflight(context, run, call, false);
   renderRecordedCandidateProbes(context, run, call, false);
   renderRecordedShadowProbes(context, run, call, false);
-  renderContextScreen(context, run, call, false);
+  renderContextScreen(context, run, call, false, decision);
   if (call.context_metadata) {
     const { issue, evidence: anchor } = call.context_metadata;
     const declaration = node("div", undefined, issue ? "finding insufficient_evidence" : "context-declaration");

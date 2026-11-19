@@ -101,6 +101,36 @@ To connect a different scorer, read one JSON object from stdin with `version: 1`
 
 Attach a pending report to the inference call as `nexusweave.context_screening`. For OTLP, use a JSON string attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `nexusweave.span.id` to the inference run's exact ID. NexusWeave matches the captured selection and text digests and checks that the scores and labels follow the report contract. The inspector shows which sources were screened on the recorded call. MCP `get_turn_evidence` includes the scores and anchors, with text available under the existing excerpt setting. [Report and selection schema](../schema/context-screening-report-1.json)
 
+### Test a screened pair
+
+```sh
+cargo run --locked -- serve \
+  --replay examples/context-screening/replay/report.json \
+  examples/context-screening/replay/evidence.json
+```
+
+Open the answer in **Conversation**. Under **Context screening**, expand the possible conflict between `journal-policy` and `journal-faq`. The sources specify 30 and 60 days. MiniLM scored contradiction at about 92% from policy to FAQ and 99% from FAQ to policy. Expand each source to see its individual replay and open **Joint effect measured** for the pair. [How screening and replay fit together](architecture.md#from-a-possible-conflict-to-a-measured-effect)
+
+| Qwen replay condition | Returned answer in days | Change in recorded-answer match rate |
+| --- | ---: | ---: |
+| Original request | 60 | Baseline |
+| Replace the 30-day policy | 60 | 0 percentage points |
+| Replace the 60-day FAQ | 30 | −100 percentage points |
+| Replace both | 10 | −100 percentage points |
+
+Each condition has one greedy trial. The FAQ edit and the joint edit both change the answer, by different amounts. Open **Compare trial outcomes** to see that distinction when the match-rate changes are the same. [Captured request and scores](../examples/context-screening/replay/evidence.json) · [Saved replay report](../examples/context-screening/replay/report.json)
+
+For your own flagged pair, select **Prepare replay for this pair**, load the captured request, and fill in the two replacements. Select **Also test both changes together** to include the joint condition. Download the case and run it with a runner for your model, then load the report beside the same evidence. [Run a controlled replay](#test-a-context-item-with-a-controlled-replay)
+
+To reproduce the saved replay, point `qwen_dir` at the pinned local checkpoint and use the Python environment for the Transformers CPU adapter. [Runtime and model setup](#test-source-visibility-on-a-recorded-answer)
+
+```sh
+out_dir=$(mktemp -d)
+cargo run --locked -- replay examples/context-screening/replay/evidence.json \
+  examples/context-screening/replay/case.json "$out_dir/report.json" -- \
+  python3 scripts/propose_qwen.py "$qwen_dir" --model-id Qwen/Qwen2.5-0.5B-Instruct
+```
+
 ### Find recurring screened pairs
 
 ```sh

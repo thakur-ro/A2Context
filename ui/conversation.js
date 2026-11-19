@@ -502,7 +502,7 @@ function renderConversationEvidence() {
   renderRecordedPreflight(details, run, call, true);
   renderRecordedCandidateProbes(details, run, call, true);
   renderRecordedShadowProbes(details, run, call, true);
-  renderContextScreen(details, run, call, true);
+  renderContextScreen(details, run, call, true, decision);
   if (decision && decision.kind !== "model_output") {
     evidenceSection(details, "Recorded outcome", !findings.length && !links.length, (section) => {
       section.append(node("pre", decision.outcome === null ? "Outcome unavailable" : readable(decision.outcome)));

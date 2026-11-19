@@ -39,6 +39,8 @@ For captured text without rule declarations, context screening finds exact reuse
 
 Captured inputs establish what was available. Trace links help you find a source to test. Probes and replay measure the effect of a specific edit under the tested conditions. [Evidence model and algorithms](docs/architecture.md#what-the-algorithms-measure)
 
+Follow a flagged policy pair from its text scores to a controlled model run. The example includes the captured request, the two edits, and the measured outcomes. [Replay a screened pair](docs/guide.md#test-a-screened-pair)
+
 ## Connect your workflow
 
 Import OTLP or OpenInference spans, import LangSmith runs, or emit versioned evidence JSON from any language. Declare stable source IDs, versions, rule scopes, and request locations to connect trace evidence to a probe. Add thread, user, and organization IDs to enable cross-conversation queries. [OpenTelemetry](docs/guide.md#import-opentelemetry-traces) · [LangSmith](docs/guide.md#import-langsmith-traces) · [Evidence JSON](schema/evidence-1.json) · [Source declarations](docs/guide.md#declare-context-sources-and-decision-scope)

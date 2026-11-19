@@ -32,13 +32,13 @@ function callFindings(runId, callId, decisionId) {
   return decisionId === undefined ? findings : findings.filter((item) => item.decision_id === decisionId);
 }
 
-function findingReplayTests(finding) {
-  const individual = finding.context_ids.map((context_id) =>
-    contextReplay({ ...finding, context_id }).effects.filter(({ group }) => !group.pair)
+function contextPairReplayTests(location) {
+  const individual = location.context_ids.map((context_id) =>
+    contextReplay({ ...location, context_id }).effects.filter(({ group }) => !group.pair)
   );
   // An exact joint test is indexed under both inputs, so read it from the first input only.
-  const joint = contextReplay({ ...finding, context_id: finding.context_ids[0] }).effects.filter(({ effect }) =>
-    effect.context_ids?.length === 2 && finding.context_ids.every((id) => effect.context_ids.includes(id))
+  const joint = contextReplay({ ...location, context_id: location.context_ids[0] }).effects.filter(({ effect }) =>
+    effect.context_ids?.length === 2 && location.context_ids.every((id) => effect.context_ids.includes(id))
   );
   return { individual, joint };
 }
@@ -55,7 +55,7 @@ function renderFindingCards(container, run, call, decision, canReplay) {
     card.append(node("span", labels[finding.kind], "badge"));
     card.append(node("h3", finding.key + " · " + finding.scope));
     card.append(node("p", "Derived from annotated rules in this call.", "muted"));
-    const { individual, joint } = findingReplayTests(finding);
+    const { individual, joint } = contextPairReplayTests(finding);
     for (const [index, id] of finding.context_ids.entries()) {
       const details = contextDetails(call.context.find((item) => item.id === id), true);
       const effects = individual[index];
@@ -140,7 +140,7 @@ function renderRulePatterns(list, organization, user, query) {
     if (turns !== null) counts.push(countLabel(turns, "turn"));
     card.append(node("p", counts.join(" · "), "count"));
     const rows = occurrences.sort(compareTimes).map((item) => {
-      const { individual, joint } = findingReplayTests(item);
+      const { individual, joint } = contextPairReplayTests(item);
       return {
         item, singleMeasured: individual.some(hasReplayEffect), jointMeasured: hasReplayEffect(joint),
         tested: individual.some((effects) => effects.length) || joint.length > 0,

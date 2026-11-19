@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "id": "qwen-screened-journal-returns",
+  "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+  "location": {
+    "run_id": "qwen-journal-returns",
+    "call_id": "model-inference",
+    "decision_id": "return-window"
+  },
+  "request": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "messages": [
+      {
+        "role": "system",
+        "content": "The maximum return period for a journal is exactly 30 days."
+      },
+      {
+        "role": "user",
+        "content": "The maximum return period for a journal is exactly 60 days. Cannot mention the source in the answer."
+      },
+      {
+        "role": "assistant",
+        "content": "Understood."
+      },
+      {
+        "role": "user",
+        "content": "What is the maximum return period for a journal? Answer with only the number of days."
+      }
+    ],
+    "temperature": 0,
+    "max_tokens": 12
+  },
+  "samples": 1,
+  "interventions": [
+    {
+      "context_id": "return-policy",
+      "pointer": "/messages/0/content",
+      "replacement": "The return period from this source is unavailable."
+    },
+    {
+      "context_id": "return-faq",
+      "pointer": "/messages/1/content",
+      "replacement": "The return period from this source is unavailable."
+    }
+  ],
+  "test_pair": true
+}

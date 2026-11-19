@@ -27,7 +27,7 @@ function focusScreenPair(anchor) {
   return true;
 }
 
-function renderContextScreen(parent, run, call, open) {
+function renderContextScreen(parent, run, call, open, decision) {
   const screen = contextScreenForCall(run, call);
   if (!screen) return;
   const report = screen.report;
@@ -64,11 +64,31 @@ function renderContextScreen(parent, run, call, open) {
       ].filter(Boolean).join(" "));
       const status = screenLabels[pair.suggestion] || screenReasons[pair.reason] || "No pair flagged";
       card.append(node("summary", status + " · " + sourceNames.join(" and ")));
-      for (const item of items) card.append(contextDetails(item, true));
+      const contextIds = items.map(({ id }) => id);
+      const tests = pair.suggestion && decision ? contextPairReplayTests({
+        run_id: run.id, call_id: call.id, decision_id: decision.id, context_ids: contextIds,
+      }) : null;
+      for (const [index, item] of items.entries()) {
+        const details = contextDetails(item, true);
+        if (tests) {
+          const effects = tests.individual[index];
+          appendContextReplayResults(details, { effects }, hasReplayEffect(effects) ? "Individual effect measured" : "Individual effect unavailable");
+        }
+        card.append(details);
+      }
       if (pair.status === "scored") {
         for (const [direction, scores] of [["First → second", pair.left_to_right], ["Second → first", pair.right_to_left]]) {
           const scoresText = Object.entries(scores).map(([name, value]) => name + " " + screenPercent.format(value)).join(" · ");
           card.append(node("p", direction + " · " + scoresText, "muted"));
+        }
+      }
+      if (tests) {
+        appendContextReplayResults(card, { effects: tests.joint },
+          hasReplayEffect(tests.joint) ? "Joint effect measured" : "Joint effect unavailable");
+        if (decision.kind !== "tool_execution" && decision.outcome !== null) {
+          const prepare = node("button", "Prepare replay for this pair");
+          prepare.addEventListener("click", () => openReplayPlanner(run, call, decision, contextIds));
+          card.append(prepare);
         }
       }
       container.append(card);

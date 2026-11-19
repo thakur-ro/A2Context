@@ -1,8 +1,9 @@
 //! Diagnose context in LLM workflows before and after inference.
 //!
 //! Call [`preflight::check`] on an assembled request to find conflicts in
-//! declared rules. For recorded traces, use [`otlp::import`] or
-//! [`langsmith::import`] and pass the resulting [`Run`] values to [`inspect`].
+//! declared rules or [`context_screening::screen_pending`] to compare captured
+//! text. For recorded traces, use [`otlp::import`] or [`langsmith::import`]
+//! and pass the resulting [`Run`] values to [`inspect`].
 //!
 //! ## Import a recorded turn
 //!

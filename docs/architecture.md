@@ -35,6 +35,28 @@ flowchart TD
 | **Runtime probe** | Use an instrumented local runtime to mask selected prompt sources or swap activations, then compare output token scores or continuations with a baseline. | The measurements describe effects at the tested positions for that model and intervention. |
 | **Patterns** | Group findings and measurements by scope and their comparison keys. Screening groups match both captured sources and the classifier. Candidate groups match token scoring setups. Shadow groups match the runner, sampling design, proposal criterion, and source edit. | You can see where comparable evidence repeats and inspect the contributing calls. |
 
+### From a possible conflict to a measured effect
+
+```mermaid
+flowchart TD
+    accTitle: Testing a screened source pair
+    accDescr: A text classifier flags two captured sources. Replay runs the original request and three edits, then compares the outcomes against the recorded answer.
+    A[Two exact source excerpts] --> B[Score both directions]
+    B -->|Both contradiction scores at least 0.8| C[Possible conflict]
+    C --> D[Select a recorded decision]
+    D --> E[Sample original request]
+    D --> F[Sample edit to first source]
+    D --> G[Sample edit to second source]
+    D --> H[Sample both edits]
+    E --> I[Apply the same outcome rule]
+    F --> I
+    G --> I
+    H --> I
+    I --> J[Check baseline and compare match rates]
+```
+
+Each comparison uses the exact captured source text and a chosen request location. A comparison needs a scored result for every trial in both conditions and at least one match in the original condition. NexusWeave subtracts the original match rate from the edited match rate. The classifier describes the relationship between the excerpts in both directions. The replay measures the workflow model's response to a particular edit. [Try the saved run](guide.md#test-a-screened-pair)
+
 ### From a rule conflict to a recorded turn
 
 In the returns example, both sources declare `return_window_days` for the `standard` scope. Preflight reads `30` from the policy and `60` from the FAQ, finds unequal values, and returns one conflict with the source versions and request locations. If those values were both `30`, the group would be a duplicate. If only one value were known, the comparison would have insufficient evidence.

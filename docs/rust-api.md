@@ -16,12 +16,32 @@ To depend on the library, run this from your Rust application's directory, with 
 cargo add nexusweave --path ../NexusWeave
 ```
 
-Generate the API reference from the NexusWeave checkout. The crate homepage has a runnable trace import, and `preflight::check` has a runnable pending-request check.
+Generate the API reference from the NexusWeave checkout. The crate homepage has a runnable trace import. The `preflight::check` and `context_screening::screen_pending` pages have runnable pending-request examples.
 
 ```sh
 cargo doc --locked --no-deps --open
 cargo test --locked --doc
 ```
+
+## How the data fits together
+
+```mermaid
+flowchart TD
+    accTitle: Rust package data and entry points
+    accDescr: A pending request can be checked or probed. A normalized run contains calls with captured context and recorded decisions. Queries use runs and available reports.
+    A[preflight Request] --> B[Preflight or pending probes]
+    C[Imported or directly supplied Run] --> D[Call]
+    D --> E[ContextItem]
+    D --> F[Decision]
+    E --> G[Context screening]
+    E --> H[Controlled replay]
+    F --> H
+    C --> I[Turn and pattern queries]
+    G --> I
+    H --> I
+```
+
+A `Run` carries optional organization, user, and conversation IDs. Each `Call` carries its own ID and an optional turn ID. Source IDs and versions connect copies of a source across calls. A `replay::Location` selects one run, call, and decision. An intervention then names a context item and where to edit it in the captured request. [Evidence schema](../schema/evidence-1.json) · [Example replay case](../examples/context-screening/replay/case.json)
 
 ## Find the API for your task
 
