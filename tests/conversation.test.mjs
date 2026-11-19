@@ -4,8 +4,58 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 
 const source = readFileSync(new URL("../ui/conversation.js", import.meta.url), "utf8");
-const { conversationTurns } = runInNewContext(source + "\n({ conversationTurns });", {
+const { capturedUserInput, conversationTurns } = runInNewContext(source + "\n({ capturedUserInput, conversationTurns });", {
   matchMedia: () => ({ addEventListener() {} }),
+});
+
+function message(index, text, extra = {}) {
+  const { role = "user", part_index, field = "request.messages", span_id = "inference", availability = "included" } = extra;
+  return { kind: "text", role, availability, text, evidence: { field, span_id, message_index: index, part_index } };
+}
+
+test("displays adjacent user messages in a declared turn and orders captured parts", () => {
+  const context = [
+    message(0, "Earlier user request."),
+    message(1, "Earlier assistant reply.", { role: "assistant" }),
+    message(4, "Please handle the request now."),
+    message(2, "Request type: price."),
+    message(3, "19.", { part_index: 1 }),
+    message(3, "Product ID:", { part_index: 0 }),
+  ];
+  const turn = conversationTurns([{ runIndex: 0, run: { conversation_id: "thread" },
+    call: { id: "price", turn_id: "price-check", context } }])[0];
+  assert.equal(turn.input, "Request type: price.\n\nProduct ID:\n19.\n\nPlease handle the request now.");
+});
+
+test("leaves gaps, different capture streams, and unavailable messages outside the turn text", () => {
+  const latest = message(2, "Latest user input.");
+  for (const boundary of [
+    null,
+    message(1, "Other source.", { field: "other.messages" }),
+    message(1, "Other span.", { span_id: "earlier" }),
+    message(1, null, { availability: "redacted" }),
+    message(1, "Tool result.", { role: "tool" }),
+  ]) {
+    const context = [message(0, "Older request."), boundary, latest].filter(Boolean);
+    assert.equal(capturedUserInput({ context }, true).text, "Latest user input.");
+  }
+  const context = [message(0, "Earlier request."), message(1, null, { availability: "redacted" })];
+  assert.equal(capturedUserInput({ context }, true), null);
+  const imprecise = [message(0, "Older request."), message(Number.MAX_SAFE_INTEGER + 5, "Latest user input.")];
+  assert.equal(capturedUserInput({ context: imprecise }, true).text, "Latest user input.");
+});
+
+test("keeps only the newest captured message when turn identity is unavailable", () => {
+  const earlier = message(0, "Which product?");
+  const latest = message(1, "Product 19.");
+  const turns = conversationTurns([
+    { runIndex: 0, run: { conversation_id: "thread" }, call: { id: "a", context: [earlier] } },
+    { runIndex: 0, run: { conversation_id: "thread" }, call: { id: "b", context: [earlier, latest] } },
+    { runIndex: 0, run: { conversation_id: "thread" }, call: { id: "c", context: [earlier, latest] } },
+  ]);
+  assert.equal(turns[0].input, "Which product?");
+  assert.equal(turns[1].input, "Product 19.");
+  assert.equal(turns[2].input, null);
 });
 
 function entry(id, turn_id, runIndex, conversation_id, text, message_index, extras = []) {

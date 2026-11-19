@@ -10,18 +10,48 @@ let conversationEvidenceOpen = true;
 let conversationReturn;
 let renderedConversationEvidence;
 
-function capturedUserInput(call) {
-  const inputs = call.context.filter((item) =>
-    item.role === "user" && ["message", "text", "message_part"].includes(item.kind)
-  );
-  const last = inputs.at(-1);
+function isUserText(item) {
+  return item.role === "user" && ["message", "text", "message_part"].includes(item.kind);
+}
+
+function capturedUserMessage(items) {
+  if (!items || items.some(({ role }) => role && role !== "user")) return "";
+  const parts = items.filter(isUserText);
+  if (parts.every(({ evidence }) => Number.isSafeInteger(evidence.part_index))) {
+    parts.sort((left, right) => left.evidence.part_index - right.evidence.part_index);
+  }
+  return parts.filter(({ availability, text }) => availability === "included" && text?.trim())
+    .map(({ text }) => text).join("\n");
+}
+
+function capturedUserInput(call, identifiedTurn) {
+  const last = call.context.findLast(isUserText);
   if (!last) return null;
-  const index = last.evidence.message_index;
-  const parts = Number.isInteger(index) ? inputs.filter((item) => item.evidence.message_index === index
-    && item.evidence.field === last.evidence.field) : [last];
-  const text = parts.map((item) => item.availability === "included" ? item.text : null)
-    .filter((value) => value?.trim()).join("\n");
-  return text ? { text, key: JSON.stringify([last.evidence.field, index, text]) } : null;
+  const { field, span_id, message_index } = last.evidence;
+  if (!Number.isSafeInteger(message_index)) {
+    const text = capturedUserMessage([last]);
+    return text ? { text, key: JSON.stringify([field, message_index, text]) } : null;
+  }
+  const messages = new Map();
+  let latest = message_index;
+  for (const item of call.context) {
+    const index = item.evidence.message_index;
+    if (item.evidence.field !== field || item.evidence.span_id !== span_id || !Number.isSafeInteger(index)) continue;
+    if (!messages.has(index)) messages.set(index, []);
+    messages.get(index).push(item);
+    if (isUserText(item)) latest = Math.max(latest, index);
+  }
+  const lastText = capturedUserMessage(messages.get(latest));
+  if (!lastText) return null;
+  const inputs = [lastText];
+  if (identifiedTurn) {
+    for (let index = latest - 1; messages.has(index); index--) {
+      const text = capturedUserMessage(messages.get(index));
+      if (!text) break;
+      inputs.push(text);
+    }
+  }
+  return { text: inputs.reverse().join("\n\n"), key: JSON.stringify([field, latest, lastText]) };
 }
 
 function conversationTurns(calls) {
@@ -40,7 +70,7 @@ function conversationTurns(calls) {
       if (key !== null) byId.set(key, turn);
     }
     turn.calls.push(entry);
-    const input = capturedUserInput(call);
+    const input = capturedUserInput(call, id !== null);
     if (input) {
       if (!turn.input && (id !== null || lastInputByRun.get(runIndex) !== input.key)) turn.input = input.text;
       lastInputByRun.set(runIndex, input.key);

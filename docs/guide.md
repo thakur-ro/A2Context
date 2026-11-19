@@ -24,6 +24,8 @@ cargo run --locked -- serve fixtures/conversation.json fixtures/support.json
 
 Open the local inspector, choose **Return a jacket**, and select the evidence on either turn. Switch the second turn's **Decision or step** selector between the answer and the order lookup. **Open decision details** opens the full inspector for that step. **Back to conversation** returns to the selected turn. [Open the inspector](http://127.0.0.1:8040)
 
+**Conversation** groups consecutive captured user messages in an identified turn when they have adjacent positions in the same message stream. Gaps, role changes, and unavailable messages end the group. Calls without a turn ID show the newest captured user message and suppress repeats across calls in the same trace.
+
 **Timeline** shows the session in call order. **Patterns** groups findings across imported runs, an organization, or a user within an organization. Each occurrence opens the call and its excerpts.
 
 The fixtures cover conflicting return windows, a holiday exception, duplicated instructions, and a redacted source. Two organizations share the same example user ID to demonstrate scoped grouping. All fixture data is synthetic.
