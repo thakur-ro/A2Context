@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 description = "Diagnose context and inspect decisions in LLM workflows"
 repository = "https://github.com/thakur-ro/NexusWeave"
-documentation = "https://github.com/thakur-ro/NexusWeave/blob/main/docs/guide.md"
+documentation = "https://github.com/thakur-ro/NexusWeave/blob/main/docs/rust-api.md"
 include = [
     "/src/**",
     "/ui/*.js",

@@ -6,6 +6,17 @@ NexusWeave helps you investigate the inputs to an LLM workflow decision. Check a
 
 Traces show what was recorded. Conflict checks use declared rules, and replay effects describe changes under the tested conditions. Compare those findings across turns, threads, users, or organizations when the trace carries the corresponding identifiers. NexusWeave accepts OTLP, LangSmith exports, and its own versioned JSON format. ContextCite provides a related attribution method for generated statements. [ContextCite paper](https://arxiv.org/abs/2409.00729)
 
+| Start with | Follow this path |
+| --- | --- |
+| An assembled request | [Check declared rules](#check-context-before-inference) → [Score alternatives](#measure-candidate-preference-before-a-decision) or [compare shadow proposals](#test-context-with-shadow-proposals) |
+| A recorded answer or action | [Import OTLP](#import-opentelemetry-traces) or [LangSmith](#import-langsmith-traces) → [Inspect a decision](#investigate-an-unfamiliar-decision) → [Replay one source edit](#test-a-context-item-with-a-controlled-replay) |
+| A thread with changing context | [Follow changes across calls](#follow-context-changes-through-a-thread) → [Compare two decisions](#compare-two-recorded-decisions) |
+| A question across sessions | [Group conflicts](#group-recurring-conflicts) or [compare measured candidate shifts](#find-recurring-candidate-preference-shifts) → Open a contributing turn |
+| Access to an instrumented model | [Follow influence across an answer](#follow-context-influence-across-an-answer) → [Test source visibility](#test-source-visibility-on-a-recorded-answer) or [compare masked continuations](#continue-decoding-with-sources-masked) |
+| A workflow to integrate | [Declare sources](#declare-context-sources-and-decision-scope) → [Send traces](#receive-live-opentelemetry-traces) or [emit evidence directly](#emit-evidence-from-another-workflow) → [Connect an MCP client](#connect-an-mcp-client) |
+
+[How the algorithms work](architecture.md) · [Rust package guide](rust-api.md)
+
 ## Check context before inference
 
 Run preflight after building a request and before handing it to the model. The example puts a 30-day policy and a 60-day FAQ in one system message. Both declare `return_window_days` for the `standard` scope. [Example request](../examples/preflight-returns.json)
@@ -159,6 +170,8 @@ cargo run --locked -- serve --replay examples/local-mlx/report.json examples/loc
 ```
 
 Open the turn evidence and expand **Replay results**. In the saved local-model trials, the baseline request yielded a 30-day return window in 3 of 3 runs. Withholding the returns policy changed all three answers to 60 days. Withholding the store name preserved the 30-day answer. The replay case supplies the baseline request. The inspector reads the saved trials locally. [Open the inspector](http://127.0.0.1:8040)
+
+![Decision inspector showing the recorded answer, captured inputs, and replay results for the returns policy and store-name control](media/decision-inspector.png)
 
 ## Run the local demo
 

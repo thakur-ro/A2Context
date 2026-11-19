@@ -1,11 +1,42 @@
 //! Diagnose context in LLM workflows before and after inference.
 //!
-//! Start with [`preflight::check`] for a pending request or [`inspect`] for
-//! recorded runs. [`otlp`] and [`langsmith`] import trace evidence, and
-//! [`replay::execute`] compares model outcomes after a controlled input edit.
+//! Call [`preflight::check`] on an assembled request to find conflicts in
+//! declared rules. For recorded traces, use [`otlp::import`] or
+//! [`langsmith::import`] and pass the resulting [`Run`] values to [`inspect`].
 //!
-//! The [architecture guide](https://github.com/thakur-ro/NexusWeave/blob/main/docs/architecture.md)
-//! shows how these steps connect and explains what each result measures.
+//! ## Import a recorded turn
+//!
+//! This synthetic trace records a 60-day answer and a preflight receipt for
+//! the same request. Both sources declare the standard return window. Their
+//! different values produce a conflict linked to the recorded call.
+//!
+//! ```
+//! use nexusweave::{inspect, langsmith, preflight::Verification, FindingKind};
+//!
+//! let trace = include_str!(concat!(
+//!     env!("CARGO_MANIFEST_DIR"),
+//!     "/examples/preflight-returns-langsmith.json"
+//! ));
+//! let runs = langsmith::import(&serde_json::from_str(trace)?)?;
+//! let inspection = inspect(&runs)?;
+//! let check = &inspection.preflight_checks[0];
+//!
+//! assert_eq!(check.call_id, "returns-run");
+//! assert!(matches!(check.verification, Verification::Matched { .. }));
+//! assert_eq!(inspection.findings[0].kind, FindingKind::Conflict);
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! ## Test how a source affects an outcome
+//!
+//! - [`replay::candidates::execute`] compares fixed continuations before a decision.
+//! - [`replay::shadow::execute`] compares generated proposals before dispatch.
+//! - [`replay::execute`] measures how an edit changes a recorded decision in replay.
+//! - [`activation`] validates measurements from an instrumented runtime.
+//!
+//! See the [package guide](https://github.com/thakur-ro/NexusWeave/blob/main/docs/rust-api.md)
+//! for input formats and the [architecture guide](https://github.com/thakur-ro/NexusWeave/blob/main/docs/architecture.md)
+//! for what each result measures.
 
 pub mod activation;
 pub mod conflict_query;
@@ -41,6 +72,7 @@ fn canonical_json(value: &Value) -> String {
     ordered.to_string()
 }
 
+/// A normalized trace and the scope identifiers it carries.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Run {
     pub schema_version: u32,
@@ -62,6 +94,7 @@ pub struct TraceSpan {
     pub started_at: Option<String>,
 }
 
+/// One captured inference step, including its context and recorded decisions.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Call {
     pub id: String,
@@ -125,6 +158,7 @@ pub struct Evidence {
     pub part_index: Option<usize>,
 }
 
+/// A captured input with its source, availability, and evidence location.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ContextItem {
     pub id: String,
@@ -260,6 +294,7 @@ pub enum Basis {
     Hypothesis,
 }
 
+/// Findings and cross-run evidence derived by [`inspect`].
 #[derive(Debug, Serialize)]
 pub struct Inspection<'a> {
     pub runs: Vec<&'a Run>,
@@ -476,6 +511,13 @@ fn unique_ids<'a>(ids: impl Iterator<Item = &'a str>, kind: &str) -> Result<(), 
     Ok(())
 }
 
+/// Derive findings, context links, and cross-run patterns from recorded evidence.
+///
+/// Identical copies of a run are counted once. The result borrows the input runs.
+///
+/// # Errors
+///
+/// Returns an error for invalid evidence or conflicting run IDs.
 pub fn inspect(runs: &[Run]) -> Result<Inspection<'_>, String> {
     let mut unique = BTreeMap::new();
     for run in runs {

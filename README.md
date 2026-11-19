@@ -1,22 +1,8 @@
 # NexusWeave
 
-NexusWeave is a local context and decision inspector for LLM workflows. Check the assembled request for conflicting rules before inference. Open a recorded turn to see which inputs were present and which edits changed the outcome in a replay. Follow the same sources across turns, threads, users, and organizations.
+NexusWeave is a local context and decision inspector for LLM workflows. Check a pending request for conflicting rules, inspect the context behind a recorded answer or action, and test which source edits change a measured outcome. Follow the evidence across turns, threads, users, and organizations.
 
-[How NexusWeave works](docs/architecture.md) · [Integration guide](docs/guide.md) · [Contributing](CONTRIBUTING.md)
-
-## Check a request before inference
-
-```sh
-cargo run --locked -- preflight examples/preflight-returns.json
-```
-
-The report flags a conflict between a 30-day policy and a 60-day FAQ in the same request. Each source comes with a version and the exact range in the assembled prompt. The check uses declared rule values and makes no model call. [Run it from your workflow](docs/guide.md#check-context-before-inference)
-
-A candidate probe measures how a source edit shifts the model's preference between two fixed choices before the workflow commits to either. The saved local experiments cover a return window and a tool name. [Run a candidate probe](docs/guide.md#measure-candidate-preference-before-a-decision)
-
-Compare verified preference shifts across users, organizations, and time windows, then open the edited source on a contributing turn. [Explore the measured routing cohort](docs/guide.md#find-recurring-candidate-preference-shifts)
-
-When a model API returns proposals without token scores, a shadow probe compares how often the original request and source edits produce a declared outcome. [Run the proposal-only example](docs/guide.md#test-context-with-shadow-proposals)
+[Quickstart](#try-the-conversation-inspector) · [How it works](docs/architecture.md) · [Workflow guide](docs/guide.md) · [Rust API](docs/rust-api.md)
 
 ## Try the conversation inspector
 
@@ -26,71 +12,36 @@ With a stable Rust toolchain, run this from the repository root.
 cargo run --locked -- serve fixtures/conversation.json
 ```
 
-In the synthetic conversation, the second answer offers a 60-day return window. Open its evidence to see the 30-day policy, the 60-day FAQ, and the order lookup that preceded the answer. [Open the local inspector](http://127.0.0.1:8040)
+Open the inspector and look at the evidence for the second turn. The synthetic conversation shows a 60-day answer, the conflicting 30-day policy and 60-day FAQ, and the order lookup that preceded the answer. This demo runs without model weights or an API key. [Open the local inspector](http://127.0.0.1:8040)
 
 ![Two turns in a support conversation with the conflicting 30-day and 60-day sources beside the second answer](docs/media/conversation-inspector.png)
 
-## Try a decision replay and activation probe
+## Check a request before inference
 
 ```sh
-cargo run --locked -- serve \
-  --replay examples/local-mlx/report.json \
-  --activation-report examples/local-mlx/activation-report.json \
-  examples/local-mlx/evidence.json
+cargo run --locked -- preflight examples/preflight-returns.json
 ```
 
-Open the turn evidence and expand **Replay results**. In these saved local-model trials, the baseline answered 30 days. Withholding the returns policy changed all three answers to 60 days. Withholding the store name preserved the 30-day answer. The supplied replay request and trials are included. You can inspect them without an API key or model download. [Open the local inspector](http://127.0.0.1:8040)
+The report finds one conflict because the policy and FAQ declare different values for the same rule and scope. It identifies both source versions and their exact locations in the request. Preflight makes no model call. [Integrate preflight](docs/guide.md#check-context-before-inference)
 
-Open **Activation probe** on the same turn to see how swapping decoder-block outputs at the tested policy, store-name, and prediction positions changed the next-token preference. The saved probe covers one decision on one local model. [Experiment and measurements](docs/inference-attribution-plan.md#first-instrumented-result)
+## Choose an investigation
 
-The two-policy example lets you compare the same source swaps at two different tokens in a longer answer. [Try the answer timeline](docs/guide.md#follow-context-influence-across-an-answer)
-
-The six-conversation example shows how to find repeated activation effects by thread, user, and organization. [Try the pattern view](docs/guide.md#find-repeated-activation-effects-across-conversations)
-
-The tool-routing example measures which inputs affected a proposed tool name and argument. [Try the tool proposal](docs/guide.md#inspect-a-tool-choice-and-its-argument), [Write an adapter](docs/guide.md#emit-activation-measurements-from-another-runtime)
-
-Runtimes can send an OpenTelemetry trace and attach the activation report when its measurements are ready. [Send a measured trace](docs/guide.md#attach-activation-measurements-after-a-trace-arrives)
-
-For a captured Qwen2 answer or tool proposal, test each aligned prompt source without writing replacement text. Mask two sources together to check whether they back each other up. [Inspect a text answer](docs/guide.md#test-source-visibility-on-a-recorded-answer), [Inspect a tool proposal](docs/guide.md#test-source-visibility-on-a-tool-proposal), [Try the paired test](docs/guide.md#test-a-pair-of-sources)
-
-Query recurring masked-source effects across conversations, users, and organizations, then open the exact contributing token and source. [Compare the measured answer cohort](docs/guide.md#find-recurring-masked-source-effects), [Compare stock and price proposals](docs/guide.md#compare-measured-tool-routes)
-
-Align measurements on a named output when different answers put the same decision in different places. [Follow a named output](docs/guide.md#follow-a-named-output-across-different-answers)
-
-The same report format carries measured results from MLX and Transformers on the same prompt. [Inspect results across runtimes](docs/guide.md#inspect-the-same-task-across-runtimes)
-
-Inspect how a source swap changed the probability of any recorded output token, including repeated words and tool arguments. [Try the full-output view](docs/guide.md#inspect-every-recorded-output-token)
-
-Compare what the model generates after a source swap at a selected point in an answer. [Try the continuation view](docs/guide.md#continue-decoding-after-a-source-swap)
-
-Continue decoding with a source or pair masked to see whether a recorded tool name or argument changes. [Try a masked continuation](docs/guide.md#continue-decoding-with-sources-masked)
-
-![NexusWeave decision view showing a recorded answer, its captured inputs, and a replay that tests the returns policy against a store-name control](docs/media/decision-inspector.png)
-
-## Inspect your workflow
-
-| View | What you can inspect |
+| Question | Where to start |
 | --- | --- |
-| **Conversation** | Captured user messages, recorded answers and actions, and evidence for each turn. Calls without recorded turn IDs stay visible. |
-| **Decisions** | Captured inputs, source links, rule conflicts and duplicates, and replay results for a selected call. |
-| **Timeline** | Calls in a thread, their recorded execution tree when spans are linked, and changes in context and decisions over time. |
-| **Patterns** | Repeated source-to-decision links, findings, and replay results across imports or within a thread, user, or organization. |
-| **Compare** | Two decisions side by side, with their captured context, findings, and replay evidence. |
+| What context was available for this answer or action? | Open **Conversation**, then the turn evidence. [Inspect a turn](docs/guide.md#run-the-local-demo) |
+| Where did the context or decision change? | Open **Timeline** for the thread or **Compare** for two calls. [Follow a thread](docs/guide.md#follow-context-changes-through-a-thread) · [Compare calls](docs/guide.md#compare-two-recorded-decisions) |
+| Which findings or effects repeat across a user's sessions or an organization? | Filter **Patterns** and open a contributing turn. [Group conflicts](docs/guide.md#group-recurring-conflicts) · [Compare measured preference shifts](docs/guide.md#find-recurring-candidate-preference-shifts) |
+| Would a source edit change a pending decision? | Use **candidate probes** for fixed alternatives with token scores, or **shadow probes** with an API that returns proposals. [Choose a probe](docs/architecture.md#test-which-source-changes-an-outcome) |
+| Would a source edit change a recorded decision? | Run a **controlled replay**. With an instrumented model, measure the effect across output positions. [Try replay](docs/guide.md#try-a-decision-replay) · [Follow an answer in time](docs/guide.md#follow-context-influence-across-an-answer) |
 
-Try **Patterns → Conflict breakdown** with `cargo run --locked -- serve fixtures/support.json`. Group by rule, source version, model, user, or day and open the contributing turns. The fixture includes synthetic conversations from two organizations. [Query a conflict breakdown from the CLI](docs/guide.md#group-recurring-conflicts)
+Captured inputs establish what was available. Trace links help you find a source to test. Probes and replay measure the effect of a specific edit under the tested conditions. [Evidence model and algorithms](docs/architecture.md#what-the-algorithms-measure)
 
-NexusWeave accepts OTLP traces, including OpenInference spans, and LangSmith run exports. Workflows can also emit the [versioned evidence JSON](schema/evidence-1.json) directly. Add [context declarations](schema/context-semantics-1.json) to supply stable source names, versions, rules, and decision scope.
+## Connect your workflow
 
-Captured inputs tell you what was available to the model. Annotations and exact matches help you choose what to test. Conflict checks require declared rules and a decision scope. Replay measures the effect of a specific edit under the tested conditions. Cross-conversation views depend on the identifiers in your traces. The inspector is a local workspace, and organization labels group evidence within that workspace.
+Import OTLP or OpenInference spans, import LangSmith runs, or emit versioned evidence JSON from any language. Declare stable source IDs, versions, rule scopes, and request locations to connect trace evidence to a probe. Add thread, user, and organization IDs to enable cross-conversation queries. [OpenTelemetry](docs/guide.md#import-opentelemetry-traces) · [LangSmith](docs/guide.md#import-langsmith-traces) · [Evidence JSON](schema/evidence-1.json) · [Source declarations](docs/guide.md#declare-context-sources-and-decision-scope)
 
-## Project guide
+Build against the Rust crate or query the local inspector through its HTTP and MCP interfaces. [Rust package guide](docs/rust-api.md) · [Connect an MCP client](docs/guide.md#connect-an-mcp-client)
 
-- [Import OTLP or OpenInference traces](docs/guide.md#import-opentelemetry-traces)
-- [Import LangSmith runs](docs/guide.md#import-langsmith-traces)
-- [Instrument a workflow](docs/guide.md#declare-context-sources-and-decision-scope)
-- [Run a controlled replay](docs/guide.md#test-a-context-item-with-a-controlled-replay)
-- [Connect an MCP client](docs/guide.md#connect-an-mcp-client)
-- [Contribute and run checks](CONTRIBUTING.md)
-- [Research, project, and dataset credits](CREDITS.md)
+## Project
 
-NexusWeave source is licensed under [Apache License 2.0](LICENSE). The retail trace excerpt is covered by [CDLA Permissive 2.0](LICENSES/CDLA-Permissive-2.0.txt).
+NexusWeave source uses Apache License 2.0. The retail trace excerpt uses CDLA Permissive 2.0. [Contributing](CONTRIBUTING.md) · [Research and dataset credits](CREDITS.md) · [Source license](LICENSE) · [Data license](LICENSES/CDLA-Permissive-2.0.txt)

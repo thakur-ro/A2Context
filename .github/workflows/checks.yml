@@ -30,6 +30,10 @@ jobs:
         run: cargo +stable clippy --locked --all-targets -- -D warnings
       - name: Test Rust
         run: cargo +stable test --locked
+      - name: Build Rust API documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo +stable doc --locked --no-deps
       - name: Check browser JavaScript
         run: |
           for source in ui/*.js; do node --check "$source" || exit 1; done

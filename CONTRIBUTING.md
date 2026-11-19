@@ -10,6 +10,7 @@ Use stable Rust with `rustfmt` and `clippy`, and Node.js 24. The browser UI is s
 cargo fmt --all --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked
+RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps
 (for source in ui/*.js; do node --check "$source" || exit 1; done)
 node --test tests/*.test.mjs
 ```
