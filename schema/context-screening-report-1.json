@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave context screening report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "selection", "scorer", "sources", "total_pairs", "pairs"],
+  "properties": {
+    "version": { "const": 1 },
+    "selection": { "$ref": "#/$defs/selection" },
+    "scorer": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["model_id", "revision", "runtime"],
+      "properties": {
+        "model_id": { "type": "string", "pattern": "\\S" },
+        "revision": { "type": "string", "pattern": "\\S" },
+        "runtime": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+    "total_pairs": { "type": "integer", "minimum": 0 },
+    "pairs": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/pair" } }
+  },
+  "$defs": {
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version"],
+      "properties": {
+        "version": { "const": 1 },
+        "context_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "pair_limit": { "type": "integer", "minimum": 1, "maximum": 256, "default": 64 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_id", "kind", "text_sha256"],
+      "properties": {
+        "context_id": { "type": "string", "minLength": 1 },
+        "source_id": { "type": ["string", "null"] },
+        "source_version": { "type": ["string", "null"] },
+        "kind": { "type": "string" },
+        "role": { "type": ["string", "null"] },
+        "request_fragment": {
+          "anyOf": [
+            { "$ref": "evidence-1.json#/$defs/context/properties/request_fragment" },
+            { "type": "null" }
+          ]
+        },
+        "text_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "suggestion", "status"],
+      "properties": {
+        "sources": {
+          "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "suggestion": { "enum": [null, "exact_text_reuse", "possible_conflict", "possible_overlap"] },
+        "status": { "enum": ["exact", "scored", "unscored"] },
+        "left_to_right": { "$ref": "#/$defs/scores" },
+        "right_to_left": { "$ref": "#/$defs/scores" },
+        "reason": { "enum": ["no_scorer", "too_long", "unavailable"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "scored" } } },
+          "then": { "required": ["left_to_right", "right_to_left"] }
+        },
+        {
+          "if": { "properties": { "status": { "const": "unscored" } } },
+          "then": { "required": ["reason"], "properties": { "suggestion": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "exact" } } },
+          "then": { "properties": { "suggestion": { "const": "exact_text_reuse" } } }
+        }
+      ]
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contradiction", "entailment", "neutral"],
+      "properties": {
+        "contradiction": { "$ref": "#/$defs/score" },
+        "entailment": { "$ref": "#/$defs/score" },
+        "neutral": { "$ref": "#/$defs/score" }
+      }
+    },
+    "score": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

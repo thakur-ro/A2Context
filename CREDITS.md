@@ -16,6 +16,7 @@
 - The retail reference comparison uses `agentpile` as a trace viewer. [agentpile](https://github.com/yzhao062/agentpile)
 - The saved local replay examples use Liquid AI’s LFM2.5-1.2B-Instruct model through MLX LM. The repository ships synthetic requests and recorded trial outcomes for these examples. [Liquid AI model card](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct), [MLX LM](https://github.com/ml-explore/mlx-lm)
 - The cross-runtime experiment also uses the Qwen team's Qwen2.5-0.5B-Instruct checkpoint through Transformers and PyTorch. The repository includes the measured reports and synthetic inputs. [Pinned Qwen model card](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/tree/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2), [Transformers](https://github.com/huggingface/transformers), [PyTorch](https://github.com/pytorch/pytorch)
+- The optional context scorer uses Sentence Transformers' Apache-2.0 MiniLM cross-encoder, trained on SNLI and MultiNLI. IHEval provides related evaluation work on instruction hierarchy under conflict. [Pinned MiniLM model card](https://huggingface.co/cross-encoder/nli-MiniLM2-L6-H768/tree/b95119ce93d3e065de6214e38cd4a97b0f2f2c6d) · [SNLI](https://aclanthology.org/D15-1075/) · [MultiNLI](https://aclanthology.org/N18-1101/) · [IHEval](https://aclanthology.org/2025.naacl-long.425/)
 
 ## Interoperability
 

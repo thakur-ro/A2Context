@@ -123,11 +123,13 @@ function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
   let maskReplay = false;
   let candidateProbe = false;
   let shadowProbe = false;
+  let contextToReview = false;
   for (const { run, call } of turn.calls) {
     const key = contextCallKey({ run_id: run.id, call_id: call.id });
     const check = preflightChecksByCall.get(key);
     candidateProbe ||= candidateProbesByCall.get(key)?.some(({ status }) => status === "matched") ?? false;
     shadowProbe ||= shadowProbesByCall.get(key)?.some(({ status }) => status === "matched") ?? false;
+    contextToReview ||= contextScreenForCall(run, call)?.report?.pairs.some(({ suggestion }) => suggestion) ?? false;
     preflightConflicts += check?.report?.findings.filter(({ kind }) => kind === "conflict").length ?? 0;
     for (const { item } of contextPatternsByCall.get(key) || []) links.add(JSON.stringify([key, item.context_id]));
     conflicts += callFindings(run.id, call.id).filter(({ kind }) => kind === "conflict").length;
@@ -143,6 +145,7 @@ function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
     preflightConflicts && countLabel(preflightConflicts, "preflight conflict"),
     candidateProbe && "Candidate preference measured",
     shadowProbe && "Shadow proposal probe",
+    contextToReview && "Context pairs to review",
     conflicts && countLabel(conflicts, "conflict"), links.size && countLabel(links.size, "linked input"),
     maskReplay ? "Saved masked replays" : visibility && "Measured source effects",
     measured && "Measured replay", changed && "Context changed",
@@ -499,6 +502,7 @@ function renderConversationEvidence() {
   renderRecordedPreflight(details, run, call, true);
   renderRecordedCandidateProbes(details, run, call, true);
   renderRecordedShadowProbes(details, run, call, true);
+  renderContextScreen(details, run, call, true);
   if (decision && decision.kind !== "model_output") {
     evidenceSection(details, "Recorded outcome", !findings.length && !links.length, (section) => {
       section.append(node("pre", decision.outcome === null ? "Outcome unavailable" : readable(decision.outcome)));

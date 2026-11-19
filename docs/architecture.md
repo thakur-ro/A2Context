@@ -5,14 +5,16 @@ NexusWeave connects an assembled inference request to a turn, a measured effect,
 ```mermaid
 flowchart TD
     accTitle: Evidence before and after a model call
-    accDescr: Preflight and both pending probes use the assembled request. Recorded calls can carry matching preflight receipts and candidate or shadow reports.
+    accDescr: Preflight, context screening, and both pending probes use the assembled request. Recorded calls can carry their matching reports.
     A[Assembled request] --> M[Model call]
     A --> P[Preflight check]
+    A --> N[Context screening]
     A --> B[Candidate probe]
     A --> S[Shadow probe]
     S -->|Report| T
     B -->|Report| T
     P -->|Receipt| T
+    N -->|Report| T
     M --> T[Recorded trace]
     T --> I[Turn evidence and context links]
     I --> R[Controlled replay or runtime probe]
@@ -25,6 +27,7 @@ flowchart TD
 | Question | How it works | What you can conclude |
 | --- | --- | --- |
 | **Preflight** | Resolve source declarations against the assembled input. Group their rule values by exact key and scope. Compare the known JSON values for equality. | Declared values for the same rule disagree, agree, or are incomplete. |
+| **Context screening** | Compare pairs of captured text for exact equality. An optional language model scores entailment and contradiction in both directions on nonidentical pairs. | You can locate reused text and shortlist source pairs for review. The scores describe the selected text and classifier. |
 | **Candidate probe** | Use the pending request and exact source edits to score two known token sequences at the same fixed assistant prefix. Compare the edited and original log odds. | You can measure how an edit shifted the model's preference between those two candidates before committing a decision. |
 | **Shadow probe** | Run the original pending request and exact source edits through a proposal-only runner. Compare how often each result matches a declared outcome. | You can measure a change in proposal rate using the model's returned answer, tool name, or arguments. |
 | **Trace inspection** | Normalize spans and messages into calls, context items, decisions, and tool results. Join tool calls to later results by invocation ID. Follow declared relationships and exact matches such as tool names or IDs. | Captured inputs establish what was available. A link gives you a source to investigate. |

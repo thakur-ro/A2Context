@@ -456,6 +456,7 @@ function renderDecision() {
   renderRecordedPreflight(context, run, call, false);
   renderRecordedCandidateProbes(context, run, call, false);
   renderRecordedShadowProbes(context, run, call, false);
+  renderContextScreen(context, run, call, false);
   if (call.context_metadata) {
     const { issue, evidence: anchor } = call.context_metadata;
     const declaration = node("div", undefined, issue ? "finding insufficient_evidence" : "context-declaration");
@@ -522,6 +523,7 @@ function renderTimeline() {
     renderRecordedPreflight(row, run, call, false);
     renderRecordedCandidateProbes(row, run, call, false);
     renderRecordedShadowProbes(row, run, call, false);
+    renderContextScreen(row, run, call, false);
     renderTimelineFindings(row, run, call);
     const replays = replaysByCall.get(JSON.stringify([run.id, call.id]));
     if (replays) {
@@ -1352,6 +1354,7 @@ async function start() {
     if (!response.ok) throw new Error("HTTP " + response.status);
     data = await response.json();
     for (const check of data.preflight_checks || []) preflightChecksByCall.set(contextCallKey(check), check);
+    for (const screen of data.context_screens || []) screensByCall.set(contextCallKey(screen), screen);
     for (const [probes, index] of [[data.candidate_probes, candidateProbesByCall], [data.shadow_probes, shadowProbesByCall]]) {
       for (const probe of probes || []) {
         const key = contextCallKey(probe);

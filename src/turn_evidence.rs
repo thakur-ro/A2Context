@@ -1,6 +1,8 @@
 //! Paginated evidence for a recorded decision and its turn.
 
-use crate::{activation, inspect, preflight::Verification, replay, Call, ContextItem, Run};
+use crate::{
+    activation, context_screening, inspect, preflight::Verification, replay, Call, ContextItem, Run,
+};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -94,6 +96,25 @@ pub fn query<'a>(
         .clone()
         .map(|probe| shadow_summary(probe, include_excerpts))
         .collect();
+    let screen = inspection
+        .context_screens
+        .iter()
+        .find(|screen| screen.call_id == call.id);
+    let screen_report = screen.and_then(|screen| match &screen.verification {
+        context_screening::Verification::Matched { report } => Some(*report),
+        context_screening::Verification::Unverified { .. } => None,
+    });
+    let screen_rows = screen_report.into_iter().flat_map(|report| {
+        let flagged = report.pairs.iter().filter(|pair| pair.suggestion.is_some());
+        let remaining = report.pairs.iter().filter(|pair| pair.suggestion.is_none());
+        flagged.chain(remaining).map(move |pair| json!({
+            "kind": "context_screen_pair", "suggestion": pair.suggestion, "assessment": pair.assessment,
+            "inputs": pair.sources.iter().filter_map(|&index| {
+                let id = &report.sources[index].context_id;
+                call.context.iter().find(|item| &item.id == id).map(|item| context_ref(item, include_excerpts))
+            }).collect::<Vec<_>>(),
+        }))
+    });
     let at_decision = |call_id: &str, id: &str| call_id == call.id && decision_id == Some(id);
     let findings = inspection
         .findings
@@ -196,6 +217,7 @@ pub fn query<'a>(
         .chain(candidate_probes.flat_map(|probe| candidate_rows(probe, include_excerpts)))
         .chain(shadow_probes.flat_map(|probe| shadow_rows(probe, include_excerpts)))
         .chain(finding_rows)
+        .chain(screen_rows)
         .chain(annotation_rows)
         .chain(link_rows)
         .chain(replay_rows)
@@ -234,6 +256,20 @@ pub fn query<'a>(
     }
     if !shadow_summary.is_empty() {
         result["shadow_probes"] = json!(shadow_summary);
+    }
+    if let Some(screen) = screen {
+        use context_screening::Verification;
+        result["context_screening"] = match &screen.verification {
+            Verification::Matched { report } => json!({
+                "status": "matched", "anchor": screen.evidence, "scorer": report.scorer,
+                "compared_pairs": report.pairs.len(), "total_pairs": report.total_pairs,
+                "flagged_pairs": report.pairs.iter().filter(|pair| pair.suggestion.is_some()).count(),
+                "unscored_pairs": report.pairs.iter().filter(|pair| matches!(pair.assessment, context_screening::Assessment::Unscored { .. })).count(),
+            }),
+            Verification::Unverified { issue } => json!({
+                "status": "unverified", "anchor": screen.evidence, "issue": issue,
+            }),
+        };
     }
     Ok(result)
 }

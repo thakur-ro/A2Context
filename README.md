@@ -24,6 +24,8 @@ cargo run --locked -- preflight examples/preflight-returns.json
 
 The report finds one conflict because the policy and FAQ declare different values for the same rule and scope. It identifies both source versions and their exact locations in the request. Preflight makes no model call. [Integrate preflight](docs/guide.md#check-context-before-inference)
 
+For captured text without rule declarations, context screening finds exact reuse and can use a local model to flag possible overlap or conflict. [Try context screening](docs/guide.md#screen-captured-text-for-overlap)
+
 ## Choose an investigation
 
 | Question | Where to start |

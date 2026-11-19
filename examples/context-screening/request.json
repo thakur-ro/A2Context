@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "attributes": {
+    "gen_ai.request.model": "support-demo",
+    "gen_ai.input.messages": [
+      {
+        "role": "system",
+        "parts": [
+          {
+            "type": "text",
+            "content": "Customers can view their own receipts."
+          }
+        ]
+      },
+      {
+        "role": "developer",
+        "parts": [
+          {
+            "type": "text",
+            "content": "Customers can view their own receipts."
+          }
+        ]
+      },
+      {
+        "role": "developer",
+        "parts": [
+          {
+            "type": "text",
+            "content": "Customers are allowed to view their own receipts."
+          }
+        ]
+      },
+      {
+        "role": "developer",
+        "parts": [
+          {
+            "type": "text",
+            "content": "Customers cannot view their own receipts."
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "content": "Document the shipping address for each order."
+          }
+        ]
+      },
+      {
+        "role": "system",
+        "parts": [
+          {
+            "type": "text",
+            "content": "The maximum return period for a journal is exactly 30 days."
+          }
+        ]
+      },
+      {
+        "role": "developer",
+        "parts": [
+          {
+            "type": "text",
+            "content": "The maximum return period for a journal is exactly 60 days."
+          }
+        ]
+      }
+    ]
+  }
+}

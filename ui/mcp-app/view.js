@@ -214,7 +214,7 @@ function renderProbePatterns(page, back) {
 }
 
 function renderTurn(page) {
-  const { counts, rows, preflight, candidate_probes = [], shadow_probes = [] } = page.data;
+  const { counts, rows, preflight, context_screening: screening, candidate_probes = [], shadow_probes = [] } = page.data;
   result.append(element("p", [
     countLabel(counts.rule_findings, "finding"),
     countLabel(counts.context_links, "context link"),
@@ -225,6 +225,12 @@ function renderTurn(page) {
       ? countLabel(preflight.finding_count, "finding") + " from the workflow's preflight check"
       : preflight.issue;
     result.append(element("p", "Preflight · " + summary, "muted"));
+  }
+  if (screening) {
+    const summary = screening.status === "matched" ?
+      countLabel(screening.flagged_pairs, "pair") + " to review · " + screening.compared_pairs + " of " + screening.total_pairs + " pairs screened" :
+      screening.issue;
+    result.append(element("p", "Context screening · " + summary, "muted"));
   }
   if (page.data.captured_excerpts_enabled && !page.args.include_excerpts) {
     result.append(button("Show captured text", () => requestPage(
@@ -302,6 +308,19 @@ function renderTurn(page) {
       const range = item.text_range ? " · UTF-8 bytes " + item.text_range.start_byte + " to " + item.text_range.end_byte : "";
       row.append(element("small", item.pointer + range));
       appendExcerpt(row, item.replacement_excerpt);
+    } else if (item.kind === "context_screen_pair") {
+      const status = item.suggestion?.replaceAll("_", " ") || (item.assessment.status === "scored" ? "no pair flagged" : item.assessment.reason.replaceAll("_", " "));
+      row.append(element("h2", "Context screen · " + status));
+      for (const input of item.inputs) {
+        row.append(element("p", [input.source_id || input.context_id, input.role, input.anchor?.field].filter(Boolean).join(" · ")));
+        appendExcerpt(row, input.excerpt);
+      }
+      if (item.assessment.status === "scored") {
+        const scores = new Intl.NumberFormat(undefined, {style: "percent", maximumFractionDigits: 1});
+        const format = (direction) => Object.entries(direction).map(([name, value]) => name + " " + scores.format(value)).join(" · ");
+        row.append(element("p", "First → second · " + format(item.assessment.left_to_right), "muted"),
+          element("p", "Second → first · " + format(item.assessment.right_to_left), "muted"));
+      }
     } else if (item.kind === "shadow_probe_effect") {
       const range = item.text_range ? " · UTF-8 bytes " + item.text_range.start_byte + " to " + item.text_range.end_byte : "";
       row.append(element("h2", "Shadow edit · " + [item.source_id || item.context_id, item.source_version].filter(Boolean).join(" · ")),

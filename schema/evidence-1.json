@@ -176,6 +176,19 @@
             }
           }
         },
+        "context_screening": {
+          "type": ["object", "null"],
+          "required": ["evidence"],
+          "properties": {
+            "evidence": { "$ref": "#/$defs/evidence" },
+            "report": {
+              "anyOf": [
+                { "$ref": "context-screening-report-1.json" },
+                { "type": "null" }
+              ]
+            }
+          }
+        },
         "context": {
           "type": "array",
           "items": {

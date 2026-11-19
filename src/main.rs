@@ -1,6 +1,6 @@
 use nexusweave::{
-    activation, add_annotations, exgentic, inspect, langsmith, otlp, preflight, replay,
-    replay_effects, Annotation, Run,
+    activation, add_annotations, context_screening, exgentic, inspect, langsmith, otlp, preflight,
+    replay, replay_effects, Annotation, Evidence, Run,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -23,6 +23,8 @@ const USAGE: &str = "Usage:
   nexusweave rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>
   nexusweave validate <evidence.json> [...]
   nexusweave preflight <request.json|->
+  nexusweave screen-context <request.json> <selection.json|-> <report.json> [-- <scorer> [args...]]
+  nexusweave screen-recorded-context <evidence.json> <run-id> <call-id> <selection.json|-> <output.json> [-- <scorer> [args...]]
   nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
   nexusweave shadow <request.json> <case.json> <report.json> -- <runner> [args...]
   nexusweave query-conflicts <view.json> <evidence.json> [...]
@@ -128,6 +130,46 @@ fn run(args: Vec<String>) -> Result<()> {
             serde_json::to_writer_pretty(std::io::stdout().lock(), &report)?;
             println!();
         }
+        ["screen-context", request, selection, output, args @ ..] => {
+            let screen = ContextScreen::from_args(selection, output, args)?;
+            let request = serde_json::from_reader(fs::File::open(request)?)?;
+            let report = context_screening::screen_pending(request, &screen.selection, |batch| {
+                screen.score(batch)
+            })?;
+            write_new(output, &serde_json::to_vec_pretty(&report)?)?;
+            println!(
+                "Screened {} of {} context pairs to {output}.",
+                report.pairs.len(),
+                report.total_pairs
+            );
+        }
+        ["screen-recorded-context", input, run_id, call_id, selection, output, args @ ..] => {
+            let screen = ContextScreen::from_args(selection, output, args)?;
+            let mut runs = read_runs(&[input])?;
+            validate_loaded_runs(&runs)?;
+            let call = runs
+                .iter_mut()
+                .find(|run| run.id == *run_id)
+                .and_then(|run| run.calls.iter_mut().find(|call| call.id == *call_id))
+                .ok_or("The selected context screening call is unavailable.")?;
+            let report = context_screening::screen_call(call, &screen.selection, |batch| {
+                screen.score(batch)
+            })?;
+            let (screened, total) = (report.pairs.len(), report.total_pairs);
+            call.context_screening = Some(context_screening::CapturedReport {
+                evidence: Evidence {
+                    span_id: call.span_id.clone(),
+                    field: "local.context_screening".into(),
+                    message_index: None,
+                    part_index: None,
+                },
+                report: Some(report),
+            });
+            write_new(output, &serde_json::to_vec_pretty(&runs)?)?;
+            println!(
+                "Screened {screened} of {total} context pairs and saved evidence to {output}."
+            );
+        }
         ["probe-candidates", request, specification, output, "--", program, scorer_args @ ..] => {
             if Path::new(output).exists() {
                 return Err(format!("candidate probe output already exists: {output}").into());
@@ -200,6 +242,40 @@ fn run(args: Vec<String>) -> Result<()> {
         _ => return Err(USAGE.into()),
     }
     Ok(())
+}
+
+struct ContextScreen<'a> {
+    selection: context_screening::Selection,
+    scorer: Option<(&'a str, &'a [&'a str])>,
+}
+
+impl<'a> ContextScreen<'a> {
+    fn from_args(selection: &str, output: &str, args: &'a [&'a str]) -> Result<Self> {
+        if Path::new(output).exists() {
+            return Err(format!("context screening output already exists: {output}").into());
+        }
+        let scorer = match args {
+            [] => None,
+            ["--", program, arguments @ ..] => Some((*program, arguments)),
+            _ => return Err("Pass the scorer command and its arguments after --.".into()),
+        };
+        let selection = if selection == "-" {
+            context_screening::Selection::default()
+        } else {
+            serde_json::from_reader(fs::File::open(selection)?)?
+        };
+        Ok(Self { selection, scorer })
+    }
+
+    fn score(
+        &self,
+        batch: &context_screening::ScoringRequest<'_>,
+    ) -> std::result::Result<Option<context_screening::ScoringResult>, String> {
+        self.scorer
+            .map(|(program, args)| run_json(program, args, batch, Stdio::inherit()))
+            .transpose()
+            .map_err(|error| error.to_string())
+    }
 }
 
 fn sample(program: &str, arguments: &[&str], request: &Value) -> Option<replay::Choice> {
@@ -458,6 +534,7 @@ fn serialize_inspection(
                     call.recorded_request.is_some()
                         || call.candidate_probes.is_some()
                         || call.shadow_probes.is_some()
+                        || call.context_screening.is_some()
                 }) {
                     return Cow::Borrowed(run);
                 }
@@ -466,6 +543,7 @@ fn serialize_inspection(
                     call.recorded_request = None;
                     call.candidate_probes = None;
                     call.shadow_probes = None;
+                    call.context_screening = None;
                 }
                 Cow::Owned(run)
             })
@@ -709,6 +787,11 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 200,
                 "text/javascript; charset=utf-8",
                 include_bytes!("../ui/conversation.js").as_slice(),
+            ),
+            (true, &Method::Get, "/context-screening.js") => (
+                200,
+                "text/javascript; charset=utf-8",
+                include_bytes!("../ui/context-screening.js").as_slice(),
             ),
             (true, &Method::Get, "/activation.js") => (
                 200,

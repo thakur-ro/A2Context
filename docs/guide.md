@@ -8,7 +8,7 @@ Traces show what was recorded. Conflict checks use declared rules, and replay ef
 
 | Start with | Follow this path |
 | --- | --- |
-| An assembled request | [Check declared rules](#check-context-before-inference) → [Score alternatives](#measure-candidate-preference-before-a-decision) or [compare shadow proposals](#test-context-with-shadow-proposals) |
+| An assembled request | [Check declared rules](#check-context-before-inference) or [screen captured text](#screen-captured-text-for-overlap) → [Score alternatives](#measure-candidate-preference-before-a-decision) or [compare shadow proposals](#test-context-with-shadow-proposals) |
 | A recorded answer or action | [Import OTLP](#import-opentelemetry-traces) or [LangSmith](#import-langsmith-traces) → [Inspect a decision](#investigate-an-unfamiliar-decision) → [Replay one source edit](#test-a-context-item-with-a-controlled-replay) |
 | A thread with changing context | [Follow changes across calls](#follow-context-changes-through-a-thread) → [Compare two decisions](#compare-two-recorded-decisions) |
 | A question across sessions | [Group conflicts](#group-recurring-conflicts), [compare candidate shifts](#find-recurring-candidate-preference-shifts), or [compare proposal shifts](#find-recurring-shadow-proposal-shifts) → Open a contributing turn |
@@ -58,6 +58,48 @@ cargo run --locked -- serve "$demo_dir/evidence.json"
 ```
 
 Open **Conversation** and select the turn evidence. Under **Preflight**, expand either source to see its original text and request range beside the 60-day answer. The chronological **Timeline** shows the same check on the inference call. If the captured inputs differ from the receipt or are unavailable, the inspector shows why the check could not be verified. The MCP `get_turn_evidence` tool returns the verification status and matching findings, with declared values available when captured excerpts are enabled and requested. [Open the local inspector](http://127.0.0.1:8040)
+
+## Screen captured text for overlap
+
+Context screening compares the text already captured for one inference call. It can find exact reuse and use a separate scorer to flag possible conflict or overlap, even when the workflow supplies no rule declarations. Try the saved local MiniLM experiment.
+
+```sh
+cargo run --locked -- serve examples/context-screening/evidence.json
+```
+
+Open **Context screening** on the turn. The seven captured messages yield 21 pairs. The saved report identifies one exact repeat, two possible overlaps, and four possible conflicts. Expand a pair to inspect both messages and, where scored, their model scores. The example includes a pair with opposing receipt permissions and another with different exact return periods. The recorded workflow answer is synthetic. [Saved evidence](../examples/context-screening/evidence.json)
+
+Run the same screen before inference with a versioned input that contains the text in GenAI attributes. Use `-` for the default selection. Omit the scorer command for an exact-text screen.
+
+```sh
+out_dir=$(mktemp -d)
+cargo run --locked -- screen-context examples/context-screening/request.json - "$out_dir/exact.json"
+```
+
+For semantic screening, install PyTorch and Transformers and download the pinned files. The adapter reads complete English text pairs and leaves pairs over its 512-token limit unscored. [Pinned MiniLM snapshot](https://huggingface.co/cross-encoder/nli-MiniLM2-L6-H768/tree/b95119ce93d3e065de6214e38cd4a97b0f2f2c6d) · [Adapter](../scripts/score_minilm_context.py)
+
+```sh
+model_dir=$(mktemp -d)
+hf download cross-encoder/nli-MiniLM2-L6-H768 \
+  config.json model.safetensors tokenizer.json tokenizer_config.json special_tokens_map.json \
+  --revision b95119ce93d3e065de6214e38cd4a97b0f2f2c6d --local-dir "$model_dir"
+cargo run --locked -- screen-context examples/context-screening/request.json - "$out_dir/semantic.json" -- \
+  python3 scripts/score_minilm_context.py "$model_dir"
+```
+
+To narrow the scope, supply a selection JSON file with `version: 1`, optional `context_ids`, and optional `pair_limit`. Inputs are selected in capture order. The report includes the number of pairs in the selection and screens the first 64 by default, up to 256. Exact copies bypass the scorer. A possible conflict means both directions score at least 0.8 for contradiction. A possible overlap means both directions score at least 0.8 for entailment. These thresholds shortlist pairs for review. Read the source scope and roles alongside the scores.
+
+You can also screen captures that are already in the inspector. The command below writes a copy of the evidence with a new screen on the specified call. Substitute the recorded run and call IDs from your own import when using it with your workflow.
+
+```sh
+cargo run --locked -- screen-recorded-context examples/context-screening/evidence.json \
+  otlp:11111111111111111111111111111111 2222222222222222 - "$out_dir/screened.json" -- \
+  python3 scripts/score_minilm_context.py "$model_dir"
+```
+
+To connect a different scorer, read one JSON object from stdin with `version: 1` and `pairs` containing `id`, `left`, and `right`. Return one object with `version: 1`, `scorer` containing `model_id`, `revision`, and `runtime`, and one result per input pair in the same order. A result carries its `id` and either `status: "scored"` with `left_to_right` and `right_to_left` distributions or `status: "unscored"` with `reason: "too_long"` or `"unavailable"`. Each distribution has `contradiction`, `entailment`, and `neutral` scores summing to one within `0.0001`. The selected scorer receives the captured text.
+
+Attach a pending report to the inference call as `nexusweave.context_screening`. For OTLP, use a JSON string attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `nexusweave.span.id` to the inference run's exact ID. NexusWeave matches the captured selection and text digests and checks that the scores and labels follow the report contract. The inspector shows which sources were screened on the recorded call. MCP `get_turn_evidence` includes the scores and anchors, with text available under the existing excerpt setting. [Report and selection schema](../schema/context-screening-report-1.json)
 
 ## Measure candidate preference before a decision
 
