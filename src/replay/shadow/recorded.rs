@@ -6,7 +6,7 @@ use super::super::{
     Intervention, MatchRule, Matcher, ReplayInterval, SamplingDesign, Summary, Trial,
 };
 use super::{named, Report, VERSION};
-use crate::{Call, Evidence};
+use crate::{Call, ContextItem, Evidence};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -54,6 +54,10 @@ pub struct Measurement<'a> {
 /// One effect resolved to its source on the recorded call.
 #[derive(Debug, Serialize)]
 pub struct RecordedEffect<'a> {
+    #[serde(skip)]
+    pub(super) context: &'a ContextItem,
+    #[serde(skip)]
+    pub(super) captured_context_sha256: &'a str,
     pub context_id: &'a str,
     pub source_id: Option<&'a str>,
     pub source_version: Option<&'a str>,
@@ -212,6 +216,8 @@ fn verify<'a>(
             ));
         }
         effects.push(RecordedEffect {
+            context: source,
+            captured_context_sha256: &variant.captured_context_sha256,
             context_id: &source.id,
             source_id: source.source_id.as_deref(),
             source_version: source.source_version.as_deref(),

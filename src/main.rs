@@ -27,6 +27,7 @@ const USAGE: &str = "Usage:
   nexusweave shadow <request.json> <case.json> <report.json> -- <runner> [args...]
   nexusweave query-conflicts <view.json> <evidence.json> [...]
   nexusweave query-candidate-patterns <view.json> <evidence.json> [...]
+  nexusweave query-shadow-patterns <view.json> <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
   nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
@@ -172,11 +173,17 @@ fn run(args: Vec<String>) -> Result<()> {
             serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
             println!();
         }
-        ["query-candidate-patterns", spec, paths @ ..] if !paths.is_empty() => {
+        [command @ ("query-candidate-patterns" | "query-shadow-patterns"), spec, paths @ ..]
+            if !paths.is_empty() =>
+        {
             let runs = read_runs(paths)?;
             validate_loaded_runs(&runs)?;
             let spec = serde_json::from_reader(fs::File::open(spec)?)?;
-            let page = replay::candidates::patterns::query(&spec, &runs)?;
+            let page = if *command == "query-candidate-patterns" {
+                replay::candidates::patterns::query(&spec, &runs)?
+            } else {
+                replay::shadow::patterns::query(&spec, &runs, true)?
+            };
             serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
             println!();
         }

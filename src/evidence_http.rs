@@ -40,6 +40,9 @@ pub fn route<'a>(
         "/api/candidate-patterns" => query(request, |input| {
             replay::candidates::patterns::query(input, runs)
         }),
+        "/api/shadow-patterns" => query(request, |input| {
+            replay::shadow::patterns::query(input, runs, true)
+        }),
         "/api/context-sources" => query(request, |input| {
             source_profiles::query::query(input, runs, replays, reports)
         }),

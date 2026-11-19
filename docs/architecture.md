@@ -30,7 +30,7 @@ flowchart TD
 | **Trace inspection** | Normalize spans and messages into calls, context items, decisions, and tool results. Join tool calls to later results by invocation ID. Follow declared relationships and exact matches such as tool names or IDs. | Captured inputs establish what was available. A link gives you a source to investigate. |
 | **Controlled replay** | Sample the original request and variants with selected sources removed or replaced. Score each result against the same answer, tool, or argument criterion. Subtract the baseline match rate from the variant's match rate. | The difference measures how the selected edit affected the scored outcome under those replay conditions. |
 | **Runtime probe** | Use an instrumented local runtime to mask selected prompt sources or swap activations, then compare output token scores or continuations with a baseline. | The measurements describe effects at the tested positions for that model and intervention. |
-| **Patterns** | Group findings and measurements by scope and their comparison keys. For example, candidate probes group verified measurements with matching model revision, tokenizer, scorer, prefix, ordered alternatives, source content and version, and edit. | You can see where comparable evidence repeats and inspect the contributing calls. |
+| **Patterns** | Group findings and measurements by scope and their comparison keys. Candidate groups match token scoring setups. Shadow groups match the runner, sampling design, proposal criterion, and source edit. | You can see where comparable evidence repeats and inspect the contributing calls. |
 
 ### From a rule conflict to a recorded turn
 

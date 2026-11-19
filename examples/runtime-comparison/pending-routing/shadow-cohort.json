@@ -1,0 +1,1048 @@
+[
+  {
+    "id": "routing-north-17",
+    "run_type": "llm",
+    "name": "Choose a product tool",
+    "start_time": "2026-01-15T12:00:00Z",
+    "inputs": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes."
+        },
+        {
+          "role": "user",
+          "content": "Request type: stock."
+        },
+        {
+          "role": "user",
+          "content": "Product ID: 17."
+        },
+        {
+          "role": "user",
+          "content": "Background: the store’s name is Alder."
+        },
+        {
+          "role": "user",
+          "content": "Please handle the request now."
+        }
+      ],
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "stock",
+            "description": "Read stock availability for a product.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id"
+              ]
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "price",
+            "description": "Read the current price for a product.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "extra": {
+      "metadata": {
+        "organization_id": "retail-north",
+        "user_id": "routing-demo",
+        "thread_id": "trace-north-17",
+        "turn_id": "product-route",
+        "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+        "nexusweave.span.id": "routing-north-17",
+        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 17.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "nexusweave.context.semantics": {
+          "version": 1,
+          "request_sources": [
+            {
+              "id": "request-type",
+              "source_id": "request-type",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 20
+                }
+              }
+            },
+            {
+              "id": "store-name",
+              "source_id": "store-name",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/3/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 40
+                }
+              }
+            }
+          ]
+        },
+        "nexusweave.shadow_probes": [
+          {
+            "version": 1,
+            "id": "routing-north-17-shadow",
+            "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+            "expected": {
+              "kind": "tool_call",
+              "label": "price",
+              "outcome": null
+            },
+            "match_rule": {
+              "kind": "kind_and_label"
+            },
+            "sampling_design": "unspecified",
+            "captured_request_sha256": "6af408091c705c98a9bcbd841cf8ea9c0b4a6e77d6ecb1087f9e30c2fbfe5c1c",
+            "baseline": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "tool_call",
+                  "label": "stock",
+                  "outcome": {
+                    "product_id": 17
+                  }
+                }
+              }
+            ],
+            "baseline_summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "effects": [
+              {
+                "source_id": "request-type",
+                "source_version": "v1",
+                "evidence": {
+                  "span_id": null,
+                  "field": "nexusweave.request.body",
+                  "message_index": null,
+                  "part_index": null
+                },
+                "request_sha256": "53d075e3cf8da2b396235c2cbe885fc042422c94ce05acfefcee1be13521efc7",
+                "intervention": {
+                  "context_id": "request-source:request-type",
+                  "pointer": "/messages/1/content",
+                  "operation": "replace_text_fragment",
+                  "text_range": {
+                    "start_byte": 0,
+                    "end_byte": 20
+                  },
+                  "replacement": "Request type: price."
+                },
+                "captured_context_sha256": "a1513ea1ccb0b944efa351130f03826bac1cf6d11ef9dc4cf66401a8d87fb84c",
+                "trials": [
+                  {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 17
+                      }
+                    }
+                  }
+                ],
+                "summary": {
+                  "attempted": 1,
+                  "completed": 1,
+                  "matched": 1
+                },
+                "difference_pp": 100.0
+              },
+              {
+                "source_id": "store-name",
+                "source_version": "v1",
+                "evidence": {
+                  "span_id": null,
+                  "field": "nexusweave.request.body",
+                  "message_index": null,
+                  "part_index": null
+                },
+                "request_sha256": "37bb180d5ca0b273425acc3f8f698c9bb79d2592174498ff660b0f43825b148f",
+                "intervention": {
+                  "context_id": "request-source:store-name",
+                  "pointer": "/messages/3/content",
+                  "operation": "replace_text_fragment",
+                  "text_range": {
+                    "start_byte": 0,
+                    "end_byte": 40
+                  },
+                  "replacement": "Background: the store’s name is Rowan."
+                },
+                "captured_context_sha256": "7f6728c126d6232e6fc10cb7e0d765fd818ae85d39bbfc32103d528375e816ad",
+                "trials": [
+                  {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 17
+                      }
+                    }
+                  }
+                ],
+                "summary": {
+                  "attempted": 1,
+                  "completed": 1,
+                  "matched": 0
+                },
+                "difference_pp": 0.0
+              }
+            ],
+            "pair": {
+              "request_sha256": "7eb13ee58da83c6e341401d94cb720602db50e81c9f70a0a02e33f0051a514dc",
+              "trials": [
+                {
+                  "status": "completed",
+                  "choice": {
+                    "kind": "tool_call",
+                    "label": "price",
+                    "outcome": {
+                      "product_id": 17
+                    }
+                  }
+                }
+              ],
+              "summary": {
+                "attempted": 1,
+                "completed": 1,
+                "matched": 1
+              },
+              "difference_pp": 100.0,
+              "interaction_pp": 0.0
+            },
+            "control_comparison": {
+              "control_context_id": "request-source:store-name",
+              "target_minus_control_pp": 100.0
+            }
+          }
+        ]
+      }
+    },
+    "outputs": {
+      "messages": [
+        {
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "id": "product-route",
+              "name": "stock",
+              "args": {
+                "product_id": 17
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "routing-north-88",
+    "run_type": "llm",
+    "name": "Choose a product tool",
+    "start_time": "2026-01-16T12:00:00Z",
+    "inputs": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes."
+        },
+        {
+          "role": "user",
+          "content": "Request type: stock."
+        },
+        {
+          "role": "user",
+          "content": "Product ID: 88."
+        },
+        {
+          "role": "user",
+          "content": "Background: the store’s name is Alder."
+        },
+        {
+          "role": "user",
+          "content": "Please check current product availability."
+        }
+      ],
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "stock",
+            "description": "Read stock availability for a product.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id"
+              ]
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "price",
+            "description": "Read the current price for a product.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "extra": {
+      "metadata": {
+        "organization_id": "retail-north",
+        "user_id": "routing-demo",
+        "thread_id": "trace-north-88",
+        "turn_id": "product-route",
+        "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+        "nexusweave.span.id": "routing-north-88",
+        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 88.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please check current product availability.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "nexusweave.context.semantics": {
+          "version": 1,
+          "request_sources": [
+            {
+              "id": "request-type",
+              "source_id": "request-type",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 20
+                }
+              }
+            },
+            {
+              "id": "store-name",
+              "source_id": "store-name",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/3/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 40
+                }
+              }
+            }
+          ]
+        },
+        "nexusweave.shadow_probes": [
+          {
+            "version": 1,
+            "id": "routing-north-88-shadow",
+            "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+            "expected": {
+              "kind": "tool_call",
+              "label": "price",
+              "outcome": null
+            },
+            "match_rule": {
+              "kind": "kind_and_label"
+            },
+            "sampling_design": "unspecified",
+            "captured_request_sha256": "115409e13ee7514efc8d6f29758b01f0c4a97fa1b77337b890c36cd44f57cd18",
+            "baseline": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "tool_call",
+                  "label": "stock",
+                  "outcome": {
+                    "product_id": 88
+                  }
+                }
+              }
+            ],
+            "baseline_summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "effects": [
+              {
+                "source_id": "request-type",
+                "source_version": "v1",
+                "evidence": {
+                  "span_id": null,
+                  "field": "nexusweave.request.body",
+                  "message_index": null,
+                  "part_index": null
+                },
+                "request_sha256": "645218bfa56178cb2bc74088500b32d3d4b6d87eec6077561c54fef14b71dd12",
+                "intervention": {
+                  "context_id": "request-source:request-type",
+                  "pointer": "/messages/1/content",
+                  "operation": "replace_text_fragment",
+                  "text_range": {
+                    "start_byte": 0,
+                    "end_byte": 20
+                  },
+                  "replacement": "Request type: price."
+                },
+                "captured_context_sha256": "a1513ea1ccb0b944efa351130f03826bac1cf6d11ef9dc4cf66401a8d87fb84c",
+                "trials": [
+                  {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 88
+                      }
+                    }
+                  }
+                ],
+                "summary": {
+                  "attempted": 1,
+                  "completed": 1,
+                  "matched": 1
+                },
+                "difference_pp": 100.0
+              },
+              {
+                "source_id": "store-name",
+                "source_version": "v1",
+                "evidence": {
+                  "span_id": null,
+                  "field": "nexusweave.request.body",
+                  "message_index": null,
+                  "part_index": null
+                },
+                "request_sha256": "6e8a5cf22ca4d197c905c2a3eee4cf0dd022069f348378ccf89ec65138d33473",
+                "intervention": {
+                  "context_id": "request-source:store-name",
+                  "pointer": "/messages/3/content",
+                  "operation": "replace_text_fragment",
+                  "text_range": {
+                    "start_byte": 0,
+                    "end_byte": 40
+                  },
+                  "replacement": "Background: the store’s name is Rowan."
+                },
+                "captured_context_sha256": "7f6728c126d6232e6fc10cb7e0d765fd818ae85d39bbfc32103d528375e816ad",
+                "trials": [
+                  {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 88
+                      }
+                    }
+                  }
+                ],
+                "summary": {
+                  "attempted": 1,
+                  "completed": 1,
+                  "matched": 0
+                },
+                "difference_pp": 0.0
+              }
+            ],
+            "pair": {
+              "request_sha256": "8f71ffa2a4d2bf15420371620ebfcd8dc275c63eb0145aa5f8b2f0a1e36c3ec3",
+              "trials": [
+                {
+                  "status": "completed",
+                  "choice": {
+                    "kind": "tool_call",
+                    "label": "price",
+                    "outcome": {
+                      "product_id": 88
+                    }
+                  }
+                }
+              ],
+              "summary": {
+                "attempted": 1,
+                "completed": 1,
+                "matched": 1
+              },
+              "difference_pp": 100.0,
+              "interaction_pp": 0.0
+            },
+            "control_comparison": {
+              "control_context_id": "request-source:store-name",
+              "target_minus_control_pp": 100.0
+            }
+          }
+        ]
+      }
+    },
+    "outputs": {
+      "messages": [
+        {
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "id": "product-route",
+              "name": "stock",
+              "args": {
+                "product_id": 88
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "routing-south-52",
+    "run_type": "llm",
+    "name": "Choose a product tool",
+    "start_time": "2026-01-16T14:00:00Z",
+    "inputs": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes."
+        },
+        {
+          "role": "user",
+          "content": "Request type: stock."
+        },
+        {
+          "role": "user",
+          "content": "Product ID: 52."
+        },
+        {
+          "role": "user",
+          "content": "Background: the store’s name is Alder."
+        },
+        {
+          "role": "user",
+          "content": "Please use the provided request details."
+        }
+      ],
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "stock",
+            "description": "Read stock availability for a product.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id"
+              ]
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
+            "name": "price",
+            "description": "Read the current price for a product.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "extra": {
+      "metadata": {
+        "organization_id": "retail-south",
+        "user_id": "routing-demo",
+        "thread_id": "trace-south-52",
+        "turn_id": "product-route",
+        "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+        "nexusweave.span.id": "routing-south-52",
+        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 52.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please use the provided request details.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "nexusweave.context.semantics": {
+          "version": 1,
+          "request_sources": [
+            {
+              "id": "request-type",
+              "source_id": "request-type",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 20
+                }
+              }
+            },
+            {
+              "id": "store-name",
+              "source_id": "store-name",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/3/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 40
+                }
+              }
+            }
+          ]
+        },
+        "nexusweave.shadow_probes": [
+          {
+            "version": 1,
+            "id": "routing-south-52-shadow",
+            "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+            "expected": {
+              "kind": "tool_call",
+              "label": "price",
+              "outcome": null
+            },
+            "match_rule": {
+              "kind": "kind_and_label"
+            },
+            "sampling_design": "unspecified",
+            "captured_request_sha256": "42bf805adc4ed8be10b18690e69a965d4178075c6f1ceec8381604712ff2deda",
+            "baseline": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "tool_call",
+                  "label": "stock",
+                  "outcome": {
+                    "product_id": 52
+                  }
+                }
+              }
+            ],
+            "baseline_summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "effects": [
+              {
+                "source_id": "request-type",
+                "source_version": "v1",
+                "evidence": {
+                  "span_id": null,
+                  "field": "nexusweave.request.body",
+                  "message_index": null,
+                  "part_index": null
+                },
+                "request_sha256": "013fcff5797c9c047f40f52b68ba76b1f8648bef4aed2a706bc4fbc00bc47c91",
+                "intervention": {
+                  "context_id": "request-source:request-type",
+                  "pointer": "/messages/1/content",
+                  "operation": "replace_text_fragment",
+                  "text_range": {
+                    "start_byte": 0,
+                    "end_byte": 20
+                  },
+                  "replacement": "Request type: price."
+                },
+                "captured_context_sha256": "a1513ea1ccb0b944efa351130f03826bac1cf6d11ef9dc4cf66401a8d87fb84c",
+                "trials": [
+                  {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 52
+                      }
+                    }
+                  }
+                ],
+                "summary": {
+                  "attempted": 1,
+                  "completed": 1,
+                  "matched": 1
+                },
+                "difference_pp": 100.0
+              },
+              {
+                "source_id": "store-name",
+                "source_version": "v1",
+                "evidence": {
+                  "span_id": null,
+                  "field": "nexusweave.request.body",
+                  "message_index": null,
+                  "part_index": null
+                },
+                "request_sha256": "e428410b9fd403a077f53f03a9c66de381f89a244acf46ef6b6ef58d9d63499e",
+                "intervention": {
+                  "context_id": "request-source:store-name",
+                  "pointer": "/messages/3/content",
+                  "operation": "replace_text_fragment",
+                  "text_range": {
+                    "start_byte": 0,
+                    "end_byte": 40
+                  },
+                  "replacement": "Background: the store’s name is Rowan."
+                },
+                "captured_context_sha256": "7f6728c126d6232e6fc10cb7e0d765fd818ae85d39bbfc32103d528375e816ad",
+                "trials": [
+                  {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 52
+                      }
+                    }
+                  }
+                ],
+                "summary": {
+                  "attempted": 1,
+                  "completed": 1,
+                  "matched": 0
+                },
+                "difference_pp": 0.0
+              }
+            ],
+            "pair": {
+              "request_sha256": "da0607ca43db3cb30504ae979f1233b41e88b780cbf9e761b89bde143b869971",
+              "trials": [
+                {
+                  "status": "completed",
+                  "choice": {
+                    "kind": "tool_call",
+                    "label": "price",
+                    "outcome": {
+                      "product_id": 52
+                    }
+                  }
+                }
+              ],
+              "summary": {
+                "attempted": 1,
+                "completed": 1,
+                "matched": 1
+              },
+              "difference_pp": 100.0,
+              "interaction_pp": 0.0
+            },
+            "control_comparison": {
+              "control_context_id": "request-source:store-name",
+              "target_minus_control_pp": 100.0
+            }
+          }
+        ]
+      }
+    },
+    "outputs": {
+      "messages": [
+        {
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "id": "product-route",
+              "name": "stock",
+              "args": {
+                "product_id": 52
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "routing-south-stock-only",
+    "run_type": "llm",
+    "name": "Choose a product tool",
+    "start_time": "2026-01-17T12:00:00Z",
+    "inputs": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock."
+        },
+        {
+          "role": "user",
+          "content": "Request type: stock."
+        },
+        {
+          "role": "user",
+          "content": "Product ID: 52."
+        },
+        {
+          "role": "user",
+          "content": "Background: the store’s name is Alder."
+        },
+        {
+          "role": "user",
+          "content": "Please use the provided request details."
+        }
+      ],
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "stock",
+            "description": "Read stock availability for a product.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "extra": {
+      "metadata": {
+        "organization_id": "retail-south",
+        "user_id": "routing-demo",
+        "thread_id": "trace-south-stock-only",
+        "turn_id": "product-route",
+        "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+        "nexusweave.span.id": "routing-south-stock-only",
+        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 52.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please use the provided request details.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "nexusweave.context.semantics": {
+          "version": 1,
+          "request_sources": [
+            {
+              "id": "request-type",
+              "source_id": "request-type",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 20
+                }
+              }
+            },
+            {
+              "id": "store-name",
+              "source_id": "store-name",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/3/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 40
+                }
+              }
+            }
+          ]
+        },
+        "nexusweave.shadow_probes": [
+          {
+            "version": 1,
+            "id": "routing-south-stock-only-shadow",
+            "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+            "expected": {
+              "kind": "tool_call",
+              "label": "price",
+              "outcome": null
+            },
+            "match_rule": {
+              "kind": "kind_and_label"
+            },
+            "sampling_design": "unspecified",
+            "captured_request_sha256": "eb092ab6b64d7217b753e9ef47d646e6ed402398092513273758990d1b1a1592",
+            "baseline": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "tool_call",
+                  "label": "stock",
+                  "outcome": {
+                    "product_id": 52
+                  }
+                }
+              }
+            ],
+            "baseline_summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "effects": [
+              {
+                "source_id": "request-type",
+                "source_version": "v1",
+                "evidence": {
+                  "span_id": null,
+                  "field": "nexusweave.request.body",
+                  "message_index": null,
+                  "part_index": null
+                },
+                "request_sha256": "7cce9153561ca8227b3dec1ab981f73684bd1ae4c9bdcc70908cd0fa172f2249",
+                "intervention": {
+                  "context_id": "request-source:request-type",
+                  "pointer": "/messages/1/content",
+                  "operation": "replace_text_fragment",
+                  "text_range": {
+                    "start_byte": 0,
+                    "end_byte": 20
+                  },
+                  "replacement": "Request type: price."
+                },
+                "captured_context_sha256": "a1513ea1ccb0b944efa351130f03826bac1cf6d11ef9dc4cf66401a8d87fb84c",
+                "trials": [
+                  {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 52
+                      }
+                    }
+                  }
+                ],
+                "summary": {
+                  "attempted": 1,
+                  "completed": 1,
+                  "matched": 0
+                },
+                "difference_pp": 0.0
+              },
+              {
+                "source_id": "store-name",
+                "source_version": "v1",
+                "evidence": {
+                  "span_id": null,
+                  "field": "nexusweave.request.body",
+                  "message_index": null,
+                  "part_index": null
+                },
+                "request_sha256": "0bc7e7c3e5a99fa1ea4b24f0e6a8ddf4a1d7e1cca71d608f6c3355479174180c",
+                "intervention": {
+                  "context_id": "request-source:store-name",
+                  "pointer": "/messages/3/content",
+                  "operation": "replace_text_fragment",
+                  "text_range": {
+                    "start_byte": 0,
+                    "end_byte": 40
+                  },
+                  "replacement": "Background: the store’s name is Rowan."
+                },
+                "captured_context_sha256": "7f6728c126d6232e6fc10cb7e0d765fd818ae85d39bbfc32103d528375e816ad",
+                "trials": [
+                  {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 52
+                      }
+                    }
+                  }
+                ],
+                "summary": {
+                  "attempted": 1,
+                  "completed": 1,
+                  "matched": 0
+                },
+                "difference_pp": 0.0
+              }
+            ],
+            "pair": {
+              "request_sha256": "1033d48635ec0db2cabf2fe7be9860c0bdc97ad28a3815887caaf97fc26348d1",
+              "trials": [
+                {
+                  "status": "completed",
+                  "choice": {
+                    "kind": "tool_call",
+                    "label": "stock",
+                    "outcome": {
+                      "product_id": 52
+                    }
+                  }
+                }
+              ],
+              "summary": {
+                "attempted": 1,
+                "completed": 1,
+                "matched": 0
+              },
+              "difference_pp": 0.0,
+              "interaction_pp": 0.0
+            },
+            "control_comparison": {
+              "control_context_id": "request-source:store-name",
+              "target_minus_control_pp": 0.0
+            }
+          }
+        ]
+      }
+    },
+    "outputs": {
+      "messages": [
+        {
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "id": "product-route",
+              "name": "stock",
+              "args": {
+                "product_id": 52
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

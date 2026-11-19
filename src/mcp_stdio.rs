@@ -29,6 +29,7 @@ const GENERATION_BRANCHES: &str = "get_generation_branches";
 const SOURCE_VISIBILITY: &str = "query_source_visibility";
 const VISIBILITY_PATTERNS: &str = "query_visibility_patterns";
 const CANDIDATE_PATTERNS: &str = "query_candidate_patterns";
+const SHADOW_PATTERNS: &str = "query_shadow_patterns";
 const APP_URI: &str = "ui://nexusweave/conflict-evidence.html";
 const APP_MIME: &str = "text/html;profile=mcp-app";
 const APP: &str = include_str!("../ui/mcp-app.html");
@@ -158,16 +159,16 @@ struct Inspector {
 
 impl Inspector {
     fn new(source: Source, allow_excerpts: bool) -> serde_json::Result<Self> {
-        let (file_reports, has_candidates) = match &source {
-            Source::Files(evidence) => (
-                Some(evidence.activations.as_slice()),
-                evidence
-                    .runs
-                    .iter()
-                    .flat_map(|run| &run.calls)
-                    .any(|call| call.candidate_probes.is_some()),
-            ),
-            Source::Live(_) => (None, true),
+        let (file_reports, has_candidates, has_shadow) = match &source {
+            Source::Files(evidence) => {
+                let mut calls = evidence.runs.iter().flat_map(|run| &run.calls);
+                (
+                    Some(evidence.activations.as_slice()),
+                    calls.clone().any(|call| call.candidate_probes.is_some()),
+                    calls.any(|call| call.shadow_probes.is_some()),
+                )
+            }
+            Source::Live(_) => (None, true, true),
         };
         let conflict: JsonObject =
             serde_json::from_str(include_str!("../schema/conflict-view-1.json"))?;
@@ -199,6 +200,11 @@ impl Inspector {
         if has_candidates {
             definitions.push(tool(CANDIDATE_PATTERNS,
                 "Find recurring candidate preference shifts for comparable probe setups. Select a group key for contributing turns. Compare scopes or time windows without pooling their measurements.",
+                serde_json::from_str(include_str!("../schema/candidate-pattern-query-1.json"))?).with_meta(ui()));
+        }
+        if has_shadow {
+            definitions.push(tool(SHADOW_PATTERNS,
+                "Compare recurring changes in a declared proposal's match rate, with source edits and contributing turns. Open turn evidence to inspect the outcome when captured excerpts are available.",
                 serde_json::from_str(include_str!("../schema/candidate-pattern-query-1.json"))?).with_meta(ui()));
         }
         if file_reports
@@ -355,6 +361,7 @@ fn execute_query<'a>(
             activation::visibility::patterns::query(&from_arguments(args)?, runs, reports)
         }
         CANDIDATE_PATTERNS => replay::candidates::patterns::query(&from_arguments(args)?, runs),
+        SHADOW_PATTERNS => replay::shadow::patterns::query(&from_arguments(args)?, runs, false),
         _ => Err("This tool is unavailable.".into()),
     }
 }

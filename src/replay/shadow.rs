@@ -3,6 +3,7 @@
 //! The runner returns a model proposal for each request. It can use an API that
 //! exposes generated outputs without exposing token scores.
 
+pub mod patterns;
 mod recorded;
 
 pub(crate) use recorded::recorded;

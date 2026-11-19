@@ -11,7 +11,7 @@ Traces show what was recorded. Conflict checks use declared rules, and replay ef
 | An assembled request | [Check declared rules](#check-context-before-inference) → [Score alternatives](#measure-candidate-preference-before-a-decision) or [compare shadow proposals](#test-context-with-shadow-proposals) |
 | A recorded answer or action | [Import OTLP](#import-opentelemetry-traces) or [LangSmith](#import-langsmith-traces) → [Inspect a decision](#investigate-an-unfamiliar-decision) → [Replay one source edit](#test-a-context-item-with-a-controlled-replay) |
 | A thread with changing context | [Follow changes across calls](#follow-context-changes-through-a-thread) → [Compare two decisions](#compare-two-recorded-decisions) |
-| A question across sessions | [Group conflicts](#group-recurring-conflicts) or [compare measured candidate shifts](#find-recurring-candidate-preference-shifts) → Open a contributing turn |
+| A question across sessions | [Group conflicts](#group-recurring-conflicts), [compare candidate shifts](#find-recurring-candidate-preference-shifts), or [compare proposal shifts](#find-recurring-shadow-proposal-shifts) → Open a contributing turn |
 | Access to an instrumented model | [Follow influence across an answer](#follow-context-influence-across-an-answer) → [Test source visibility](#test-source-visibility-on-a-recorded-answer) or [compare masked continuations](#continue-decoding-with-sources-masked) |
 | A workflow to integrate | [Declare sources](#declare-context-sources-and-decision-scope) → [Send traces](#receive-live-opentelemetry-traces) or [emit evidence directly](#emit-evidence-from-another-workflow) → [Connect an MCP client](#connect-an-mcp-client) |
 
@@ -176,6 +176,31 @@ cargo run --locked -- serve "$demo_dir/evidence.json"
 ```
 
 The demo puts the saved Qwen shadow report beside a recorded `stock` proposal. Under **Shadow probes** on the turn, expand `request-type` to see the original text, exact request range, and replacement next to its +100 percentage point change in `price(42)` proposals. The same report appears on the model call in **Timeline** and in **Decisions**. MCP `get_turn_evidence` returns the verification, counts, and paginated effects. Enable and request captured excerpts to see the expected outcome and replacement text through MCP. [Open the local inspector](http://127.0.0.1:8040)
+
+### Find recurring shadow proposal shifts
+
+The cohort compares four local Qwen2.5 shadow probes. The first three requests offer both `stock` and `price`. Editing the request type changes the proposal to `price` in each. The fourth request offers only `stock` and instructs the model to use it. The same edit leaves that proposal at `stock`. Renaming the store preserves the `stock` proposal across all four calls. Each condition used one greedy trial. The run identifiers, owners, and dates are synthetic. [Saved cohort](../examples/runtime-comparison/pending-routing/shadow-cohort.json)
+
+```sh
+demo_dir=$(mktemp -d)
+cargo run --locked -- import-langsmith examples/runtime-comparison/pending-routing/shadow-cohort.json "$demo_dir/evidence.json"
+cargo run --locked -- serve "$demo_dir/evidence.json"
+```
+
+In **Patterns → Shadow proposal shifts**, select **User · retail-north / routing-demo**, enter `request-type` under **Source**, and select **Organization · retail-south** under **Compare with**. North shows two increases of +100 percentage points. South shows one increase and one unchanged result. **See contributing turns** lists the baseline and edited trial counts in time order. Use **Open source on turn** to open the exact edited source. From that source on a turn, **Find recurring proposal shifts** opens the pattern view for the current user and source. Use the thread and UTC date filters to narrow either side. [Open the local inspector](http://127.0.0.1:8040)
+
+Groups require the same named source, captured content, version, role and kind, edit, runner, sampling design, and proposal criterion. The criterion follows the report's match rule. The demo tracks tool kind and name, so product IDs can differ across trials. A rule that scores selected argument fields requires the same expected values for those fields. Each scope reports its own range of measured shifts and counts of increased, decreased, unchanged, and unavailable comparisons. **Recurring only** requires scored comparisons in at least two identified conversations in either scope. Open a contributing turn to inspect the joint and negative-control comparisons.
+
+The CLI, local API, and MCP share the probe pattern query format. Save a view such as the one below as `shadow-view.json`. Use `nexusweave query-shadow-patterns shadow-view.json <evidence.json>`, `POST /api/shadow-patterns`, or MCP `query_shadow_patterns`. Pass a returned `key` as `group` to page through contributing calls. In MCP, use turn evidence with captured excerpts to inspect the tracked target label and exact outcome. [Query schema](../schema/candidate-pattern-query-1.json)
+
+```json
+{
+  "version": 1,
+  "source_id": "request-type",
+  "selection": { "scope": { "kind": "user", "organization_id": "retail-north", "user_id": "routing-demo" } },
+  "compare": { "scope": { "kind": "organization", "organization_id": "retail-south" } }
+}
+```
 
 ## Try a decision replay
 

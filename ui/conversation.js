@@ -239,7 +239,7 @@ function currentConversationRow() {
 }
 
 function selectConversationStep({ run, call, decision }) {
-  Object.assign(state, { run, call, decision, reference: undefined, candidateLink: undefined });
+  Object.assign(state, { run, call, decision, reference: undefined, probeLink: undefined });
 }
 
 function openConversation(run, call, decision = 0) {
@@ -325,6 +325,7 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
     const context = new Map(call.context.map((item) => [item.id, item]));
     for (const probe of probes) {
       const card = node("article", undefined, "finding");
+      card.dataset.probeKind = "probe";
       card.dataset.probeReport = probe.report_id ?? "";
       if (probe.status === "unverified") {
         card.append(node("h3", "Could not verify candidate probe"), node("p", probe.issue));
@@ -348,7 +349,7 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
             node("pre", effect.replacement || "Empty replacement"));
           if (effect.source_id?.trim()) {
             const recurring = node("button", "Find recurring shifts");
-            recurring.addEventListener("click", () => openCandidatePatterns(run, effect.source_id));
+            recurring.addEventListener("click", () => openProbePatterns("candidates", run, effect.source_id));
             source.append(recurring);
           }
           const row = node("div", undefined, "conversation-link");
@@ -363,40 +364,47 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
   });
 }
 
-function focusCandidateSource(report, source) {
+function focusProbeSource(kind, report, source) {
   const card = [...element("conversation-details").querySelectorAll("[data-probe-report]")]
-    .find((item) => item.dataset.probeReport === report);
+    .find((item) => item.dataset.probeKind === kind && item.dataset.probeReport === report);
   const detail = card && [...card.querySelectorAll("[data-probe-source]")].find((item) => item.dataset.probeSource === source);
   if (!detail) return false;
   card.closest("details").open = true;
   detail.open = true;
   detail.querySelector("summary").focus();
-  state.candidateLink = { report, source };
+  state.probeLink = { kind, report, source };
   return true;
+}
+
+function shadowTrialCounts({ matched, attempted, completed, unscored = 0 }) {
+  return [
+    matched + " of " + attempted + " matched",
+    attempted > completed && countLabel(attempted - completed, "failed trial"),
+    unscored && countLabel(unscored, "unscored trial"),
+  ].filter(Boolean).join(" · ");
+}
+
+function shadowContrast(value, interval) {
+  return value === null
+    ? "comparison unavailable"
+    : activationMargin.format(value) + " pp" + (interval ? " · 95% bounds " + interval.lower + " to " + interval.upper + " pp" : "");
 }
 
 function renderRecordedShadowProbes(parent, run, call, open) {
   const probes = shadowProbesByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
   if (!probes?.length) return;
-  const count = ({ matched, attempted, completed, unscored = 0 }) => [
-    matched + " of " + attempted + " matched",
-    attempted > completed && countLabel(attempted - completed, "failed trial"),
-    unscored && countLabel(unscored, "unscored trial"),
-  ].filter(Boolean).join(" · ");
-  const contrast = (value, interval) => value === null
-    ? "comparison unavailable"
-    : activationMargin.format(value) + " pp" + (interval ? " · 95% bounds " + interval.lower + " to " + interval.upper + " pp" : "");
-
   evidenceSection(parent, "Shadow probes · " + countLabel(probes.length, "report"), open, (section) => {
     const context = new Map(call.context.map((item) => [item.id, item]));
     for (const probe of probes) {
       const card = node("article", undefined, "finding");
+      card.dataset.probeKind = "shadow";
+      card.dataset.probeReport = probe.report_id ?? "";
       if (probe.status === "unverified") {
         card.append(node("h3", "Could not verify shadow probe"), node("p", probe.issue));
       } else {
         const { expected, baseline, effects, pair, control_comparison: control, runner_id: runner, match_rule: rule } = probe.measurement;
         card.append(node("h3", "Tracked proposal · " + expected.label),
-          node("p", "Original request · " + count(baseline)), node("p", runner, "muted"));
+          node("p", "Original request · " + shadowTrialCounts(baseline)), node("p", runner, "muted"));
         const expectedDetails = node("details");
         expectedDetails.append(node("summary", "Proposal and match rule"),
           node("small", (labels[expected.kind] || expected.kind) + " · " + rule.kind.replaceAll("_", " "), "anchor"),
@@ -407,22 +415,28 @@ function renderRecordedShadowProbes(parent, run, call, open) {
         for (const effect of effects) {
           const { pointer, text_range: range, operation = "replace_text", replacement } = effect.intervention;
           const source = contextDetails(context.get(effect.context_id), false);
+          source.dataset.probeSource = effect.context_id;
           source.append(node("small", "Edited request path " + requestFieldLabel(pointer, range), "anchor"),
             node("p", operation.replaceAll("_", " ")));
           if (operation !== "remove_json") source.append(node("pre", replacement || "Empty replacement"));
+          if (effect.source_id?.trim()) {
+            const recurring = node("button", "Find recurring proposal shifts");
+            recurring.addEventListener("click", () => openProbePatterns("shadow", run, effect.source_id));
+            source.append(recurring);
+          }
           const row = node("div", undefined, "conversation-link");
-          row.append(source, node("p", "After edit · " + count(effect.summary)),
-            node("small", "Shift · " + contrast(effect.difference_pp, effect.difference_95_interval_pp), "muted"));
+          row.append(source, node("p", "After edit · " + shadowTrialCounts(effect.summary)),
+            node("small", "Shift · " + shadowContrast(effect.difference_pp, effect.difference_95_interval_pp), "muted"));
           card.append(row);
         }
         if (pair) {
-          card.append(node("p", "Joint edit · " + count(pair.summary) + " · " + contrast(pair.difference_pp, pair.difference_95_interval_pp)),
-            node("small", "Interaction · " + contrast(pair.interaction_pp, pair.interaction_95_interval_pp), "muted"));
+          card.append(node("p", "Joint edit · " + shadowTrialCounts(pair.summary) + " · " + shadowContrast(pair.difference_pp, pair.difference_95_interval_pp)),
+            node("small", "Interaction · " + shadowContrast(pair.interaction_pp, pair.interaction_95_interval_pp), "muted"));
         }
         if (control) {
           const source = effects.find((effect) => effect.intervention.context_id === control.control_context_id);
           card.append(node("p", "Target vs control (" + (source?.source_id ?? source?.context_id ?? control.control_context_id) + ") · "
-            + contrast(control.target_minus_control_pp, control.target_minus_control_95_interval_pp)));
+            + shadowContrast(control.target_minus_control_pp, control.target_minus_control_95_interval_pp)));
         }
       }
       card.append(evidence(probe.evidence));

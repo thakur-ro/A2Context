@@ -147,9 +147,10 @@ function inspectionLink(reference = state.reference) {
   switch (state.view) {
     case "conversation":
       writeLocation(params, state);
-      if (state.candidateLink) {
-        params.set("probe", state.candidateLink.report);
-        params.set("probe_source", state.candidateLink.source);
+      if (state.probeLink) {
+        const { kind, report, source } = state.probeLink;
+        params.set(kind, report);
+        params.set(kind + "_source", source);
       }
       if (reference) {
         params.set("view", "decisions");
@@ -178,7 +179,7 @@ function inspectionLink(reference = state.reference) {
       }
       if (kind === "breakdown") writeConflictBreakdownLink(params);
       else if (kind === "visibility") writeVisibilityPatternLink(params);
-      else if (kind === "candidates") writeCandidatePatternLink(params);
+      else if (isProbePattern(kind)) writeProbePatternLink(params);
       else if (element("pattern-search").value) params.set("q", element("pattern-search").value);
       if (kind === "sources") writeSourceProfileLink(params);
       if (kind === "context") {
@@ -254,7 +255,7 @@ function restorePatternLink(params) {
   if (activation) activationPatternBlock = Number(params.get("block")) || 0;
   const datesAvailable = activation ? restoreActivationDateLink(params)
     : kind === "sources" ? restoreSourceProfileLink(params)
-    : kind === "candidates" ? restoreCandidatePatternLink(params)
+    : isProbePattern(kind) ? restoreProbePatternLink(params)
     : kind !== "visibility" || restoreVisibilityPatternLink(params);
   const compare = supportsScopeComparison(element("pattern-type").value);
   const comparisonScope = compare ? params.get("scope_b") ?? "" : "";
@@ -297,9 +298,10 @@ function restoreInspectionLink() {
         return false;
       }
       openConversation(position.run, position.call, position.decision);
-      if (params.has("probe") || params.has("probe_source")) {
-        if (!focusCandidateSource(params.get("probe"), params.get("probe_source"))) {
-          unavailableLink("The linked candidate probe source is unavailable on this call.");
+      const probe = ["probe", "shadow"].find((kind) => params.has(kind) || params.has(kind + "_source"));
+      if (probe) {
+        if (!focusProbeSource(probe, params.get(probe), params.get(probe + "_source"))) {
+          unavailableLink("The linked probe source is unavailable on this call.");
         }
       } else currentConversationRow()?.button.focus();
       return true;

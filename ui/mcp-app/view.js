@@ -40,7 +40,7 @@ function openPage(page, back, focus = false) {
   else if (page.kind === "evidence") renderEvidence(page, back);
   else if (page.kind === "activation_groups") renderActivationGroups(page, back);
   else if (page.kind === "activation_evidence") renderActivationEvidence(page, back);
-  else if (page.kind.startsWith("candidate_pattern_")) renderCandidatePatterns(page, back);
+  else if (page.kind.startsWith("candidate_pattern_") || page.kind.startsWith("shadow_pattern_")) renderProbePatterns(page, back);
   else if (page.kind.startsWith("visibility_")) renderVisibility(result, page, requestPage, pageControls);
   else renderTurn(page);
   if (focus) {
@@ -146,58 +146,67 @@ function turnLocation({ run_id, call_id, decision }) {
   return { run_id, call_id, decision_id: decision?.id };
 }
 
-const candidatePatternTool = "query_candidate_patterns";
-
-function candidateGroupName({ source_id, source_version, candidate_ids }) {
-  return [source_id, source_version, candidate_ids.join(" vs ")].filter(Boolean).join(" · ");
+function probeGroupName({ source_id, source_version, candidate_ids, expected_kind }) {
+  return [source_id, source_version, candidate_ids?.join(" vs ") ?? expected_kind?.replaceAll("_", " ")].filter(Boolean).join(" · ");
 }
 
-function appendCandidateStats(parent, stats, label) {
+function appendProbeStats(parent, stats, label, shadow) {
   if (label) parent.append(element("h3", label));
   if (!stats) {
     parent.append(element("p", "No comparable measurements", "muted"));
     return;
   }
-  const range = stats.min_change_log_odds === stats.max_change_log_odds
-    ? signed.format(stats.min_change_log_odds)
-    : signed.format(stats.min_change_log_odds) + " to " + signed.format(stats.max_change_log_odds);
-  parent.append(element("p", stats.reversals + " of " + stats.measurements + " edits reversed preference · " + range + " log odds"),
-    element("p", [countLabel(stats.calls, "call"), countLabel(stats.conversations, "identified conversation"),
-      countLabel(stats.organizations, "organization")].join(" · "), "muted"));
+  const min = shadow ? stats.min_difference_pp : stats.min_change_log_odds;
+  const max = shadow ? stats.max_difference_pp : stats.max_change_log_odds;
+  const range = min == null ? "No measured shift" :
+    (min === max ? signed.format(min) : signed.format(min) + " to " + signed.format(max)) + (shadow ? " pp" : " log odds");
+  const counts = shadow
+    ? [range, stats.increased && stats.increased + " increased", stats.decreased && stats.decreased + " decreased",
+      stats.unchanged && stats.unchanged + " unchanged", stats.unavailable && stats.unavailable + " unavailable"].filter(Boolean)
+    : [stats.reversals + " of " + stats.measurements + " edits reversed preference", range];
+  const conversations = shadow ? countLabel(stats.measured_conversations, "conversation") + " with scored comparisons" :
+    countLabel(stats.conversations, "identified conversation");
+  parent.append(element("p", counts.join(" · ")), element("p",
+    [countLabel(stats.calls, "call"), conversations, countLabel(stats.organizations, "organization")].join(" · "), "muted"));
 }
 
-function renderCandidatePatterns(page, back) {
+function renderProbePatterns(page, back) {
   const data = page.data;
-  if (data.kind === "candidate_pattern_groups") {
+  const shadow = data.kind.startsWith("shadow_");
+  const tool = shadow ? "query_shadow_patterns" : "query_candidate_patterns";
+  if (data.kind.endsWith("_groups")) {
     result.append(element("p", countLabel(data.total_groups, "probe setup"), "muted"));
     for (const group of data.groups) {
       const row = element("section", undefined, "row");
-      const title = candidateGroupName(group.setup);
-      row.append(button(title, () => requestPage(candidatePatternTool,
+      const title = probeGroupName(group.setup);
+      row.append(button(title, () => requestPage(tool,
         { ...page.args, group: group.key, offset: 0, compare_offset: 0 }, title, { page, previous: back })));
-      row.append(element("p", group.setup.model_id + " · " + group.setup.model_revision, "muted"));
-      appendCandidateStats(row, group.primary, data.compared ? "Scope A" : "");
-      if (data.compared) appendCandidateStats(row, group.comparison, "Scope B");
+      const method = shadow ? [group.setup.runner_id, group.setup.match_rule.replaceAll("_", " ")] :
+        [group.setup.model_id, group.setup.model_revision];
+      row.append(element("p", method.join(" · "), "muted"));
+      appendProbeStats(row, group.primary, data.compared ? "Scope A" : "", shadow);
+      if (data.compared) appendProbeStats(row, group.comparison, "Scope B", shadow);
       result.append(row);
     }
-    pageControls(page, candidatePatternTool, back);
+    pageControls(page, tool, back);
     return;
   }
   const sides = data.compared ? [data.primary, data.comparison] : [data.primary];
   sides.forEach((side, index) => {
     const section = element("section", undefined, "row");
     const stats = index ? data.group.comparison : data.group.primary;
-    appendCandidateStats(section, stats, data.compared ? "Scope " + (index ? "B" : "A") : "");
+    appendProbeStats(section, stats, data.compared ? "Scope " + (index ? "B" : "A") : "", shadow);
     for (const item of side.rows) {
       const label = item.conversation_id || item.run_id;
       section.append(button(label, () => requestPage("get_turn_evidence", { run_id: item.run_id, call_id: item.call_id }, label, { page, previous: back })),
         element("p", [item.started_at, item.organization_id, item.user_id, item.context_id].filter(Boolean).join(" · "), "muted"),
-        element("p", signed.format(item.baseline_log_odds) + " → " + signed.format(item.edited_log_odds) + " log odds"));
+        element("p", shadow ? shadowCounts(item.baseline) + " → " + shadowCounts(item.edited) + " · " + proposalShift(item.difference_pp)
+          : signed.format(item.baseline_log_odds) + " → " + signed.format(item.edited_log_odds) + " log odds"));
       const path = element("details");
       path.append(element("summary", "Local source link"), element("code", item.inspector_path));
       section.append(path);
     }
-    pageControls(page, candidatePatternTool, back, {
+    pageControls(page, tool, back, {
       container: section, offsetKey: index ? "compare_offset" : "offset", next: side.next_offset,
     });
     result.append(section);
@@ -462,7 +471,9 @@ app.ontoolresult = (response) => {
       activation_groups: () => "Recurring activation effects",
       activation_evidence: () => activationTitle(data.group),
       candidate_pattern_groups: () => "Candidate preference shifts",
-      candidate_pattern_evidence: () => candidateGroupName(data.group.setup),
+      candidate_pattern_evidence: () => probeGroupName(data.group.setup),
+      shadow_pattern_groups: () => "Shadow proposal shifts",
+      shadow_pattern_evidence: () => probeGroupName(data.group.setup),
       turn_evidence: () => "Turn evidence",
     };
     const title = Object.hasOwn(titles, data.kind) ? titles[data.kind]() : visibilityTitle(data);
