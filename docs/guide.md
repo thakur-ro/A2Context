@@ -911,7 +911,7 @@ Named targets group by key, model revision, runtime, tokenizer, and source ident
 
 ### Compare measured tool routes
 
-The synthetic routing cohort contains seven measured proposals across six conversations, four scoped users, and two organizations. One north conversation has two measured turns. Its second request includes the prior user request and assistant reply in the model input. The saved reports open without model weights. [Cohort inputs](../examples/runtime-comparison/visibility-routing-cohort/cohort.json)
+The synthetic routing cohort contains seven measured proposals and 28 saved masked continuations across six conversations, four scoped users, and two organizations. One north conversation has two measured turns. Its second request includes the prior user request and assistant reply in the model input. The saved reports open without model weights. [Cohort inputs](../examples/runtime-comparison/visibility-routing-cohort/cohort.json)
 
 ```sh
 cargo run --locked -- serve \
@@ -920,6 +920,10 @@ cargo run --locked -- serve \
 ```
 
 In **Patterns → Masked-source effects**, set **Align by** to `routing.tool` and **Source** to `stock`. Set **Recorded tool** to `stock`, then set **Compare with** to **All imported runs** and **Recorded tool (B)** to `price`. Open the `stock` definition group to see the measured turns on both sides. Use the organization, user, and thread filters or the UTC timeline to narrow the same comparison. Each contributing turn shows which tool the model proposed.
+
+Read **Replayed** under each scope or UTC period to see how many decisions had a saved continuation for that mask and output span. The stock-definition comparison shows three tool changes on the `stock` side and four matching proposals on the `price` side. Open a contributing turn's **Open masked continuation** link to read its output. For HTTP and MCP, the same counts are in `continuation_outcomes.decisions_tested` and `continuation_outcomes.by_outcome`, with `decision_count` giving the denominator.
+
+Each decision contributes one outcome per group. Multiple continuations with the same category count once. If the saved outcomes differ, the group counts that decision as mixed. Tool changes take precedence over argument changes within one continuation. Token limits and unparsed proposals have their own categories. Only observed categories appear in `by_outcome`.
 
 Apply the same comparison through the HTTP endpoint or the MCP tool. The `tool_name` filter matches the recorded proposal on its side and works with both single-source effects and pair interactions. A named output lets the same source group include different proposed names. [Query schema](../schema/visibility-pattern-query-1.json)
 

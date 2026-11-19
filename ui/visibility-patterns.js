@@ -253,6 +253,18 @@ function visibilityGroupLabel(group) {
     [source_id, source_version].filter(Boolean).join(" · ")).join(" + ");
 }
 
+function visibilityReplaySummary(group) {
+  const replay = group.continuation_outcomes;
+  if (!replay) return "";
+  const labels = {
+    changed_tool: "Tool changed", changed_arguments: "Arguments changed", same_proposal: "Same proposal",
+    unparsed_proposal: "No parsed proposal", changed_output: "Output changed", same_output: "Same output",
+    token_limit: "Token limit reached", mixed: "Mixed outcomes",
+  };
+  const outcomes = Object.entries(replay.by_outcome).map(([kind, count]) => labels[kind] + " " + count);
+  return ["Replayed " + replay.decisions_tested + " of " + countLabel(group.decision_count, "decision"), ...outcomes].join(" · ");
+}
+
 function appendVisibilityGroupSummary(parent, group, metric) {
   parent.append(node("p", visibilityEffectRange(group.effect) + " · " + visibilityEffectUnit(metric), "count"));
   parent.append(node("p", [countLabel(group.conversation_count, "conversation"), countLabel(group.user_count, "user"),
@@ -261,6 +273,8 @@ function appendVisibilityGroupSummary(parent, group, metric) {
     const count = group.output_prefix_count;
     parent.append(node("p", count + (count === 1 ? " recorded prefix" : " recorded prefixes"), "muted"));
   }
+  const replay = visibilityReplaySummary(group);
+  if (replay) parent.append(node("p", replay, "muted"));
 }
 
 function visibilityEffectRange({ minimum, maximum }) {
@@ -321,6 +335,8 @@ function renderVisibilityTimeline(parent, page, captions, openPeriod) {
       track.append(mark);
       cell.append(node("strong", visibilityEffectRange(scope.effect)), track,
         node("small", countLabel(scope.conversation_count, "conversation") + " · " + countLabel(scope.decision_count, "decision"), "muted"));
+      const replay = visibilityReplaySummary(scope);
+      if (replay) cell.append(node("small", replay, "muted"));
     }
   }
   if (!page.rows.length) parent.append(node("p", "There are no periods on this page.", "muted"));

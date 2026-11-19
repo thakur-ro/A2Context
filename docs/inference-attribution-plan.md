@@ -191,3 +191,16 @@ We used the original stock lookup to compare the recorded `stock(product_id=42)`
 | Product ID | First digit | `stock(product_id=12345)` |
 
 Masking both definitions left the recorded `stock` token score near baseline. The continuation kept that tool and changed the argument type and fields. This shows why a score at one token can miss a change later in the output. These results describe one recorded request, two fixed prefixes, and one greedy model. The adapter parses proposals without checking their argument schemas. [Reproduce the continuations](guide.md#continue-decoding-with-sources-masked)
+
+## Count masked outcomes across the routing cohort
+
+We ran four continuations for each of the seven recorded proposals, with an all-visible control at each starting token. The grouped results count decisions with saved evidence for that mask and named output. [Inspect the cohort](guide.md#compare-measured-tool-routes)
+
+| Masked source | Recorded `stock` | Recorded `price` |
+| --- | --- | --- |
+| Stock definition | 3 tool changes | 4 same proposals |
+| Price definition | 3 same proposals | 4 tool changes |
+| Both tool definitions | 3 argument changes | 3 argument changes, 1 token limit |
+| Product ID | 3 argument changes | 4 argument changes |
+
+In the two-turn follow-up, masking the current product ID changed the proposed argument from `19` to `42`, the ID present in the earlier request and reply. The same mask in the `price` request for product 19 without that history generated `12345`. The cases share a checkpoint and greedy decode settings. Their synthetic ownership labels let readers inspect the results at thread, user, and organization scope. [Saved cohort reports](../examples/runtime-comparison/visibility-routing-cohort/reports.json)

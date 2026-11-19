@@ -666,6 +666,14 @@ fn routing_patterns_compare_recorded_tools_and_keep_exact_scoped_turns() {
     assert_eq!(group["scope_b"]["organization_count"], 2);
     assert_eq!(group["scope_a"]["conversation_count"], 3);
     assert_eq!(group["scope_b"]["conversation_count"], 4);
+    assert_eq!(
+        group["scope_a"]["continuation_outcomes"],
+        json!({"decisions_tested":3,"by_outcome":{"changed_tool":3}})
+    );
+    assert_eq!(
+        group["scope_b"]["continuation_outcomes"],
+        json!({"decisions_tested":4,"by_outcome":{"same_proposal":4}})
+    );
     assert!(group["scope_a"]["effect"]["maximum"].as_f64().unwrap() < -3.4);
     assert!(group["scope_b"]["effect"]["minimum"].as_f64().unwrap() > 0.0);
 
@@ -675,6 +683,10 @@ fn routing_patterns_compare_recorded_tools_and_keep_exact_scoped_turns() {
     let user = client.call(name, args.clone());
     assert_eq!(user["structuredContent"]["group"]["conversation_count"], 2);
     assert_eq!(user["structuredContent"]["total_occurrences"], 3);
+    assert_eq!(
+        user["structuredContent"]["group"]["continuation_outcomes"],
+        json!({"decisions_tested":3,"by_outcome":{"changed_tool":1,"same_proposal":2}})
+    );
     args["thread"] = json!({
         "trace_source":"local-transformers","organization_id":"retail-north",
         "user_id":"analyst","conversation_id":"north-1"
@@ -685,6 +697,10 @@ fn routing_patterns_compare_recorded_tools_and_keep_exact_scoped_turns() {
     assert_eq!(turns[1]["tool_name"], "price");
     assert_eq!(turns[1]["turn_id"], "price-check");
     assert_eq!(turns[1]["location"]["run_id"], "qwen-routing-north-1-price");
+    assert_eq!(
+        turns[1]["mask_continuations"][0]["outcome"],
+        "same_proposal"
+    );
     assert!(turns[1]["inspector_path"]
         .as_str()
         .unwrap()
@@ -697,8 +713,21 @@ fn routing_patterns_compare_recorded_tools_and_keep_exact_scoped_turns() {
     assert_eq!(day["structuredContent"]["total_periods"], 1);
     assert_eq!(periods[0]["period"], "2026-11-01");
     assert_eq!(periods[0]["scope_a"]["decision_count"], 1);
+    assert_eq!(
+        periods[0]["scope_a"]["continuation_outcomes"],
+        json!({"decisions_tested":1,"by_outcome":{"same_proposal":1}})
+    );
     args["tool_name"] = " ".into();
     assert_eq!(client.call(name, args)["isError"], true);
+
+    let pairs = client.call(
+        name,
+        json!({"version":1,"target":"routing.tool","kind":"pair","source_id":"price"}),
+    );
+    assert_eq!(
+        pairs["structuredContent"]["groups"][0]["continuation_outcomes"],
+        json!({"decisions_tested":7,"by_outcome":{"changed_arguments":6,"token_limit":1}})
+    );
 }
 
 #[test]

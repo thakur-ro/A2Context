@@ -14,6 +14,57 @@ const ROUTING: &str = include_str!("../examples/local-mlx-routing/activation-rep
 const ROUTING_EVIDENCE: &str = include_str!("../examples/local-mlx-routing/evidence.json");
 
 #[test]
+fn visibility_outcomes_count_each_decision_once_and_keep_mixed_replays() {
+    use nexusweave::activation::visibility::patterns;
+    use serde_json::json;
+    let runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/evidence.json"
+    ))
+    .unwrap();
+    let report: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/continuations.json"
+    ))
+    .unwrap();
+    let args =
+        serde_json::from_value(json!({"version":1,"target":"routing.tool","source_id":"stock"}))
+            .unwrap();
+    let counts = |reports: &[Report]| {
+        patterns::query(&args, &runs, reports).unwrap()["groups"][0]["continuation_outcomes"]
+            .clone()
+    };
+    let parse = |value: Value| {
+        let report: Report = serde_json::from_value(value).unwrap();
+        report.validate(&runs).unwrap();
+        report
+    };
+    let mut score_only = report.clone();
+    score_only["id"] = "score-only".into();
+    score_only.as_object_mut().unwrap().remove("continuations");
+    assert_eq!(
+        counts(&[parse(score_only)]),
+        json!({"decisions_tested":0,"by_outcome":{}})
+    );
+
+    let mut copy = report.clone();
+    copy["id"] = "another-report".into();
+    let mut reports = vec![parse(report.clone()), parse(copy)];
+    assert_eq!(
+        counts(&reports),
+        json!({"decisions_tested":1,"by_outcome":{"changed_tool":1}})
+    );
+
+    let mut different = report;
+    different["id"] = "mixed-measurement".into();
+    different["continuations"][0]["masked"] = different["continuations"][0]["clean"].clone();
+    different["continuations"][0]["tool_call"] = different["baseline_tool_call"].clone();
+    reports.push(parse(different));
+    assert_eq!(
+        counts(&reports),
+        json!({"decisions_tested":1,"by_outcome":{"mixed":1}})
+    );
+}
+
+#[test]
 fn masked_continuations_require_a_measured_mask_and_a_reproduced_prefix() {
     let runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/visibility-routing/evidence.json"

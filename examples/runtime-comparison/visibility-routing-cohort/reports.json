@@ -2,7 +2,7 @@
   {
     "version": 1,
     "kind": "source_visibility",
-    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2",
+    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2-continuation-0451ec784f2307fb",
     "location": {
       "run_id": "qwen-routing-north-1-stock",
       "call_id": "model-inference",
@@ -457,6 +457,295 @@
         ]
       }
     ],
+    "continuations": [
+      {
+        "context_ids": [
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 42
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 42
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price",
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": \"42\", \"tool\": \"stock\"}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            330,
+            19,
+            17,
+            497,
+            330,
+            14172,
+            788,
+            330,
+            13479,
+            30975,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": "42",
+            "tool": "stock"
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "product-id"
+        ],
+        "start_output_token": 17,
+        "max_new_tokens": 31,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 12345}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            17,
+            18,
+            19,
+            20,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 12345
+          }
+        }
+      }
+    ],
     "targets": [
       {
         "key": "routing.tool",
@@ -477,7 +766,7 @@
   {
     "version": 1,
     "kind": "source_visibility",
-    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2",
+    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2-continuation-0451ec784f2307fb",
     "location": {
       "run_id": "qwen-routing-north-1-price",
       "call_id": "model-inference",
@@ -996,6 +1285,305 @@
         ]
       }
     ],
+    "continuations": [
+      {
+        "context_ids": [
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 19
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 19
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price",
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": \"42\", \"toolbench_rapidapi_key\": \"088440d910mshef857391",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            330,
+            19,
+            17,
+            497,
+            330,
+            14172,
+            27024,
+            1710,
+            43121,
+            2068,
+            3097,
+            788,
+            330,
+            15,
+            23,
+            23,
+            19,
+            19,
+            15,
+            67,
+            24,
+            16,
+            15,
+            1011,
+            383,
+            69,
+            23,
+            20,
+            22,
+            18,
+            24,
+            16
+          ],
+          "stop_reason": "token_limit"
+        }
+      },
+      {
+        "context_ids": [
+          "product-id"
+        ],
+        "start_output_token": 17,
+        "max_new_tokens": 31,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 42
+          }
+        }
+      }
+    ],
     "targets": [
       {
         "key": "routing.tool",
@@ -1016,7 +1604,7 @@
   {
     "version": 1,
     "kind": "source_visibility",
-    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2",
+    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2-continuation-0451ec784f2307fb",
     "location": {
       "run_id": "qwen-routing-north-2-price",
       "call_id": "model-inference",
@@ -1471,6 +2059,295 @@
         ]
       }
     ],
+    "continuations": [
+      {
+        "context_ids": [
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 42
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 42
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price",
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": \"42\", \"tool\": \"price\"}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            330,
+            19,
+            17,
+            497,
+            330,
+            14172,
+            788,
+            330,
+            6555,
+            30975,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": "42",
+            "tool": "price"
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "product-id"
+        ],
+        "start_output_token": 17,
+        "max_new_tokens": 31,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 12345}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            17,
+            18,
+            19,
+            20,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 12345
+          }
+        }
+      }
+    ],
     "targets": [
       {
         "key": "routing.tool",
@@ -1491,7 +2368,7 @@
   {
     "version": 1,
     "kind": "source_visibility",
-    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2",
+    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2-continuation-0451ec784f2307fb",
     "location": {
       "run_id": "qwen-routing-north-3-stock",
       "call_id": "model-inference",
@@ -1946,6 +2823,295 @@
         ]
       }
     ],
+    "continuations": [
+      {
+        "context_ids": [
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 19
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 19
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price",
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": \"19\", \"tool\": \"stock\"}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            330,
+            16,
+            24,
+            497,
+            330,
+            14172,
+            788,
+            330,
+            13479,
+            30975,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": "19",
+            "tool": "stock"
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "product-id"
+        ],
+        "start_output_token": 17,
+        "max_new_tokens": 31,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 12345}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            17,
+            18,
+            19,
+            20,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 12345
+          }
+        }
+      }
+    ],
     "targets": [
       {
         "key": "routing.tool",
@@ -1966,7 +3132,7 @@
   {
     "version": 1,
     "kind": "source_visibility",
-    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2",
+    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2-continuation-0451ec784f2307fb",
     "location": {
       "run_id": "qwen-routing-south-1-price",
       "call_id": "model-inference",
@@ -2421,6 +3587,295 @@
         ]
       }
     ],
+    "continuations": [
+      {
+        "context_ids": [
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 42
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 42
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price",
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": \"42\", \"tool\": \"price\"}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            330,
+            19,
+            17,
+            497,
+            330,
+            14172,
+            788,
+            330,
+            6555,
+            30975,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": "42",
+            "tool": "price"
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "product-id"
+        ],
+        "start_output_token": 17,
+        "max_new_tokens": 31,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 42}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            19,
+            17,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 12345}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            17,
+            18,
+            19,
+            20,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 12345
+          }
+        }
+      }
+    ],
     "targets": [
       {
         "key": "routing.tool",
@@ -2441,7 +3896,7 @@
   {
     "version": 1,
     "kind": "source_visibility",
-    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2",
+    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2-continuation-0451ec784f2307fb",
     "location": {
       "run_id": "qwen-routing-south-2-stock",
       "call_id": "model-inference",
@@ -2896,6 +4351,295 @@
         ]
       }
     ],
+    "continuations": [
+      {
+        "context_ids": [
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 19
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 19
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price",
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": \"19\", \"tool\": \"stock\"}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            330,
+            16,
+            24,
+            497,
+            330,
+            14172,
+            788,
+            330,
+            13479,
+            30975,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": "19",
+            "tool": "stock"
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "product-id"
+        ],
+        "start_output_token": 17,
+        "max_new_tokens": 31,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 12345}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            17,
+            18,
+            19,
+            20,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 12345
+          }
+        }
+      }
+    ],
     "targets": [
       {
         "key": "routing.tool",
@@ -2916,7 +4660,7 @@
   {
     "version": 1,
     "kind": "source_visibility",
-    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2",
+    "id": "qwen2-source-visibility-whitespace-6a7d8dceaef71437-14f8f3b5cb58caa2-continuation-0451ec784f2307fb",
     "location": {
       "run_id": "qwen-routing-south-3-price",
       "call_id": "model-inference",
@@ -3369,6 +5113,295 @@
           -0.008752822875976562,
           -0.00392913818359375
         ]
+      }
+    ],
+    "continuations": [
+      {
+        "context_ids": [
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 19
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"stock\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            13479,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "stock",
+          "arguments": {
+            "product_id": 19
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "tool-price",
+          "tool-stock"
+        ],
+        "start_output_token": 7,
+        "max_new_tokens": 41,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": \"19\", \"tool\": \"price\"}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            330,
+            16,
+            24,
+            497,
+            330,
+            14172,
+            788,
+            330,
+            6555,
+            30975,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": "19",
+            "tool": "price"
+          }
+        }
+      },
+      {
+        "context_ids": [
+          "product-id"
+        ],
+        "start_output_token": 17,
+        "max_new_tokens": 31,
+        "clean": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 19}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            24,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "masked": {
+          "text": "<tool_call>\n{{\"name\": \"price\", \"arguments\": {\"product_id\": 12345}}}\n</tool_call>",
+          "token_ids": [
+            151657,
+            198,
+            2979,
+            1,
+            606,
+            788,
+            330,
+            6555,
+            497,
+            330,
+            16370,
+            788,
+            5212,
+            3031,
+            842,
+            788,
+            220,
+            16,
+            17,
+            18,
+            19,
+            20,
+            3417,
+            532,
+            151658
+          ],
+          "stop_reason": "end_of_sequence"
+        },
+        "tool_call": {
+          "name": "price",
+          "arguments": {
+            "product_id": 12345
+          }
+        }
       }
     ],
     "targets": [

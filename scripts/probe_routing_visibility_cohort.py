@@ -12,6 +12,7 @@ MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
 REVISION = "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2"
 PAIRS = [("request-type", "product-id"), ("tool-stock", "tool-price"),
          ("routing-instruction", "request-type"), ("routing-instruction", "tool-stock")]
+CONTINUATIONS = [(7, "tool-stock"), (7, "tool-price"), (7, "tool-price", "tool-stock"), (17, "product-id")]
 
 
 def build_run(template, case):
@@ -68,7 +69,8 @@ def main():
             call = run["calls"][0]
             decision = call["decisions"][0]
             location = {"run_id": run["id"], "call_id": call["id"], "decision_id": decision["id"]}
-            report = measure(runtime, args.model, MODEL, REVISION, location, call, decision, pairs=PAIRS)
+            report = measure(runtime, args.model, MODEL, REVISION, location, call, decision,
+                             pairs=PAIRS, continuations=CONTINUATIONS)
             targets = [("routing.tool", 7, 8, case["tool"]), ("routing.product_id", 17, 19, str(case["product_id"]))]
             for key, start, end, expected in targets:
                 if "".join(report["fragments"][start:end]) != expected:

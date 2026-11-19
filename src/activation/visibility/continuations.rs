@@ -24,6 +24,19 @@ pub(super) struct MaskContinuation {
     tool_call: Option<ToolProposal>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum Outcome {
+    ChangedTool,
+    ChangedArguments,
+    SameProposal,
+    UnparsedProposal,
+    ChangedOutput,
+    SameOutput,
+    TokenLimit,
+    Mixed,
+}
+
 pub(super) fn validate(
     report: &Report,
     measured: &BTreeMap<&str, &Measurement>,
@@ -87,28 +100,30 @@ impl MaskContinuation {
             && self.context_ids.iter().all(|id| ids.contains(&id.as_str()))
     }
 
+    pub(super) fn outcome(&self, report: &Report) -> Outcome {
+        if self.masked.stop_reason == StopReason::TokenLimit {
+            return Outcome::TokenLimit;
+        }
+        match (&report.baseline_tool_call, &self.tool_call) {
+            (Some(before), Some(after)) if before.name != after.name => Outcome::ChangedTool,
+            (Some(before), Some(after)) if before.arguments != after.arguments => {
+                Outcome::ChangedArguments
+            }
+            (Some(_), Some(_)) => Outcome::SameProposal,
+            (Some(_), None) => Outcome::UnparsedProposal,
+            (None, _) if self.masked.token_ids != report.output_token_ids => Outcome::ChangedOutput,
+            _ => Outcome::SameOutput,
+        }
+    }
+
     pub(super) fn query_row(&self, report: &Report, index: usize, excerpts: bool) -> Value {
         let changed = first_difference(&report.output_token_ids, &self.masked.token_ids);
-        let outcome = if self.masked.stop_reason == StopReason::TokenLimit {
-            "token_limit"
-        } else {
-            match (&report.baseline_tool_call, &self.tool_call) {
-                (Some(before), Some(after)) if before.name != after.name => "changed_tool",
-                (Some(before), Some(after)) if before.arguments != after.arguments => {
-                    "changed_arguments"
-                }
-                (Some(_), Some(_)) => "same_proposal",
-                (Some(_), None) => "unparsed_proposal",
-                (None, _) if changed.is_some() => "changed_output",
-                _ => "same_output",
-            }
-        };
         let path = query::visibility_path(report, self.start_output_token, None);
         let mut row = json!({
             "context_ids": self.context_ids, "start_output_token": self.start_output_token,
             "max_new_tokens": self.max_new_tokens, "stop_reason": self.masked.stop_reason,
             "first_changed_output_token": changed, "total_output_tokens": self.masked.token_ids.len(),
-            "outcome": outcome, "inspector_path": format!("{path}&continuation={index}"),
+            "outcome": self.outcome(report), "inspector_path": format!("{path}&continuation={index}"),
             "source_inspector_paths": self.context_ids.iter().map(|id| query::source_path(report, id)).collect::<Vec<_>>(),
         });
         if excerpts {

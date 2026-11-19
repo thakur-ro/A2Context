@@ -2,7 +2,10 @@
 
 mod timeline;
 
-use super::{query, BoundaryWhitespace, Report, Source};
+use super::{
+    continuations::{MaskContinuation, Outcome},
+    query, BoundaryWhitespace, Report, Source,
+};
 use crate::{
     activation::{self, patterns::query::Thread},
     conflict_query::{timestamp, Scope, TimeWindow},
@@ -133,6 +136,20 @@ struct Occurrence<'a> {
     effect: f64,
     output: [usize; 2],
     target_prefix: Option<String>,
+}
+
+impl Occurrence<'_> {
+    fn continuations(&self) -> impl Iterator<Item = (usize, &MaskContinuation)> {
+        let [start, end] = self.output;
+        self.report
+            .continuations
+            .iter()
+            .enumerate()
+            .filter(move |(_, branch)| {
+                (start..end).contains(&branch.start_output_token)
+                    && branch.matches(&self.context_ids)
+            })
+    }
 }
 
 type ThreadKey<'a> = (&'a str, Option<&'a str>, Option<&'a str>, &'a str);
@@ -610,6 +627,7 @@ fn summary(comparison: &Comparison<'_>, group: &Group<'_>, key: &str) -> Value {
 
 fn group_counts(group: &Group<'_>) -> Value {
     let mut decisions = BTreeMap::new();
+    let mut replayed = BTreeMap::new();
     let mut users = BTreeSet::new();
     let mut organizations = BTreeSet::new();
     let mut prefixes = BTreeSet::new();
@@ -633,6 +651,21 @@ fn group_counts(group: &Group<'_>) -> Value {
             .or_insert((true, true));
         signs.0 &= item.effect < 0.0;
         signs.1 &= item.effect > 0.0;
+        for (_, branch) in item.continuations() {
+            let outcome = branch.outcome(item.report);
+            replayed
+                .entry(&item.report.location)
+                .and_modify(|previous| {
+                    if *previous != outcome {
+                        *previous = Outcome::Mixed;
+                    }
+                })
+                .or_insert(outcome);
+        }
+    }
+    let mut outcomes = BTreeMap::new();
+    for outcome in replayed.values() {
+        *outcomes.entry(outcome).or_insert(0) += 1;
     }
     let mut result = json!({
         "decision_count": decisions.len(),
@@ -641,6 +674,7 @@ fn group_counts(group: &Group<'_>) -> Value {
         "negative_decisions": decisions.values().filter(|signs| signs.0).count(),
         "positive_decisions": decisions.values().filter(|signs| signs.1).count(),
         "effect": {"minimum": minimum, "maximum": maximum},
+        "continuation_outcomes": {"decisions_tested": replayed.len(), "by_outcome": outcomes},
     });
     if !prefixes.is_empty() {
         result["output_prefix_count"] = json!(prefixes.len());
@@ -670,13 +704,7 @@ fn evidence(item: &Occurrence<'_>) -> Value {
         row["tool_name"] = json!(proposal.name);
     }
     let continuations: Vec<_> = item
-        .report
-        .continuations
-        .iter()
-        .enumerate()
-        .filter(|(_, branch)| {
-            (start..end).contains(&branch.start_output_token) && branch.matches(&item.context_ids)
-        })
+        .continuations()
         .map(|(index, branch)| branch.query_row(item.report, index, false))
         .collect();
     if !continuations.is_empty() {

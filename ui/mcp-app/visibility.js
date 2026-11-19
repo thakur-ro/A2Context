@@ -1,5 +1,11 @@
 import { button, countLabel, element } from "./dom.js";
 
+const maskOutcomeLabels = {
+  changed_tool: "Tool changed", changed_arguments: "Arguments changed", same_proposal: "Same proposal",
+  unparsed_proposal: "No parsed proposal", changed_output: "Output changed", same_output: "Same output",
+  token_limit: "Token limit reached", mixed: "Mixed outcomes",
+};
+
 const patternTool = "query_visibility_patterns";
 const measurementTool = "query_source_visibility";
 const format = new Intl.NumberFormat(undefined, { maximumFractionDigits: 5, signDisplay: "exceptZero" });
@@ -87,6 +93,12 @@ function summary(parent, value, metric, scale) {
     counts.push(value.output_prefix_count + (value.output_prefix_count === 1 ? " recorded prefix" : " recorded prefixes"));
   }
   parent.append(element("p", counts.join(" · "), "muted"));
+  const replay = value.continuation_outcomes;
+  if (replay) {
+    const outcomes = Object.entries(replay.by_outcome).map(([kind, count]) => maskOutcomeLabels[kind] + " " + count);
+    parent.append(element("p", ["Replayed " + replay.decisions_tested + " of " + countLabel(value.decision_count, "decision"),
+      ...outcomes].join(" · "), "muted"));
+  }
 }
 
 function boundaryNote({ before, after }, label) {
@@ -223,11 +235,6 @@ function renderOccurrence(parent, item, metric, requestPage, back) {
 
 function renderMaskContinuations(parent, page, requestPage, pageControls) {
   const { data, args, back, title } = page;
-  const outcomes = {
-    changed_tool: "Tool changed", changed_arguments: "Arguments changed",
-    same_proposal: "Same tool proposal", unparsed_proposal: "No parsed proposal",
-    changed_output: "Output tokens changed", same_output: "Same output tokens", token_limit: "Token limit reached",
-  };
   if (data.captured_excerpts_enabled && !args.include_excerpts) {
     parent.append(button("Show generated text", () => requestPage(measurementTool, { ...args, include_excerpts: true }, title, back)));
   }
@@ -236,7 +243,7 @@ function renderMaskContinuations(parent, page, requestPage, pageControls) {
     const changed = value.first_changed_output_token;
     row.append(element("h2", value.context_ids.join(" + ")));
     row.append(element("p", "Decoding resumes at token " + (value.start_output_token + 1), "muted"));
-    row.append(element("p", outcomes[value.outcome] + (changed == null ? "" : " · First change at token " + (changed + 1))));
+    row.append(element("p", maskOutcomeLabels[value.outcome] + (changed == null ? "" : " · First change at token " + (changed + 1))));
     if (value.text_excerpt) row.append(element("pre", value.text_excerpt.text + (value.text_excerpt.truncated ? "…" : "")));
     const paths = element("details");
     paths.append(element("summary", "Local inspector paths"), element("p", value.inspector_path, "inspector-path"));
