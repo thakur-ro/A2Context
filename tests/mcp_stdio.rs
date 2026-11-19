@@ -639,6 +639,66 @@ fn visibility_pattern_comparisons_keep_both_scopes_and_page_them_independently()
 }
 
 #[test]
+fn visibility_targets_align_different_prefixes_and_keep_exact_span_links() {
+    let mut client = Client::start(
+        &[
+            "--activation-report",
+            "examples/runtime-comparison/visibility-cohort/reports.json",
+            "--activation-report",
+            "examples/runtime-comparison/visibility-target/report.json",
+            "examples/runtime-comparison/visibility-cohort/evidence.json",
+            "examples/runtime-comparison/visibility-target/evidence.json",
+        ],
+        true,
+    );
+    let name = "query_visibility_patterns";
+    let target = "returns.refund_duration";
+    let turn = client.call("get_turn_evidence", json!({
+        "run_id":"qwen-target-refund-only", "call_id":"model-inference", "decision_id":"refund-duration"
+    }));
+    assert_eq!(
+        turn["structuredContent"]["source_visibility_reports"][0]["targets"],
+        json!([{"key":target,"token_range":[7,9]}])
+    );
+
+    let mut args = json!({
+        "version":1, "kind":"pair", "target":target, "source_id":"refund-policy-copy",
+        "min_conversations":2
+    });
+    let result = client.call(name, args.clone());
+    let page = &result["structuredContent"];
+    assert_eq!(page["total_groups"], 1);
+    assert_eq!(page["coverage"]["reports_with_target"], 3);
+    assert_eq!(page["coverage"]["reports_in_scope"], 5);
+    let group = &page["groups"][0];
+    assert_eq!(group["comparison"]["target"], target);
+    assert_eq!(group["conversation_count"], 3);
+    assert_eq!(group["output_prefix_count"], 2);
+
+    args["scope"] = json!({"kind":"organization","organization_id":"retail-north"});
+    args["compare"] = json!({"scope":{"kind":"organization","organization_id":"retail-south"}});
+    args["group"] = group["key"].clone();
+    let details = client.call(name, args.clone());
+    let details = &details["structuredContent"];
+    let north = &details["scope_a"]["occurrences"][0];
+    let south = &details["scope_b"]["occurrences"][0];
+    assert_eq!(north["output_token"], 13);
+    assert_eq!(north["output_token_end"], 15);
+    assert_eq!(south["output_token"], 7);
+    assert_eq!(south["output_token_end"], 9);
+    assert_eq!(south["conversation_id"], "south-refund-only");
+    assert!((south["effect"].as_f64().unwrap() - (-4.187813)).abs() < 1e-6);
+    assert_ne!(north["output_prefix_sha256"], south["output_prefix_sha256"]);
+    assert!(south["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&visibility=7&pair=0"));
+
+    args["output_token"] = 13.into();
+    assert_eq!(client.call(name, args)["isError"], true);
+}
+
+#[test]
 fn legacy_client_gets_the_cli_counts_and_cannot_widen_host_scope() {
     let dir = tempfile::tempdir().unwrap();
     let scope = dir.path().join("scope.json");

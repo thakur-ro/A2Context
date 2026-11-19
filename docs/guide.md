@@ -812,7 +812,23 @@ The default `source` kind reports single-mask changes in log probability. The `p
 
 Choose **Compare with** to place two scopes side by side, or select the same scope twice and set different UTC date ranges. In HTTP or MCP, pass the second selection as `compare` with its own `scope`, `thread`, `after`, and `before`. Groups align on their comparison key, and `min_conversations` keeps a group when either side reaches the threshold. A side with no matching measurement is `null`. When opening a group, use `offset` and `compare_offset` to page through the two scopes independently.
 
-Groups require the same model revision, runtime, tokenizer, decision label, emitted token prefix through the scored token, and source identities. Each identity uses the declared source ID, version, kind, role, captured text digest, and masked token count. Captures without declared source IDs are counted as unavailable for grouping. The summaries count distinct identified conversations, users, and organizations, alongside decisions and measurements. The cohort's dates and ownership labels are synthetic. Across its four measured decisions the refund policy pair's interaction ranges from −5.84 to −5.18 log units at the recorded refund digit. The range describes those measured decisions.
+Exact-token groups require the same model revision, runtime, tokenizer, decision label, emitted token prefix through the scored token, and source identities. Each identity uses the declared source ID, version, kind, role, captured text digest, and masked token count. Captures without declared source IDs are counted as unavailable for grouping. The summaries count distinct identified conversations, users, and organizations, alongside decisions and measurements. The cohort's dates and ownership labels are synthetic. Across its four measured decisions the refund policy pair's interaction ranges from −5.84 to −5.18 log units at the recorded refund digit. The range describes those measured decisions.
+
+### Follow a named output across different answers
+
+A workflow can add a `targets` entry with a stable key and recorded token range to a [source visibility report](../schema/source-visibility-1.json). For example, `"targets": [{"key":"returns.refund_duration","token_range":[13,15]}]` labels the two tokens for `4 days` in one answer. Use zero-based start and exclusive end positions. Give the same field the same workflow-qualified key in other answers, even when its position or wording changes.
+
+```sh
+cargo run --locked -- serve \
+  --activation-report examples/runtime-comparison/visibility-cohort/reports.json \
+  --activation-report examples/runtime-comparison/visibility-target/report.json \
+  examples/runtime-comparison/visibility-cohort/evidence.json \
+  examples/runtime-comparison/visibility-target/evidence.json
+```
+
+In **Patterns → Masked-source effects**, select **Pair interactions** and set **Align by** to `returns.refund_duration`. You can also open the named target from a measured token in the turn's activation probe. For HTTP and MCP, pass `"target":"returns.refund_duration"` in place of `output_token`. Select `refund-policy-copy` as the source to see the same pair measured in two north conversations and one south conversation. The two answers place `4 days` at tokens 14–15 and 8–9. The joint interaction summed over the span ranges from −5.88 to −4.19 log probability units. The target is declared in three of the five reports. [Alternate measured answer](../examples/runtime-comparison/visibility-target/report.json)
+
+Named targets group by key, model revision, runtime, tokenizer, and source identity. The score sums the measured token changes over the declared span. Each token keeps its own recorded earlier output, so the range describes measurements from different prefixes. Drill into the group for each span's positions, prefix digest, and inspector link to its first token. The workflow supplies what the target means.
 
 ## Development
 

@@ -186,7 +186,8 @@
             <option value="source">Single-source effects</option>
             <option value="pair">Pair interactions</option>
           </select></label>
-          <label>Output token <input id="visibility-pattern-token" type="number" min="1" step="1" value="1" required></label>
+          <label id="visibility-pattern-target-field" hidden>Align by <select id="visibility-pattern-target"></select></label>
+          <label id="visibility-pattern-token-field">Output token <input id="visibility-pattern-token" type="number" min="1" step="1" value="1" required></label>
           <label>Source <select id="visibility-pattern-source"><option value="">All named sources</option></select></label>
           <label>From (UTC) <input id="visibility-pattern-after" type="date" max="9999-12-31"></label>
           <label>Before (UTC) <input id="visibility-pattern-before" type="date" max="9999-12-31"></label>

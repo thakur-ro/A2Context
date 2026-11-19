@@ -1,4 +1,4 @@
-//! Compare source visibility measurements at an exact output token across traces.
+//! Compare source visibility measurements across traces.
 
 use super::{query, Report, Source};
 use crate::{
@@ -19,7 +19,8 @@ use time::OffsetDateTime;
 #[serde(deny_unknown_fields)]
 pub struct Request {
     version: u32,
-    output_token: usize,
+    output_token: Option<usize>,
+    target: Option<String>,
     #[serde(default)]
     kind: Mask,
     #[serde(default)]
@@ -77,9 +78,14 @@ struct Comparison<'a> {
     model_revision: &'a str,
     runtime: &'a str,
     tokenizer_sha256: &'a str,
-    decision_label: &'a str,
-    output_token: usize,
-    output_prefix_sha256: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    decision_label: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    output_token: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    output_prefix_sha256: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target: Option<&'a str>,
     sources: Vec<Identity<'a>>,
 }
 
@@ -91,6 +97,8 @@ struct Occurrence<'a> {
     context_ids: Vec<&'a str>,
     pair: Option<usize>,
     effect: f64,
+    output: [usize; 2],
+    target_prefix: Option<String>,
 }
 
 type ThreadKey<'a> = (&'a str, Option<&'a str>, Option<&'a str>, &'a str);
@@ -132,10 +140,18 @@ pub fn query<'a>(
     if request.version != 1 || !(1..=50).contains(&request.limit) {
         return Err("Use visibility pattern query version 1 and a page size from 1 to 50.".into());
     }
+    if request.output_token.is_some() == request.target.is_some()
+        || request
+            .target
+            .as_deref()
+            .is_some_and(|key| key.is_empty() || key.trim() != key)
+    {
+        return Err("Select one output token or one named output target.".into());
+    }
     let runs: Vec<_> = runs.into_iter().collect();
     let window = TimeWindow::parse(request.after.as_deref(), request.before.as_deref())?;
     let scoped = scope_runs(&runs, &request.scope, request.thread.as_ref());
-    let primary = gather(request, scoped, reports, &window);
+    let primary = gather(request, scoped, reports, &window)?;
     let metric = match request.kind {
         Mask::Source => "change_in_log_probability",
         Mask::Pair => "interaction_log_units",
@@ -143,7 +159,7 @@ pub fn query<'a>(
     if let Some(compare) = &request.compare {
         let window = TimeWindow::parse(compare.after.as_deref(), compare.before.as_deref())?;
         let scoped = scope_runs(&runs, &compare.scope, compare.thread.as_ref());
-        let secondary = gather(request, scoped, reports, &window);
+        let secondary = gather(request, scoped, reports, &window)?;
         compare_cohorts(request, primary, secondary, metric)
     } else {
         single_cohort(request, primary, metric)
@@ -167,10 +183,11 @@ fn gather<'a>(
     scoped: BTreeMap<&'a str, &'a Run>,
     reports: &'a [activation::Report],
     window: &TimeWindow,
-) -> Cohort<'a> {
-    let index = request.output_token;
+) -> Result<Cohort<'a>, String> {
+    let exact = request.target.is_none();
     let mut groups = BTreeMap::<Comparison<'_>, Group<'_>>::new();
-    let mut reports_at_token = 0;
+    let mut reports_in_scope = 0;
+    let mut reports_matching = 0;
     let mut measurements_without_source_id = 0;
     for entry in reports {
         let activation::Report::Visibility(report) = entry else {
@@ -190,7 +207,7 @@ fn gather<'a>(
             .started_at
             .as_deref()
             .and_then(|value| timestamp(value).ok());
-        if !window.includes(time) || index >= report.output_token_ids.len() {
+        if !window.includes(time) {
             continue;
         }
         let Some(decision) = call
@@ -200,7 +217,20 @@ fn gather<'a>(
         else {
             continue;
         };
-        reports_at_token += 1;
+        reports_in_scope += 1;
+        let target = request
+            .target
+            .as_deref()
+            .and_then(|key| report.targets.iter().find(|target| target.key == key));
+        let token_range = if let Some(index) = request.output_token {
+            (index < report.output_token_ids.len()).then(|| [index, index + 1])
+        } else {
+            target.map(|target| target.token_range)
+        };
+        let Some([start, end]) = token_range else {
+            continue;
+        };
+        reports_matching += 1;
         let measured: BTreeMap<_, _> = report
             .sources
             .iter()
@@ -230,34 +260,39 @@ fn gather<'a>(
             })
             .collect();
         let mut prefix = Sha256::new();
-        for id in &report.output_token_ids[..=index] {
+        for id in &report.output_token_ids[..end] {
             prefix.update(id.to_be_bytes());
         }
+        let prefix = format!("{:x}", prefix.finalize());
         let comparison = Comparison {
             model_id: &report.model_id,
             model_revision: &report.model_revision,
             runtime: &report.runtime,
             tokenizer_sha256: &report.tokenizer_sha256,
-            decision_label: &decision.label,
-            output_token: index,
-            output_prefix_sha256: format!("{:x}", prefix.finalize()),
+            decision_label: exact.then_some(decision.label.as_str()),
+            output_token: exact.then_some(start),
+            output_prefix_sha256: exact.then(|| prefix.clone()),
+            target: target.map(|target| target.key.as_str()),
             sources: Vec::new(),
         };
-        let mut record = |context_ids: Vec<&'a str>, pair, effect| {
+        let mut record = |context_ids: Vec<&'a str>, pair, effect: f64| {
             let Some(mut sources) = context_ids
                 .iter()
                 .map(|id| identities.get(id).cloned())
                 .collect::<Option<Vec<_>>>()
             else {
                 measurements_without_source_id += 1;
-                return;
+                return Ok(());
             };
             if request
                 .source_id
                 .as_deref()
                 .is_some_and(|id| !sources.iter().any(|source| source.source_id == id))
             {
-                return;
+                return Ok(());
+            }
+            if !effect.is_finite() {
+                return Err("An output target has a nonfinite effect.".to_string());
             }
             sources.sort_unstable();
             let key = Comparison {
@@ -272,35 +307,54 @@ fn gather<'a>(
                 context_ids,
                 pair,
                 effect,
+                output: [start, end],
+                target_prefix: (!exact).then(|| prefix.clone()),
             });
+            Ok(())
         };
-        let baseline = report.baseline_log_probs[index];
         match request.kind {
             Mask::Source => {
                 for source in measured.values() {
                     record(
                         vec![&source.context_id],
                         None,
-                        source.masked_log_probs[index] - baseline,
-                    );
+                        (start..end)
+                            .map(|index| {
+                                source.masked_log_probs[index] - report.baseline_log_probs[index]
+                            })
+                            .sum(),
+                    )?;
                 }
             }
             Mask::Pair => {
                 for (id, pair) in report.pairs.iter().enumerate() {
-                    let scores = query::pair_scores(pair, &measured, baseline, index);
                     record(
                         pair.context_ids.iter().map(String::as_str).collect(),
                         Some(id),
-                        scores.interaction,
-                    );
+                        (start..end)
+                            .map(|index| {
+                                query::pair_scores(
+                                    pair,
+                                    &measured,
+                                    report.baseline_log_probs[index],
+                                    index,
+                                )
+                                .interaction
+                            })
+                            .sum(),
+                    )?;
                 }
             }
         }
     }
-    Cohort {
-        groups,
-        coverage: json!({"reports_at_token": reports_at_token, "measurements_without_source_id": measurements_without_source_id}),
+    let mut coverage = json!({"measurements_without_source_id": measurements_without_source_id});
+    if exact {
+        coverage["reports_at_token"] = json!(reports_matching);
+    } else {
+        coverage["reports_with_target"] = json!(reports_matching);
+        coverage["reports_in_scope"] = json!(reports_in_scope);
     }
+    Ok(Cohort { groups, coverage })
 }
 
 fn single_cohort(request: &Request, cohort: Cohort<'_>, metric: &str) -> Result<Value, String> {
@@ -420,7 +474,7 @@ fn occurrence_page(
         .iter()
         .skip(offset)
         .take(limit)
-        .map(|item| evidence(item, comparison.output_token))
+        .map(evidence)
         .collect();
     json!({
         "group": summary(comparison, &group, key), "total_occurrences": total,
@@ -460,23 +514,38 @@ fn summary(comparison: &Comparison<'_>, group: &Group<'_>, key: &str) -> Value {
         signs.0 &= item.effect < 0.0;
         signs.1 &= item.effect > 0.0;
     }
-    json!({
+    let mut result = json!({
         "key": key, "comparison": comparison, "decision_count": decisions.len(),
         "conversation_count": group.conversations.len(), "measurement_count": group.occurrences.len(),
         "user_count": users.len(), "organization_count": organizations.len(),
         "negative_decisions": decisions.values().filter(|signs| signs.0).count(),
         "positive_decisions": decisions.values().filter(|signs| signs.1).count(),
         "effect": {"minimum": minimum, "maximum": maximum},
-    })
+    });
+    if comparison.target.is_some() {
+        let prefixes: BTreeSet<_> = group
+            .occurrences
+            .iter()
+            .filter_map(|item| item.target_prefix.as_deref())
+            .collect();
+        result["output_prefix_count"] = json!(prefixes.len());
+    }
+    result
 }
 
-fn evidence(item: &Occurrence<'_>, index: usize) -> Value {
-    json!({
+fn evidence(item: &Occurrence<'_>) -> Value {
+    let [start, end] = item.output;
+    let mut row = json!({
         "location": item.report.location, "report_id": item.report.id, "context_ids": item.context_ids,
         "trace_source": item.run.source, "organization_id": item.run.organization_id,
         "user_id": item.run.user_id, "conversation_id": item.run.conversation_id,
-        "turn_id": item.call.turn_id, "started_at": item.call.started_at, "output_token": index,
-        "effect": item.effect, "inspector_path": query::visibility_path(item.report, index, item.pair),
+        "turn_id": item.call.turn_id, "started_at": item.call.started_at, "output_token": start,
+        "effect": item.effect, "inspector_path": query::visibility_path(item.report, start, item.pair),
         "source_inspector_paths": item.context_ids.iter().map(|id| query::source_path(item.report, id)).collect::<Vec<_>>(),
-    })
+    });
+    if let Some(prefix) = &item.target_prefix {
+        row["output_token_end"] = json!(end);
+        row["output_prefix_sha256"] = json!(prefix);
+    }
+    row
 }

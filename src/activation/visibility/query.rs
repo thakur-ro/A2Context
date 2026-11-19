@@ -70,13 +70,17 @@ pub fn for_decision(
 }
 
 fn summary(report: &Report) -> Value {
-    json!({
+    let mut result = json!({
         "report_id": report.id, "model_id": report.model_id, "model_revision": report.model_revision, "runtime": report.runtime,
         "total_output_tokens": report.output_token_ids.len(), "captured_sources": report.sources.len(),
         "measured_sources": report.sources.iter().filter_map(Source::measured).count(),
         "measured_pairs": report.pairs.len(),
         "all_visible_max_abs_error": report.all_visible_max_abs_error,
-    })
+    });
+    if !report.targets.is_empty() {
+        result["targets"] = json!(report.targets);
+    }
+    result
 }
 
 /// Read reports that have been validated against their captured runs.

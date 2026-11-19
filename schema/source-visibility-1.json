@@ -40,6 +40,23 @@
       "type": "array",
       "description": "Scores with two individually measured, non-overlapping sources masked together.",
       "items": { "$ref": "#/$defs/pair" }
+    },
+    "targets": {
+      "type": "array",
+      "description": "Optional workflow-defined names for intervals in the recorded output.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "token_range"],
+        "properties": {
+          "key": { "$ref": "#/$defs/nonempty", "description": "Stable key, unique within the report. Use a workflow-qualified name." },
+          "token_range": {
+            "description": "Zero-based start and exclusive end in the recorded output token sequence.",
+            "type": "array", "minItems": 2, "maxItems": 2,
+            "items": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
     }
   },
   "$defs": {

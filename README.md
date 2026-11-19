@@ -39,6 +39,8 @@ For a captured Qwen2 text answer, test each aligned prompt source without writin
 
 Query recurring masked-source effects across conversations, users, and organizations, then open the exact contributing token and source. [Compare the measured cohort](docs/guide.md#find-recurring-masked-source-effects)
 
+Align measurements on a named output when different answers put the same decision in different places. [Follow a named output](docs/guide.md#follow-a-named-output-across-different-answers)
+
 The same report format carries measured results from MLX and Transformers on the same prompt. [Inspect results across runtimes](docs/guide.md#inspect-the-same-task-across-runtimes)
 
 Inspect how a source swap changed the probability of any recorded output token, including repeated words and tool arguments. [Try the full-output view](docs/guide.md#inspect-every-recorded-output-token)

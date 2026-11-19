@@ -60,6 +60,35 @@ fn visibility_pairs_require_two_measured_disjoint_sources_and_one_score_per_toke
 }
 
 #[test]
+fn visibility_targets_require_unique_keys_and_recorded_token_ranges() {
+    let runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-target/evidence.json"
+    ))
+    .unwrap();
+    let original: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-target/report.json"
+    ))
+    .unwrap();
+    let validate = |value: Value| {
+        serde_json::from_value::<Report>(value)
+            .unwrap()
+            .validate(&runs)
+    };
+    validate(original.clone()).unwrap();
+    let target = &original["targets"][0];
+    for targets in [
+        serde_json::json!([target, target]),
+        serde_json::json!([{"key":" ","token_range":[7,9]}]),
+        serde_json::json!([{"key":"refund","token_range":[7,7]}]),
+        serde_json::json!([{"key":"refund","token_range":[7,99]}]),
+    ] {
+        let mut invalid = original.clone();
+        invalid["targets"] = targets;
+        assert!(validate(invalid).unwrap_err().contains("output targets"));
+    }
+}
+
+#[test]
 fn visibility_patterns_keep_changed_prefixes_and_source_versions_separate() {
     use nexusweave::activation::visibility::patterns;
     let mut runs: Vec<Run> = serde_json::from_str(include_str!(

@@ -9,7 +9,7 @@ const visibilityEffectFormat = new Intl.NumberFormat(undefined, {
 const visibilityField = (part) => element("visibility-pattern-" + part);
 
 function setupVisibilityPatterns() {
-  for (const field of ["kind", "token", "source", "repeat", ...visibilityPatternDateFields, ...visibilityComparisonDateFields]) {
+  for (const field of ["kind", "token", "target", "source", "repeat", ...visibilityPatternDateFields, ...visibilityComparisonDateFields]) {
     visibilityField(field).addEventListener("change", () => {
       visibilityPatternGroup = null;
       linkNotice();
@@ -18,7 +18,7 @@ function setupVisibilityPatterns() {
   }
 }
 
-function openVisibilityPatterns(report, token, kind) {
+function openVisibilityPatterns(report, token, kind, target = "") {
   const run = data.runs.find((item) => item.id === report.location.run_id);
   state.view = "patterns";
   state.patternScope = JSON.stringify([run.organization_id, run.user_id]);
@@ -28,6 +28,7 @@ function openVisibilityPatterns(report, token, kind) {
   visibilityPatternGroup = null;
   element("pattern-type").value = "visibility";
   visibilityField("kind").value = kind;
+  visibilityField("target").replaceChildren(new Option(target, target, true, true));
   visibilityField("token").value = String(token + 1);
   visibilityField("source").value = "";
   visibilityField("repeat").checked = false;
@@ -38,7 +39,8 @@ function openVisibilityPatterns(report, token, kind) {
 }
 
 function writeVisibilityPatternLink(params) {
-  for (const field of ["kind", "token", "source", ...visibilityPatternDateFields]) {
+  const alignment = visibilityField("target").value ? "target" : "token";
+  for (const field of ["kind", alignment, "source", ...visibilityPatternDateFields]) {
     if (visibilityField(field).value) params.set(field, visibilityField(field).value);
   }
   if (patternComparison.scope) {
@@ -54,6 +56,8 @@ function restoreVisibilityPatternLink(params) {
   visibilityPatternGroup = params.get("group");
   visibilityField("kind").value = params.get("kind") === "pair" ? "pair" : "source";
   visibilityField("token").value = params.get("token") ?? "1";
+  const target = params.get("target") ?? "";
+  visibilityField("target").replaceChildren(new Option(target, target, true, true));
   visibilityField("repeat").checked = params.get("recurring") === "1";
   const source = params.get("source") ?? "";
   visibilityField("source").replaceChildren(new Option("All named sources", ""));
@@ -105,11 +109,15 @@ function renderVisibilityPatterns(list, scope, scopes) {
   const tokenInput = visibilityField("token");
   const kind = visibilityField("kind").value;
   const select = visibilityField("source");
+  const targetSelect = visibilityField("target");
   const selected = select.value;
+  const target = targetSelect.value;
   const sources = new Set();
+  const targets = new Set();
   for (const [records, thread] of [[entries, state.patternThread], [secondEntries, second?.thread]]) {
     for (const { report, call, occurrence } of records) {
       if (thread && patternThreadKey(occurrence) !== thread) continue;
+      for (const item of report.targets || []) targets.add(item.key);
       const measured = new Set(kind === "pair" ? (report.pairs || []).flatMap(({ context_ids }) => context_ids)
         : report.sources.filter(({ masked_log_probs }) => masked_log_probs).map(({ context_id }) => context_id));
       for (const context of call.context) {
@@ -120,9 +128,14 @@ function renderVisibilityPatterns(list, scope, scopes) {
   if (selected) sources.add(selected);
   select.replaceChildren(new Option("All named sources", ""), ...[...sources].sort().map((source) => new Option(source, source)));
   select.value = selected;
+  if (target) targets.add(target);
+  targetSelect.replaceChildren(new Option("Exact token and prefix", ""), ...[...targets].sort().map((key) => new Option(key, key)));
+  targetSelect.value = target;
+  visibilityField("target-field").hidden = !targets.size;
+  visibilityField("token-field").hidden = Boolean(target);
   const panel = node("section", undefined, "panel visibility-pattern-results");
   list.append(panel);
-  if (!tokenInput.validity.valid || !Number.isSafeInteger(tokenInput.valueAsNumber)) {
+  if (!target && (!tokenInput.validity.valid || !Number.isSafeInteger(tokenInput.valueAsNumber))) {
     panel.append(node("p", "Enter a positive whole number for the output token.", "muted"));
     return;
   }
@@ -133,7 +146,8 @@ function renderVisibilityPatterns(list, scope, scopes) {
     panel.append(node("p", "Enter complete dates" + side + ". The From date must precede the Before date.", "muted"));
     return;
   }
-  const spec = { version: 1, kind, output_token: tokenInput.valueAsNumber - 1, ...primary, limit: 20 };
+  const selection = target ? { target } : { output_token: tokenInput.valueAsNumber - 1 };
+  const spec = { version: 1, kind, ...selection, ...primary, limit: 20 };
   if (compare) spec.compare = compare;
   if (selected) spec.source_id = selected;
   if (visibilityField("repeat").checked) spec.min_conversations = 2;
@@ -149,13 +163,15 @@ function renderVisibilityPatterns(list, scope, scopes) {
     const request = { ...spec, offset, group };
     if (compare && group) request.compare_offset = compareOffset;
     showPatternPage(results, "/api/visibility-patterns", request, (page) => {
-      const heading = node("h2", group ? visibilityGroupLabel(page.group) : "Effects at token " + (spec.output_token + 1));
+      const title = target ? "Effects on " + target : "Effects at token " + (spec.output_token + 1);
+      const heading = node("h2", group ? visibilityGroupLabel(page.group) : title);
       heading.tabIndex = -1;
       results.append(heading);
       if (compare) {
         renderVisibilityComparison(results, page, captions, group, offset, compareOffset, load);
       } else if (group) {
         appendVisibilityModel(results, page.group.comparison);
+        if (target) appendVisibilityCoverage(results, page.coverage);
         appendVisibilityGroupSummary(results, page.group, page.metric);
         renderVisibilityOccurrences(results, page.occurrences);
       } else {
@@ -183,10 +199,15 @@ function appendVisibilityGroupSummary(parent, group, metric) {
   parent.append(node("p", range + " · " + unit, "count"));
   parent.append(node("p", [countLabel(group.conversation_count, "conversation"), countLabel(group.user_count, "user"),
     countLabel(group.organization_count, "organization"), countLabel(group.decision_count, "decision")].join(" · "), "muted"));
+  if (group.output_prefix_count !== undefined) {
+    const count = group.output_prefix_count;
+    parent.append(node("p", count + (count === 1 ? " recorded prefix" : " recorded prefixes"), "muted"));
+  }
 }
 
 function appendVisibilityModel(parent, comparison) {
-  const model = node("small", [comparison.model_id, comparison.runtime, "Prefix " + comparison.output_prefix_sha256.slice(0, 8)].join(" · "), "anchor");
+  const output = comparison.target || "Prefix " + comparison.output_prefix_sha256.slice(0, 8);
+  const model = node("small", [comparison.model_id, comparison.runtime, output].join(" · "), "anchor");
   model.title = "Model revision " + comparison.model_revision;
   parent.append(model);
 }
@@ -209,6 +230,10 @@ function renderVisibilityGroups(parent, page, openGroup) {
 }
 
 function appendVisibilityCoverage(parent, coverage, scope = "") {
+  if (coverage.reports_with_target !== undefined) {
+    parent.append(node("p", "Target declared in " + coverage.reports_with_target + " of "
+      + countLabel(coverage.reports_in_scope, "visibility report") + scope + ".", "muted"));
+  }
   const missing = coverage.measurements_without_source_id;
   if (missing) parent.append(node("p", countLabel(missing, "measurement") + scope
     + " could not be grouped because a source ID was unavailable.", "muted"));
@@ -283,9 +308,12 @@ function renderVisibilityOccurrences(parent, occurrences) {
     }
     line.append(details);
     const links = node("div", undefined, "visibility-pattern-links");
-    links.append(visibilityEvidenceLink(row.inspector_path, "Open token " + (row.output_token + 1)));
+    const first = row.output_token + 1;
+    const tokens = row.output_token_end > first ? "tokens " + first + "–" + row.output_token_end : "token " + first;
+    links.append(visibilityEvidenceLink(row.inspector_path, "Open " + tokens));
     row.source_inspector_paths.forEach((path, index) => links.append(visibilityEvidenceLink(path, row.context_ids[index])));
     line.append(node("strong", visibilityEffectFormat.format(row.effect)), links);
+    if (row.output_prefix_sha256) line.append(node("small", "Prefix " + row.output_prefix_sha256.slice(0, 8), "anchor"));
     parent.append(line);
   }
 }

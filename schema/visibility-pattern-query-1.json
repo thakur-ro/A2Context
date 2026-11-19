@@ -3,10 +3,15 @@
   "title": "NexusWeave visibility pattern query",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "output_token"],
+  "required": ["version"],
+  "oneOf": [
+    { "required": ["output_token"] },
+    { "required": ["target"] }
+  ],
   "properties": {
     "version": { "const": 1 },
     "output_token": { "type": "integer", "minimum": 0, "description": "Zero-based output token position to compare." },
+    "target": { "type": "string", "minLength": 1, "description": "Select a workflow-declared output target across recorded prefixes." },
     "kind": { "enum": ["source", "pair"], "default": "source" },
     "scope": {
       "oneOf": [

@@ -31,6 +31,15 @@ pub struct Report {
     sources: Vec<Source>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pairs: Vec<Pair>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    targets: Vec<Target>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct Target {
+    key: String,
+    token_range: [usize; 2],
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -142,6 +151,18 @@ impl Report {
                 "source visibility needs aligned token scores and a passing all-visible control"
                     .into(),
             );
+        }
+        let mut target_keys = BTreeSet::new();
+        for target in &self.targets {
+            if target.key.trim().is_empty()
+                || target.key.trim() != target.key
+                || !target_keys.insert(&target.key)
+                || !inside(target.token_range, [0, length])
+            {
+                return Err(
+                    "output targets require unique keys and nonempty recorded token ranges".into(),
+                );
+            }
         }
         let request = recorded_request.parse()?;
         let context: BTreeMap<_, _> = call

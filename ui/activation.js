@@ -89,6 +89,7 @@ function renderSourceVisibility(panel, report, call) {
   const sourceButton = (id) => occurrenceButton(report.location, names.get(id), { context_item_id: id });
   const reference = { activation_id: report.id };
   const paired = report.pairs?.length ? sourceVisibilityPairs(report, names, sourceButton, precision) : null;
+  const targets = node("div", undefined, "decision-actions");
   select.value = String(paired?.startToken ?? strongest);
   const measured = report.sources.filter((source) => source.masked_log_probs).length;
   const matrix = measured ? renderVisibilityTokenMatrix(report, select, sourceButton, scale, paired, precision) : null;
@@ -102,6 +103,15 @@ function renderSourceVisibility(panel, report, call) {
   function draw() {
     const index = Number(select.value);
     reference.visibility_token = index;
+    const activeTargets = (report.targets || []).filter(({ token_range: [start, end] }) => start <= index && index < end);
+    targets.replaceChildren(...activeTargets.map(({ key }) => {
+      const button = node("button", "Find " + key);
+      button.type = "button";
+      button.addEventListener("click", () => openVisibilityPatterns(report, index,
+        reference.visibility_pair === undefined ? "source" : "pair", key));
+      return button;
+    }));
+    targets.hidden = !activeTargets.length;
     const baseline = report.baseline_log_probs[index];
     const rows = report.sources.map((source) => ({
       source, delta: source.masked_log_probs ? source.masked_log_probs[index] - baseline : null,
@@ -135,7 +145,7 @@ function renderSourceVisibility(panel, report, call) {
   if (paired) panel.append(paired.panel);
   const actions = node("div", undefined, "decision-actions");
   actions.append(compare, evidenceLinkButton(reference, "this visibility measurement"));
-  panel.append(table, actions, provenance);
+  panel.append(table, actions, targets, provenance);
 }
 
 function sourceVisibilityPairs(report, names, sourceButton, precision) {
