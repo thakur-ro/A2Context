@@ -25,7 +25,17 @@
     "tokenizer_sha256": { "$ref": "#/$defs/digest" },
     "request_sha256": { "$ref": "#/$defs/digest", "description": "Digest of the exact UTF-8 recorded request body." },
     "prompt_token_count": { "type": "integer", "minimum": 2 },
-    "baseline_answer": { "$ref": "#/$defs/nonempty" },
+    "baseline_answer": { "$ref": "#/$defs/nonempty", "description": "Exact generated output, including any tool proposal delimiters." },
+    "baseline_tool_call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "arguments"],
+      "description": "The runtime adapter's parsed proposal. Required when measuring a recorded tool call.",
+      "properties": {
+        "name": { "$ref": "#/$defs/nonempty" },
+        "arguments": { "type": "object" }
+      }
+    },
     "output_token_ids": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 } },
     "fragments": { "type": "array", "minItems": 1, "items": { "type": "string" } },
     "baseline_log_probs": { "$ref": "#/$defs/log_probs" },

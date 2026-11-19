@@ -661,6 +661,55 @@ fn visibility_pattern_comparisons_keep_both_scopes_and_page_them_independently()
 }
 
 #[test]
+fn tool_proposal_visibility_links_measured_arguments_to_named_patterns() {
+    let mut client = Client::start(
+        &[
+            "--activation-report",
+            "examples/runtime-comparison/visibility-routing/report.json",
+            "examples/runtime-comparison/visibility-routing/evidence.json",
+        ],
+        true,
+    );
+    let location = json!({"run_id":"qwen-product-route", "call_id":"model-inference", "decision_id":"product-route"});
+    let turn = client.call("get_turn_evidence", location.clone());
+    let report = &turn["structuredContent"]["source_visibility_reports"][0];
+    assert_eq!(report["decision_kind"], "tool_call");
+    assert_eq!(report["measured_sources"], 4);
+    assert_eq!(report["measured_pairs"], 1);
+    assert!(report.get("baseline_tool_call").is_none());
+
+    let sources = client.call(
+        "query_source_visibility",
+        json!({
+            "version":1, "location":location, "report_id":report["report_id"],
+            "view":{"kind":"sources","output_token":17,"context_id":"product-id"}
+        }),
+    );
+    let row = &sources["structuredContent"]["rows"][0];
+    assert_eq!(row["context_id"], "product-id");
+    assert!(row.get("fragment").is_none());
+
+    let name = "query_visibility_patterns";
+    let mut request = json!({
+        "version":1, "kind":"source", "target":"routing.product_id", "source_id":"product-id"
+    });
+    let result = client.call(name, request.clone());
+    assert_eq!(result["structuredContent"]["total_groups"], 1);
+    let group = &result["structuredContent"]["groups"][0];
+    assert_eq!(group["comparison"]["decision_kind"], "tool_call");
+    request["group"] = group["key"].clone();
+    let detail = client.call(name, request);
+    let occurrence = &detail["structuredContent"]["occurrences"][0];
+    assert_eq!(occurrence["output_token"], 17);
+    assert_eq!(occurrence["output_token_end"], 19);
+    assert!((occurrence["effect"].as_f64().unwrap() + 4.864170).abs() < 1e-6);
+    assert!(occurrence["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&visibility=17&mask=product%2Did"));
+}
+
+#[test]
 fn visibility_targets_align_different_prefixes_and_keep_exact_span_links() {
     let mut client = Client::start(
         &[

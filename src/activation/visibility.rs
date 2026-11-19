@@ -3,7 +3,7 @@
 pub mod patterns;
 pub mod query;
 
-use super::{inside, is_digest};
+use super::{inside, is_digest, ToolProposal};
 use crate::{replay::Location, Availability, Call, Decision};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -24,6 +24,8 @@ pub struct Report {
     request_sha256: String,
     prompt_token_count: usize,
     baseline_answer: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    baseline_tool_call: Option<ToolProposal>,
     output_token_ids: Vec<u32>,
     fragments: Vec<String>,
     baseline_log_probs: Vec<f64>,
@@ -131,10 +133,12 @@ impl Report {
                 "source visibility request digest differs from the recorded request".into(),
             );
         }
-        if decision.kind != "model_output"
-            || self.baseline_answer.is_empty()
-            || decision.outcome.as_str() != Some(&self.baseline_answer)
-        {
+        let reproduced = match (&self.baseline_tool_call, decision.kind.as_str()) {
+            (Some(proposal), "tool_call") => proposal.reproduces(decision),
+            (None, "model_output") => decision.outcome.as_str() == Some(&self.baseline_answer),
+            _ => false,
+        };
+        if self.baseline_answer.is_empty() || !reproduced {
             return Err(
                 "the source visibility baseline did not reproduce the recorded decision".into(),
             );

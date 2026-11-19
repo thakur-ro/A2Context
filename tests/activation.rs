@@ -14,6 +14,33 @@ const ROUTING: &str = include_str!("../examples/local-mlx-routing/activation-rep
 const ROUTING_EVIDENCE: &str = include_str!("../examples/local-mlx-routing/evidence.json");
 
 #[test]
+fn visibility_requires_a_reproduced_tool_name_and_arguments() {
+    let runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/evidence.json"
+    ))
+    .unwrap();
+    let original: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/report.json"
+    ))
+    .unwrap();
+    let validate = |value: Value| {
+        serde_json::from_value::<Report>(value)
+            .unwrap()
+            .validate(&runs)
+    };
+    validate(original.clone()).unwrap();
+    for proposal in [
+        Value::Null,
+        serde_json::json!({"name":"price","arguments":{"product_id":42}}),
+        serde_json::json!({"name":"stock","arguments":{"product_id":"42"}}),
+    ] {
+        let mut invalid = original.clone();
+        invalid["baseline_tool_call"] = proposal;
+        assert!(validate(invalid).unwrap_err().contains("recorded decision"));
+    }
+}
+
+#[test]
 fn visibility_pairs_require_two_measured_disjoint_sources_and_one_score_per_token() {
     let runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/paired-visibility-evidence.json"

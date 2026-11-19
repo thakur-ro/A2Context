@@ -120,6 +120,15 @@ struct ToolProposal {
     arguments: Map<String, Value>,
 }
 
+impl ToolProposal {
+    fn reproduces(&self, decision: &Decision) -> bool {
+        decision.kind == "tool_call"
+            && !self.name.trim().is_empty()
+            && self.name == decision.label
+            && decision.outcome.as_object() == Some(&self.arguments)
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct Checkpoint {
@@ -289,10 +298,7 @@ impl TimelineReport {
             );
         }
         let reproduced = match (&self.tool_calls, decision.kind.as_str()) {
-            (Some(calls), "tool_call") => {
-                calls.baseline.name == decision.label
-                    && decision.outcome.as_object() == Some(&calls.baseline.arguments)
-            }
+            (Some(calls), "tool_call") => calls.baseline.reproduces(decision),
             (None, kind) if kind != "tool_call" => {
                 decision.outcome.as_str() == Some(&self.baseline_answer)
             }
@@ -322,11 +328,10 @@ impl TimelineReport {
             scores.validate(self, sources.keys().copied())?;
         }
         if let Some(calls) = &self.tool_calls {
-            if calls.baseline.name.trim().is_empty()
-                || !sources
-                    .keys()
-                    .copied()
-                    .eq(calls.edited.keys().map(String::as_str))
+            if !sources
+                .keys()
+                .copied()
+                .eq(calls.edited.keys().map(String::as_str))
                 || calls
                     .edited
                     .values()

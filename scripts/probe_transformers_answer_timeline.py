@@ -6,7 +6,7 @@ from importlib.metadata import version
 import json
 from pathlib import Path
 
-from activation_timeline import measure
+from activation_timeline import measure, tool_payload
 
 
 class TransformersRuntime:
@@ -18,10 +18,11 @@ class TransformersRuntime:
         self.layer_count = len(model.model.layers)
         self.identity = f"Transformers {version('transformers')} / PyTorch {version('torch')} / CPU float32"
 
+    def render_prompt(self, messages, tools):
+        return self.tokenizer.apply_chat_template(messages, tools=tools, tokenize=False, add_generation_prompt=True)
+
     def prompt_input(self, messages, tools):
-        if tools:
-            raise ValueError("The Qwen2 adapter measures text answers.")
-        prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        prompt = self.render_prompt(messages, tools)
         encoded = self.tokenizer(prompt, add_special_tokens=False, return_offsets_mapping=True)
         return prompt, encoded.input_ids, encoded.offset_mapping, False
 
@@ -39,6 +40,24 @@ class TransformersRuntime:
             raise ValueError("The fixture answer must finish before the generation limit.")
         generated.pop()
         return self.tokenizer.decode(generated, skip_special_tokens=False), generated
+
+    def parse_proposal(self, answer, tools):
+        payload, position = tool_payload(answer, "<tool_call>", "</tool_call>")
+        if payload is None:
+            return None, None
+        payload = payload.strip()
+        # Qwen2.5's tool template example wraps its JSON object in an extra brace pair.
+        if payload.startswith("{{") and payload.endswith("}}"):
+            payload = payload[1:-1]
+        try:
+            proposal = json.loads(payload)
+        except json.JSONDecodeError as error:
+            raise ValueError("The proposed Qwen2 tool call has invalid JSON.") from error
+        names = [tool["function"]["name"] for tool in tools]
+        if (not isinstance(proposal, dict) or proposal.keys() != {"name", "arguments"}
+                or proposal["name"] not in names or not isinstance(proposal["arguments"], dict)):
+            raise ValueError("Expected one proposed call to a listed tool with named arguments.")
+        return proposal, position
 
     @contextmanager
     def observe_blocks(self, callbacks):

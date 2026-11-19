@@ -298,7 +298,9 @@ function renderVisibilityTimeline(parent, page, captions, openPeriod) {
 
 function appendVisibilityModel(parent, comparison) {
   const output = comparison.target || "Prefix " + comparison.output_prefix_sha256.slice(0, 8);
-  const model = node("small", [comparison.model_id, comparison.runtime, output].join(" · "), "anchor");
+  const details = [comparison.model_id, comparison.runtime, output];
+  if (comparison.decision_kind === "tool_call") details.push("Tool proposal");
+  const model = node("small", details.join(" · "), "anchor");
   model.title = "Model revision " + comparison.model_revision;
   parent.append(model);
 }

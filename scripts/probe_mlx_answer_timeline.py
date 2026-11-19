@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-from activation_timeline import measure
+from activation_timeline import measure, tool_payload
 from mlx_activation import observe_blocks, patch_output, prompt_input
 
 
@@ -26,18 +26,14 @@ def output_tokens(model, tokenizer, prompt, request):
 def parse_proposal(tokenizer, answer, tools):
     if not tokenizer.tool_call_start:
         raise ValueError("The model has no tool parser.")
-    leading, start, body = answer.partition(tokenizer.tool_call_start)
-    if not start:
+    payload, position = tool_payload(answer, tokenizer.tool_call_start, tokenizer.tool_call_end)
+    if payload is None:
         return None, None
-    payload, end, tail = body.partition(tokenizer.tool_call_end)
-    if not end or tokenizer.tool_call_start in tail:
-        raise ValueError("Expected one complete proposed tool call.")
     parsed = tokenizer.tool_parser(payload, tools)
     names = {tool["function"]["name"] for tool in tools}
     if not isinstance(parsed, dict) or parsed["name"] not in names or not isinstance(parsed["arguments"], dict):
         raise ValueError("Expected one proposed call to a listed tool with named arguments.")
-    payload_start = len(leading) + len(start)
-    return parsed, slice(payload_start, payload_start + len(payload))
+    return parsed, position
 
 
 class MlxRuntime:

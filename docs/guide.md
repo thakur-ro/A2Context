@@ -764,7 +764,7 @@ cargo run --locked -- serve \
   examples/runtime-comparison/evidence.json
 ```
 
-The adapter uses the captured request and the existing source anchors. It supports greedy Qwen2 text answers and UTF-8 ranges in `/messages/<index>/content`. It verifies that unmasked generation reproduces the recorded answer, then holds earlier output tokens fixed during scoring. The [versioned report](../schema/source-visibility-1.json) records coverage for every context item, including those without an exact token alignment. [Experimental results](inference-attribution-plan.md#screen-captured-sources-by-masking-attention)
+The adapter uses the captured request and the existing source anchors. It supports greedy Qwen2 generation and UTF-8 ranges in `/messages/<index>/content`. It verifies that unmasked generation reproduces the recorded decision, then holds earlier output tokens fixed during scoring. The versioned report records coverage for every context item, including those without an exact token alignment. [Report schema](../schema/source-visibility-1.json), [Experimental results](inference-attribution-plan.md#screen-captured-sources-by-masking-attention)
 
 To reproduce the saved measurement with Transformers 4.57.6 and PyTorch 2.11.0, point the script at the local pinned Qwen2.5-0.5B-Instruct checkpoint.
 
@@ -773,6 +773,26 @@ python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-
   --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 \
   --run-id transformers-return-and-refund --call-id model-inference --decision-id return-and-refund \
   > source-visibility.json
+```
+
+### Test source visibility on a tool proposal
+
+```sh
+cargo run --locked -- serve \
+  --activation-report examples/runtime-comparison/visibility-routing/report.json \
+  examples/runtime-comparison/visibility-routing/evidence.json
+```
+
+In **Conversation** or **Decisions**, open **Activation probe → Context visibility test**. In **Across the tool proposal**, select `stock` to see the effect of masking the request type, or select either digit in `42` and choose **Find routing.product_id** to open Patterns for the full argument. A named target uses the sum of token log probability changes across its span.
+
+The adapter renders the recorded tool list with the request, then requires the generated tool name and arguments to match the captured decision. It parses the extra outer brace pair emitted by this Qwen2.5 checkpoint and scores the original output tokens. The probe only generates and scores the proposal. Four of seven sources aligned in this fixture. The two tool definitions have no text anchors, and the system instruction crosses a token boundary. The inspector reports those gaps. [Routing experiment](inference-attribution-plan.md#measure-a-proposed-tool-name-and-argument)
+
+```sh
+python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-comparison/visibility-routing/evidence.json \
+  --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 \
+  --run-id qwen-product-route --call-id model-inference --decision-id product-route \
+  --target routing.tool 7 8 --target routing.product_id 17 19 \
+  --pair request-type product-id > routing-visibility.json
 ```
 
 ### Test a pair of sources

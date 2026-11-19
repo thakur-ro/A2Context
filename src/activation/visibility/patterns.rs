@@ -89,6 +89,8 @@ struct Comparison<'a> {
     output_prefix_sha256: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     target: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    decision_kind: Option<&'a str>,
     sources: Vec<Identity<'a>>,
 }
 
@@ -279,6 +281,10 @@ fn gather<'a>(
             output_token: exact.then_some(start),
             output_prefix_sha256: exact.then(|| prefix.clone()),
             target: target.map(|target| target.key.as_str()),
+            decision_kind: report
+                .baseline_tool_call
+                .as_ref()
+                .map(|_| decision.kind.as_str()),
             sources: Vec::new(),
         };
         let mut record = |context_ids: Vec<&'a str>, pair, effect: f64| {

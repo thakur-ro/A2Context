@@ -54,7 +54,7 @@ function renderActivationReports(parent, reports, call) {
 function renderSourceVisibility(panel, report, call) {
   const precision = visibilityEffectFormat;
   panel.append(node("h3", "Context visibility test"));
-  panel.append(node("p", "Earlier answer tokens stay fixed. A negative source effect means the recorded token became less likely.", "muted"));
+  panel.append(node("p", "Earlier output tokens stay fixed. A negative source effect means the recorded token became less likely.", "muted"));
   const label = node("label", undefined, "activation-picker");
   const select = node("select");
   select.dataset.visibilityToken = "";

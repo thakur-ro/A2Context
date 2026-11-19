@@ -146,3 +146,16 @@ We repeated the Qwen experiment with a second copy of the refund policy at a sep
 | Refund policy and store name | +0.00018 | +0.00022 | +0.00033 | −0.00006 |
 
 The columns show changes in natural log probability. The interaction subtracts the sum of the individual changes from the joint change. Either copy was sufficient to preserve the high probability of the recorded digit under this intervention. The paired control preserved that probability at the same position. This test uses an exact duplicate, one Qwen2 answer, and a fixed output prefix. It gives a way to test a redundancy hypothesis at a particular token. Semantic duplicates, groups of three or more sources, and free generation under the joint mask remain open. [Inspect the paired masks](guide.md#test-a-pair-of-sources)
+
+## Measure a proposed tool name and argument
+
+We used the same Qwen2.5 checkpoint for a synthetic product lookup with two tool definitions. Greedy generation reproduced `stock(product_id=42)`. The adapter verified the parsed name and arguments against the recorded call, and the all-visible control reproduced every unmasked token score. [Recorded request and proposal](../examples/runtime-comparison/visibility-routing/evidence.json), [Measured report](../examples/runtime-comparison/visibility-routing/report.json)
+
+| Masked source | Change at `stock` | Change across `42` |
+| --- | ---: | ---: |
+| Request type | −0.26029 | 0 |
+| Product ID | −0.00018 | −4.86417 |
+| Store name | −0.00002 | 0 |
+| Request type and product ID | −0.26217 | −4.88383 |
+
+The table gives masked minus original log probability. The argument column sums the two digit scores, each conditioned on the preceding recorded tokens. The request type had the largest measured effect on the name, and the product ID had the largest measured effect on the argument. The system instruction and rendered tool definitions remain unmeasured in this fixture. These are fixed-prefix effects from one proposal. Whether the model would generate a different tool call under the same masks remains open. [Reproduce the probe](guide.md#test-source-visibility-on-a-tool-proposal)

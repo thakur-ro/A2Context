@@ -129,6 +129,9 @@ fn summary(report: &Report) -> Value {
     if !report.targets.is_empty() {
         result["targets"] = json!(report.targets);
     }
+    if report.baseline_tool_call.is_some() {
+        result["decision_kind"] = json!("tool_call");
+    }
     result
 }
 

@@ -6,6 +6,17 @@ from activation_tokens import edited_prompt, source_tokens
 from activation_branches import decode_generation_branches
 
 
+def tool_payload(answer, open_tag, close_tag):
+    leading, start, body = answer.partition(open_tag)
+    if not start:
+        return None, None
+    payload, end, tail = body.partition(close_tag)
+    if not end or open_tag in tail:
+        raise ValueError("Expected one complete proposed tool call.")
+    start_at = len(leading) + len(start)
+    return payload, slice(start_at, start_at + len(payload))
+
+
 def checkpoint_specs(tokenizer, prompt, prompt_tokens, special, answer, generated, specs, measured):
     clean = prompt_tokens + generated
     if tokenizer.encode(prompt + answer, add_special_tokens=special) != clean:

@@ -103,7 +103,7 @@ function renderActivationOutput(report, call, blockPicker) {
 
 function renderVisibilityTokenMatrix(report, token, sourceButton, scale, paired, format) {
   const section = node("section", undefined, "visibility-token-matrix");
-  section.append(node("h4", "Across the answer"));
+  section.append(node("h4", report.baseline_tool_call ? "Across the tool proposal" : "Across the answer"));
   const mode = node("select");
   mode.dataset.visibilityMatrixMode = "";
   mode.append(new Option("Single-source effects", "sources"), new Option("Pair interactions", "pairs"));

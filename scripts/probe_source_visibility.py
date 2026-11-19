@@ -1,4 +1,4 @@
-"""Measure source visibility on a recorded Qwen2 answer without writing prompt edits."""
+"""Measure source visibility on a recorded Qwen2 answer or tool proposal."""
 
 import argparse
 from contextlib import ExitStack
@@ -13,7 +13,7 @@ from activation_timeline import output_fragments
 from probe_transformers_answer_timeline import load_runtime
 
 
-def aligned_range(runtime, prompt, offsets, messages, item):
+def aligned_range(runtime, prompt, offsets, messages, item, tools):
     if item["availability"] != "included" or item.get("text") is None:
         return None, "text_not_captured"
     anchor = item.get("request_fragment")
@@ -38,7 +38,7 @@ def aligned_range(runtime, prompt, offsets, messages, item):
         marker += "_"
     tagged = list(messages)
     tagged[index] = {**messages[index], "content": content[:start].decode() + marker + content[end:].decode()}
-    rendered = runtime.tokenizer.apply_chat_template(tagged, tokenize=False, add_generation_prompt=True)
+    rendered = runtime.render_prompt(tagged, tools)
     if rendered.count(marker) != 1 or rendered.replace(marker, text) != prompt:
         return None, "rendered_source_unaligned"
     left = rendered.index(marker)
@@ -102,10 +102,18 @@ def pair_plan(sources, requested, include_duplicates):
 def measure(runtime, model_path, model_id, revision, location, call, decision, *, pairs=(), pair_duplicates=False):
     request = json.loads(call["recorded_request"]["body"])
     messages = request["messages"]
-    prompt, tokens, offsets, _ = runtime.prompt_input(messages, request.get("tools"))
+    tools = request.get("tools")
+    prompt, tokens, offsets, _ = runtime.prompt_input(messages, tools)
     answer, generated = runtime.generate(prompt, tokens, request)
-    if decision["kind"] != "model_output" or not generated or answer != decision["outcome"]:
-        raise ValueError("The model must reproduce the recorded text decision.")
+    proposal = None
+    if decision["kind"] == "tool_call" and tools:
+        proposal, _ = runtime.parse_proposal(answer, tools)
+        recorded = {"name": decision["label"], "arguments": decision["outcome"]}
+        reproduced = json.dumps(proposal, sort_keys=True, allow_nan=False) == json.dumps(recorded, sort_keys=True, allow_nan=False)
+    else:
+        reproduced = decision["kind"] == "model_output" and answer == decision["outcome"]
+    if not generated or not reproduced:
+        raise ValueError("The model must reproduce the recorded text or tool decision.")
     readouts = [(len(tokens) + i - 1, token, None) for i, token in enumerate(generated)]
     clean = tokens + generated
     baseline = runtime.scores(clean, readouts, {})
@@ -116,7 +124,7 @@ def measure(runtime, model_path, model_id, revision, location, call, decision, *
     sources = []
     for item in call["context"]:
         source = {"context_id": item["id"]}
-        token_range, reason = aligned_range(runtime, prompt, offsets, messages, item)
+        token_range, reason = aligned_range(runtime, prompt, offsets, messages, item, tools)
         if token_range is None:
             source["unavailable"] = reason
         else:
@@ -138,6 +146,8 @@ def measure(runtime, model_path, model_id, revision, location, call, decision, *
         "fragments": output_fragments(runtime.tokenizer, answer, generated),
         "baseline_log_probs": baseline, "all_visible_max_abs_error": error, "sources": sources,
     }
+    if proposal is not None:
+        report["baseline_tool_call"] = proposal
     plan = pair_plan(sources, pairs, pair_duplicates)
     if plan:
         report["pairs"] = [
@@ -147,6 +157,16 @@ def measure(runtime, model_path, model_id, revision, location, call, decision, *
         digest = sha256(json.dumps([ids for ids, _ in plan], separators=(",", ":")).encode()).hexdigest()
         report["id"] += "-" + digest[:16]
     return report
+
+
+def output_targets(specs, token_count):
+    targets = {}
+    for key, start, end in specs:
+        start, end = int(start), int(end)
+        if not key or key.strip() != key or key in targets or not 0 <= start < end <= token_count:
+            raise ValueError("Output targets need unique keys and nonempty ranges in the recorded output.")
+        targets[key] = [start, end]
+    return [{"key": key, "token_range": token_range} for key, token_range in targets.items()]
 
 
 def main():
@@ -162,6 +182,8 @@ def main():
                         help="Measure two context IDs together. Repeat to measure more pairs.")
     parser.add_argument("--pair-duplicates", action="store_true",
                         help="Also test pairs with identical captured text and separate token ranges.")
+    parser.add_argument("--target", action="append", nargs=3, default=[], metavar=("KEY", "START", "END"),
+                        help="Name an output token range by zero-based start and exclusive end.")
     args = parser.parse_args()
     runs = json.loads(args.evidence.read_text(encoding="utf-8"))
     run = next((run for run in runs if run["id"] == args.run_id), None)
@@ -174,6 +196,11 @@ def main():
     with runtime.torch.inference_mode():
         report = measure(runtime, args.model, args.model_id, args.revision, location, call, decision,
                          pairs=args.pair, pair_duplicates=args.pair_duplicates)
+    if args.target:
+        try:
+            report["targets"] = output_targets(args.target, len(report["output_token_ids"]))
+        except ValueError as error:
+            parser.error(str(error))
     print(json.dumps(report, indent=2, allow_nan=False))
 
 

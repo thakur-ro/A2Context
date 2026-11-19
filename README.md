@@ -35,7 +35,7 @@ The tool-routing example measures which inputs affected a proposed tool name and
 
 Runtimes can send an OpenTelemetry trace and attach the activation report when its measurements are ready. [Send a measured trace](docs/guide.md#attach-activation-measurements-after-a-trace-arrives)
 
-For a captured Qwen2 text answer, test each aligned prompt source without writing replacement text. Mask two sources together to check whether they back each other up. [Inspect source visibility](docs/guide.md#test-source-visibility-on-a-recorded-answer), [Try the paired test](docs/guide.md#test-a-pair-of-sources)
+For a captured Qwen2 answer or tool proposal, test each aligned prompt source without writing replacement text. Mask two sources together to check whether they back each other up. [Inspect a text answer](docs/guide.md#test-source-visibility-on-a-recorded-answer), [Inspect a tool proposal](docs/guide.md#test-source-visibility-on-a-tool-proposal), [Try the paired test](docs/guide.md#test-a-pair-of-sources)
 
 Query recurring masked-source effects across conversations, users, and organizations, then open the exact contributing token and source. [Compare the measured cohort](docs/guide.md#find-recurring-masked-source-effects)
 
