@@ -26,6 +26,7 @@ include = [
     "/CREDITS.md",
     "/LICENSE",
     "/LICENSES/**",
+    "!**/__pycache__/**",
 ]
 
 [dependencies]
