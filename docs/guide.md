@@ -27,7 +27,7 @@ Open **Before inference** and select **Load returns example**. Expand the confli
 
 To inspect your workflow, paste the versioned pending request JSON used by preflight. The inspector checks declared rules and compares captured text for exact reuse. Under **Attach existing model reports**, you can add a saved context screen, candidate probe, or shadow probe. For example, paste the saved Qwen routing request, attach its candidate and shadow reports, and select **Inspect request**. You'll see whether an edit changes preference between two fixed continuations or the rate of a generated proposal. The inspector checks the supplied reports against this request and displays why a stale report failed verification. [Routing request](../examples/runtime-comparison/pending-routing/request.json) · [Candidate report](../examples/runtime-comparison/pending-routing/report.json) · [Shadow report](../examples/runtime-comparison/pending-routing/shadow-report.json)
 
-The same inspection is available through `nexusweave inspect-pending <input.json|->`, `POST /api/pending`, and the Rust function `pending::inspect`. Supply a JSON object with `request` and optional `screening`, `candidate`, and `shadow` report objects. The HTTP request is limited to 1 MiB. The response includes captured context, so send it only where that context can be read. The inspector does its work in memory and invokes no model or tools.
+The same inspection is available through `nexusweave inspect-pending <input.json|->`, `POST /api/pending`, and the Rust function `pending::inspect`. Supply a JSON object with `request` and optional `screening`, `candidate`, and `shadow` report objects. The HTTP request is limited to 1 MiB. The response includes captured context, so send it only where that context can be read. The inspector does its work in memory and invokes no model or tools. [Inspect pending requests through MCP](#inspect-pending-requests-through-mcp)
 
 ```sh
 jq -n --slurpfile request examples/preflight-returns.json '{request: $request[0]}' \
@@ -430,6 +430,20 @@ By default, turn results include source names, locations, and coverage while omi
 The stdio adapter uses the official Rust MCP SDK. It serves both the 2025-11-25 initialization flow and the 2026-07-28 discovery flow. [MCP versioning and compatibility](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning)
 
 Hosts with MCP Apps support can render `query_conflicts` inline. Select a group, open a contributing conversation decision, and inspect its findings and source anchors. When the host enables excerpts for the process, the embedded view offers **Show captured text**. The view calls the same read-only tools through the host. Clients using tool text or structured results can follow the same drill-down with tool calls. [MCP Apps quickstart](https://apps.extensions.modelcontextprotocol.io/api/documents/quickstart.html)
+
+### Inspect pending requests through MCP
+
+Start the same binary with `["mcp-stdio"]` to inspect pending requests without loading trace files or a journal. Both pending tools are also available when the server loads recorded evidence.
+
+Call `inspect_pending` with the [pending inspection input](#inspect-an-assembled-request) under `input`. For example, to prepare tool arguments from the returns fixture, run the command below and pass its output to the tool. [Tool input schema](../schema/pending-inspection-1.json)
+
+```sh
+jq -n --slurpfile request examples/preflight-returns.json '{input: {request: $request[0]}}'
+```
+
+The result includes preflight findings and receipt, flagged text pairs, verified candidate and shadow effects, and editable context locations. Hosts that support MCP Apps display this evidence inline. Page with the same input and the returned `next_offset`. Start the server with `--include-excerpts` and request `include_excerpts: true` to include captured text and tested values. The tools use the request and reports supplied by the caller. They read no stored traces and invoke no runners.
+
+Use `validate_shadow_case` with objects named `request` and `case` to check a proposed experiment against the original request body and outcome criterion. Run a valid case separately with a proposal-only runner, then pass the report back as `input.shadow` on `inspect_pending`. [Shadow probe workflow](#test-context-with-shadow-proposals)
 
 ### Follow live traces through MCP
 

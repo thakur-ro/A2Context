@@ -47,7 +47,7 @@ Follow a flagged policy pair from its text scores to a controlled model run. The
 
 Import OTLP or OpenInference spans, import LangSmith runs, or emit versioned evidence JSON from any language. Declare stable source IDs, versions, rule scopes, and request locations to connect trace evidence to a probe. Add thread, user, and organization IDs to enable cross-conversation queries. [OpenTelemetry](docs/guide.md#import-opentelemetry-traces) · [LangSmith](docs/guide.md#import-langsmith-traces) · [Evidence JSON](schema/evidence-1.json) · [Source declarations](docs/guide.md#declare-context-sources-and-decision-scope)
 
-Build against the Rust crate or query the local inspector through its HTTP and MCP interfaces. [Rust package guide](docs/rust-api.md) · [Connect an MCP client](docs/guide.md#connect-an-mcp-client)
+Build against the Rust crate or use the HTTP and MCP interfaces to inspect pending requests and recorded evidence. [Rust package guide](docs/rust-api.md) · [Connect an MCP client](docs/guide.md#connect-an-mcp-client)
 
 ## Project
 

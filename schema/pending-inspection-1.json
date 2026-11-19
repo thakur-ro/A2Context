@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave pending request evidence query",
+  "type": "object",
+  "required": ["input"],
+  "additionalProperties": false,
+  "properties": {
+    "input": {
+      "type": "object",
+      "required": ["request"],
+      "additionalProperties": false,
+      "properties": {
+        "request": { "$ref": "#/$defs/pendingRequest" },
+        "screening": { "type": ["object", "null"], "description": "A context screen report for the same request." },
+        "candidate": { "type": ["object", "null"], "description": "A candidate probe report for the same request." },
+        "shadow": { "type": ["object", "null"], "description": "A shadow probe report for the same request." }
+      }
+    },
+    "include_excerpts": { "type": "boolean", "default": false, "description": "Request captured text and tested values when enabled by the host." },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 },
+    "offset": { "type": "integer", "minimum": 0, "default": 0 }
+  },
+  "$defs": {
+    "pendingRequest": {
+      "type": "object",
+      "required": ["version", "attributes"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "const": 1 },
+        "scope": {
+          "type": ["object", "null"],
+          "required": ["key", "scope"],
+          "properties": { "key": { "type": "string", "minLength": 1 }, "scope": { "type": "string", "minLength": 1 } }
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Captured GenAI inputs and optional NexusWeave context metadata. Preserve the original inference JSON as a string in nexusweave.request.body."
+        }
+      }
+    }
+  }
+}

@@ -103,6 +103,96 @@ impl Drop for Client {
 }
 
 #[test]
+fn pending_mcp_can_inspect_and_validate_without_a_trace_store() {
+    let mut client = Client::start(&[], true);
+    let listed = client.request("tools/list", json!({}));
+    let tools = listed["tools"].as_array().unwrap();
+    assert_eq!(
+        tools
+            .iter()
+            .map(|tool| tool["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["inspect_pending", "validate_shadow_case"]
+    );
+    assert!(tools
+        .iter()
+        .all(|tool| tool["annotations"]["readOnlyHint"] == true));
+    assert_eq!(
+        tools[1]["inputSchema"]["properties"]["case"]["properties"]["interventions"]["type"],
+        "array"
+    );
+    assert_eq!(client.call("get_turn_evidence", json!({}))["isError"], true);
+
+    let request: Value =
+        serde_json::from_str(include_str!("../examples/preflight-returns.json")).unwrap();
+    let mut args = json!({"input": {"request": request}, "limit": 1});
+    let inspection = client.call("inspect_pending", args.clone());
+    let view = &inspection["structuredContent"];
+    assert_eq!(view["kind"], "pending_evidence");
+    assert_eq!(view["preflight"]["finding_count"], 1);
+    assert!(view["preflight"]["receipt"]["fingerprint"].is_string());
+    assert_eq!(view["rows"][0]["kind"], "preflight_finding");
+    assert!(view["rows"][0]["inputs"][0]["rule_value"].is_null());
+    assert_eq!(view["next_offset"], 1);
+    args["offset"] = view["next_offset"].clone();
+    let sources = client.call("inspect_pending", args.clone());
+    assert_eq!(
+        sources["structuredContent"]["rows"][0]["kind"],
+        "captured_input"
+    );
+    assert!(sources["structuredContent"]["rows"][0]["input"]["excerpt"].is_null());
+    assert!(!sources.to_string().contains("Can I return"));
+    args["include_excerpts"] = json!(true);
+    assert_eq!(client.call("inspect_pending", args)["isError"], true);
+
+    let request: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/request.json"
+    ))
+    .unwrap();
+    let case: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/shadow-case.json"
+    ))
+    .unwrap();
+    let mut plan = json!({"request":request,"case":case});
+    let checked = client.call("validate_shadow_case", plan.clone());
+    assert_eq!(checked["structuredContent"]["valid"], true);
+    plan["case"]["match_rule"]["pointers"] = json!(["/absent"]);
+    assert_eq!(client.call("validate_shadow_case", plan)["isError"], true);
+}
+
+#[test]
+fn pending_mcp_returns_verified_effects_and_opt_in_source_text() {
+    let mut client = Client::start(&["--include-excerpts"], false);
+    let request: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/request.json"
+    ))
+    .unwrap();
+    let shadow: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/shadow-report.json"
+    ))
+    .unwrap();
+    let args = json!({"input": {"request":request, "shadow":shadow}});
+    let without = client.call("inspect_pending", args.clone());
+    assert_eq!(
+        without["structuredContent"]["shadow_probes"][0]["pair"]["difference_pp"],
+        100.0
+    );
+    assert!(!without.to_string().contains("Request type: price."));
+    let mut with_excerpts = args;
+    with_excerpts["include_excerpts"] = json!(true);
+    let with = client.call("inspect_pending", with_excerpts);
+    let rows = with["structuredContent"]["rows"].as_array().unwrap();
+    assert_eq!(
+        rows[0]["replacement_excerpt"]["text"],
+        "Request type: price."
+    );
+    assert!(rows.iter().any(|row| {
+        row["input"]["source_id"] == "request-type"
+            && row["request_fields"][0]["pointer"] == "/messages/1/content"
+    }));
+}
+
+#[test]
 fn live_mcp_applies_host_scope_as_trace_identity_arrives() {
     let directory = tempfile::tempdir().unwrap();
     let scope = directory.path().join("scope.json");
@@ -1242,7 +1332,7 @@ fn legacy_client_gets_the_cli_counts_and_cannot_widen_host_scope() {
     let mut client = Client::start(&["--scope", scope.to_str().unwrap(), evidence], false);
     let listed = client.request("tools/list", json!({}));
     let tools = listed["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 4);
+    assert_eq!(tools.len(), 6);
     assert!(tools
         .iter()
         .all(|tool| tool["annotations"]["readOnlyHint"] == true));

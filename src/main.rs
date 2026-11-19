@@ -32,7 +32,7 @@ const USAGE: &str = "Usage:
   nexusweave query-candidate-patterns <view.json> <evidence.json> [...]
   nexusweave query-shadow-patterns <view.json> <evidence.json> [...]
   nexusweave query-screening-patterns <view.json> [--replay <report.json>]... <evidence.json> [...]
-  nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] <evidence.json> [...]
+  nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] [evidence.json ...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
   nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
   nexusweave serve [--listen 127.0.0.1:8040] [--replay report.json] [--activation-report report.json] [--otlp-store directory] [evidence.json ...]";

@@ -44,6 +44,7 @@ function openPage(page, back, focus = false) {
   else if (page.kind === "activation_evidence") renderActivationEvidence(page, back);
   else if (/^(candidate|shadow|screening)_pattern_/.test(page.kind)) renderAssessmentPatterns(page, back);
   else if (page.kind.startsWith("visibility_")) renderVisibility(result, page, requestPage, pageControls);
+  else if (page.kind === "pending_evidence") renderPending(page);
   else renderTurn(page);
   if (focus) {
     heading.tabIndex = -1;
@@ -281,16 +282,32 @@ function appendScreeningPair(parent, assessment, inputs) {
 }
 
 function renderTurn(page) {
-  const { counts, rows, preflight, context_screening: screening, candidate_probes = [], shadow_probes = [] } = page.data;
+  const { counts } = page.data;
   result.append(element("p", [
     countLabel(counts.rule_findings, "finding"),
     countLabel(counts.context_links, "context link"),
     countLabel(counts.replay_tests, "replay test"),
   ].join(" · "), "muted"));
+  renderRequestEvidence(page, "get_turn_evidence");
+}
+
+function renderPending(page) {
+  const { model, captured_inputs, preflight } = page.data;
+  result.append(element("p", [model, countLabel(captured_inputs, "captured input")].filter(Boolean).join(" · "), "muted"));
+  if (preflight.receipt) {
+    const receipt = element("details", undefined, "row");
+    receipt.append(element("summary", "Preflight receipt"), element("pre", JSON.stringify(preflight.receipt, null, 2), "receipt-json"));
+    result.append(receipt);
+  }
+  renderRequestEvidence(page, "inspect_pending");
+}
+
+function renderRequestEvidence(page, tool) {
+  const pending = tool === "inspect_pending";
+  const { rows, preflight, context_screening: screening, candidate_probes = [], shadow_probes = [] } = page.data;
   if (preflight) {
-    const summary = preflight.status === "matched"
-      ? countLabel(preflight.finding_count, "finding") + " from the workflow's preflight check"
-      : preflight.issue;
+    const summary = pending ? countLabel(preflight.finding_count, "finding") :
+      preflight.status === "matched" ? countLabel(preflight.finding_count, "finding") + " from the workflow's preflight check" : preflight.issue;
     result.append(element("p", "Preflight · " + summary, "muted"));
   }
   if (screening) {
@@ -299,9 +316,10 @@ function renderTurn(page) {
       screening.issue;
     result.append(element("p", "Context screening · " + summary, "muted"));
   }
-  if (page.data.captured_excerpts_enabled && !page.args.include_excerpts) {
+  const canQuery = !pending || Boolean(page.args.input);
+  if (canQuery && page.data.captured_excerpts_enabled && !page.args.include_excerpts) {
     result.append(button("Show captured text", () => requestPage(
-      "get_turn_evidence", { ...page.args, include_excerpts: true }, page.title, page.back,
+      tool, { ...page.args, include_excerpts: true }, page.title, page.back,
     )));
   }
   if (page.data.decision?.outcome_excerpt) appendExcerpt(result, page.data.decision.outcome_excerpt);
@@ -403,6 +421,10 @@ function renderTurn(page) {
       continue;
     } else if (item.input) {
       inputs.append(element("p", [item.input.source_id || item.input.context_id, item.input.availability, item.input.anchor?.field].filter(Boolean).join(" · ")));
+      for (const { pointer, text_range } of item.request_fields || []) {
+        const range = text_range ? " · UTF-8 bytes " + text_range.start_byte + " to " + text_range.end_byte : "";
+        inputs.append(element("p", pointer + range, "muted"));
+      }
       appendExcerpt(inputs, item.input.excerpt);
       continue;
     } else {
@@ -416,7 +438,7 @@ function renderTurn(page) {
     result.append(steps);
   }
   if (inputs.childElementCount > 1) result.append(inputs);
-  pageControls(page, "get_turn_evidence", page.back);
+  if (canQuery) pageControls(page, tool, page.back);
 }
 
 function shadowCounts({ attempted, matched, completed, unscored = 0 }) {
@@ -554,6 +576,7 @@ app.ontoolresult = (response) => {
       shadow_pattern_evidence: () => probeGroupName(data.group.setup),
       screening_pattern_groups: () => "Screened context pairs",
       screening_pattern_evidence: () => screeningGroupName(data.group),
+      pending_evidence: () => "Before inference",
       turn_evidence: () => "Turn evidence",
     };
     const title = Object.hasOwn(titles, data.kind) ? titles[data.kind]() : visibilityTitle(data);

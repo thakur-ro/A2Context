@@ -48,6 +48,7 @@ A `Run` carries optional organization, user, and conversation IDs. Each `Call` c
 | Task | Entry point | Input and result |
 | --- | --- | --- |
 | Inspect an assembled request | `pending::inspect` | Pass a pending request and optional existing reports. Read captured sources, matching request locations, and report verification. [Inspect an assembled request](guide.md#inspect-an-assembled-request) |
+| Page through pending evidence | `pending::evidence` | Pass the same input with a page size and optional excerpt request. Read the source anchors and verified findings used by MCP clients. [Pending MCP tools](guide.md#inspect-pending-requests-through-mcp) |
 | Check a pending request | `preflight::check` | Pass a `preflight::Request` with captured attributes and source declarations. Read the findings and optional receipt. [Preflight guide](guide.md#check-context-before-inference) |
 | Screen captured text pairs | `context_screening::screen_pending`, `context_screening::screen_call` | Pass a request or captured call, a selection, and a scorer callback. Read exact reuse and model-scored pairs with captured source references. [Context screening](guide.md#screen-captured-text-for-overlap) |
 | Compare recurring screened pairs | `context_screening::patterns::query`, `context_screening::patterns::query_with_replays` | Pass a query and scoped runs. Include saved reports to read verified replay coverage and links to tested decisions. [Replay coverage](guide.md#compare-replay-coverage-on-recurring-pairs) |

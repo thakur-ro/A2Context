@@ -1,8 +1,9 @@
-//! MCP transport for host-selected evidence files or a live inspector journal.
+//! MCP transport for pending requests, evidence files, and live inspector journals.
 
 use super::{activation_http, otlp_http};
 use nexusweave::{
-    activation, conflict_query, context_screening, replay, source_profiles, turn_evidence, Run,
+    activation, conflict_query, context_screening, pending, replay, source_profiles, turn_evidence,
+    Run,
 };
 use rmcp::{
     model::{
@@ -33,6 +34,8 @@ const VISIBILITY_PATTERNS: &str = "query_visibility_patterns";
 const CANDIDATE_PATTERNS: &str = "query_candidate_patterns";
 const SHADOW_PATTERNS: &str = "query_shadow_patterns";
 const SCREENING_PATTERNS: &str = "query_screening_patterns";
+const PENDING: &str = "inspect_pending";
+const SHADOW_CHECK: &str = "validate_shadow_case";
 const APP_URI: &str = "ui://nexusweave/conflict-evidence.html";
 const APP_MIME: &str = "text/html;profile=mcp-app";
 const APP: &str = include_str!("../ui/mcp-app.html");
@@ -73,7 +76,8 @@ pub fn serve(mut args: &[&str]) -> super::Result<()> {
             _ => break,
         };
     }
-    let mut runs = if args.is_empty() && store.is_some() {
+    let pending_only = args.is_empty() && store.is_none();
+    let mut runs = if args.is_empty() {
         Vec::new()
     } else {
         super::read_runs(args)?
@@ -92,7 +96,9 @@ pub fn serve(mut args: &[&str]) -> super::Result<()> {
         replays,
         activations,
     };
-    let source = if let Some((store, fixed_ids)) = store.zip(fixed_ids) {
+    let source = if pending_only {
+        Source::Pending
+    } else if let Some((store, fixed_ids)) = store.zip(fixed_ids) {
         let mut live = LiveEvidence {
             evidence: fixed,
             fixed_ids,
@@ -149,6 +155,7 @@ impl LiveEvidence {
 }
 
 enum Source {
+    Pending,
     Files(Evidence),
     Live(Arc<Mutex<LiveEvidence>>),
 }
@@ -162,7 +169,48 @@ struct Inspector {
 
 impl Inspector {
     fn new(source: Source, allow_excerpts: bool) -> serde_json::Result<Self> {
+        let tool = |name, description, schema| {
+            Tool::new(name, description, schema)
+                .with_annotations(ToolAnnotations::new().read_only(true).open_world(false))
+        };
+        let ui = || {
+            MetaObject(JsonObject::from_iter([(
+                "ui".into(),
+                json!({"resourceUri": APP_URI}),
+            )]))
+        };
+        let pending_schema: JsonObject =
+            serde_json::from_str(include_str!("../schema/pending-inspection-1.json"))?;
+        let mut shadow_case: Value =
+            serde_json::from_str(include_str!("../schema/shadow-case-1.json"))?;
+        let candidate_case: Value =
+            serde_json::from_str(include_str!("../schema/candidate-probe-1.json"))?;
+        shadow_case["properties"]["interventions"] =
+            candidate_case["properties"]["interventions"].clone();
+        let shadow_check = JsonObject::from_iter([
+            ("type".into(), json!("object")),
+            ("required".into(), json!(["request", "case"])),
+            ("additionalProperties".into(), json!(false)),
+            (
+                "properties".into(),
+                json!({
+                    "request": pending_schema["$defs"]["pendingRequest"], "case": shadow_case
+                }),
+            ),
+        ]);
+        let mut definitions = vec![
+            tool(PENDING, "Inspect caller-supplied context before inference. Read rule findings, flagged pairs, verified probe effects, and editable request locations. No model or tools are invoked.", pending_schema).with_meta(ui()),
+            tool(SHADOW_CHECK, "Validate a shadow case against the caller's pending request. Checks the proposal criterion and exact source edits without running inference or dispatching proposals.", shadow_check),
+        ];
         let (file_reports, has_candidates, has_shadow, has_screening) = match &source {
+            Source::Pending => {
+                return Ok(Self {
+                    source,
+                    allow_excerpts,
+                    definitions,
+                    describe: Value::Null,
+                })
+            }
             Source::Files(evidence) => {
                 let mut calls = evidence.runs.iter().flat_map(|run| &run.calls);
                 (
@@ -179,17 +227,7 @@ impl Inspector {
         let turn = serde_json::from_str::<JsonObject>(include_str!(
             "../schema/turn-evidence-request-1.json"
         ))?;
-        let tool = |name, description, schema| {
-            Tool::new(name, description, schema)
-                .with_annotations(ToolAnnotations::new().read_only(true).open_world(false))
-        };
-        let ui = || {
-            MetaObject(JsonObject::from_iter([(
-                "ui".into(),
-                json!({"resourceUri": APP_URI}),
-            )]))
-        };
-        let mut definitions = vec![
+        definitions.extend([
             tool(DESCRIBE, "Discover conflict grouping fields, coverage measures, and the view schema.", JsonObject::from_iter([
                 ("type".into(), json!("object")),
                 ("additionalProperties".into(), json!(false)),
@@ -200,7 +238,7 @@ impl Inspector {
                 .with_meta(ui()),
             tool(CONTEXT_SOURCES, "List or compare named sources by scope and date. Filter by conflicts or measurement coverage and pass a source ID for the original calls and evidence links.",
                 serde_json::from_str(include_str!("../schema/context-source-query-1.json"))?),
-        ];
+        ]);
         if has_candidates {
             definitions.push(tool(CANDIDATE_PATTERNS,
                 "Find recurring candidate preference shifts for comparable probe setups. Select a group key for contributing turns. Compare scopes or time windows without pooling their measurements.",
@@ -282,6 +320,19 @@ impl Inspector {
     }
 
     async fn execute(&self, name: String, args: JsonObject) -> Result<Value, String> {
+        if !self.definitions.iter().any(|tool| tool.name == name) {
+            return Err("This tool is unavailable.".into());
+        }
+        if name == PENDING {
+            return pending::evidence(from_arguments(args)?, self.allow_excerpts);
+        }
+        if name == SHADOW_CHECK {
+            let plan: replay::shadow::Plan = from_arguments(args)?;
+            replay::shadow::validate_case(plan.request, &plan.case)?;
+            return Ok(
+                json!({"kind": "shadow_case_validation", "valid": true, "case_id": plan.case.id}),
+            );
+        }
         if name == DESCRIBE {
             return if args.is_empty() {
                 Ok(self.describe.clone())
@@ -289,11 +340,9 @@ impl Inspector {
                 Err("describe_dimensions takes no arguments.".into())
             };
         }
-        if !self.definitions.iter().any(|tool| tool.name == name) {
-            return Err("This tool is unavailable.".into());
-        }
         let allow_excerpts = self.allow_excerpts;
         match &self.source {
+            Source::Pending => Err("This tool is unavailable.".into()),
             Source::Files(evidence) => {
                 execute_query(&name, args, evidence.runs.iter(), evidence, allow_excerpts)
             }
@@ -395,7 +444,7 @@ impl ServerHandler for Inspector {
             Some([("io.modelcontextprotocol/ui".into(), JsonObject::new())].into());
         ServerConfig::new(capabilities)
             .with_server_info(Implementation::new("nexusweave", env!("CARGO_PKG_VERSION")))
-            .with_instructions("Inspect the evidence configured by the host. Conflict findings and recorded links are evidence about captured inputs. Replay measurements apply to their tested edits.")
+            .with_instructions("Inspect a caller-supplied pending request or the evidence configured by the host. Conflict findings and recorded links describe captured inputs. Replay measurements apply to their tested edits.")
     }
 
     async fn list_tools(

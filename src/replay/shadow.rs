@@ -42,6 +42,14 @@ pub struct Case {
     pub negative_control_context_id: Option<String>,
 }
 
+/// The assembled request and case supplied to a planner before inference.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Plan {
+    pub request: preflight::Request,
+    pub case: Case,
+}
+
 /// Proposals, trial coverage, and changes in the declared proposal's match rate.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]

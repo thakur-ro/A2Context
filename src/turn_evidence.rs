@@ -100,21 +100,6 @@ pub fn query<'a>(
         .context_screens
         .iter()
         .find(|screen| screen.call_id == call.id);
-    let screen_report = screen.and_then(|screen| match &screen.verification {
-        context_screening::Verification::Matched { report } => Some(*report),
-        context_screening::Verification::Unverified { .. } => None,
-    });
-    let screen_rows = screen_report.into_iter().flat_map(|report| {
-        let flagged = report.pairs.iter().filter(|pair| pair.suggestion.is_some());
-        let remaining = report.pairs.iter().filter(|pair| pair.suggestion.is_none());
-        flagged.chain(remaining).map(move |pair| json!({
-            "kind": "context_screen_pair", "suggestion": pair.suggestion, "assessment": pair.assessment,
-            "inputs": pair.sources.iter().filter_map(|&index| {
-                let id = &report.sources[index].context_id;
-                call.context.iter().find(|item| &item.id == id).map(|item| context_ref(item, include_excerpts))
-            }).collect::<Vec<_>>(),
-        }))
-    });
     let at_decision = |call_id: &str, id: &str| call_id == call.id && decision_id == Some(id);
     let findings = inspection
         .findings
@@ -155,15 +140,6 @@ pub fn query<'a>(
         "retrieved_documents": retrieval.map_or(0, |retrieval| retrieval.documents.len()),
     });
 
-    let preflight_rows = preflight_report.into_iter().flat_map(|report| &report.findings).map(|finding| json!({
-        "kind": "preflight_finding", "finding": finding.kind, "rule": finding.key, "scope": finding.scope,
-        "inputs": finding.sources.iter().map(|source| json!({
-            "context_id": source.context_id, "source_id": source.source_id,
-            "source_version": source.source_version, "anchor": source.evidence,
-            "request_fragment": source.request_fragment,
-            "rule_value": source.value.as_ref().filter(|_| include_excerpts),
-        })).collect::<Vec<_>>(),
-    }));
     let finding_rows = findings.map(|finding| json!({
         "kind": "rule_finding", "finding": finding.kind, "rule": finding.key, "scope": finding.scope,
         "inputs": finding.context_ids.iter().filter_map(|id| call.context.iter().find(|item| &item.id == id))
@@ -213,11 +189,13 @@ pub fn query<'a>(
                 "document_identity": item.document_identity,
             })
         });
-    let mut rows = preflight_rows
+    let mut rows = preflight_report
+        .into_iter()
+        .flat_map(|report| preflight_rows(report, include_excerpts))
         .chain(candidate_probes.flat_map(|probe| candidate_rows(probe, include_excerpts)))
         .chain(shadow_probes.flat_map(|probe| shadow_rows(probe, include_excerpts)))
         .chain(finding_rows)
-        .chain(screen_rows)
+        .chain(screen_rows(screen, call, include_excerpts))
         .chain(annotation_rows)
         .chain(link_rows)
         .chain(replay_rows)
@@ -258,23 +236,63 @@ pub fn query<'a>(
         result["shadow_probes"] = json!(shadow_summary);
     }
     if let Some(screen) = screen {
-        use context_screening::Verification;
-        result["context_screening"] = match &screen.verification {
-            Verification::Matched { report } => json!({
-                "status": "matched", "anchor": screen.evidence, "scorer": report.scorer,
-                "compared_pairs": report.pairs.len(), "total_pairs": report.total_pairs,
-                "flagged_pairs": report.pairs.iter().filter(|pair| pair.suggestion.is_some()).count(),
-                "unscored_pairs": report.pairs.iter().filter(|pair| matches!(pair.assessment, context_screening::Assessment::Unscored { .. })).count(),
-            }),
-            Verification::Unverified { issue } => json!({
-                "status": "unverified", "anchor": screen.evidence, "issue": issue,
-            }),
-        };
+        result["context_screening"] = screen_summary(screen);
     }
     Ok(result)
 }
 
-fn candidate_summary(
+pub(crate) fn preflight_rows(
+    report: &crate::preflight::Report,
+    include_excerpts: bool,
+) -> impl Iterator<Item = Value> + '_ {
+    report.findings.iter().map(move |finding| json!({
+        "kind": "preflight_finding", "finding": finding.kind, "rule": finding.key, "scope": finding.scope,
+        "inputs": finding.sources.iter().map(|source| json!({
+            "context_id": source.context_id, "source_id": source.source_id,
+            "source_version": source.source_version, "anchor": source.evidence,
+            "request_fragment": source.request_fragment,
+            "rule_value": source.value.as_ref().filter(|_| include_excerpts),
+        })).collect::<Vec<_>>(),
+    }))
+}
+
+pub(crate) fn screen_summary(screen: &context_screening::Recorded<'_>) -> Value {
+    match &screen.verification {
+        context_screening::Verification::Matched { report } => json!({
+            "status": "matched", "anchor": screen.evidence, "scorer": report.scorer,
+            "compared_pairs": report.pairs.len(), "total_pairs": report.total_pairs,
+            "flagged_pairs": report.pairs.iter().filter(|pair| pair.suggestion.is_some()).count(),
+            "unscored_pairs": report.pairs.iter().filter(|pair| matches!(pair.assessment, context_screening::Assessment::Unscored { .. })).count(),
+        }),
+        context_screening::Verification::Unverified { issue } => json!({
+            "status": "unverified", "anchor": screen.evidence, "issue": issue,
+        }),
+    }
+}
+
+pub(crate) fn screen_rows<'a>(
+    screen: Option<&context_screening::Recorded<'a>>,
+    call: &'a Call,
+    include_excerpts: bool,
+) -> impl Iterator<Item = Value> + 'a {
+    let screen_report = screen.and_then(|screen| match &screen.verification {
+        context_screening::Verification::Matched { report } => Some(*report),
+        context_screening::Verification::Unverified { .. } => None,
+    });
+    screen_report.into_iter().flat_map(move |report| {
+        let flagged = report.pairs.iter().filter(|pair| pair.suggestion.is_some());
+        let remaining = report.pairs.iter().filter(|pair| pair.suggestion.is_none());
+        flagged.chain(remaining).map(move |pair| json!({
+            "kind": "context_screen_pair", "suggestion": pair.suggestion, "assessment": pair.assessment,
+            "inputs": pair.sources.iter().filter_map(|&index| {
+                let id = &report.sources[index].context_id;
+                call.context.iter().find(|item| &item.id == id).map(|item| context_ref(item, include_excerpts))
+            }).collect::<Vec<_>>(),
+        }))
+    })
+}
+
+pub(crate) fn candidate_summary(
     probe: &replay::candidates::RecordedProbe<'_>,
     include_excerpts: bool,
 ) -> Value {
@@ -295,7 +313,7 @@ fn candidate_summary(
     }
 }
 
-fn candidate_rows<'a>(
+pub(crate) fn candidate_rows<'a>(
     probe: &'a replay::candidates::RecordedProbe<'_>,
     include_excerpts: bool,
 ) -> impl Iterator<Item = Value> + 'a {
@@ -314,7 +332,10 @@ fn candidate_rows<'a>(
     })))
 }
 
-fn shadow_summary(probe: &replay::shadow::RecordedProbe<'_>, include_excerpts: bool) -> Value {
+pub(crate) fn shadow_summary(
+    probe: &replay::shadow::RecordedProbe<'_>,
+    include_excerpts: bool,
+) -> Value {
     use replay::shadow::Verification;
     match &probe.verification {
         Verification::Matched { measurement } => json!({
@@ -336,7 +357,7 @@ fn shadow_summary(probe: &replay::shadow::RecordedProbe<'_>, include_excerpts: b
     }
 }
 
-fn shadow_rows<'a>(
+pub(crate) fn shadow_rows<'a>(
     probe: &'a replay::shadow::RecordedProbe<'_>,
     include_excerpts: bool,
 ) -> impl Iterator<Item = Value> + 'a {
@@ -454,7 +475,7 @@ fn turn_calls<'a>(
     steps
 }
 
-fn context_ref(item: &ContextItem, include_excerpts: bool) -> Value {
+pub(crate) fn context_ref(item: &ContextItem, include_excerpts: bool) -> Value {
     json!({
         "context_id": item.id, "kind": item.kind, "role": item.role, "availability": item.availability,
         "source_id": item.source_id, "source_version": item.source_version, "anchor": item.evidence,
