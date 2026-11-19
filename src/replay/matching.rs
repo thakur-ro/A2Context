@@ -33,7 +33,7 @@ impl MatchRule {
 }
 
 pub(super) struct Matcher<'a> {
-    recorded: &'a Choice,
+    reference: &'a Choice,
     comparison: Comparison<'a>,
 }
 
@@ -59,7 +59,7 @@ pub(super) enum Projection<'a> {
 }
 
 impl<'a> Matcher<'a> {
-    pub(super) fn new(rule: &'a MatchRule, recorded: &'a Choice) -> Result<Self, String> {
+    pub(super) fn new(rule: &'a MatchRule, reference: &'a Choice) -> Result<Self, String> {
         let comparison = match rule {
             MatchRule::Exact => Comparison::Exact,
             MatchRule::KindAndLabel => Comparison::KindAndLabel,
@@ -71,18 +71,18 @@ impl<'a> Matcher<'a> {
                         .all(|pointer| valid_pointer(pointer) && seen.insert(pointer))
                 {
                     return Err(
-                        "outcome_fields requires distinct JSON Pointers to recorded fields".into(),
+                        "outcome_fields requires distinct JSON Pointers to reference fields".into(),
                     );
                 }
-                let outcome = structured_outcome(&recorded.outcome)
-                    .ok_or("outcome_fields requires a recorded JSON object or array")?;
+                let outcome = structured_outcome(&reference.outcome)
+                    .ok_or("outcome_fields requires a reference JSON object or array")?;
                 let expected = pointers
                     .iter()
                     .map(|pointer| {
                         outcome
                             .pointer(pointer)
                             .cloned()
-                            .ok_or_else(|| format!("recorded outcome has no field {pointer}"))
+                            .ok_or_else(|| format!("reference outcome has no field {pointer}"))
                     })
                     .collect::<Result<_, _>>()?;
                 Comparison::OutcomeFields { pointers, expected }
@@ -93,23 +93,23 @@ impl<'a> Matcher<'a> {
                 if regex.captures_len() != 2 {
                     return Err("text_capture requires exactly one capture group".into());
                 }
-                let expected = recorded.outcome.as_str().and_then(|text| unique_capture(&regex, text))
-                    .ok_or("text_capture must extract exactly one nonempty value from the recorded outcome")?;
+                let expected = reference.outcome.as_str().and_then(|text| unique_capture(&regex, text))
+                    .ok_or("text_capture must extract exactly one nonempty value from the reference outcome")?;
                 Comparison::TextCapture { regex, expected }
             }
         };
         Ok(Self {
-            recorded,
+            reference,
             comparison,
         })
     }
 
     pub(super) fn compare(&self, choice: &Choice) -> Option<bool> {
-        if choice.kind != self.recorded.kind || choice.label != self.recorded.label {
+        if choice.kind != self.reference.kind || choice.label != self.reference.label {
             return Some(false);
         }
         match &self.comparison {
-            Comparison::Exact => Some(choice.outcome == self.recorded.outcome),
+            Comparison::Exact => Some(choice.outcome == self.reference.outcome),
             Comparison::KindAndLabel => Some(true),
             Comparison::OutcomeFields { pointers, expected } => {
                 let outcome = structured_outcome(&choice.outcome)?;
@@ -126,7 +126,7 @@ impl<'a> Matcher<'a> {
     }
 
     pub(super) fn project<'choice>(&self, choice: &'choice Choice) -> Option<Projection<'choice>> {
-        let same_label = choice.kind == self.recorded.kind && choice.label == self.recorded.label;
+        let same_label = choice.kind == self.reference.kind && choice.label == self.reference.label;
         match &self.comparison {
             Comparison::Exact => Some(Projection::Exact(&choice.outcome)),
             Comparison::OutcomeFields { pointers, .. } if same_label => {

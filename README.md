@@ -16,6 +16,8 @@ A candidate probe measures how a source edit shifts the model's preference betwe
 
 Compare verified preference shifts across users, organizations, and time windows, then open the edited source on a contributing turn. [Explore the measured routing cohort](docs/guide.md#find-recurring-candidate-preference-shifts)
 
+When a model API returns proposals without token scores, a shadow probe compares how often the original request and source edits produce a declared outcome. [Run the proposal-only example](docs/guide.md#test-context-with-shadow-proposals)
+
 ## Try the conversation inspector
 
 With a stable Rust toolchain, run this from the repository root.

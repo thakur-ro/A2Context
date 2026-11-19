@@ -24,6 +24,7 @@ const USAGE: &str = "Usage:
   nexusweave validate <evidence.json> [...]
   nexusweave preflight <request.json|->
   nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
+  nexusweave shadow <request.json> <case.json> <report.json> -- <runner> [args...]
   nexusweave query-conflicts <view.json> <evidence.json> [...]
   nexusweave query-candidate-patterns <view.json> <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] <evidence.json> [...]
@@ -139,6 +140,27 @@ fn run(args: Vec<String>) -> Result<()> {
             write_new(output, &serde_json::to_vec_pretty(&report)?)?;
             println!(
                 "Measured {} source edits to {output}.",
+                report.effects.len()
+            );
+        }
+        ["shadow", request, specification, output, "--", program, runner_args @ ..] => {
+            if Path::new(output).exists() {
+                return Err(format!("shadow report already exists: {output}").into());
+            }
+            let request = serde_json::from_reader(fs::File::open(request)?)?;
+            let case = serde_json::from_reader(fs::File::open(specification)?)?;
+            let report = replay::shadow::execute(request, &case, |request| {
+                match run_json(program, runner_args, request, Stdio::inherit()) {
+                    Ok(choice) => Some(choice),
+                    Err(error) => {
+                        eprintln!("Shadow trial failed. {error}");
+                        None
+                    }
+                }
+            })?;
+            write_new(output, &serde_json::to_vec_pretty(&report)?)?;
+            println!(
+                "Recorded shadow proposals for {} source edits to {output}.",
                 report.effects.len()
             );
         }

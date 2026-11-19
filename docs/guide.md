@@ -124,6 +124,34 @@ The same query is available through the CLI, local HTTP, and MCP.
 
 Save this view as `candidate-view.json` and use `nexusweave query-candidate-patterns candidate-view.json <evidence.json>`, `POST /api/candidate-patterns`, or MCP `query_candidate_patterns`. Pass a returned `key` as `group` to page through contributing calls. [Candidate pattern query schema](../schema/candidate-pattern-query-1.json)
 
+## Test context with shadow proposals
+
+Use a shadow probe with a model that returns generated proposals. Supply the pending request with its captured JSON body, declare the proposal you want to track, and choose exact source edits. Each diagnostic trial makes an inference call while the production action is still pending. The runner returns the proposal before dispatch. The bundled Qwen2 runner stops after parsing an answer or tool proposal. [Shadow case schema](../schema/shadow-case-1.json)
+
+The routing case declares a `price` tool proposal with `product_id: 42`. It checks the original request, a change from stock to price, a store rename as the control, and both edits together. Point `model_dir` at the pinned local Qwen2.5 checkpoint from the [source visibility example](#test-source-visibility-on-a-recorded-answer).
+
+```sh
+out_dir=$(mktemp -d)
+base=examples/runtime-comparison/pending-routing
+cargo run --locked -- shadow "$base/request.json" "$base/shadow-case.json" "$out_dir/shadow.json" -- \
+  python3 scripts/propose_qwen.py "$model_dir" --model-id Qwen/Qwen2.5-0.5B-Instruct
+```
+
+| Request tested | Proposed tool | Matches the declared proposal |
+| --- | --- | ---: |
+| Original | `stock` | 0 of 1 |
+| Edit the request type | `price` | 1 of 1 |
+| Rename the store | `stock` | 0 of 1 |
+| Apply both edits | `price` | 1 of 1 |
+
+Every proposal retained product ID 42. This example uses one greedy trial per condition. The request-type edit changed the observed match rate by 100 percentage points. The store rename changed it by 0. [Saved shadow report](../examples/runtime-comparison/pending-routing/shadow-report.json)
+
+Set `samples` to the number of trials per condition. NexusWeave verifies every edit's captured source and request location before sampling, then rotates the condition order between rounds. It retains the returned proposals, failed trials, and proposals the match rule could not score. It reports a rate difference when both conditions are fully scored, including a baseline with zero matches. **Joint interaction** subtracts both individual rates from the joint rate and adds the baseline rate. A negative-control comparison reports the target edit's rate minus the control edit's rate. Set `sampling_design` to `independent` when trials are independently sampled to include the optional 95% bounds.
+
+### Connect another proposal runner
+
+The CLI sends one inference request object on stdin per trial. Return one JSON object with `kind`, `label`, and `outcome` on stdout. For a tool proposal, use the tool name as `label` and its argument object as `outcome`. For an answer, put the text in `outcome`. Call the inference endpoint directly and stop before dispatching tools or accepting actions. Use a `runner_id` that identifies the model and sampling configuration. Rust integrations can supply a runner callback to `nexusweave::replay::shadow::execute`. [Rust runner interface](../src/replay/shadow.rs)
+
 ## Try a decision replay
 
 ```sh

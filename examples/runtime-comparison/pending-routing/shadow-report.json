@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "id": "pending-product-route-shadow",
+  "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+  "expected": {
+    "kind": "tool_call",
+    "label": "price",
+    "outcome": {
+      "product_id": 42
+    }
+  },
+  "match_rule": {
+    "kind": "outcome_fields",
+    "pointers": [
+      "/product_id"
+    ]
+  },
+  "sampling_design": "unspecified",
+  "captured_request_sha256": "d50f3b18b00b120eb2da2a66c0fbaa8b4f3d318d86679d865bdd0ba734b94422",
+  "baseline": [
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "tool_call",
+        "label": "stock",
+        "outcome": {
+          "product_id": 42
+        }
+      }
+    }
+  ],
+  "baseline_summary": {
+    "attempted": 1,
+    "completed": 1,
+    "matched": 0
+  },
+  "effects": [
+    {
+      "source_id": "request-type",
+      "source_version": "v1",
+      "evidence": {
+        "span_id": null,
+        "field": "nexusweave.request.body",
+        "message_index": null,
+        "part_index": null
+      },
+      "request_sha256": "59c97110dcd0ba820e6faf0bec6d70ec8772461dbe634f45aeefdbded318f385",
+      "intervention": {
+        "context_id": "request-source:request-type",
+        "pointer": "/messages/1/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 20
+        },
+        "replacement": "Request type: price."
+      },
+      "captured_context_sha256": "a1513ea1ccb0b944efa351130f03826bac1cf6d11ef9dc4cf66401a8d87fb84c",
+      "trials": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "price",
+            "outcome": {
+              "product_id": 42
+            }
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "difference_pp": 100.0
+    },
+    {
+      "source_id": "store-name",
+      "source_version": "v1",
+      "evidence": {
+        "span_id": null,
+        "field": "nexusweave.request.body",
+        "message_index": null,
+        "part_index": null
+      },
+      "request_sha256": "c3a1d3017203353212b65c565af009c8414c93329f4a1596fc44d7bfc8763c93",
+      "intervention": {
+        "context_id": "request-source:store-name",
+        "pointer": "/messages/3/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 40
+        },
+        "replacement": "Background: the store’s name is Rowan."
+      },
+      "captured_context_sha256": "7f6728c126d6232e6fc10cb7e0d765fd818ae85d39bbfc32103d528375e816ad",
+      "trials": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "stock",
+            "outcome": {
+              "product_id": 42
+            }
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 0
+      },
+      "difference_pp": 0.0
+    }
+  ],
+  "pair": {
+    "request_sha256": "ee4561f05e36a4fcab4305e4a0d10659f442f3fcb9ec618c651c7364b4f64d49",
+    "trials": [
+      {
+        "status": "completed",
+        "choice": {
+          "kind": "tool_call",
+          "label": "price",
+          "outcome": {
+            "product_id": 42
+          }
+        }
+      }
+    ],
+    "summary": {
+      "attempted": 1,
+      "completed": 1,
+      "matched": 1
+    },
+    "difference_pp": 100.0,
+    "interaction_pp": 0.0
+  },
+  "control_comparison": {
+    "control_context_id": "request-source:store-name",
+    "target_minus_control_pp": 100.0
+  }
+}

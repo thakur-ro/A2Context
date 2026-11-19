@@ -4,6 +4,7 @@ pub mod candidates;
 mod capture;
 mod distribution;
 mod matching;
+pub mod shadow;
 pub(crate) use capture::{
     capture_availability, capture_profiles, captured_container, has_input_profile,
 };
@@ -209,22 +210,7 @@ fn prepare_case<'case, 'run>(
     let (call, recorded) = locate(runs, &case.location)?;
     let baseline_request_sha256 = sha256(case.request.to_string().as_bytes());
     verified_request(call, &baseline_request_sha256)?;
-    let mut seen = BTreeSet::new();
-    let mut edits = Vec::new();
-    for intervention in &case.interventions {
-        let edit = prepare_edit(call, intervention)?;
-        if !seen.insert(&intervention.context_id) {
-            return Err(format!(
-                "duplicate intervention for {}",
-                intervention.context_id
-            ));
-        }
-        edit.check(&case.request)?;
-        edits.push(edit);
-    }
-    if case.test_pair {
-        validate_pair(&case.interventions[0], &case.interventions[1])?;
-    }
+    let edits = prepare_edits(call, &case.request, &case.interventions, case.test_pair)?;
     let control = case
         .negative_control_context_id
         .as_deref()
@@ -239,6 +225,34 @@ fn prepare_case<'case, 'run>(
     })
 }
 
+fn prepare_edits<'a>(
+    call: &crate::Call,
+    request: &Value,
+    interventions: &'a [Intervention],
+    test_pair: bool,
+) -> Result<Vec<PreparedEdit<'a>>, String> {
+    let mut seen = BTreeSet::new();
+    let mut edits = Vec::new();
+    for intervention in interventions {
+        let edit = prepare_edit(call, intervention)?;
+        if !seen.insert(&intervention.context_id) {
+            return Err(format!(
+                "duplicate intervention for {}",
+                intervention.context_id
+            ));
+        }
+        edit.check(request)?;
+        edits.push(edit);
+    }
+    if test_pair {
+        let [first, second] = interventions else {
+            return Err("a pair test requires exactly two interventions".into());
+        };
+        validate_pair(first, second)?;
+    }
+    Ok(edits)
+}
+
 pub fn validate_case<'a>(
     case: &Case,
     runs: impl IntoIterator<Item = &'a Run>,
@@ -251,7 +265,7 @@ pub fn validate_case<'a>(
 pub fn execute(
     case: &Case,
     runs: &[Run],
-    mut sample: impl FnMut(&Value) -> Option<Choice>,
+    sample: impl FnMut(&Value) -> Option<Choice>,
 ) -> Result<Replay, String> {
     let PreparedCase {
         recorded,
@@ -261,42 +275,8 @@ pub fn execute(
         control,
     } = prepare_case(case, runs)?;
     let matcher = Matcher::new(&match_rule, &recorded)?;
-    let mut requests = vec![case.request.clone()];
-    for edit in &edits {
-        let mut request = case.request.clone();
-        edit.apply(&mut request)?;
-        requests.push(request);
-    }
-    if case.test_pair {
-        let mut both = case.request.clone();
-        let mut pair = [&edits[0], &edits[1]];
-        // Apply text edits from right to left and replace before removing original array entries.
-        pair.sort_by_key(|edit| {
-            let (parent, key) = edit.pointer.rsplit_once('/').expect("validated pointer");
-            (
-                edit.after.is_none(),
-                Reverse(parent.matches('/').count()),
-                Reverse(key.parse::<usize>().unwrap_or(0)),
-                Reverse(edit.text_range.map(|range| range.start_byte)),
-            )
-        });
-        for edit in pair {
-            edit.apply(&mut both)?;
-        }
-        requests.push(both);
-    }
-
-    let mut trials = vec![Vec::with_capacity(case.samples); requests.len()];
-    // Rotate condition order across rounds so baseline is not always sampled first.
-    for round in 0..case.samples {
-        for offset in 0..requests.len() {
-            let index = (round + offset) % requests.len();
-            trials[index].push(match sample(&requests[index]) {
-                Some(choice) => Trial::Completed { choice },
-                None => Trial::Failed,
-            });
-        }
-    }
+    let requests = edited_requests(case.request.clone(), &edits, case.test_pair)?;
+    let mut trials = sample_conditions(&requests, case.samples, sample);
     let paired_trials = case
         .test_pair
         .then(|| trials.pop().expect("pair condition"));
@@ -372,6 +352,57 @@ pub fn execute(
         pair,
         control_comparison,
     })
+}
+
+fn edited_requests(
+    request: Value,
+    edits: &[PreparedEdit<'_>],
+    test_pair: bool,
+) -> Result<Vec<Value>, String> {
+    let mut requests = vec![request];
+    for edit in edits {
+        let mut variant = requests[0].clone();
+        edit.apply(&mut variant)?;
+        requests.push(variant);
+    }
+    if test_pair {
+        let mut both = requests[0].clone();
+        let mut pair = [&edits[0], &edits[1]];
+        // Apply text edits from right to left and replace before removing original array entries.
+        pair.sort_by_key(|edit| {
+            let (parent, key) = edit.pointer.rsplit_once('/').expect("validated pointer");
+            (
+                edit.after.is_none(),
+                Reverse(parent.matches('/').count()),
+                Reverse(key.parse::<usize>().unwrap_or(0)),
+                Reverse(edit.text_range.map(|range| range.start_byte)),
+            )
+        });
+        for edit in pair {
+            edit.apply(&mut both)?;
+        }
+        requests.push(both);
+    }
+    Ok(requests)
+}
+
+fn sample_conditions(
+    requests: &[Value],
+    samples: usize,
+    mut sample: impl FnMut(&Value) -> Option<Choice>,
+) -> Vec<Vec<Trial>> {
+    let mut trials = vec![Vec::with_capacity(samples); requests.len()];
+    // Rotate condition order across rounds so baseline is not always sampled first.
+    for round in 0..samples {
+        for offset in 0..requests.len() {
+            let index = (round + offset) % requests.len();
+            trials[index].push(match sample(&requests[index]) {
+                Some(choice) => Trial::Completed { choice },
+                None => Trial::Failed,
+            });
+        }
+    }
+    trials
 }
 
 pub fn rescore(
@@ -659,7 +690,13 @@ fn summarize(trials: &[Trial], matcher: &Matcher<'_>) -> Summary {
 }
 
 fn difference(baseline: &Summary, variant: &Summary) -> Option<f64> {
-    if baseline.matched == 0 || !baseline.all_scored() || !variant.all_scored() {
+    (baseline.matched > 0)
+        .then(|| complete_difference(baseline, variant))
+        .flatten()
+}
+
+fn complete_difference(baseline: &Summary, variant: &Summary) -> Option<f64> {
+    if !baseline.all_scored() || !variant.all_scored() {
         return None;
     }
     Some(
@@ -714,12 +751,20 @@ fn interaction(baseline: &Summary, variants: &[Variant], pair: &Summary) -> Opti
     let [first, second] = variants else {
         return None;
     };
-    let first = &first.summary;
-    let second = &second.summary;
-    if baseline.matched == 0
-        || [baseline, first, second, pair]
-            .iter()
-            .any(|summary| !summary.all_scored())
+    (baseline.matched > 0)
+        .then(|| complete_interaction(baseline, &first.summary, &second.summary, pair))
+        .flatten()
+}
+
+fn complete_interaction(
+    baseline: &Summary,
+    first: &Summary,
+    second: &Summary,
+    pair: &Summary,
+) -> Option<f64> {
+    if [baseline, first, second, pair]
+        .iter()
+        .any(|summary| !summary.all_scored())
     {
         return None;
     }

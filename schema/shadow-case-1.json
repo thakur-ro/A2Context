@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave shadow probe case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "runner_id", "expected", "samples", "interventions"],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "type": "string", "pattern": "\\S" },
+    "runner_id": { "type": "string", "pattern": "\\S" },
+    "expected": {
+      "type": "object",
+      "required": ["kind", "label", "outcome"],
+      "properties": {
+        "kind": { "type": "string", "pattern": "\\S" },
+        "label": { "type": "string", "pattern": "\\S" },
+        "outcome": {}
+      }
+    },
+    "match_rule": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["kind"],
+          "properties": { "kind": { "enum": ["exact", "kind_and_label"] } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["kind", "pointers"],
+          "properties": {
+            "kind": { "const": "outcome_fields" },
+            "pointers": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^/" } }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["kind", "pattern"],
+          "properties": { "kind": { "const": "text_capture" }, "pattern": { "type": "string" } }
+        }
+      ]
+    },
+    "samples": { "type": "integer", "minimum": 1 },
+    "sampling_design": { "enum": ["unspecified", "independent"], "default": "unspecified" },
+    "interventions": { "$ref": "candidate-probe-1.json#/properties/interventions" },
+    "test_pair": { "type": "boolean", "default": false },
+    "negative_control_context_id": { "type": ["string", "null"], "minLength": 1 }
+  }
+}

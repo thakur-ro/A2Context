@@ -9,6 +9,7 @@ NexusWeave should help a developer see which context is influencing a decision a
 | **Captured input** | The model received this instruction, tool description, retrieved passage, or prior message. An anchor leads back to the trace. |
 | **Recorded link** | A declared relationship, invocation ID, or matching value connects an input to an observed action. The link gives the investigator a candidate to test. |
 | **Request replay** | A specific edit changed or preserved an outcome under the tested conditions. This works with an endpoint that supports reruns. If it exposes output probabilities, the experiment can track a decision margin at a fixed prefix. |
+| **Shadow proposal** | An edit to a pending request changed how often a runner returned a declared proposal. The workflow can examine the result before committing an action. [Shadow probe example](guide.md#test-context-with-shadow-proposals) |
 | **Runtime observation** | An instrumented inference run exposes an activation or a routing signal at a specific layer and token position. The readout depends on the runtime and probe. |
 | **Activation intervention** | Replacing a defined internal activation during a run changed a measured decision score. This supports a claim about the tested component in that setting. |
 

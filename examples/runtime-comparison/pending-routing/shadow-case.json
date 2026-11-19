@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "pending-product-route-shadow",
+  "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+  "expected": {
+    "kind": "tool_call",
+    "label": "price",
+    "outcome": {
+      "product_id": 42
+    }
+  },
+  "match_rule": {
+    "kind": "outcome_fields",
+    "pointers": [
+      "/product_id"
+    ]
+  },
+  "samples": 1,
+  "interventions": [
+    {
+      "context_id": "request-source:request-type",
+      "pointer": "/messages/1/content",
+      "operation": "replace_text_fragment",
+      "text_range": {
+        "start_byte": 0,
+        "end_byte": 20
+      },
+      "replacement": "Request type: price."
+    },
+    {
+      "context_id": "request-source:store-name",
+      "pointer": "/messages/3/content",
+      "operation": "replace_text_fragment",
+      "text_range": {
+        "start_byte": 0,
+        "end_byte": 40
+      },
+      "replacement": "Background: the store’s name is Rowan."
+    }
+  ],
+  "test_pair": true,
+  "negative_control_context_id": "request-source:store-name"
+}
