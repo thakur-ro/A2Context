@@ -2,6 +2,8 @@
 
 NexusWeave exposes the same inspection and replay functions used by its CLI. Use the crate to check a pending request in process, import a recorded trace, or supply your own model runner for an experiment.
 
+[Install from a checkout](#use-the-package-from-a-checkout) · [Trace a finding in Rust](#trace-a-finding-in-rust) · [Choose an API](#find-the-api-for-your-task)
+
 ## Use the package from a checkout
 
 To install the CLI, run this from the repository root with a stable Rust toolchain.
@@ -16,12 +18,22 @@ To depend on the library, run this from your Rust application's directory, with 
 cargo add nexusweave --path ../NexusWeave
 ```
 
-Generate the API reference from the NexusWeave checkout. The crate homepage has a runnable trace import. The `preflight::check` and `context_screening::screen_pending` pages have runnable pending-request examples.
+Generate the API reference from the NexusWeave checkout. The crate homepage has a tested example that links a pending finding to a recorded turn and groups it in a user scope. The `preflight::check` and `context_screening::screen_pending` pages have smaller runnable examples.
 
 ```sh
 cargo doc --locked --no-deps --open
 cargo test --locked --doc
 ```
+
+## Trace a finding in Rust
+
+The crate-level example uses a pending request with a 30-day company policy and a 60-day archived FAQ. The saved LangSmith span records the same request and a 60-day answer. [Read the tested example](../src/lib.rs) · [Pending request](../examples/preflight-returns.json) · [Saved LangSmith span](../examples/preflight-returns-langsmith.json)
+
+1. Deserialize `preflight::Request` and call `preflight::check`. It returns a conflict for `return_window_days` in the `standard` scope and a receipt for the request and declarations.
+2. Pass the recorded span to `langsmith::import`, then call `inspect` with the normalized runs. `Verification::Matched` confirms that the saved receipt belongs to the same captured request and declarations.
+3. Call `conflict_query::query` with `phase: "preflight"` for the example user. The response counts one conflicting check in one conversation. Use the group key to fetch the contributing calls, then pass `run_id` and `call_id` to `turn_evidence::query` to return to the evidence.
+
+To measure how the decision responds to a source edit, pass your own runner to a probe or the replay API. The checks and queries above run on supplied data. [Choose a measurement](architecture.md#test-which-source-changes-an-outcome)
 
 ## How the data fits together
 
@@ -41,7 +53,7 @@ flowchart TD
     H --> I
 ```
 
-A `Run` carries optional organization, user, and conversation IDs. Each `Call` carries its own ID and an optional turn ID. Source IDs and versions connect copies of a source across calls. A `replay::Location` selects one run, call, and decision. An intervention then names a context item and where to edit it in the captured request. [Evidence schema](../schema/evidence-1.json) · [Example replay case](../examples/context-screening/replay/case.json)
+A `Run` carries optional organization, user, and conversation IDs. Each `Call` carries its own ID and an optional turn ID. Source IDs and versions connect copies of a source across calls. A `replay::Location` selects one run, call, and decision. An intervention then names a context item and where to edit it in the captured request. The Rust structs and the versioned JSON schemas serve the CLI, HTTP, and MCP integration paths. [Evidence schema](../schema/evidence-1.json) · [Example replay case](../examples/context-screening/replay/case.json)
 
 ## Find the API for your task
 

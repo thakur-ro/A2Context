@@ -4,22 +4,23 @@ NexusWeave connects an assembled inference request to a turn, a measured effect,
 
 ```mermaid
 flowchart TD
-    accTitle: Evidence before and after a model call
-    accDescr: Preflight, context screening, and both pending probes use the assembled request. Recorded calls can carry their matching reports.
-    A[Assembled request] --> M[Model call]
-    A --> P[Preflight check]
-    A --> N[Context screening]
-    A --> B[Candidate probe]
-    A --> S[Shadow probe]
-    S -->|Report| T
-    B -->|Report| T
-    P -->|Receipt| T
-    N -->|Report| T
-    M --> T[Recorded trace]
-    T --> I[Turn evidence and context links]
+    accTitle: How captured inputs become turn evidence and measured effects
+    accDescr: Check or probe the assembled request before dispatch. Import the recorded inference call and verify its attached reports. Test further source edits and query comparable evidence across calls.
+    A[Assembled request] --> M[Workflow model call]
+    subgraph Pending[Before dispatch]
+        P[Preflight and context screening]
+        S[Candidate and shadow probes]
+    end
+    A --> P
+    A --> S
+    M --> T[Recorded inference span]
+    P -->|Receipt or report| T
+    S -->|Probe report| T
+    T --> V[Normalize and verify evidence]
+    V --> I[Turn and timeline]
     I --> R[Controlled replay or runtime probe]
-    I --> G[Patterns across recorded calls]
-    R --> G
+    I --> G[Patterns across sessions]
+    R -->|Measured effect| G
 ```
 
 ## What the algorithms measure
@@ -34,6 +35,12 @@ flowchart TD
 | **Controlled replay** | Sample the original request and variants with selected sources removed or replaced. Score each result against the same answer, tool, or argument criterion. Subtract the baseline match rate from the variant's match rate. | The difference measures how the selected edit affected the scored outcome under those replay conditions. |
 | **Runtime probe** | Use an instrumented local runtime to mask selected prompt sources or swap activations, then compare output token scores or continuations with a baseline. | The measurements describe effects at the tested positions for that model and intervention. |
 | **Patterns** | Group findings and measurements by scope and their comparison keys. Screening groups match both captured sources and the classifier, then check which flagged calls have verified replays for those sources. Candidate groups match token scoring setups. Shadow groups match the runner, sampling design, proposal criterion, and source edit. | You can see where comparable evidence repeats and inspect the contributing calls. |
+
+### What active context means in the inspector
+
+**Captured** means the workflow recorded a source in the call's inputs. The source anchor identifies the recorded field or exact request fragment. **Linked** means a recorded relationship or a match such as a tool name connects a source to a specific decision. **Measured** means a probe compares a named score, proposal, or outcome against a baseline after a source intervention. A turn can contain any combination of these. With a trace alone, model influence remains unknown even when an answer agrees with a source.
+
+Two timelines use different clocks. The thread timeline follows model calls, source versions, and tool activity. The output timeline uses token positions from an instrumented model and shows how the effect of an intervention changes as the answer is generated. [Follow calls in a thread](guide.md#follow-context-changes-through-a-thread) · [Follow output positions](guide.md#follow-context-influence-across-an-answer)
 
 ### From a possible conflict to a measured effect
 
@@ -78,20 +85,16 @@ For a view inside an instrumented runtime, align the captured source spans to pr
 
 ```mermaid
 flowchart TD
-    accTitle: Choosing a view for an investigation
-    accDescr: Conversation, Timeline, and Patterns start from different scopes and lead to the same decision evidence.
-    Q{Where did you notice the issue?}
-    Q -->|One turn| C[Conversation]
-    Q -->|Changes within a thread| T[Timeline or Compare]
-    Q -->|Across sessions| P[Patterns]
-    P --> U[User or organization scope]
-    U -->|Contributing turn| E[Decision evidence]
-    C --> E
-    T --> E
-    E --> A[Exact source and available measurements]
+    accTitle: Follow the same evidence through four scopes
+    accDescr: Start with a turn, follow changes in its thread, and group comparable evidence across a user's sessions or an organization. Open a contributing turn to return to the exact evidence.
+    C[Turn in Conversation] -->|Follow calls| T[Thread in Timeline]
+    T -->|Group comparable evidence| U[User sessions in Patterns]
+    U -->|Change scope| O[Organization in Patterns]
+    U -->|Open a contributing turn| C
+    O -->|Open a contributing turn| C
 ```
 
-Use **Timeline** to follow calls and source versions in a thread. Use **Patterns** to group findings by a dimension such as rule, source version, or model, then open a contributing turn. Counts depend on the identifiers captured on those calls. For example, a user scope pairs the user ID with the organization ID. A missing thread ID limits conversation counts. Organization grouping describes the evidence loaded into the local inspector. [Try the inspector](guide.md#run-the-local-demo) · [Group related conflicts](guide.md#group-recurring-conflicts)
+Use **Timeline** to follow calls and source versions in a thread. Use **Patterns** to group findings by a dimension such as rule, source version, or model. User scope pairs the user ID with the organization ID. When a thread ID is missing, the conflict breakdown counts the finding separately from identified conversations. Organization totals cover the evidence loaded into the local inspector. [Follow one finding through the four views](guide.md#follow-a-conflict-from-one-turn-to-an-organization)
 
 ## Integrate with a workflow
 

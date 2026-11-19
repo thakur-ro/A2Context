@@ -11,7 +11,7 @@ Traces show what was recorded. Conflict checks use declared rules, and replay ef
 | An assembled request | [Inspect its sources and findings](#inspect-an-assembled-request) → [Score alternatives](#measure-candidate-preference-before-a-decision) or [compare shadow proposals](#test-context-with-shadow-proposals) |
 | A recorded answer or action | [Import OTLP](#import-opentelemetry-traces) or [LangSmith](#import-langsmith-traces) → [Inspect a decision](#investigate-an-unfamiliar-decision) → [Replay one source edit](#test-a-context-item-with-a-controlled-replay) |
 | A thread with changing context | [Follow changes across calls](#follow-context-changes-through-a-thread) → [Compare two decisions](#compare-two-recorded-decisions) |
-| A question across sessions | [Group conflicts](#group-recurring-conflicts), [compare screened pairs](#find-recurring-screened-pairs), [compare candidate shifts](#find-recurring-candidate-preference-shifts), or [compare proposal shifts](#find-recurring-shadow-proposal-shifts) → Open a contributing turn |
+| A question across sessions | [Follow one finding through all four views](#follow-a-conflict-from-one-turn-to-an-organization) → [Group conflicts](#group-recurring-conflicts) or [compare measured proposal shifts](#find-recurring-shadow-proposal-shifts) |
 | Access to an instrumented model | [Follow influence across an answer](#follow-context-influence-across-an-answer) → [Test source visibility](#test-source-visibility-on-a-recorded-answer) or [compare masked continuations](#continue-decoding-with-sources-masked) |
 | A workflow to integrate | [Declare sources](#declare-context-sources-and-decision-scope) → [Send traces](#receive-live-opentelemetry-traces) or [emit evidence directly](#emit-evidence-from-another-workflow) → [Connect an MCP client](#connect-an-mcp-client) |
 
@@ -366,6 +366,19 @@ Open the local inspector, choose **Return a jacket**, and select the evidence on
 The fixtures cover conflicting return windows, a holiday exception, duplicated instructions, and a redacted source. Two organizations share the same example user ID to demonstrate scoped grouping. All fixture data is synthetic.
 
 On the chronological **Timeline**, expand a call's findings to open the exact rule pair and decision. **Patterns → Conflicts and duplicates** groups findings by rule and source version. Filter by organization, user, or thread. From a finding, **View finding across threads** opens its group across the imports. Choose **Open turn** beside an occurrence to read the conversation at that decision.
+
+## Follow a conflict from one turn to an organization
+
+Start the inspector with `cargo run --locked -- serve fixtures/support.json`. Use the `return-eligibility` conversation for this walkthrough. All five conversations in the fixture are synthetic. [Open the local inspector](http://127.0.0.1:8040)
+
+| View | What to open | What you should see |
+| --- | --- | --- |
+| **Turn** | In **Conversation**, select `return-eligibility` and open the evidence for its first recorded decision. | Developer policy says 30 days and a saved user preference says 60 days. Both declare `return_window_days` for the `standard` scope. |
+| **Thread** | Switch to **Timeline** and expand the findings under **Step 2 · t1**. | Both calls belong to the same turn. The same source versions disagree in both calls. With no timestamps in this fixture, the timeline uses the captured order. |
+| **User** | In **Patterns → Conflict breakdown**, leave **Check stage** on **Recorded decisions**. Set **Scope** to **User · demo-retail / user-042**, group by **Conversation**, and set **Rule key** to `return_window_days`. | Three of four comparable decisions conflict across two conversations. There are six scoped decisions in total, including decisions with insufficient captured values to compare. |
+| **Organization** | Change **Scope** to **Organization · demo-retail**. Keep the rule filter and group by **User**. | Four of five comparable decisions conflict across three conversations. The same user ID in `second-retailer` belongs to a different scope. |
+
+Open a group in the breakdown, then select **Open turn** next to a contributing decision. The groups count disagreements between declared values. To measure whether one source changed a decision, choose that source and run a controlled edit against a baseline. [Try a saved replay](#try-a-decision-replay)
 
 ## Share a view or a piece of evidence
 

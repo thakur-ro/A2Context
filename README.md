@@ -2,7 +2,7 @@
 
 NexusWeave is a local context and decision inspector for LLM workflows. Check a pending request for conflicting rules, inspect the context behind a recorded answer or action, and test which source edits change a measured outcome. Follow the evidence across turns, threads, users, and organizations.
 
-[Quickstart](#try-the-conversation-inspector) · [How it works](docs/architecture.md) · [Workflow guide](docs/guide.md) · [Rust API](docs/rust-api.md)
+[Quickstart](#try-the-conversation-inspector) · [How it works](#how-nexusweave-works) · [Workflow guide](docs/guide.md) · [Rust package](docs/rust-api.md)
 
 ## Try the conversation inspector
 
@@ -15,6 +15,22 @@ cargo run --locked -- serve fixtures/conversation.json
 Open the inspector and look at the evidence for the second turn. The synthetic conversation shows a 60-day answer, the conflicting 30-day policy and 60-day FAQ, and the order lookup that preceded the answer. This demo runs without model weights or an API key. [Open the local inspector](http://127.0.0.1:8040)
 
 ![Two turns in a support conversation with the conflicting 30-day and 60-day sources beside the second answer](docs/media/conversation-inspector.png)
+
+## How NexusWeave works
+
+```mermaid
+flowchart TD
+    accTitle: From a captured request to recurring evidence
+    accDescr: Check an assembled request for conflicts. Inspect the recorded turn and test a source edit if needed. Group comparable evidence across sessions.
+    A[Assembled request] -->|Recorded answer or action| B[Inspect the turn]
+    A --> C[Check inputs]
+    C -->|Matching receipt or report| B
+    B --> D[Find recurring evidence]
+    B --> E[Test a source edit]
+    E -->|Measured effect| D
+```
+
+A trace shows the context the workflow captured and the answer or action it recorded. A conflict identifies sources that disagree. To measure influence, compare a baseline with a targeted source edit and read the change in a specific answer, tool choice, or argument. The result applies to the tested edit and runtime. [Algorithm and evidence guide](docs/architecture.md#what-the-algorithms-measure)
 
 ## Check a request before inference
 
@@ -39,7 +55,7 @@ For captured text without rule declarations, context screening finds exact reuse
 | Would a source edit change a pending decision? | Use **candidate probes** for fixed alternatives with token scores, or **shadow probes** with an API that returns proposals. [Choose a probe](docs/architecture.md#test-which-source-changes-an-outcome) |
 | Would a source edit change a recorded decision? | Run a **controlled replay**. With an instrumented model, measure the effect across output positions. [Try replay](docs/guide.md#try-a-decision-replay) · [Follow an answer in time](docs/guide.md#follow-context-influence-across-an-answer) |
 
-Captured inputs establish what was available. Trace links help you find a source to test. Probes and replay measure the effect of a specific edit under the tested conditions. [Evidence model and algorithms](docs/architecture.md#what-the-algorithms-measure)
+Follow one returns-policy finding from a recorded turn through the thread timeline, then see how often the same rule conflicts for a user and an organization. [Walk through all four views](docs/guide.md#follow-a-conflict-from-one-turn-to-an-organization)
 
 Follow a flagged policy pair from its text scores to a controlled model run. The example includes the captured request, the two edits, and the measured outcomes. [Replay a screened pair](docs/guide.md#test-a-screened-pair)
 

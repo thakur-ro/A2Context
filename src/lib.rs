@@ -5,14 +5,20 @@
 //! text. For recorded traces, use [`otlp::import`] or [`langsmith::import`]
 //! and pass the resulting [`Run`] values to [`inspect`].
 //!
-//! ## Import a recorded turn
+//! ## Follow a preflight finding to a recorded turn
 //!
-//! This synthetic trace records a 60-day answer and a preflight receipt for
-//! the same request. Both sources declare the standard return window. Their
-//! different values produce a conflict linked to the recorded call.
+//! The pending request contains two different values for the standard return
+//! window. The saved trace carries its receipt and records a 60-day answer.
+//! Verify the receipt and open the contributing turn from a user-scoped query.
 //!
 //! ```
-//! use nexusweave::{inspect, langsmith, preflight::Verification, FindingKind};
+//! use nexusweave::{conflict_query, inspect, langsmith, preflight, turn_evidence, FindingKind};
+//! use serde_json::json;
+//!
+//! let request = include_str!("../examples/preflight-returns.json");
+//! let pending = preflight::check(serde_json::from_str(request)?)?;
+//! assert_eq!(pending.findings[0].kind, FindingKind::Conflict);
+//! assert!(pending.receipt.is_some());
 //!
 //! let trace = include_str!(concat!(
 //!     env!("CARGO_MANIFEST_DIR"),
@@ -22,9 +28,27 @@
 //! let inspection = inspect(&runs)?;
 //! let check = &inspection.preflight_checks[0];
 //!
-//! assert_eq!(check.call_id, "returns-run");
-//! assert!(matches!(check.verification, Verification::Matched { .. }));
-//! assert_eq!(inspection.findings[0].kind, FindingKind::Conflict);
+//! assert!(matches!(check.verification, preflight::Verification::Matched { .. }));
+//!
+//! let mut view = serde_json::from_value(json!({
+//!     "version": 1,
+//!     "phase": "preflight",
+//!     "scope": {"kind": "user", "organization_id": "demo-retail", "user_id": "demo-shopper"},
+//!     "group_by": ["rule"]
+//! }))?;
+//! let groups = serde_json::to_value(conflict_query::query(&view, &runs)?)?;
+//! assert_eq!(groups["totals"]["conflicting_checks"], 1);
+//! assert_eq!(groups["totals"]["affected_conversations"], 1);
+//!
+//! view.group = Some(serde_json::from_value(groups["rows"][0]["key"].clone())?);
+//! let calls = serde_json::to_value(conflict_query::query(&view, &runs)?)?;
+//! let selection = serde_json::from_value(json!({
+//!     "run_id": calls["rows"][0]["run_id"],
+//!     "call_id": calls["rows"][0]["call_id"]
+//! }))?;
+//! let turn = turn_evidence::query(&selection, &runs, &[], false)?;
+//! assert_eq!(turn["call_id"], "returns-run");
+//! assert_eq!(turn["preflight"]["status"], "matched");
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
