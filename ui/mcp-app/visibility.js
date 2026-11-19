@@ -84,8 +84,19 @@ function summary(parent, value, metric, scale) {
   parent.append(element("p", counts.join(" · "), "muted"));
 }
 
-function provenance(parent, { model_id, runtime, output_token, target }) {
+function boundaryNote({ before, after }, label) {
+  const parts = [before && before.length + " before", after && after.length + " after"].filter(Boolean);
+  const prefix = label ? label + " · " : "";
+  const note = element("p", prefix + "Extra whitespace bytes in mask · " + parts.join(" and "), "muted");
+  note.title = JSON.stringify({ before, after });
+  return note;
+}
+
+function provenance(parent, { model_id, runtime, output_token, target, sources }) {
   parent.append(element("p", [target || "Token " + (output_token + 1), model_id, runtime].join(" · "), "muted"));
+  for (const source of sources) {
+    if (source.boundary_whitespace) parent.append(boundaryNote(source.boundary_whitespace, source.source_id));
+  }
 }
 
 function coverage(parent, data) {
@@ -217,6 +228,7 @@ function renderMeasurement(parent, page, requestPage, drill) {
       row.append(element("h2", value.context_id), element("p", value.effect
         ? format.format(value.effect.change_in_log_probability) + " change in log probability"
         : value.unavailable.replaceAll("_", " ")));
+      if (value.boundary_whitespace) row.append(boundaryNote(value.boundary_whitespace));
       if (value.inspector_path) paths.append(element("p", value.inspector_path, "inspector-path"));
       paths.append(element("p", value.source_inspector_path, "inspector-path"));
     }

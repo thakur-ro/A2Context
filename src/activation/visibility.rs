@@ -83,8 +83,28 @@ struct Measurement {
     captured_text_sha256: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     request_pointer: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    boundary_whitespace: Option<BoundaryWhitespace>,
     token_range: [usize; 2],
     masked_log_probs: Vec<f64>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+struct BoundaryWhitespace {
+    before: String,
+    after: String,
+}
+
+impl BoundaryWhitespace {
+    fn is_valid(&self) -> bool {
+        (!self.before.is_empty() || !self.after.is_empty())
+            && self
+                .before
+                .bytes()
+                .chain(self.after.bytes())
+                .all(|byte| matches!(byte, b' ' | b'\t' | b'\r' | b'\n'))
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -213,6 +233,15 @@ impl Report {
                     || !log_probs(&source.masked_log_probs, length)
                 {
                     return Err("a measured source has invalid text, positions, or scores".into());
+                }
+                if source
+                    .boundary_whitespace
+                    .as_ref()
+                    .is_some_and(|boundary| !boundary.is_valid())
+                {
+                    return Err(
+                        "source mask boundary extras must contain only ASCII whitespace".into(),
+                    );
                 }
                 measured.insert(id, source);
             }

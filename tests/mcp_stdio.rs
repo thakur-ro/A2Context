@@ -674,8 +674,8 @@ fn tool_proposal_visibility_links_measured_arguments_to_named_patterns() {
     let turn = client.call("get_turn_evidence", location.clone());
     let report = &turn["structuredContent"]["source_visibility_reports"][0];
     assert_eq!(report["decision_kind"], "tool_call");
-    assert_eq!(report["measured_sources"], 6);
-    assert_eq!(report["measured_pairs"], 2);
+    assert_eq!(report["measured_sources"], 7);
+    assert_eq!(report["measured_pairs"], 4);
     assert!(report.get("baseline_tool_call").is_none());
 
     let sources = client.call(
@@ -699,6 +699,10 @@ fn tool_proposal_visibility_links_measured_arguments_to_named_patterns() {
     let definition = &definitions["structuredContent"]["rows"][0];
     assert_eq!(definition["request_pointer"], "/tools/0");
     assert_eq!(definition["token_range"], json!([71, 129]));
+    assert_eq!(
+        definition["boundary_whitespace"],
+        json!({"before":"","after":"\n"})
+    );
     assert!(
         (definition["effect"]["change_in_log_probability"]
             .as_f64()
@@ -718,6 +722,20 @@ fn tool_proposal_visibility_links_measured_arguments_to_named_patterns() {
         .as_f64()
         .unwrap();
     assert!((interaction - 3.412300).abs() < 1e-6);
+
+    let instruction = client.call(
+        "query_source_visibility",
+        json!({
+            "version":1, "location":location, "report_id":report["report_id"],
+            "view":{"kind":"sources","output_token":7,"context_id":"routing-instruction"}
+        }),
+    );
+    let instruction = &instruction["structuredContent"]["rows"][0];
+    assert_eq!(instruction["token_range"], json!([3, 36]));
+    assert_eq!(
+        instruction["boundary_whitespace"],
+        json!({"before":"","after":"\n\n"})
+    );
 
     let name = "query_visibility_patterns";
     let routing_groups = client.call(

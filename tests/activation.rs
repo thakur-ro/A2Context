@@ -73,6 +73,55 @@ fn visibility_requires_an_exact_captured_object_at_the_reported_request_pointer(
 }
 
 #[test]
+fn visibility_groups_keep_declared_boundary_whitespace_with_the_mask() {
+    use nexusweave::activation::visibility::patterns;
+    use serde_json::json;
+    let runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/evidence.json"
+    ))
+    .unwrap();
+    let current: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/report.json"
+    ))
+    .unwrap();
+    for invalid in [
+        json!({"before":"","after":""}),
+        json!({"before":"","after":"\n# Tools"}),
+        json!({"before":"\u{a0}","after":""}),
+    ] {
+        let mut report = current.clone();
+        report["sources"][0]["boundary_whitespace"] = invalid;
+        let report: Report = serde_json::from_value(report).unwrap();
+        assert!(report
+            .validate(&runs)
+            .unwrap_err()
+            .contains("ASCII whitespace"));
+    }
+    let mut earlier = current.clone();
+    earlier["id"] = "legacy-visibility".into();
+    earlier["sources"][5]
+        .as_object_mut()
+        .unwrap()
+        .remove("boundary_whitespace");
+    let reports = [earlier, current].map(|value| {
+        let report: Report = serde_json::from_value(value).unwrap();
+        report.validate(&runs).unwrap();
+        report
+    });
+    let args =
+        serde_json::from_value(json!({"version":1,"target":"routing.tool","source_id":"stock"}))
+            .unwrap();
+    let page = patterns::query(&args, &runs, &reports).unwrap();
+    assert_eq!(page["total_groups"], 2);
+    let groups = page["groups"].as_array().unwrap();
+    assert_ne!(groups[0]["key"], groups[1]["key"]);
+    assert!(groups.iter().any(
+        |group| group["comparison"]["sources"][0]["boundary_whitespace"]
+            == json!({"before":"","after":"\n"})
+    ));
+}
+
+#[test]
 fn visibility_pairs_require_two_measured_disjoint_sources_and_one_score_per_token() {
     let runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/paired-visibility-evidence.json"

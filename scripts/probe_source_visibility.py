@@ -31,7 +31,7 @@ def mark_text_source(runtime, messages, tools, anchor, text, marker):
     return runtime.render_prompt(tagged, tools)
 
 
-def aligned_source(runtime, prompt, offsets, messages, tools, item):
+def aligned_source(runtime, prompt, tokens, offsets, messages, tools, item):
     text = item.get("text")
     if item["availability"] != "included" or text is None:
         return {"unavailable": "text_not_captured"}
@@ -73,15 +73,23 @@ def aligned_source(runtime, prompt, offsets, messages, tools, item):
         return {"unavailable": "rendered_source_unaligned"}
     left = rendered.index(marker)
     right = left + len(text)
-    # Qwen can merge the last JSON brace and its separator into one token.
-    end_limit = right + int("request_pointer" in source and prompt[right:right + 1] == "\n")
     overlapping = [(i, a, b) for i, (a, b) in enumerate(offsets) if a < right and left < b and a < b]
-    if (not overlapping or any(a < left or b > end_limit for _, a, b in overlapping)
-            or overlapping[0][1] != left or overlapping[-1][2] < right):
+    if not overlapping:
         return {"unavailable": "token_boundary_unaligned"}
     first, last = overlapping[0][0], overlapping[-1][0] + 1
     if len(overlapping) != last - first or last >= len(offsets):
         return {"unavailable": "token_boundary_unaligned"}
+    start, end = min(a for _, a, _ in overlapping), max(b for _, _, b in overlapping)
+    if start > left or end < right:
+        return {"unavailable": "token_boundary_unaligned"}
+    before, after = prompt[start:left], prompt[right:end]
+    decoded = runtime.tokenizer.decode(tokens[first:last], skip_special_tokens=False,
+                                       clean_up_tokenization_spaces=False)
+    if (before.strip(" \t\r\n") or after.strip(" \t\r\n")
+            or decoded != before + text + after):
+        return {"unavailable": "token_boundary_unaligned"}
+    if before or after:
+        source["boundary_whitespace"] = {"before": before, "after": after}
     source["token_range"] = [first, last]
     return source
 
@@ -156,7 +164,7 @@ def measure(runtime, model_path, model_id, revision, location, call, decision, *
         raise ValueError("The all-visible control did not reproduce the unmasked token scores.")
     sources = []
     for item in call["context"]:
-        source = {"context_id": item["id"], **aligned_source(runtime, prompt, offsets, messages, tools, item)}
+        source = {"context_id": item["id"], **aligned_source(runtime, prompt, tokens, offsets, messages, tools, item)}
         if "token_range" in source:
             source.update(
                 captured_text_sha256=sha256(item["text"].encode()).hexdigest(),
@@ -177,6 +185,11 @@ def measure(runtime, model_path, model_id, revision, location, call, decision, *
     }
     if proposal is not None:
         report["baseline_tool_call"] = proposal
+    boundaries = {source["context_id"]: source["boundary_whitespace"]
+                  for source in sources if "boundary_whitespace" in source}
+    if boundaries:
+        digest = sha256(json.dumps(boundaries, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        report["id"] += "-whitespace-" + digest[:16]
     plan = pair_plan(sources, pairs, pair_duplicates)
     if plan:
         report["pairs"] = [

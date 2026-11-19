@@ -226,6 +226,9 @@ pub fn query(
                         if let Some(pointer) = &source.request_pointer {
                             row["request_pointer"] = json!(pointer);
                         }
+                        if let Some(boundary) = &source.boundary_whitespace {
+                            row["boundary_whitespace"] = json!(boundary);
+                        }
                         row["effect"] = mask_effect(baseline, source.masked_log_probs[output_token]);
                         row["inspector_path"] = source_mask_path(report, output_token, &source.context_id).into();
                     }

@@ -787,14 +787,15 @@ In **Conversation** or **Decisions**, open **Activation probe → Context visibi
 
 The adapter renders the recorded tool list with the request, then requires the generated tool name and arguments to match the captured decision. It parses the extra outer brace pair emitted by this Qwen2.5 checkpoint and scores the original output tokens. The probe only generates and scores the proposal.
 
-Tool definitions align when the captured JSON matches exactly one object in the recorded tool list. The report includes that object's JSON Pointer. The mask covers the definition and includes its trailing newline when both share a token. Six of seven sources aligned in this fixture. The system instruction still crosses a token boundary, which the inspector marks in the source list. [Routing experiment](inference-attribution-plan.md#measure-a-proposed-tool-name-and-argument)
+Tool definitions align when the captured JSON matches exactly one object in the recorded tool list. The report includes that object's JSON Pointer. The adapter decodes each proposed mask span to verify its text. It accepts extra ASCII whitespace at the edges when the source shares a token with that whitespace. The report records the exact additions under `boundary_whitespace`. In this fixture all seven sources align, including the system instruction with two trailing newlines and each tool definition with one. [Routing experiment](inference-attribution-plan.md#measure-a-proposed-tool-name-and-argument)
 
 ```sh
 python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-comparison/visibility-routing/evidence.json \
   --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 \
   --run-id qwen-product-route --call-id model-inference --decision-id product-route \
   --target routing.tool 7 8 --target routing.product_id 17 19 \
-  --pair request-type product-id --pair tool-stock tool-price > routing-visibility.json
+  --pair request-type product-id --pair tool-stock tool-price \
+  --pair routing-instruction request-type --pair routing-instruction tool-stock > routing-visibility.json
 ```
 
 ### Test a pair of sources
@@ -818,7 +819,7 @@ python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-
 
 ### Query masked-source effects from an agent
 
-`get_turn_evidence` and `/api/turn-evidence` list `source_visibility_reports` for the selected decision, including the number of captured sources, measured sources, and measured pairs. Use its location and report ID with [`query_source_visibility`](../schema/source-visibility-query-1.json) or `POST /api/source-visibility`. The default timeline returns the strongest measured source and pair at each recorded output token. The `sources` view ranks by the absolute change in log probability, includes the request pointer for measured JSON values, and retains unavailable entries. The `pairs` view ranks by absolute interaction and returns both individual scores and the joint score. Pass `next_offset` as `offset` with the same view to continue.
+`get_turn_evidence` and `/api/turn-evidence` list `source_visibility_reports` for the selected decision, including the number of captured sources, measured sources, and measured pairs. Use its location and report ID with [`query_source_visibility`](../schema/source-visibility-query-1.json) or `POST /api/source-visibility`. The default timeline returns the strongest measured source and pair at each recorded output token. The `sources` view ranks by the absolute change in log probability and retains unavailable entries. Measured rows include the JSON Pointer or extra boundary whitespace when recorded. The `pairs` view ranks by absolute interaction and returns both individual scores and the joint score. Pass `next_offset` as `offset` with the same view to continue.
 
 For example, use this request with the saved paired report. API token indices start at zero.
 
@@ -865,7 +866,7 @@ Choose **Compare with** to place two scopes side by side, or select the same sco
 
 In a comparison, each group's rank uses the higher conversation count and the largest absolute effect across the two scopes.
 
-Exact-token groups require the same model revision, runtime, tokenizer, decision label, emitted token prefix through the scored token, and source identities. Each identity uses the declared source ID, version, kind, role, captured text digest, and masked token count. Captures without declared source IDs are counted as unavailable for grouping. The summaries count distinct identified conversations, users, and organizations, alongside decisions and measurements. The cohort's dates and ownership labels are synthetic. Across its four measured decisions the refund policy pair's interaction ranges from −5.84 to −5.18 log units at the recorded refund digit. The range describes those measured decisions.
+Exact-token groups require the same model revision, runtime, tokenizer, decision label, emitted token prefix through the scored token, and source identities. Each identity uses the declared source ID, version, kind, role, captured text digest, masked token count, and any recorded extra boundary whitespace. Older reports without boundary metadata stay readable. A mask with declared boundary whitespace forms its own group. Captures without declared source IDs are counted as unavailable for grouping. The summaries count distinct identified conversations, users, and organizations, alongside decisions and measurements. The cohort's dates and ownership labels are synthetic. Across its four measured decisions the refund policy pair's interaction ranges from −5.84 to −5.18 log units at the recorded refund digit. The range describes those measured decisions.
 
 ### Follow a named output across different answers
 

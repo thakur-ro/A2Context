@@ -306,6 +306,9 @@ function appendVisibilityModel(parent, comparison) {
   const model = node("small", details.join(" · "), "anchor");
   model.title = "Model revision " + comparison.model_revision;
   parent.append(model);
+  for (const source of comparison.sources) {
+    if (source.boundary_whitespace) parent.append(visibilityBoundaryNote(source.boundary_whitespace, source.source_id));
+  }
 }
 
 function renderVisibilityGroups(parent, page, openGroup) {

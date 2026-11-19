@@ -85,6 +85,20 @@
           "pattern": "^/",
           "description": "JSON Pointer to the exact request object or array captured by this source. Use the context item's request fragment for text spans."
         },
+        "boundary_whitespace": {
+          "type": "object",
+          "description": "Exact ASCII whitespace outside the captured source that shares its first or last prompt token. Omit for an exact span.",
+          "required": ["before", "after"],
+          "additionalProperties": false,
+          "properties": {
+            "before": { "type": "string", "pattern": "^[ \\t\\r\\n]*$" },
+            "after": { "type": "string", "pattern": "^[ \\t\\r\\n]*$" }
+          },
+          "anyOf": [
+            { "properties": { "before": { "minLength": 1 } } },
+            { "properties": { "after": { "minLength": 1 } } }
+          ]
+        },
         "token_range": {
           "description": "Zero-based start and exclusive end in the rendered prompt.",
           "type": "array", "minItems": 2, "maxItems": 2,

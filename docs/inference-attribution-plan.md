@@ -153,12 +153,18 @@ We used the same Qwen2.5 checkpoint for a synthetic product lookup with two tool
 
 | Masked source | Change at `stock` | Change across `42` |
 | --- | ---: | ---: |
+| System instruction | +0.00013 | −0.00001 |
 | Request type | −0.26029 | 0 |
 | Product ID | −0.00018 | −4.86417 |
 | Store name | −0.00002 | 0 |
+| Question | −0.00002 | 0 |
 | Request type and product ID | −0.26217 | −4.88383 |
 | Stock definition | −3.42828 | −0.00001 |
 | Price definition | +0.00019 | 0 |
+| System instruction and request type | −0.00534 | −0.00001 |
+| System instruction and stock definition | −3.54794 | −0.00003 |
 | Both tool definitions | −0.01579 | −0.00001 |
 
-The table gives masked minus original log probability. The argument column sums the two digit scores, each conditioned on the preceding recorded tokens. Masking the stock definition alone lowered the recorded name's score more than masking the request type. Masking both definitions brought the score near the baseline, with an interaction of +3.41230 log units. The product ID had the largest measured effect on the argument. The system instruction remains unmeasured because its token boundary also contains template text. These are fixed-prefix effects from one proposal. Whether the model would generate a different tool call under the same masks remains open. [Reproduce the probe](guide.md#test-source-visibility-on-a-tool-proposal)
+The table gives masked minus original log probability. The argument column sums the two digit scores, each conditioned on the preceding recorded tokens. Masking the stock definition alone lowered the recorded name's score more than masking the request type. Masking both definitions brought the score near the baseline, with an interaction of +3.41230 log units. The product ID had the largest measured effect on the argument.
+
+The instruction mask includes the two template newlines that share its last token. Its largest individual effect was −0.03797 log units at the opening `<tool_call>` delimiter. The tool-name score barely moved. Masking the instruction with the request type moved the score closer to the baseline than masking the request type alone. The interaction was +0.25482 log units. These are fixed-prefix effects from one proposal. Whether the model would generate a different tool call under the same masks remains open. [Reproduce the probe](guide.md#test-source-visibility-on-a-tool-proposal)

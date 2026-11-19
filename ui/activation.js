@@ -51,6 +51,17 @@ function renderActivationReports(parent, reports, call) {
   }
 }
 
+function visibilityBoundaryNote({ before, after }, label) {
+  const parts = [
+    before && before.length + " before",
+    after && after.length + " after",
+  ].filter(Boolean);
+  const prefix = label ? label + " · " : "";
+  const note = node("small", prefix + "Extra whitespace bytes in mask · " + parts.join(" and "), "anchor");
+  note.title = JSON.stringify({ before, after });
+  return note;
+}
+
 function renderSourceVisibility(panel, report, call) {
   const precision = visibilityEffectFormat;
   panel.append(node("h3", "Context visibility test"));
@@ -127,6 +138,7 @@ function renderSourceVisibility(panel, report, call) {
       if (delta !== null) button.dataset.visibilitySource = source.context_id;
       heading.append(button);
       if (source.request_pointer) heading.append(node("small", source.request_pointer, "anchor"));
+      if (source.boundary_whitespace) heading.append(visibilityBoundaryNote(source.boundary_whitespace));
       row.append(heading);
       const effect = row.insertCell();
       if (delta === null) effect.textContent = reasons[source.unavailable];

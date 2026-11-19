@@ -2,7 +2,7 @@
 
 mod timeline;
 
-use super::{query, Report, Source};
+use super::{query, BoundaryWhitespace, Report, Source};
 use crate::{
     activation::{self, patterns::query::Thread},
     conflict_query::{timestamp, Scope, TimeWindow},
@@ -98,6 +98,8 @@ struct Identity<'a> {
     role: Option<&'a str>,
     captured_text_sha256: &'a str,
     masked_token_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    boundary_whitespace: Option<&'a BoundaryWhitespace>,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -294,6 +296,7 @@ fn gather<'a>(
                         role: item.role.as_deref(),
                         captured_text_sha256: &source.captured_text_sha256,
                         masked_token_count: source.token_range[1] - source.token_range[0],
+                        boundary_whitespace: source.boundary_whitespace.as_ref(),
                     },
                 ))
             })
