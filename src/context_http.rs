@@ -1,4 +1,4 @@
-//! Serve context comparisons and conflict breakdowns over recorded evidence.
+//! Serve preflight checks, context comparisons, and conflict breakdowns.
 
 use nexusweave::{conflict_query, context_changes, Call, Decision, Run};
 use percent_encoding::percent_decode_str;
@@ -6,6 +6,25 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use tiny_http::{Method, Request};
+
+pub fn preflight(request: &mut Request) -> Option<(u16, Vec<u8>)> {
+    if request.method() != &Method::Post || request.url() != "/api/preflight" {
+        return None;
+    }
+    let result = crate::replay_http::read_json(request, 1024 * 1024)
+        .and_then(|input| nexusweave::preflight::check(input).map_err(|error| (400, error)))
+        .and_then(|report| {
+            serde_json::to_vec(&report)
+                .map_err(|_| (500, "Could not prepare the preflight report.".into()))
+        });
+    Some(match result {
+        Ok(body) => (200, body),
+        Err((status, message)) => (
+            status,
+            json!({ "message": message }).to_string().into_bytes(),
+        ),
+    })
+}
 
 pub fn conflicts<'a>(
     request: &mut Request,

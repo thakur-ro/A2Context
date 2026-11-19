@@ -1,6 +1,16 @@
 # NexusWeave
 
-NexusWeave is a local decision inspector for LLM workflows. Read a recorded conversation, then open a turn to see which inputs were present, which rules conflicted, and which edits changed the outcome in a replay. Follow the same sources across turns, threads, users, and organizations.
+NexusWeave is a local context and decision inspector for LLM workflows. Check the assembled request for conflicting rules before inference. Open a recorded turn to see which inputs were present and which edits changed the outcome in a replay. Follow the same sources across turns, threads, users, and organizations.
+
+[How NexusWeave works](docs/architecture.md) · [Integration guide](docs/guide.md) · [Contributing](CONTRIBUTING.md)
+
+## Check a request before inference
+
+```sh
+cargo run --locked -- preflight examples/preflight-returns.json
+```
+
+The report flags a conflict between a 30-day policy and a 60-day FAQ in the same request. Each source comes with a version and the exact range in the assembled prompt. The check uses declared rule values and makes no model call. [Run it from your workflow](docs/guide.md#check-context-before-inference)
 
 ## Try the conversation inspector
 

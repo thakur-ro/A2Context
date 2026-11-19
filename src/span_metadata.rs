@@ -9,7 +9,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
 const SEMANTICS: &str = "nexusweave.context.semantics";
-const REQUEST: &str = "nexusweave.request.body";
+pub(crate) const REQUEST: &str = "nexusweave.request.body";
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

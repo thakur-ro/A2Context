@@ -2,9 +2,34 @@
 
 Run the commands in this guide from the repository root.
 
-NexusWeave helps you investigate which inputs changed an LLM workflow decision. Start from a recorded tool choice, argument, or answer. Inspect the prompt sources and tool results on that call, then replay a targeted edit to measure how often the decision changes.
+NexusWeave helps you investigate the inputs to an LLM workflow decision. Check a pending request for rule conflicts, or start from a recorded tool choice, argument, or answer. Inspect its prompt sources and tool results, then replay a targeted edit to measure how often the decision changes.
 
 Traces show what was recorded. Conflict checks use declared rules, and replay effects describe changes under the tested conditions. Compare those findings across turns, threads, users, or organizations when the trace carries the corresponding identifiers. NexusWeave accepts OTLP, LangSmith exports, and its own versioned JSON format. ContextCite provides a related attribution method for generated statements. [ContextCite paper](https://arxiv.org/abs/2409.00729)
+
+## Check context before inference
+
+Run preflight after building a request and before handing it to the model. The example puts a 30-day policy and a 60-day FAQ in one system message. Both declare `return_window_days` for the `standard` scope. [Example request](../examples/preflight-returns.json)
+
+```sh
+cargo run --locked -- preflight examples/preflight-returns.json
+```
+
+The response has `captured_items`, `scoped_rule_items`, and `findings`. The example has three captured items, two declared rules, and one `conflict`. Each finding includes the rule key and scope, the declared values, source IDs and versions, and the evidence locations. For sources declared inside a request string, the location includes a JSON Pointer and UTF-8 byte range. The report omits the raw request and prompt excerpts.
+
+Send a versioned JSON object with `version: 1` and an `attributes` object. An optional `scope` object has a `key` and `scope` and limits the check to that pair. Without it, preflight compares all declared scopes independently. Use GenAI input attributes such as `gen_ai.input.messages`, `gen_ai.system_instructions`, and `gen_ai.tool.definitions` for captured inputs. Attach source declarations as an object or encoded JSON string under `nexusweave.context.semantics`. For sources within a combined prompt string, send the actual JSON body as a string under `nexusweave.request.body` and use `request_sources`. Declare each source once. [Source declaration format](#declare-context-sources-and-decision-scope)
+
+A rule group with two different known values yields `conflict`. Otherwise, any missing value yields `insufficient_evidence`. When all values are known and equal, it yields `duplicate`. Groups with fewer than two declarations produce no finding. Authority labels are shown as declared. The report measures input conditions, and your workflow decides how to handle the findings.
+
+Use `nexusweave preflight -` to read the same JSON from stdin. Rust applications can deserialize it as `nexusweave::preflight::Request` and call `nexusweave::preflight::check`. Run `cargo doc --locked --no-deps --open` for the Rust API and a tested example.
+
+For an HTTP integration, start the [local inspector](#run-the-local-demo) and post the same request to it.
+
+```sh
+curl -fsS -H 'Content-Type: application/json' \
+  --data-binary @examples/preflight-returns.json http://127.0.0.1:8040/api/preflight
+```
+
+The endpoint accepts up to 1 MiB and returns HTTP `200` for a completed check, including when findings are present. Invalid requests return `400`. The endpoint discards the request after returning its report. Reuse the same source IDs and versions in your recorded trace to investigate those sources after the run. [How preflight, trace analysis, and replay fit together](architecture.md)
 
 ## Try a decision replay
 

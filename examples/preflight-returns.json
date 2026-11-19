@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "scope": {"key": "return_window_days", "scope": "standard"},
+  "attributes": {
+    "gen_ai.request.model": "demo-model",
+    "gen_ai.input.messages": [
+      {"role": "user", "parts": [{"type": "text", "content": "Can I return this after 45 days?"}]}
+    ],
+    "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Company policy: 30 days.\\nArchived FAQ: 60 days.\"},{\"role\":\"user\",\"content\":\"Can I return this after 45 days?\"}]}",
+    "nexusweave.context.semantics": {
+      "version": 1,
+      "request_sources": [
+        {
+          "id": "policy",
+          "source_id": "retail/returns-policy",
+          "source_version": "v12",
+          "authority": "Company policy",
+          "rule": {"key": "return_window_days", "scope": "standard", "value": 30},
+          "request_fragment": {"pointer": "/messages/0/content", "text_range": {"start_byte": 0, "end_byte": 24}}
+        },
+        {
+          "id": "faq",
+          "source_id": "retail/archive-faq",
+          "source_version": "v2",
+          "authority": "Archived FAQ",
+          "rule": {"key": "return_window_days", "scope": "standard", "value": 60},
+          "request_fragment": {"pointer": "/messages/0/content", "text_range": {"start_byte": 25, "end_byte": 47}}
+        }
+      ]
+    }
+  }
+}

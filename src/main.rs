@@ -1,6 +1,6 @@
 use nexusweave::{
-    activation, add_annotations, exgentic, inspect, langsmith, otlp, replay, replay_effects,
-    Annotation, Run,
+    activation, add_annotations, exgentic, inspect, langsmith, otlp, preflight, replay,
+    replay_effects, Annotation, Run,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -22,6 +22,7 @@ const USAGE: &str = "Usage:
   nexusweave replay <evidence.json> <case.json> <report.json> -- <runner> [args...]
   nexusweave rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>
   nexusweave validate <evidence.json> [...]
+  nexusweave preflight <request.json|->
   nexusweave query-conflicts <view.json> <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
@@ -112,6 +113,16 @@ fn run(args: Vec<String>) -> Result<()> {
             let runs = read_runs(paths)?;
             let report = inspect(&runs)?;
             println!("Validated {} runs.", report.runs.len());
+        }
+        ["preflight", path] => {
+            let request = if *path == "-" {
+                serde_json::from_reader(std::io::stdin().lock())?
+            } else {
+                serde_json::from_reader(fs::File::open(path)?)?
+            };
+            let report = preflight::check(request)?;
+            serde_json::to_writer_pretty(std::io::stdout().lock(), &report)?;
+            println!();
         }
         ["query-conflicts", spec, paths @ ..] if !paths.is_empty() => {
             let runs = read_runs(paths)?;
@@ -531,6 +542,7 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                     reply
                 })
                 .or_else(|| context_http::route(&request, runs()))
+                .or_else(|| context_http::preflight(&mut request))
                 .or_else(|| context_http::conflicts(&mut request, runs()))
                 .or_else(|| evidence_http::route(&mut request, runs(), &replays, &activations))
                 .or_else(|| replay_http::route(&mut request, runs()))

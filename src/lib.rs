@@ -1,3 +1,12 @@
+//! Diagnose context in LLM workflows before and after inference.
+//!
+//! Start with [`preflight::check`] for a pending request or [`inspect`] for
+//! recorded runs. [`otlp`] and [`langsmith`] import trace evidence, and
+//! [`replay::execute`] compares model outcomes after a controlled input edit.
+//!
+//! The [architecture guide](https://github.com/thakur-ro/NexusWeave/blob/main/docs/architecture.md)
+//! shows how these steps connect and explains what each result measures.
+
 pub mod activation;
 pub mod conflict_query;
 pub mod context_changes;
@@ -10,6 +19,7 @@ mod genai;
 pub mod langsmith;
 mod openinference;
 pub mod otlp;
+pub mod preflight;
 pub mod replay;
 pub mod replay_effects;
 pub mod source_profiles;

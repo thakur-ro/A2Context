@@ -3,7 +3,7 @@ name = "nexusweave"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Inspect decisions and evidence in recorded LLM workflows"
+description = "Diagnose context and inspect decisions in LLM workflows"
 include = [
     "/src/**",
     "/ui/*.js",
