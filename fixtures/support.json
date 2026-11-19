@@ -1,0 +1,624 @@
+[
+  {
+    "schema_version": 1,
+    "id": "return-eligibility",
+    "source": "fixture",
+    "organization_id": "demo-retail",
+    "user_id": "user-042",
+    "conversation_id": "return-eligibility",
+    "calls": [
+      {
+        "id": "check",
+        "turn_id": "t1",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy",
+            "kind": "instruction",
+            "role": "developer",
+            "source_id": "returns-policy",
+            "source_version": "v12",
+            "authority": "Developer policy",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 0
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          },
+          {
+            "id": "return-preference",
+            "kind": "instruction",
+            "role": "user",
+            "source_id": "return-preference",
+            "source_version": "v3",
+            "authority": "Saved user preference",
+            "availability": "included",
+            "text": "Use a 60-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 1
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 60
+            }
+          }
+        ],
+        "decisions": [
+          {
+            "id": "eligibility",
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            },
+            "evidence": {
+              "field": "response.tool_calls",
+              "part_index": 0
+            },
+            "tool_call_id": "check-tool",
+            "applies_to": {
+              "key": "return_window_days",
+              "scope": "standard"
+            }
+          }
+        ],
+        "tool_results": [],
+        "relationships": [
+          {
+            "decision_id": "eligibility",
+            "context_id": "returns-policy",
+            "relation": "applies to",
+            "basis": "declared"
+          }
+        ]
+      },
+      {
+        "id": "follow-up",
+        "turn_id": "t1",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy",
+            "kind": "instruction",
+            "role": "developer",
+            "source_id": "returns-policy",
+            "source_version": "v12",
+            "authority": "Developer policy",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 0
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          },
+          {
+            "id": "return-preference",
+            "kind": "instruction",
+            "role": "user",
+            "source_id": "return-preference",
+            "source_version": "v3",
+            "authority": "Saved user preference",
+            "availability": "included",
+            "text": "Use a 60-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 1
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 60
+            }
+          }
+        ],
+        "decisions": [
+          {
+            "id": "eligibility",
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            },
+            "evidence": {
+              "field": "response.tool_calls",
+              "part_index": 0
+            },
+            "tool_call_id": "follow-up-tool",
+            "applies_to": {
+              "key": "return_window_days",
+              "scope": "standard"
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "tool_call_id": "check-tool",
+            "outcome": {
+              "eligible": true,
+              "window_days": 30
+            },
+            "evidence": {
+              "field": "request.tool_results",
+              "part_index": 0
+            }
+          }
+        ],
+        "relationships": [
+          {
+            "decision_id": "eligibility",
+            "context_id": "returns-policy",
+            "relation": "applies to",
+            "basis": "declared"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "id": "damaged-item",
+    "source": "fixture",
+    "organization_id": "demo-retail",
+    "user_id": "user-042",
+    "conversation_id": "damaged-item",
+    "calls": [
+      {
+        "id": "check",
+        "turn_id": "t1",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy",
+            "kind": "instruction",
+            "role": "developer",
+            "source_id": "returns-policy",
+            "source_version": "v12",
+            "authority": "Developer policy",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 0
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          },
+          {
+            "id": "return-preference",
+            "kind": "instruction",
+            "role": "user",
+            "source_id": "return-preference",
+            "source_version": "v3",
+            "authority": "Saved user preference",
+            "availability": "included",
+            "text": "Use a 60-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 1
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 60
+            }
+          }
+        ],
+        "decisions": [
+          {
+            "id": "eligibility",
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            },
+            "evidence": {
+              "field": "response.tool_calls",
+              "part_index": 0
+            },
+            "tool_call_id": "check-tool",
+            "applies_to": {
+              "key": "return_window_days",
+              "scope": "standard"
+            }
+          }
+        ],
+        "tool_results": [],
+        "relationships": [
+          {
+            "decision_id": "eligibility",
+            "context_id": "returns-policy",
+            "relation": "applies to",
+            "basis": "declared"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "id": "holiday-order",
+    "source": "fixture",
+    "organization_id": "demo-retail",
+    "user_id": "user-042",
+    "conversation_id": "holiday-order",
+    "calls": [
+      {
+        "id": "exception",
+        "turn_id": "t1",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy",
+            "kind": "instruction",
+            "role": "developer",
+            "source_id": "returns-policy",
+            "source_version": "v12",
+            "authority": "Developer policy",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 0
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          },
+          {
+            "id": "holiday-policy",
+            "kind": "instruction",
+            "role": "user",
+            "source_id": "holiday-policy",
+            "source_version": "v2",
+            "authority": "Saved user preference",
+            "availability": "included",
+            "text": "Use a 60-day window for holiday purchases.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 1
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "holiday",
+              "value": 60
+            }
+          }
+        ],
+        "decisions": [
+          {
+            "id": "eligibility",
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 60
+            },
+            "evidence": {
+              "field": "response.tool_calls",
+              "part_index": 0
+            },
+            "tool_call_id": "exception-tool",
+            "applies_to": {
+              "key": "return_window_days",
+              "scope": "holiday"
+            }
+          }
+        ],
+        "tool_results": []
+      },
+      {
+        "id": "duplicate",
+        "turn_id": "t2",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy",
+            "kind": "instruction",
+            "role": "developer",
+            "source_id": "returns-policy",
+            "source_version": "v12",
+            "authority": "Developer policy",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 0
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          },
+          {
+            "id": "return-preference",
+            "kind": "instruction",
+            "role": "user",
+            "source_id": "return-preference",
+            "source_version": "v4",
+            "authority": "Saved user preference",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 1
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          }
+        ],
+        "decisions": [
+          {
+            "id": "eligibility",
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            },
+            "evidence": {
+              "field": "response.tool_calls",
+              "part_index": 0
+            },
+            "tool_call_id": "duplicate-tool",
+            "applies_to": {
+              "key": "return_window_days",
+              "scope": "standard"
+            }
+          }
+        ],
+        "tool_results": []
+      },
+      {
+        "id": "redacted",
+        "turn_id": "t3",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy",
+            "kind": "instruction",
+            "role": "developer",
+            "source_id": "returns-policy",
+            "source_version": "v12",
+            "authority": "Developer policy",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 0
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          },
+          {
+            "id": "return-preference",
+            "kind": "instruction",
+            "role": "user",
+            "source_id": "return-preference",
+            "source_version": "v5",
+            "authority": "Saved user preference",
+            "availability": "redacted",
+            "text": null,
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 1
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": null
+            }
+          }
+        ],
+        "decisions": [
+          {
+            "id": "eligibility",
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            },
+            "evidence": {
+              "field": "response.tool_calls",
+              "part_index": 0
+            },
+            "tool_call_id": "redacted-tool",
+            "applies_to": {
+              "key": "return_window_days",
+              "scope": "standard"
+            }
+          }
+        ],
+        "tool_results": []
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "id": "replacement-order",
+    "source": "fixture",
+    "organization_id": "demo-retail",
+    "user_id": "user-077",
+    "conversation_id": "replacement-order",
+    "calls": [
+      {
+        "id": "check",
+        "turn_id": "t1",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy",
+            "kind": "instruction",
+            "role": "developer",
+            "source_id": "returns-policy",
+            "source_version": "v12",
+            "authority": "Developer policy",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 0
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          },
+          {
+            "id": "return-preference",
+            "kind": "instruction",
+            "role": "user",
+            "source_id": "return-preference",
+            "source_version": "v3",
+            "authority": "Saved user preference",
+            "availability": "included",
+            "text": "Use a 60-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 1
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 60
+            }
+          }
+        ],
+        "decisions": [
+          {
+            "id": "eligibility",
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            },
+            "evidence": {
+              "field": "response.tool_calls",
+              "part_index": 0
+            },
+            "tool_call_id": "check-tool",
+            "applies_to": {
+              "key": "return_window_days",
+              "scope": "standard"
+            }
+          }
+        ],
+        "tool_results": [],
+        "relationships": [
+          {
+            "decision_id": "eligibility",
+            "context_id": "returns-policy",
+            "relation": "applies to",
+            "basis": "declared"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "schema_version": 1,
+    "id": "other-store",
+    "source": "fixture",
+    "organization_id": "second-retailer",
+    "user_id": "user-042",
+    "conversation_id": "other-store",
+    "calls": [
+      {
+        "id": "check",
+        "turn_id": "t1",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy",
+            "kind": "instruction",
+            "role": "developer",
+            "source_id": "returns-policy",
+            "source_version": "v12",
+            "authority": "Developer policy",
+            "availability": "included",
+            "text": "Use a 30-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 0
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 30
+            }
+          },
+          {
+            "id": "return-preference",
+            "kind": "instruction",
+            "role": "user",
+            "source_id": "return-preference",
+            "source_version": "v3",
+            "authority": "Saved user preference",
+            "availability": "included",
+            "text": "Use a 60-day window for standard returns.",
+            "evidence": {
+              "field": "request.annotated_context",
+              "part_index": 1
+            },
+            "rule": {
+              "key": "return_window_days",
+              "scope": "standard",
+              "value": 60
+            }
+          }
+        ],
+        "decisions": [
+          {
+            "id": "eligibility",
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            },
+            "evidence": {
+              "field": "response.tool_calls",
+              "part_index": 0
+            },
+            "tool_call_id": "check-tool",
+            "applies_to": {
+              "key": "return_window_days",
+              "scope": "standard"
+            }
+          }
+        ],
+        "tool_results": [],
+        "relationships": [
+          {
+            "decision_id": "eligibility",
+            "context_id": "returns-policy",
+            "relation": "applies to",
+            "basis": "declared"
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,185 @@
+{
+  "runs": [
+    {
+      "id": "00000000-0000-4000-8000-000000000012",
+      "trace_id": "00000000-0000-4000-8000-000000000010",
+      "session_id": "00000000-0000-4000-8000-000000000090",
+      "run_type": "tool",
+      "start_time": "2026-11-19T13:00:02Z",
+      "name": "check_eligibility",
+      "outputs": {
+        "eligible": true
+      },
+      "extra": {
+        "metadata": {
+          "tool_call_id": "call-check"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "trace_id": "00000000-0000-4000-8000-000000000010",
+      "session_id": "00000000-0000-4000-8000-000000000090",
+      "run_type": "chain",
+      "start_time": "2026-11-19T13:00:00Z",
+      "extra": {
+        "metadata": {
+          "thread_id": "retail-demo-thread",
+          "organization_id": "demo-retail",
+          "user_id": "demo-shopper"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000013",
+      "trace_id": "00000000-0000-4000-8000-000000000010",
+      "session_id": "00000000-0000-4000-8000-000000000090",
+      "run_type": "llm",
+      "start_time": "2026-11-19T13:00:03Z",
+      "inputs": {
+        "messages": [
+          {
+            "role": "tool",
+            "tool_call_id": "call-check",
+            "content": "Eligible"
+          }
+        ]
+      },
+      "outputs": {
+        "messages": [
+          {
+            "role": "assistant",
+            "content": "Your return is eligible."
+          }
+        ]
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000022",
+      "trace_id": "00000000-0000-4000-8000-000000000020",
+      "session_id": "00000000-0000-4000-8000-000000000090",
+      "run_type": "llm",
+      "start_time": "2026-11-19T13:00:05Z",
+      "inputs": {
+        "messages": [
+          [
+            {
+              "type": "human",
+              "data": {
+                "content": "What do I send back?"
+              }
+            }
+          ]
+        ]
+      },
+      "outputs": {
+        "generations": [
+          [
+            {
+              "message": {
+                "type": "constructor",
+                "id": [
+                  "langchain",
+                  "schema",
+                  "messages",
+                  "AIMessage"
+                ],
+                "kwargs": {
+                  "content": "Send the item back."
+                }
+              }
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000011",
+      "trace_id": "00000000-0000-4000-8000-000000000010",
+      "session_id": "00000000-0000-4000-8000-000000000090",
+      "run_type": "llm",
+      "start_time": "2026-11-19T13:00:01Z",
+      "extra": {
+        "metadata": {
+          "turn_id": "turn-1",
+          "ls_model_name": "synthetic-model"
+        }
+      },
+      "inputs": {
+        "messages": [
+          [
+            {
+              "type": "constructor",
+              "id": [
+                "langchain",
+                "schema",
+                "messages",
+                "SystemMessage"
+              ],
+              "kwargs": {
+                "content": "Check eligibility before approving a return."
+              }
+            },
+            {
+              "role": "user",
+              "content": "Can I return this order?"
+            }
+          ]
+        ]
+      },
+      "outputs": {
+        "generations": [
+          [
+            {
+              "message": {
+                "type": "constructor",
+                "id": [
+                  "langchain",
+                  "schema",
+                  "messages",
+                  "AIMessage"
+                ],
+                "kwargs": {
+                  "content": "",
+                  "tool_calls": [
+                    {
+                      "id": "call-check",
+                      "name": "check_eligibility",
+                      "args": {
+                        "days": 19
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000020",
+      "trace_id": "00000000-0000-4000-8000-000000000020",
+      "session_id": "00000000-0000-4000-8000-000000000090",
+      "run_type": "chain",
+      "start_time": "2026-11-19T13:00:04Z",
+      "extra": {
+        "metadata": {
+          "organization_id": "demo-retail",
+          "user_id": "demo-shopper",
+          "session_id": "retail-demo-thread"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000030",
+      "trace_id": "00000000-0000-4000-8000-000000000030",
+      "session_id": "00000000-0000-4000-8000-000000000090",
+      "run_type": "llm",
+      "start_time": "2026-11-19T13:00:06Z",
+      "name": "masked call",
+      "inputs": {},
+      "outputs": {}
+    }
+  ]
+}

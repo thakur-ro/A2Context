@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave source visibility report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "kind", "id", "location", "model_id", "model_revision", "runtime", "prompt_sha256", "tokenizer_sha256", "request_sha256", "prompt_token_count", "baseline_answer", "output_token_ids", "fragments", "baseline_log_probs", "all_visible_max_abs_error", "sources"],
+  "properties": {
+    "version": { "const": 1 },
+    "kind": { "const": "source_visibility" },
+    "id": { "$ref": "#/$defs/nonempty" },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "call_id", "decision_id"],
+      "properties": {
+        "run_id": { "$ref": "#/$defs/nonempty" },
+        "call_id": { "$ref": "#/$defs/nonempty" },
+        "decision_id": { "$ref": "#/$defs/nonempty" }
+      }
+    },
+    "model_id": { "$ref": "#/$defs/nonempty" },
+    "model_revision": { "$ref": "#/$defs/nonempty" },
+    "runtime": { "$ref": "#/$defs/nonempty" },
+    "prompt_sha256": { "$ref": "#/$defs/digest" },
+    "tokenizer_sha256": { "$ref": "#/$defs/digest" },
+    "request_sha256": { "$ref": "#/$defs/digest", "description": "Digest of the exact UTF-8 recorded request body." },
+    "prompt_token_count": { "type": "integer", "minimum": 2 },
+    "baseline_answer": { "$ref": "#/$defs/nonempty" },
+    "output_token_ids": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 } },
+    "fragments": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "baseline_log_probs": { "$ref": "#/$defs/log_probs" },
+    "all_visible_max_abs_error": { "type": "number", "minimum": 0, "maximum": 0.00001 },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One entry per captured context item on the decision's call.",
+      "items": { "oneOf": [{ "$ref": "#/$defs/measurement" }, { "$ref": "#/$defs/unavailable" }] }
+    },
+    "pairs": {
+      "type": "array",
+      "description": "Scores with two individually measured, non-overlapping sources masked together.",
+      "items": { "$ref": "#/$defs/pair" }
+    }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "digest": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+    "log_probs": { "type": "array", "minItems": 1, "items": { "type": "number", "maximum": 0 } },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_id", "captured_text_sha256", "token_range", "masked_log_probs"],
+      "properties": {
+        "context_id": { "$ref": "#/$defs/nonempty" },
+        "captured_text_sha256": { "$ref": "#/$defs/digest" },
+        "token_range": {
+          "description": "Zero-based start and exclusive end in the rendered prompt.",
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "masked_log_probs": { "$ref": "#/$defs/log_probs" }
+      }
+    },
+    "pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_ids", "masked_log_probs"],
+      "properties": {
+        "context_ids": {
+          "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonempty" }
+        },
+        "masked_log_probs": { "$ref": "#/$defs/log_probs" }
+      }
+    },
+    "unavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_id", "unavailable"],
+      "properties": {
+        "context_id": { "$ref": "#/$defs/nonempty" },
+        "unavailable": {
+          "enum": ["text_not_captured", "no_request_fragment", "unsupported_request_field", "rendered_source_unaligned", "token_boundary_unaligned"]
+        }
+      }
+    }
+  }
+}

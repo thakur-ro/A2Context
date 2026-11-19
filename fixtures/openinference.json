@@ -1,0 +1,445 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "nexusweave.organization.id",
+            "value": {
+              "stringValue": "demo-retail"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "nexusweave.openinference.example"
+          },
+          "spans": [
+            {
+              "traceId": "29c7af42d4a74b71a975f88507f6c0a5",
+              "spanId": "0000000000000001",
+              "name": "Choose support route",
+              "startTimeUnixNano": "1795094100000000001",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "DECISION"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "openinference-inventory"
+                  }
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "inventory-user"
+                  }
+                },
+                {
+                  "key": "nexusweave.turn.id",
+                  "value": {
+                    "stringValue": "stock-question"
+                  }
+                },
+                {
+                  "key": "decision.system",
+                  "value": {
+                    "stringValue": "synthetic"
+                  }
+                },
+                {
+                  "key": "decision.request.model_name",
+                  "value": {
+                    "stringValue": "router-latest"
+                  }
+                },
+                {
+                  "key": "decision.response.model_name",
+                  "value": {
+                    "stringValue": "router-v1"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"state\":{\"department\":\"inventory\",\"sku\":\"MUG-42\"},\"questions\":{\"route\":[\"stock\",\"returns\"]},\"model\":\"router-latest\"}"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"route\":\"stock\",\"confidence\":0.92}"
+                  }
+                },
+                {
+                  "key": "nexusweave.request.body",
+                  "value": {
+                    "stringValue": "{\"state\":{\"department\":\"inventory\",\"sku\":\"MUG-42\"},\"questions\":{\"route\":[\"stock\",\"returns\"]},\"model\":\"router-latest\"}"
+                  }
+                },
+                {
+                  "key": "nexusweave.context.semantics",
+                  "value": {
+                    "stringValue": "{\"version\":1,\"context\":[{\"anchor\":{\"field\":\"input.value#/state\"},\"source_id\":\"support-routing-state\",\"source_version\":\"v1\"}],\"relationships\":[{\"context\":{\"field\":\"input.value#/state\"},\"decision\":{\"field\":\"output.value\"},\"relation\":\"routing input\"}]}"
+                  }
+                }
+              ],
+              "parentSpanId": "0000000000000100"
+            },
+            {
+              "traceId": "29c7af42d4a74b71a975f88507f6c0a5",
+              "spanId": "0000000000000002",
+              "name": "Choose inventory tool",
+              "startTimeUnixNano": "1795094100000000002",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "openinference-inventory"
+                  }
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "inventory-user"
+                  }
+                },
+                {
+                  "key": "nexusweave.turn.id",
+                  "value": {
+                    "stringValue": "stock-question"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "synthetic"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "synthetic-inventory"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.role",
+                  "value": {
+                    "stringValue": "system"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.content",
+                  "value": {
+                    "stringValue": "Use the inventory tool for stock questions."
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.content",
+                  "value": {
+                    "stringValue": "Check SKU MUG-42."
+                  }
+                },
+                {
+                  "key": "llm.tools.0.tool.json_schema",
+                  "value": {
+                    "stringValue": "{\"type\":\"function\",\"function\":{\"name\":\"look_up_inventory\",\"parameters\":{\"type\":\"object\"}}}"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.id",
+                  "value": {
+                    "stringValue": "stock-1"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.function.name",
+                  "value": {
+                    "stringValue": "look_up_inventory"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.tool_calls.0.tool_call.function.arguments",
+                  "value": {
+                    "stringValue": "{\"sku\":\"MUG-42\"}"
+                  }
+                }
+              ],
+              "parentSpanId": "0000000000000200"
+            },
+            {
+              "traceId": "29c7af42d4a74b71a975f88507f6c0a5",
+              "spanId": "0000000000000003",
+              "name": "Read stock",
+              "startTimeUnixNano": "1795094100000000003",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "TOOL"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "openinference-inventory"
+                  }
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "inventory-user"
+                  }
+                },
+                {
+                  "key": "nexusweave.turn.id",
+                  "value": {
+                    "stringValue": "stock-question"
+                  }
+                },
+                {
+                  "key": "tool.name",
+                  "value": {
+                    "stringValue": "look_up_inventory"
+                  }
+                },
+                {
+                  "key": "tool.id",
+                  "value": {
+                    "stringValue": "stock-1"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"sku\":\"MUG-42\",\"quantity\":42}"
+                  }
+                }
+              ],
+              "parentSpanId": "0000000000000200"
+            },
+            {
+              "traceId": "29c7af42d4a74b71a975f88507f6c0a5",
+              "spanId": "0000000000000004",
+              "name": "Answer stock question",
+              "startTimeUnixNano": "1795094100000000004",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "openinference-inventory"
+                  }
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "inventory-user"
+                  }
+                },
+                {
+                  "key": "nexusweave.turn.id",
+                  "value": {
+                    "stringValue": "stock-question"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "synthetic"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "synthetic-inventory"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.role",
+                  "value": {
+                    "stringValue": "tool"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.tool_call_id",
+                  "value": {
+                    "stringValue": "stock-1"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.content",
+                  "value": {
+                    "stringValue": "{\"sku\":\"MUG-42\",\"quantity\":42}"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.content",
+                  "value": {
+                    "stringValue": "42 units are available."
+                  }
+                }
+              ],
+              "parentSpanId": "0000000000000200"
+            },
+            {
+              "traceId": "29c7af42d4a74b71a975f88507f6c0a5",
+              "spanId": "0000000000000005",
+              "name": "Check answer format",
+              "startTimeUnixNano": "1795094100000000005",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "GUARDRAIL"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "openinference-inventory"
+                  }
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "inventory-user"
+                  }
+                },
+                {
+                  "key": "nexusweave.turn.id",
+                  "value": {
+                    "stringValue": "stock-question"
+                  }
+                },
+                {
+                  "key": "input.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "{\"answer\":\"42 units are available.\"}"
+                  }
+                },
+                {
+                  "key": "output.mime_type",
+                  "value": {
+                    "stringValue": "application/json"
+                  }
+                },
+                {
+                  "key": "output.value",
+                  "value": {
+                    "stringValue": "{\"allowed\":true}"
+                  }
+                }
+              ],
+              "parentSpanId": "0000000000000300"
+            },
+            {
+              "traceId": "29c7af42d4a74b71a975f88507f6c0a5",
+              "spanId": "0000000000000100",
+              "parentSpanId": "",
+              "name": "Inventory workflow",
+              "startTimeUnixNano": "1795094100000000000",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "29c7af42d4a74b71a975f88507f6c0a5",
+              "spanId": "0000000000000200",
+              "parentSpanId": "0000000000000100",
+              "name": "Stock branch",
+              "startTimeUnixNano": "1795094100000000002",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "29c7af42d4a74b71a975f88507f6c0a5",
+              "spanId": "0000000000000300",
+              "parentSpanId": "0000000000000100",
+              "name": "Response checks",
+              "startTimeUnixNano": "1795094100000000005",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

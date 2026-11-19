@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "id": "lfm-inventory-tool",
+  "runner_id": "LFM2.5-1.2B-Instruct MLX 8-bit, greedy",
+  "location": {
+    "run_id": "local-model-inventory-tool",
+    "call_id": "model-inference",
+    "decision_id": "inventory-choice"
+  },
+  "request": {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Use the offered inventory lookup tool for stock checks. Use only a tool listed here. If no inventory lookup tool is available, reply exactly: Inventory tool unavailable."
+      },
+      {
+        "role": "user",
+        "content": "Check stock for SKU MUG-42."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "look_up_inventory",
+          "description": "Look up current stock for a product by SKU.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "sku": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sku"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "get_store_hours",
+          "description": "Read the store's business hours.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      }
+    ],
+    "temperature": 0,
+    "max_tokens": 96
+  },
+  "samples": 3,
+  "interventions": [
+    {
+      "context_id": "look_up_inventory",
+      "pointer": "/tools/0",
+      "operation": "remove_json",
+      "replacement": ""
+    },
+    {
+      "context_id": "get_store_hours",
+      "pointer": "/tools/1",
+      "operation": "remove_json",
+      "replacement": ""
+    }
+  ]
+}

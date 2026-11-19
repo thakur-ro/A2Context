@@ -1,0 +1,229 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "nexusweave.organization.id",
+            "value": {
+              "stringValue": "demo-retail"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "nexusweave.retrieval.example"
+          },
+          "spans": [
+            {
+              "traceId": "a69d0af2445e46958e08977de02f61a4",
+              "spanId": "0000000000000010",
+              "parentSpanId": "",
+              "name": "Returns workflow",
+              "startTimeUnixNano": "1795095000000000000",
+              "endTimeUnixNano": "1795095000000000030",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "CHAIN"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "returns-retrieval"
+                  }
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "retrieval-demo-user"
+                  }
+                },
+                {
+                  "key": "nexusweave.turn.id",
+                  "value": {
+                    "stringValue": "return-window"
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "a69d0af2445e46958e08977de02f61a4",
+              "spanId": "0000000000000011",
+              "parentSpanId": "0000000000000010",
+              "name": "Search returns policies",
+              "startTimeUnixNano": "1795095000000000001",
+              "endTimeUnixNano": "1795095000000000005",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "RETRIEVER"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "returns-retrieval"
+                  }
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "retrieval-demo-user"
+                  }
+                },
+                {
+                  "key": "nexusweave.turn.id",
+                  "value": {
+                    "stringValue": "return-window"
+                  }
+                },
+                {
+                  "key": "input.value",
+                  "value": {
+                    "stringValue": "What is the return window?"
+                  }
+                },
+                {
+                  "key": "retrieval.documents.0.document.id",
+                  "value": {
+                    "stringValue": "policy-current"
+                  }
+                },
+                {
+                  "key": "retrieval.documents.0.document.content",
+                  "value": {
+                    "stringValue": "Returns are accepted within 30 days."
+                  }
+                },
+                {
+                  "key": "retrieval.documents.1.document.id",
+                  "value": {
+                    "stringValue": "policy-obsolete"
+                  }
+                },
+                {
+                  "key": "retrieval.documents.1.document.content",
+                  "value": {
+                    "stringValue": "Returns are accepted within 60 days."
+                  }
+                }
+              ]
+            },
+            {
+              "traceId": "a69d0af2445e46958e08977de02f61a4",
+              "spanId": "0000000000000012",
+              "parentSpanId": "0000000000000010",
+              "name": "Answer return question",
+              "startTimeUnixNano": "1795095000000000006",
+              "endTimeUnixNano": "1795095000000000020",
+              "attributes": [
+                {
+                  "key": "openinference.span.kind",
+                  "value": {
+                    "stringValue": "LLM"
+                  }
+                },
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "returns-retrieval"
+                  }
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "retrieval-demo-user"
+                  }
+                },
+                {
+                  "key": "nexusweave.turn.id",
+                  "value": {
+                    "stringValue": "return-window"
+                  }
+                },
+                {
+                  "key": "llm.system",
+                  "value": {
+                    "stringValue": "synthetic"
+                  }
+                },
+                {
+                  "key": "llm.model_name",
+                  "value": {
+                    "stringValue": "synthetic-support"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.0.message.content",
+                  "value": {
+                    "stringValue": "What is the return window?"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.role",
+                  "value": {
+                    "stringValue": "user"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.contents.0.message_content.type",
+                  "value": {
+                    "stringValue": "document"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.contents.0.message_content.document.document.id",
+                  "value": {
+                    "stringValue": "policy-current"
+                  }
+                },
+                {
+                  "key": "llm.input_messages.1.message.contents.0.message_content.document.document.content",
+                  "value": {
+                    "stringValue": "Returns are accepted within 30 days."
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.role",
+                  "value": {
+                    "stringValue": "assistant"
+                  }
+                },
+                {
+                  "key": "llm.output_messages.0.message.content",
+                  "value": {
+                    "stringValue": "30 days"
+                  }
+                },
+                {
+                  "key": "nexusweave.request.body",
+                  "value": {
+                    "stringValue": "{\"model\":\"synthetic-support\",\"messages\":[{\"role\":\"user\",\"content\":\"What is the return window?\"},{\"role\":\"user\",\"content\":[{\"type\":\"document\",\"document\":{\"id\":\"policy-current\",\"content\":\"Returns are accepted within 30 days.\"}}]}]}"
+                  }
+                },
+                {
+                  "key": "nexusweave.context.semantics",
+                  "value": {
+                    "stringValue": "{\"version\":1,\"context\":[{\"anchor\":{\"field\":\"llm.input_messages.1.message.contents.0.message_content.document.document.content\"},\"source_id\":\"retail/returns-policy\",\"source_version\":\"v12\"}],\"relationships\":[{\"context\":{\"field\":\"llm.input_messages.1.message.contents.0.message_content.document.document.content\"},\"decision\":{\"field\":\"llm.output_messages.0.message.content\"},\"relation\":\"return-window guidance\"}]}"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

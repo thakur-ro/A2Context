@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "id": "lfm-return-window-activation",
+  "location": {
+    "run_id": "local-model-returns",
+    "call_id": "model-inference",
+    "decision_id": "return-window"
+  },
+  "case_id": "lfm-return-window",
+  "model_id": "LiquidAI/LFM2.5-1.2B-Instruct-MLX-8bit",
+  "model_revision": "ce5150fd0de58d2bba8d88cc87f13e4fbda5977a",
+  "runtime": "mlx-lm 0.32.2",
+  "prompt_sha256": "6fe258cae543bdd27e232b0854ef21a2425b545e98f8769b8ce2697bd8027746",
+  "tokenizer_sha256": "df1d8d5ec5d091b460562ffd545e4a5e91d17d4a0db7ebe733be34ed374377bd",
+  "readout": "next_token_log_odds",
+  "alternatives": [
+    "30",
+    "60"
+  ],
+  "choice_token_ids": [
+    1664,
+    2198
+  ],
+  "prediction_position": 77,
+  "layer_count": 16,
+  "baseline": {
+    "answer": 30,
+    "margin": 4.5
+  },
+  "checks": {
+    "layer": 8,
+    "source_context_id": "returns-policy",
+    "clean_patch_margin": 4.5,
+    "full_donor_margin": -18.1875
+  },
+  "sources": [
+    {
+      "context_id": "returns-policy",
+      "captured_text_sha256": "15c664291b8d01950cdae7a58d792285420c9b0e2e6d2113f5400939de4de677",
+      "token_range": [
+        4,
+        17
+      ],
+      "edited_token_range": [
+        14,
+        15
+      ],
+      "before": "30",
+      "after": "60",
+      "edited_outcome": {
+        "answer": 60,
+        "margin": -18.1875
+      }
+    },
+    {
+      "context_id": "store-name",
+      "captured_text_sha256": "7f6728c126d6232e6fc10cb7e0d765fd818ae85d39bbfc32103d528375e816ad",
+      "token_range": [
+        22,
+        32
+      ],
+      "edited_token_range": [
+        29,
+        31
+      ],
+      "before": "Alder",
+      "after": "Cedar",
+      "edited_outcome": {
+        "answer": 30,
+        "margin": 4.625
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "source_context_id": "returns-policy",
+      "target": "source_tokens",
+      "token_range": [
+        14,
+        15
+      ],
+      "margins": [
+        -17.9375,
+        -18.0625,
+        -19.375,
+        -19.5625,
+        -19.25,
+        -14.875,
+        -14.75,
+        -14.0,
+        -13.9375,
+        -13.9375,
+        -13.875,
+        -13.9375,
+        -4.375,
+        -4.375,
+        4.5,
+        4.5
+      ]
+    },
+    {
+      "source_context_id": "store-name",
+      "target": "source_tokens",
+      "token_range": [
+        29,
+        31
+      ],
+      "margins": [
+        4.75,
+        4.625,
+        4.625,
+        4.5,
+        4.25,
+        4.5,
+        4.5,
+        4.375,
+        4.375,
+        4.375,
+        4.375,
+        4.375,
+        4.5,
+        4.5,
+        4.5,
+        4.5
+      ]
+    },
+    {
+      "source_context_id": "returns-policy",
+      "target": "prediction_token",
+      "token_range": [
+        77,
+        78
+      ],
+      "margins": [
+        4.5,
+        4.5,
+        4.5,
+        4.5,
+        4.625,
+        4.75,
+        4.875,
+        4.75,
+        4.75,
+        4.875,
+        16.9375,
+        16.875,
+        -3.625,
+        -3.625,
+        -18.25,
+        -18.1875
+      ]
+    }
+  ]
+}

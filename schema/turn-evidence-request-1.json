@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave turn evidence request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "call_id"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "call_id": { "type": "string" },
+    "decision_id": {
+      "type": ["string", "null"],
+      "description": "Select a decision. Omit it to list the recorded decisions on a call with multiple decisions."
+    },
+    "include_excerpts": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include bounded captured text when the process has enabled excerpts."
+    },
+    "offset": { "type": "integer", "minimum": 0, "default": 0 },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+  }
+}

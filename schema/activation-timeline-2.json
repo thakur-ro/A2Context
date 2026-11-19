@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave activation timeline report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version", "id", "location", "case_id", "model_id", "model_revision", "runtime",
+    "prompt_sha256", "tokenizer_sha256", "readout", "layer_count", "baseline_answer",
+    "prompt_token_count", "output_token_ids", "sources", "checkpoints"
+  ],
+  "allOf": [
+    {
+      "if": {"not": {"required": ["output_scores"]}},
+      "then": {"properties": {"checkpoints": {"minItems": 2}}}
+    },
+    {
+      "if": {"properties": {"readout": {"const": "output_token_log_probability"}}},
+      "then": {"required": ["output_scores"], "properties": {"checkpoints": {"maxItems": 0}}},
+      "else": {"properties": {"checkpoints": {"minItems": 1}}}
+    }
+  ],
+  "properties": {
+    "version": {"const": 2},
+    "id": {"$ref": "#/$defs/nonempty"},
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "call_id", "decision_id"],
+      "properties": {
+        "run_id": {"$ref": "#/$defs/nonempty"},
+        "call_id": {"$ref": "#/$defs/nonempty"},
+        "decision_id": {"$ref": "#/$defs/nonempty"}
+      }
+    },
+    "case_id": {"$ref": "#/$defs/nonempty"},
+    "model_id": {"$ref": "#/$defs/nonempty"},
+    "model_revision": {"$ref": "#/$defs/nonempty"},
+    "runtime": {"$ref": "#/$defs/nonempty"},
+    "prompt_sha256": {"$ref": "#/$defs/digest"},
+    "tokenizer_sha256": {"$ref": "#/$defs/digest"},
+    "readout": {"enum": ["next_token_log_odds", "output_token_log_probability"]},
+    "layer_count": {"type": "integer", "minimum": 1},
+    "baseline_answer": {"$ref": "#/$defs/nonempty", "description": "The original generated text, including tool delimiters when present."},
+    "prompt_token_count": {"type": "integer", "minimum": 1},
+    "output_token_ids": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/token_id"}},
+    "sources": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source"}},
+    "checkpoints": {"type": "array", "items": {"$ref": "#/$defs/checkpoint"}},
+    "output_scores": {"$ref": "#/$defs/output_scores"},
+    "generation_branches": {
+      "description": "Greedy continuations from a fixed recorded prefix after a persistent source-token activation swap.",
+      "type": "array", "minItems": 1, "items": {"$ref": "#/$defs/generation_branch"}
+    },
+    "tool_calls": {
+      "description": "The runtime's parsed tool proposals. Use null when an edit produces text without a proposal.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline", "edited"],
+      "properties": {
+        "baseline": {"$ref": "#/$defs/proposal"},
+        "edited": {
+          "type": "object",
+          "additionalProperties": {"anyOf": [{"$ref": "#/$defs/proposal"}, {"type": "null"}]}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonempty": {"type": "string", "minLength": 1},
+    "digest": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+    "index": {"type": "integer", "minimum": 0},
+    "token_id": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "token_range": {
+      "description": "Zero-based token indices with an exclusive end.",
+      "type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/index"}
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "arguments"],
+      "properties": {
+        "name": {"$ref": "#/$defs/nonempty"},
+        "arguments": {"type": "object"}
+      }
+    },
+    "log_probs": {
+      "description": "Natural log probabilities in output token order.",
+      "type": "array", "minItems": 1, "items": {"type": "number", "maximum": 0}
+    },
+    "continuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "token_ids", "stop_reason"],
+      "properties": {
+        "text": {"type": "string"},
+        "token_ids": {
+          "description": "Output token IDs including the held prefix and excluding the stop token.",
+          "type": "array", "items": {"$ref": "#/$defs/token_id"}
+        },
+        "stop_reason": {"enum": ["end_of_sequence", "token_limit"]}
+      }
+    },
+    "generation_branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_context_id", "layer", "start_output_token", "max_new_tokens",
+                   "clean", "clean_patch_steps", "patched", "patched_steps", "edited_prompt"],
+      "properties": {
+        "source_context_id": {"$ref": "#/$defs/nonempty"},
+        "layer": {"$ref": "#/$defs/index"},
+        "start_output_token": {"$ref": "#/$defs/index"},
+        "max_new_tokens": {"type": "integer", "minimum": 1},
+        "clean": {"$ref": "#/$defs/continuation"},
+        "clean_patch_steps": {"type": "integer", "minimum": 1},
+        "patched": {"$ref": "#/$defs/continuation"},
+        "patched_steps": {"type": "integer", "minimum": 1},
+        "edited_prompt": {"$ref": "#/$defs/continuation"}
+      }
+    },
+    "output_scores": {
+      "description": "Fixed-path log probabilities for every recorded output token.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["readout", "fragments", "baseline_log_probs", "sources", "checks"],
+      "properties": {
+        "readout": {"const": "output_token_log_probability"},
+        "fragments": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "baseline_log_probs": {"$ref": "#/$defs/log_probs"},
+        "sources": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["edited_log_probs", "block_log_probs"],
+            "properties": {
+              "edited_log_probs": {"$ref": "#/$defs/log_probs"},
+              "block_log_probs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/log_probs"}}
+            }
+          }
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["layer", "source_context_id", "clean_patch_log_probs", "full_donor_log_probs"],
+          "properties": {
+            "layer": {"$ref": "#/$defs/index"},
+            "source_context_id": {"$ref": "#/$defs/nonempty"},
+            "clean_patch_log_probs": {"$ref": "#/$defs/log_probs"},
+            "full_donor_log_probs": {"$ref": "#/$defs/log_probs"}
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_id", "captured_text_sha256", "token_range", "edited_token_range", "before", "after", "edited_outcome"],
+      "properties": {
+        "context_id": {"$ref": "#/$defs/nonempty"},
+        "captured_text_sha256": {"$ref": "#/$defs/digest"},
+        "token_range": {"$ref": "#/$defs/token_range"},
+        "edited_token_range": {"$ref": "#/$defs/token_range"},
+        "before": {"$ref": "#/$defs/nonempty"},
+        "after": {"type": "string"},
+        "edited_outcome": {"type": "string"}
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "output_token", "answer_prefix", "alternatives", "choice_token_ids",
+                   "baseline_margin", "edited_margins", "checks", "sweeps"],
+      "properties": {
+        "label": {"$ref": "#/$defs/nonempty"},
+        "output_token": {"$ref": "#/$defs/index"},
+        "answer_prefix": {"type": "string"},
+        "alternatives": {
+          "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/nonempty"}
+        },
+        "choice_token_ids": {
+          "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/token_id"}
+        },
+        "baseline_margin": {"type": "number"},
+        "edited_margins": {"type": "object", "additionalProperties": {"type": "number"}},
+        "checks": {"$ref": "#/$defs/checks"},
+        "sweeps": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sweep"}}
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "source_context_id", "clean_patch_margin", "full_donor_margin"],
+      "properties": {
+        "layer": {"$ref": "#/$defs/index"},
+        "source_context_id": {"$ref": "#/$defs/nonempty"},
+        "clean_patch_margin": {"type": "number"},
+        "full_donor_margin": {"type": "number"}
+      }
+    },
+    "sweep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_context_id", "target", "token_range", "margins"],
+      "properties": {
+        "source_context_id": {"$ref": "#/$defs/nonempty"},
+        "target": {"enum": ["source_tokens", "prediction_token"]},
+        "token_range": {"$ref": "#/$defs/token_range"},
+        "margins": {"type": "array", "minItems": 1, "items": {"type": "number"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,678 @@
+use serde_json::{json, Value};
+use std::{
+    io::{BufRead, BufReader, Write},
+    process::{Child, ChildStdin, Command, Stdio},
+    sync::mpsc::{self, Receiver},
+    time::Duration,
+};
+
+const BIN: &str = env!("CARGO_BIN_EXE_nexusweave");
+const ACTIVATION_REPORTS: &str = "examples/local-mlx-timeline/cohort/activation-reports.json";
+const ACTIVATION_EVIDENCE: &str = "examples/local-mlx-timeline/cohort/evidence.json";
+
+struct Client {
+    child: Child,
+    stdin: ChildStdin,
+    responses: Receiver<Value>,
+    id: u32,
+    modern: bool,
+}
+
+impl Client {
+    fn start(args: &[&str], modern: bool) -> Self {
+        let mut child = Command::new(BIN)
+            .arg("mcp-stdio")
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let stdin = child.stdin.take().unwrap();
+        let stdout = child.stdout.take().unwrap();
+        let (send, responses) = mpsc::channel();
+        std::thread::spawn(move || {
+            for line in BufReader::new(stdout).lines() {
+                let Ok(line) = line else { break };
+                let value: Value = serde_json::from_str(&line).unwrap();
+                if send.send(value).is_err() {
+                    break;
+                }
+            }
+        });
+        let mut client = Self {
+            child,
+            stdin,
+            responses,
+            id: 0,
+            modern,
+        };
+        if modern {
+            let result = client.request("server/discover", json!({}));
+            assert!(result["supportedVersions"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("2026-07-28")));
+        } else {
+            let result = client.request(
+                "initialize",
+                json!({
+                    "protocolVersion": "2025-11-25", "capabilities": {},
+                    "clientInfo": {"name": "nexusweave-test", "version": "1"},
+                }),
+            );
+            assert_eq!(result["protocolVersion"], "2025-11-25");
+            client.send(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+        }
+        client
+    }
+
+    fn send(&mut self, message: Value) {
+        writeln!(self.stdin, "{message}").unwrap();
+        self.stdin.flush().unwrap();
+    }
+
+    fn request(&mut self, method: &str, mut params: Value) -> Value {
+        if self.modern {
+            params["_meta"] = json!({
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+            });
+        }
+        self.id += 1;
+        self.send(json!({"jsonrpc": "2.0", "id": self.id, "method": method, "params": params}));
+        let response = self
+            .responses
+            .recv_timeout(Duration::from_secs(10))
+            .unwrap();
+        assert_eq!(response["jsonrpc"], "2.0");
+        assert_eq!(response["id"], self.id);
+        assert!(response.get("error").is_none(), "{response}");
+        response["result"].clone()
+    }
+
+    fn call(&mut self, name: &str, arguments: Value) -> Value {
+        self.request("tools/call", json!({"name": name, "arguments": arguments}))
+    }
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+#[test]
+fn live_mcp_applies_host_scope_as_trace_identity_arrives() {
+    let directory = tempfile::tempdir().unwrap();
+    let scope = directory.path().join("scope.json");
+    std::fs::write(
+        &scope,
+        r#"{"kind":"user","organization_id":"demo-retail","user_id":"inventory-user"}"#,
+    )
+    .unwrap();
+    let mut client = Client::start(
+        &[
+            "--scope",
+            scope.to_str().unwrap(),
+            "--otlp-store",
+            directory.path().to_str().unwrap(),
+        ],
+        false,
+    );
+    let tools = client.request("tools/list", json!({}));
+    assert!(tools["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tool| tool["name"] == "query_activation_effects"));
+    let location =
+        json!({"run_id":"otlp:0123456789abcdef0123456789abc001", "call_id":"0000000000000002"});
+    let before = client.call("get_turn_evidence", location.clone());
+    assert_eq!(before["isError"], true);
+
+    let fixture: Value = serde_json::from_str(include_str!("../fixtures/otlp.json")).unwrap();
+    let spans = &fixture["resourceSpans"][0]["scopeSpans"][0]["spans"];
+    let publish = |number, id| {
+        let mut batch = fixture.clone();
+        let span = spans
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|span| span["spanId"] == id)
+            .unwrap();
+        batch["resourceSpans"][0]["scopeSpans"][0]["spans"] = json!([span]);
+        let pending = directory.path().join(".pending");
+        std::fs::write(&pending, batch.to_string()).unwrap();
+        std::fs::rename(pending, directory.path().join(format!("{number:020}.json"))).unwrap();
+    };
+    publish(1, "0000000000000002");
+    let unowned = client.call("get_turn_evidence", location.clone());
+    assert_eq!(unowned["content"], before["content"]);
+    publish(2, "0000000000000001");
+    let visible = client.call("get_turn_evidence", location);
+    assert_eq!(visible["structuredContent"]["user_id"], "inventory-user");
+    assert_eq!(visible["structuredContent"]["call_id"], "0000000000000002");
+}
+
+#[test]
+fn activation_tool_queries_and_drills_into_only_the_host_scoped_measurements() {
+    let dir = tempfile::tempdir().unwrap();
+    let scope_file = dir.path().join("scope.json");
+    std::fs::write(
+        &scope_file,
+        json!({
+            "kind": "user", "organization_id": "demo-retail-north", "user_id": "customer-01"
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let mut client = Client::start(
+        &[
+            "--scope",
+            scope_file.to_str().unwrap(),
+            "--activation-report",
+            ACTIVATION_REPORTS,
+            ACTIVATION_EVIDENCE,
+        ],
+        false,
+    );
+    let listed = client.request("tools/list", json!({}));
+    let tool = listed["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|tool| tool["name"] == "query_activation_effects")
+        .unwrap();
+    assert_eq!(tool["annotations"]["readOnlyHint"], true);
+    let schema: Value =
+        serde_json::from_str(include_str!("../schema/activation-effects-query-1.json")).unwrap();
+    assert_eq!(tool["inputSchema"], schema);
+
+    let mut spec = json!({
+        "version": 1, "block": 0, "source_id": "returns-policy", "checkpoint": "Refund timing", "limit": 1
+    });
+    let response = client.call("query_activation_effects", spec.clone());
+    let page = &response["structuredContent"];
+    let group = &page["groups"][0];
+    assert_eq!(page["total_groups"], 1);
+    assert_eq!(group["decision_count"], 3);
+    assert_eq!(group["lower_score_count"], 3);
+    assert_eq!(group["flipped_count"], 1);
+    assert_eq!(
+        group["change_log_odds"],
+        json!({"minimum": -12.0, "maximum": -8.25})
+    );
+    assert!(group.get("contrasts").is_none());
+    assert!(!response.to_string().contains("Window: 30 days"));
+    assert!(!response.to_string().contains("demo-retail-south"));
+    let key = group["key"].as_str().unwrap();
+    assert_eq!(key.len(), 64);
+    spec["group"] = group["key"].clone();
+    for offset in 0..3 {
+        spec["offset"] = json!(offset);
+        let response = client.call("query_activation_effects", spec.clone());
+        let page = &response["structuredContent"];
+        assert_eq!(page["total_occurrences"], 3);
+        assert_eq!(
+            page["next_offset"],
+            if offset < 2 {
+                json!(offset + 1)
+            } else {
+                Value::Null
+            }
+        );
+        let occurrence = &page["occurrences"][0];
+        assert_eq!(occurrence["organization_id"], "demo-retail-north");
+        assert_eq!(occurrence["user_id"], "customer-01");
+        assert_eq!(occurrence["context_id"], "returns-policy");
+        assert!(occurrence["inspector_path"]
+            .as_str()
+            .unwrap()
+            .ends_with("&checkpoint=1&block=0"));
+        assert!(occurrence["source_inspector_path"]
+            .as_str()
+            .unwrap()
+            .ends_with("&context=returns%2Dpolicy"));
+    }
+    let outside = json!({"kind": "organization", "organization_id": "demo-retail-south"});
+    spec["scope"] = outside.clone();
+    assert_eq!(
+        client.call("query_activation_effects", spec)["isError"],
+        true
+    );
+    let empty = client.call(
+        "query_activation_effects",
+        json!({"version": 1, "block": 0, "scope": outside}),
+    );
+    assert_eq!(empty["structuredContent"]["total_groups"], 0);
+    let blocked = client.call(
+        "query_activation_effects",
+        json!({"version": 1, "block": 0, "include_excerpts": true}),
+    );
+    assert_eq!(blocked["isError"], true);
+}
+
+#[test]
+fn activation_tool_matches_full_thread_identity_and_gates_edit_excerpts() {
+    let mut client = Client::start(
+        &[
+            "--include-excerpts",
+            "--activation-report",
+            ACTIVATION_REPORTS,
+            ACTIVATION_EVIDENCE,
+        ],
+        true,
+    );
+    let mut spec = json!({
+        "version": 1, "block": 0, "source_id": "returns-policy", "checkpoint": "Return window",
+        "thread": {
+            "trace_source": "local-mlx", "organization_id": "demo-retail-south",
+            "user_id": "customer-01", "conversation_id": "return-instructions-e"
+        }
+    });
+    let first = client.call("query_activation_effects", spec.clone());
+    let first = &first["structuredContent"];
+    assert_eq!(first["groups"][0]["decision_count"], 1);
+    assert_eq!(first["groups"][0]["flipped_count"], 1);
+    assert!(first["groups"][0].get("contrasts").is_none());
+    spec["include_excerpts"] = json!(true);
+    let opt_in = client.call("query_activation_effects", spec.clone());
+    assert_eq!(
+        opt_in["structuredContent"]["groups"][0]["contrasts"]["after"]["text"],
+        "60"
+    );
+    assert!(!opt_in
+        .to_string()
+        .contains("What is the standard return window"));
+    spec["thread"]["organization_id"] = json!("demo-retail-north");
+    let other_owner = client.call("query_activation_effects", spec);
+    assert_eq!(other_owner["structuredContent"]["total_groups"], 0);
+}
+
+#[test]
+fn output_token_effects_page_through_a_scoped_report_and_gate_token_text() {
+    let dir = tempfile::tempdir().unwrap();
+    let evidence = dir.path().join("evidence.json");
+    let scope = dir.path().join("scope.json");
+    let mut tool_runs: Value =
+        serde_json::from_str(include_str!("../examples/local-mlx-routing/evidence.json")).unwrap();
+    tool_runs[0]["organization_id"] = "allowed".into();
+    let mut runs = tool_runs.as_array().unwrap().clone();
+    let extra: Vec<Value> =
+        serde_json::from_str(include_str!("../examples/runtime-comparison/evidence.json")).unwrap();
+    runs.extend(extra);
+    std::fs::write(&evidence, serde_json::to_vec(&runs).unwrap()).unwrap();
+    std::fs::write(
+        &scope,
+        r#"{"kind":"organization","organization_id":"allowed"}"#,
+    )
+    .unwrap();
+    let mut client = Client::start(
+        &[
+            "--scope",
+            scope.to_str().unwrap(),
+            "--activation-report",
+            "examples/local-mlx-routing/output-token-report.json",
+            "--activation-report",
+            "examples/runtime-comparison/output-token-report-transformers.json",
+            "--include-excerpts",
+            evidence.to_str().unwrap(),
+        ],
+        true,
+    );
+    let output = "get_output_token_effects";
+    let tools = client.request("tools/list", json!({}));
+    assert!(tools["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tool| { tool["name"] == output && tool["annotations"]["readOnlyHint"] == true }));
+    let mut request = json!({
+        "version": 1, "block": 0, "offset": 7, "limit": 1,
+        "report_id": "lfm-product-route-activation-output-tokens",
+        "location": {
+            "run_id": "local-model-product-route", "call_id": "model-inference",
+            "decision_id": "product-route"
+        }
+    });
+    let turn = client.call("get_turn_evidence", request["location"].clone());
+    let available = &turn["structuredContent"]["output_score_reports"][0];
+    assert_eq!(available["report_id"], request["report_id"]);
+    assert_eq!(available["total_output_tokens"], 22);
+    let summary = client.call(output, request.clone());
+    let payload = &summary["structuredContent"];
+    let token = &payload["tokens"][0];
+    assert_eq!(payload["readout"], "output_token_log_probability");
+    assert_eq!(payload["total_output_tokens"], 22);
+    assert_eq!(payload["next_offset"], 8);
+    assert_eq!(token["output_token"], 7);
+    assert!(token.get("fragment").is_none() && token.get("token_id").is_none());
+    assert!(token["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&token=7&block=0"));
+    let product = token["sources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|source| source["context_id"] == "product-id")
+        .unwrap();
+    assert!(product["change_in_log_probability"].as_f64().unwrap() < -20.0);
+    request["include_excerpts"] = true.into();
+    request["offset"] = 20.into();
+    let with_text = client.call(output, request.clone());
+    assert_eq!(
+        with_text["structuredContent"]["tokens"][0]["fragment"]["text"],
+        "42"
+    );
+    request["location"]["run_id"] = "transformers-return-and-refund".into();
+    request["location"]["decision_id"] = "return-and-refund".into();
+    request["report_id"] = "qwen-return-and-refund-activation-output-tokens".into();
+    let denied = client.call(output, request);
+    assert_eq!(denied["isError"], true);
+    assert!(denied.get("structuredContent").is_none());
+}
+
+#[test]
+fn generation_branch_queries_page_and_hold_generated_text_until_opt_in() {
+    let mut client = Client::start(
+        &[
+            "--include-excerpts",
+            "--activation-report",
+            "examples/runtime-comparison/generation-branches-transformers.json",
+            "examples/runtime-comparison/evidence.json",
+        ],
+        true,
+    );
+    let loc = json!({
+        "run_id": "transformers-return-and-refund", "call_id": "model-inference",
+        "decision_id": "return-and-refund"
+    });
+    let turn = client.call("get_turn_evidence", loc.clone());
+    let report = &turn["structuredContent"]["generation_branch_reports"][0];
+    assert_eq!(report["total_branches"], 4);
+    let mut args =
+        json!({"version": 1, "location": loc, "report_id": report["report_id"], "limit": 1});
+    let tool = "get_generation_branches";
+    let early = client.call(tool, args.clone());
+    let early = &early["structuredContent"];
+    assert_eq!(early["next_offset"], 1);
+    assert_eq!(
+        early["branches"][0]["patched"]["first_changed_output_token"],
+        5
+    );
+    assert!(early["branches"][0]["patched"]
+        .get("text_excerpt")
+        .is_none());
+    assert!(early["branches"][0]["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&branch=0&block=0"));
+    args["offset"] = 1.into();
+    args["include_excerpts"] = true.into();
+    let late = client.call(tool, args);
+    let branch = &late["structuredContent"]["branches"][0];
+    assert_eq!(branch["start_output_token"], 13);
+    assert_eq!(branch["patched"]["first_changed_output_token"], Value::Null);
+    assert_eq!(
+        branch["patched"]["text_excerpt"]["text"],
+        "The return window is 3 days and the refund time is 4 days."
+    );
+}
+
+#[test]
+fn source_visibility_queries_follow_the_turn_to_ranked_sources_and_pairs() {
+    let mut client = Client::start(
+        &[
+            "--include-excerpts",
+            "--activation-report",
+            "examples/runtime-comparison/paired-visibility-transformers.json",
+            "examples/runtime-comparison/paired-visibility-evidence.json",
+        ],
+        true,
+    );
+    let name = "query_source_visibility";
+    let tools = client.request("tools/list", json!({}));
+    assert!(tools["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tool| tool["name"] == name && tool["annotations"]["readOnlyHint"] == true));
+    let location = json!({"run_id":"qwen-redundant-refund-policy", "call_id":"model-inference", "decision_id":"return-and-refund"});
+    let turn = client.call("get_turn_evidence", location.clone());
+    let report = &turn["structuredContent"]["source_visibility_reports"][0];
+    assert_eq!(report["measured_sources"], 6);
+    assert_eq!(report["measured_pairs"], 2);
+
+    let mut request = json!({"version":1, "location":location, "report_id":report["report_id"], "offset":13, "limit":1});
+    let timeline = client.call(name, request.clone());
+    let timeline = &timeline["structuredContent"];
+    assert_eq!(timeline["next_offset"], 14);
+    assert_eq!(timeline["rows"][0]["output_token"], 13);
+    assert!(timeline["rows"][0].get("fragment").is_none());
+    let strongest = &timeline["rows"][0]["strongest_pair"];
+    assert_eq!(
+        strongest["context_ids"],
+        json!(["refund-policy", "refund-policy-copy"])
+    );
+    assert!(strongest["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&visibility=13&pair=0"));
+
+    request["offset"] = 0.into();
+    request["view"] = json!({"kind":"sources", "output_token":13});
+    let sources = client.call(name, request.clone());
+    let sources = &sources["structuredContent"];
+    assert_eq!(sources["total_rows"], 6);
+    assert_eq!(sources["rows"][0]["context_id"], "returns-policy");
+    assert!(sources["rows"][0]["source_inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&context=returns%2Dpolicy"));
+
+    request["view"]["kind"] = "pairs".into();
+    let paired = client.call(name, request.clone());
+    let paired = &paired["structuredContent"];
+    let row = &paired["rows"][0];
+    assert_eq!(row["inspector_path"], strongest["inspector_path"]);
+    assert!(row["interaction_log_units"].as_f64().unwrap() < -5.8);
+    assert!(
+        row["only_first"]["change_in_log_probability"]
+            .as_f64()
+            .unwrap()
+            .abs()
+            < 0.001
+    );
+    assert!(
+        row["only_second"]["change_in_log_probability"]
+            .as_f64()
+            .unwrap()
+            .abs()
+            < 0.001
+    );
+    request["offset"] = paired["next_offset"].clone();
+    request["include_excerpts"] = true.into();
+    let control = client.call(name, request.clone());
+    assert_eq!(
+        control["structuredContent"]["token"]["fragment"]["text"],
+        "4"
+    );
+    assert_eq!(
+        control["structuredContent"]["rows"][0]["context_ids"],
+        json!(["refund-policy", "store-name"])
+    );
+    assert!(control["structuredContent"]["next_offset"].is_null());
+    request["view"]["output_token"] = 16.into();
+    assert_eq!(client.call(name, request)["isError"], true);
+}
+
+#[test]
+fn legacy_client_gets_the_cli_counts_and_cannot_widen_host_scope() {
+    let dir = tempfile::tempdir().unwrap();
+    let scope = dir.path().join("scope.json");
+    let restriction = json!({"kind":"user","organization_id":"demo-retail","user_id":"user-042"});
+    std::fs::write(&scope, restriction.to_string()).unwrap();
+    let evidence = "fixtures/support.json";
+    let mut client = Client::start(&["--scope", scope.to_str().unwrap(), evidence], false);
+    let listed = client.request("tools/list", json!({}));
+    let tools = listed["tools"].as_array().unwrap();
+    assert_eq!(tools.len(), 3);
+    assert!(tools
+        .iter()
+        .all(|tool| tool["annotations"]["readOnlyHint"] == true));
+    let query_tool = tools
+        .iter()
+        .find(|tool| tool["name"] == "query_conflicts")
+        .unwrap();
+    let schema: Value =
+        serde_json::from_str(include_str!("../schema/conflict-view-1.json")).unwrap();
+    assert_eq!(query_tool["inputSchema"], schema);
+    let uri = query_tool["_meta"]["ui"]["resourceUri"].as_str().unwrap();
+    let resources = client.request("resources/list", json!({}));
+    assert_eq!(resources["resources"][0]["uri"], uri);
+    let page = client.request("resources/read", json!({"uri":uri}));
+    assert_eq!(page["contents"][0]["mimeType"], "text/html;profile=mcp-app");
+    let html = page["contents"][0]["text"].as_str().unwrap();
+    assert!(html.contains("<script type=\"module\">"));
+    assert!(!html.contains("Use a 30-day window for standard returns."));
+
+    let mut spec = json!({"version": 1, "group_by": ["source_version", "rule"]});
+    let actual = client.call("query_conflicts", spec.clone());
+    let text: Value = serde_json::from_str(actual["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(text, actual["structuredContent"]);
+    spec["scope"] = restriction;
+    let view = dir.path().join("view.json");
+    std::fs::write(&view, spec.to_string()).unwrap();
+    let cli = Command::new(BIN)
+        .arg("query-conflicts")
+        .arg(view)
+        .arg(evidence)
+        .output()
+        .unwrap();
+    assert!(cli.status.success());
+    let expected: Value = serde_json::from_slice(&cli.stdout).unwrap();
+    assert_eq!(expected, actual["structuredContent"]);
+    assert_eq!(expected["totals"]["conflicting_decisions"], 3);
+
+    let outside = client.call(
+        "get_turn_evidence",
+        json!({
+            "run_id":"other-store","call_id":"check","decision_id":"eligibility"
+        }),
+    );
+    assert_eq!(outside["isError"], true);
+    assert!(outside.get("structuredContent").is_none());
+    let invalid = client.call(
+        "query_conflicts",
+        json!({"version":1,"group_by":["unregistered"]}),
+    );
+    assert_eq!(invalid["isError"], true);
+    let mut request =
+        json!({"run_id":"return-eligibility","call_id":"check","decision_id":"eligibility"});
+    let turn = client.call("get_turn_evidence", request.clone());
+    let payload = &turn["structuredContent"];
+    assert_eq!(payload["decision"]["outcome_excerpt"], Value::Null);
+    assert_eq!(payload["rows"][0]["finding"], "conflict");
+    assert_eq!(payload["rows"][0]["inputs"][0]["excerpt"], Value::Null);
+    assert!(!turn.to_string().contains("Use a 30-day window"));
+    request["include_excerpts"] = json!(true);
+    assert_eq!(client.call("get_turn_evidence", request)["isError"], true);
+}
+
+#[test]
+fn modern_client_can_follow_a_turn_and_read_measured_replays() {
+    let mut client = Client::start(
+        &[
+            "--include-excerpts",
+            "--replay",
+            "examples/local-mlx/report.json",
+            "fixtures/conversation.json",
+            "examples/local-mlx/evidence.json",
+        ],
+        true,
+    );
+    let capabilities = client.call("describe_dimensions", json!({}));
+    assert_eq!(
+        capabilities["structuredContent"]["captured_excerpts_enabled"],
+        true
+    );
+    let args = json!({
+        "run_id":"jacket-return-trace", "call_id":"jacket-answer", "decision_id":"answer",
+        "include_excerpts":true, "limit":1,
+    });
+    let first = client.call("get_turn_evidence", args.clone());
+    let turn = &first["structuredContent"];
+    assert_eq!(turn["counts"]["recorded_calls"], 2);
+    assert_eq!(turn["next_offset"], 1);
+    assert_eq!(
+        turn["rows"][0]["inputs"][0]["excerpt"]["text"],
+        "Standard returns are accepted within 30 days."
+    );
+    assert!(turn["inspector_path"]
+        .as_str()
+        .unwrap()
+        .contains("view=conversation"));
+
+    let lookup = client.call(
+        "get_turn_evidence",
+        json!({
+            "run_id":"jacket-return-trace", "call_id":"look-up-order", "decision_id":"lookup",
+        }),
+    );
+    assert_eq!(
+        lookup["structuredContent"]["recorded_tool_result"]["call_id"],
+        "jacket-answer"
+    );
+    let report = client.call("get_turn_evidence", json!({
+        "run_id":"local-model-returns", "call_id":"model-inference", "decision_id":"return-window",
+    }));
+    let rows = report["structuredContent"]["rows"].as_array().unwrap();
+    let measured = rows
+        .iter()
+        .find(|row| row["kind"] == "replay_test" && row["result"]["context_id"] == "returns-policy")
+        .unwrap();
+    assert_eq!(measured["result"]["difference_pp"].as_f64(), Some(-100.0));
+    assert_eq!(
+        report["structuredContent"]["original_request_captured"],
+        false
+    );
+    assert_eq!(report["structuredContent"]["counts"]["replay_tests"], 3);
+}
+
+#[test]
+fn lists_decisions_before_resolving_evidence_for_a_multi_decision_call() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("multi.json");
+    let mut fixture: Value =
+        serde_json::from_str(include_str!("../fixtures/conversation.json")).unwrap();
+    let decisions = fixture[0]["calls"][2]["decisions"].as_array_mut().unwrap();
+    let mut other = decisions[0].clone();
+    other["id"] = json!("second-answer");
+    other["applies_to"] = Value::Null;
+    decisions.push(other);
+    std::fs::write(&file, fixture.to_string()).unwrap();
+
+    let mut client = Client::start(&[file.to_str().unwrap()], true);
+    let mut args = json!({"run_id":"jacket-return-trace","call_id":"jacket-answer","limit":1});
+    let first = client.call("get_turn_evidence", args.clone());
+    assert!(first["structuredContent"]["decision"].is_null());
+    assert_eq!(
+        first["structuredContent"]["rows"][0]["decision_id"],
+        "answer"
+    );
+    args["offset"] = first["structuredContent"]["next_offset"].clone();
+    let second = client.call("get_turn_evidence", args.clone());
+    assert_eq!(
+        second["structuredContent"]["rows"][0]["decision_id"],
+        "second-answer"
+    );
+    args["offset"] = json!(0);
+    args["decision_id"] = json!("answer");
+    let evidence = client.call("get_turn_evidence", args);
+    assert_eq!(
+        evidence["structuredContent"]["rows"][0]["finding"],
+        "conflict"
+    );
+}

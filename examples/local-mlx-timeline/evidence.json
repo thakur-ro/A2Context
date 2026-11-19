@@ -1,0 +1,83 @@
+[
+  {
+    "schema_version": 1,
+    "id": "local-model-return-instructions",
+    "source": "local-mlx",
+    "conversation_id": "local-model-return-instructions",
+    "calls": [
+      {
+        "id": "model-inference",
+        "model": "LFM2.5-1.2B-Instruct MLX 8-bit",
+        "context": [
+          {
+            "id": "format-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Use the supplied policies. Reply with two lines only: Window: <number> days\nRefund: <number> days",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            }
+          },
+          {
+            "id": "returns-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Returns policy: the standard return window is 30 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            }
+          },
+          {
+            "id": "refund-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Refund policy: approved refunds arrive within 14 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            }
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            }
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "What is the standard return window, and how long do approved refunds take?",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "return-instructions",
+            "kind": "model_output",
+            "label": "Return and refund instructions",
+            "outcome": "Window: 30 days  \nRefund: 14 days",
+            "evidence": {
+              "field": "local_mlx.generated_text"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

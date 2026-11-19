@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "id": "lfm-return-window",
+  "runner_id": "LFM2.5-1.2B-Instruct MLX 8-bit, greedy",
+  "location": {
+    "run_id": "local-model-returns",
+    "call_id": "model-inference",
+    "decision_id": "return-window"
+  },
+  "recorded": {
+    "kind": "model_output",
+    "label": "Return window",
+    "outcome": 30
+  },
+  "baseline_request_sha256": "889620497943bcfbbd32f0ea2e4e447a270d96a6a8c256babfd52d400960d15f",
+  "baseline": [
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "model_output",
+        "label": "Return window",
+        "outcome": 30
+      }
+    },
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "model_output",
+        "label": "Return window",
+        "outcome": 30
+      }
+    },
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "model_output",
+        "label": "Return window",
+        "outcome": 30
+      }
+    }
+  ],
+  "baseline_summary": {
+    "attempted": 3,
+    "completed": 3,
+    "matched": 3
+  },
+  "variants": [
+    {
+      "intervention": {
+        "context_id": "returns-policy",
+        "pointer": "/messages/0/content",
+        "replacement": "[Policy withheld.]"
+      },
+      "captured_context_sha256": "15c664291b8d01950cdae7a58d792285420c9b0e2e6d2113f5400939de4de677",
+      "trials": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Return window",
+            "outcome": 60
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Return window",
+            "outcome": 60
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Return window",
+            "outcome": 60
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 3,
+        "completed": 3,
+        "matched": 0
+      },
+      "difference_pp": -100.0
+    },
+    {
+      "intervention": {
+        "context_id": "store-name",
+        "pointer": "/messages/1/content",
+        "replacement": "[Background withheld.]"
+      },
+      "captured_context_sha256": "7f6728c126d6232e6fc10cb7e0d765fd818ae85d39bbfc32103d528375e816ad",
+      "trials": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Return window",
+            "outcome": 30
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Return window",
+            "outcome": 30
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Return window",
+            "outcome": 30
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 3,
+        "completed": 3,
+        "matched": 3
+      },
+      "difference_pp": 0.0
+    }
+  ],
+  "control_comparison": {
+    "control_context_id": "store-name",
+    "target_minus_control_pp": -100.0
+  }
+}

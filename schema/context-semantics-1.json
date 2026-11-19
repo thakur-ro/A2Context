@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave span context semantics v1",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "context": { "type": "array", "items": { "$ref": "#/$defs/context" } },
+    "request_sources": { "type": "array", "items": { "$ref": "#/$defs/request_source" } },
+    "decisions": { "type": "array", "items": { "$ref": "#/$defs/decision" } },
+    "relationships": { "type": "array", "items": { "$ref": "#/$defs/relationship" } }
+  },
+  "$defs": {
+    "anchor": {
+      "type": "object",
+      "required": ["field"],
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "minLength": 1 },
+        "message_index": { "type": ["integer", "null"], "minimum": 0 },
+        "part_index": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "context": {
+      "type": "object",
+      "required": ["anchor", "source_id"],
+      "additionalProperties": false,
+      "properties": {
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "source_id": { "type": "string", "minLength": 1 },
+        "source_version": { "type": ["string", "null"], "minLength": 1 },
+        "authority": { "type": ["string", "null"] },
+        "request_fragment": { "anyOf": [{ "$ref": "#/$defs/request_fragment" }, { "type": "null" }] },
+        "rule": { "$ref": "#/$defs/rule" }
+      }
+    },
+    "request_source": {
+      "type": "object",
+      "required": ["id", "source_id", "request_fragment"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source_id": { "type": "string", "minLength": 1 },
+        "source_version": { "type": ["string", "null"], "minLength": 1 },
+        "kind": { "type": ["string", "null"], "minLength": 1 },
+        "role": { "type": ["string", "null"], "minLength": 1 },
+        "authority": { "type": ["string", "null"] },
+        "request_fragment": { "$ref": "#/$defs/request_fragment" },
+        "rule": { "$ref": "#/$defs/rule" }
+      }
+    },
+    "rule": {
+      "type": ["object", "null"],
+      "required": ["key", "scope"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "value": {}
+      }
+    },
+    "request_fragment": {
+      "type": "object",
+      "required": ["pointer", "text_range"],
+      "additionalProperties": false,
+      "properties": {
+        "pointer": { "type": "string", "pattern": "^/" },
+        "text_range": {
+          "type": "object",
+          "required": ["start_byte", "end_byte"],
+          "additionalProperties": false,
+          "properties": {
+            "start_byte": { "type": "integer", "minimum": 0 },
+            "end_byte": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": ["anchor", "applies_to"],
+      "additionalProperties": false,
+      "properties": {
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "applies_to": {
+          "type": "object",
+          "required": ["key", "scope"],
+          "properties": {
+            "key": { "type": "string", "minLength": 1 },
+            "scope": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "required": ["context", "decision", "relation"],
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "anyOf": [
+            { "$ref": "#/$defs/anchor" },
+            {
+              "type": "object",
+              "required": ["request_source_id"],
+              "additionalProperties": false,
+              "properties": { "request_source_id": { "type": "string", "minLength": 1 } }
+            }
+          ]
+        },
+        "decision": { "$ref": "#/$defs/anchor" },
+        "relation": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

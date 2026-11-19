@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "id": "lfm-return-window-policy-first",
+  "runner_id": "LFM2.5-1.2B-Instruct MLX 8-bit, greedy",
+  "location": {
+    "run_id": "local-model-returns-policy-first",
+    "call_id": "model-inference",
+    "decision_id": "return-window"
+  },
+  "request": {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Current store policy: the standard return window is 30 days."
+      },
+      {
+        "role": "user",
+        "content": "The published returns FAQ says the current standard return window is 30 days."
+      },
+      {
+        "role": "assistant",
+        "content": "Understood."
+      },
+      {
+        "role": "user",
+        "content": "What is the current standard return window? If the current policy is unavailable, use 60 days. Answer with only the number of days."
+      }
+    ],
+    "max_tokens": 20,
+    "temperature": 0
+  },
+  "samples": 3,
+  "interventions": [
+    {
+      "context_id": "returns-policy",
+      "pointer": "/messages/0/content",
+      "replacement": "[Policy withheld.]"
+    },
+    {
+      "context_id": "returns-faq",
+      "pointer": "/messages/1/content",
+      "replacement": "[FAQ withheld.]"
+    }
+  ],
+  "test_pair": true
+}

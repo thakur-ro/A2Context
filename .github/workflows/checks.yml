@@ -1,0 +1,40 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Check Rust formatting
+        run: cargo +stable fmt --all --check
+      - name: Lint Rust
+        run: cargo +stable clippy --locked --all-targets -- -D warnings
+      - name: Test Rust
+        run: cargo +stable test --locked
+      - name: Check browser JavaScript
+        run: |
+          for source in ui/*.js; do node --check "$source" || exit 1; done
+          node --test tests/*.test.mjs
+      - name: Check the bundled MCP view
+        run: |
+          npm ci --prefix ui/mcp-app --no-audit --no-fund
+          npm run check --prefix ui/mcp-app

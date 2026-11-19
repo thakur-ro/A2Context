@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NexusWeave</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/retrievals.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/replay-planner.js" defer></script>
+  <script src="/context-matrix.js" defer></script>
+  <script src="/source-profiles.js" defer></script>
+  <script src="/execution-tree.js" defer></script>
+  <script src="/compare.js" defer></script>
+  <script src="/rule-findings.js" defer></script>
+  <script src="/replay-outcomes.js" defer></script>
+  <script src="/capture-profiles.js" defer></script>
+  <script src="/inspection-links.js" defer></script>
+  <script src="/context-changes.js" defer></script>
+  <script src="/decision-changes.js" defer></script>
+  <script src="/decision-investigation.js" defer></script>
+  <script src="/context-replay-coverage.js" defer></script>
+  <script src="/conversation.js" defer></script>
+  <script src="/activation.js" defer></script>
+  <script src="/activation-output.js" defer></script>
+  <script src="/activation-branches.js" defer></script>
+  <script src="/activation-patterns.js" defer></script>
+  <script src="/conflict-breakdown.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div><div class="brand">NexusWeave</div><p>Decision inspector</p></div>
+    <nav aria-label="Inspector view">
+      <button type="button" data-view="conversation" aria-pressed="true">Conversation</button>
+      <button type="button" data-view="decisions" aria-pressed="false">Decisions</button>
+      <button type="button" data-view="timeline" aria-pressed="false">Timeline</button>
+      <button type="button" data-view="patterns" aria-pressed="false">Patterns</button>
+      <button type="button" data-view="compare" aria-pressed="false">Compare</button>
+      <button type="button" id="copy-view-link" hidden>Copy view link</button>
+      <button type="button" id="refresh-traces" hidden>Refresh traces</button>
+    </nav>
+  </header>
+  <main>
+    <p id="status" role="status">Loading evidence…</p>
+    <p id="link-status" class="link-status" role="status" hidden></p>
+    <section id="conversation" hidden aria-label="Conversation inspector">
+      <div class="conversation-header">
+        <h1 id="conversation-title"></h1>
+        <p id="conversation-owner" class="muted" hidden></p>
+        <label id="conversation-picker">Conversation or run <select id="conversation-thread"></select></label>
+      </div>
+      <div class="conversation-layout">
+        <ol id="conversation-turns" aria-labelledby="conversation-title"></ol>
+        <div id="conversation-evidence-rail">
+          <section id="conversation-evidence" aria-label="Selected turn evidence" hidden>
+            <p id="conversation-evidence-position" class="eyebrow"></p>
+            <h2 id="conversation-evidence-title"></h2>
+            <label id="conversation-step-picker" class="form-field">Decision or step <select id="conversation-step"></select></label>
+            <div id="conversation-details"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+    <section id="decisions" hidden aria-label="Decision inspector">
+      <div class="toolbar">
+        <label>Session <select id="run"></select></label>
+        <label>Model call <select id="call"></select></label>
+        <label>Decision <select id="decision"></select></label>
+        <button type="button" id="decision-conversation">Open conversation</button>
+      </div>
+      <div class="decision-grid">
+        <article class="outcome" id="outcome" aria-live="polite"></article>
+        <div class="decision-evidence">
+          <section class="panel"><h2>Context on this call</h2><div id="context"></div></section>
+          <section class="panel"><h2>Findings</h2><div id="findings"></div></section>
+        </div>
+      </div>
+      <div id="decision-replays"></div>
+      <section id="decision-activations" class="panel" hidden></section>
+    </section>
+    <section id="compare" hidden aria-label="Compare decisions">
+      <div id="compare-controls" class="compare-grid">
+        <fieldset class="panel">
+          <legend>Decision A</legend>
+          <label class="form-field">Session <select id="compare-a-run" data-side="0" data-field="run"></select></label>
+          <label class="form-field">Call <select id="compare-a-call" data-side="0" data-field="call"></select></label>
+          <label class="form-field">Decision <select id="compare-a-decision" data-side="0" data-field="decision"></select></label>
+        </fieldset>
+        <fieldset class="panel">
+          <legend>Decision B</legend>
+          <label class="form-field">Session <select id="compare-b-run" data-side="1" data-field="run"></select></label>
+          <label class="form-field">Call <select id="compare-b-call" data-side="1" data-field="call"></select></label>
+          <label class="form-field">Decision <select id="compare-b-decision" data-side="1" data-field="decision"></select></label>
+        </fieldset>
+      </div>
+      <p id="compare-outcome-status" class="count" role="status"></p>
+      <div id="compare-outcomes" class="compare-grid"></div>
+      <section id="compare-context" hidden>
+        <div class="compare-context-heading toolbar">
+          <h2>Context comparison</h2>
+          <label>Show
+            <select id="compare-filter">
+              <option value="">All context</option>
+              <option value="differences">Differences and gaps</option>
+              <option value="replay">With replay tests</option>
+            </select>
+          </label>
+        </div>
+        <p id="compare-context-count" class="muted" role="status"></p>
+        <div id="compare-context-rows"></div>
+        <button type="button" id="compare-more" hidden>Show more context</button>
+      </section>
+    </section>
+    <section id="timeline" hidden aria-label="Session timeline">
+      <div class="toolbar">
+        <label>Thread or run <select id="timeline-run"></select></label>
+        <label id="timeline-layout-control" hidden>View
+          <select id="timeline-layout">
+            <option value="chronological">Chronological</option>
+            <option value="execution">Execution tree</option>
+          </select>
+        </label>
+      </div>
+      <p id="timeline-order" class="muted" hidden></p>
+      <ol id="timeline-list" class="panel timeline"></ol>
+      <div id="timeline-tree" hidden></div>
+    </section>
+    <section id="patterns" hidden aria-label="Recurring patterns">
+      <div class="toolbar">
+        <label>Scope <select id="owner"></select></label>
+        <label>Pattern
+          <select id="pattern-type">
+            <option value="rules">Conflicts and duplicates</option>
+            <option value="breakdown">Conflict breakdown</option>
+            <option value="tools">Tool calls</option>
+            <option value="retrievals">Retrieval handoffs</option>
+            <option value="context">Context links</option>
+            <option value="sources">Context sources</option>
+            <option value="capture">Capture coverage</option>
+            <option value="changes">Context changes</option>
+            <option value="effects">Replay effects</option>
+            <option value="controls">Controlled attribution</option>
+            <option value="activation">Activation effects</option>
+          </select>
+        </label>
+        <label id="pattern-thread-filter" hidden>Thread <select id="pattern-thread"></select></label>
+        <label id="pattern-compare-scope-filter" hidden>Compare with <select id="pattern-compare-scope"></select></label>
+        <label id="pattern-compare-thread-filter" hidden>Comparison thread <select id="pattern-compare-thread"></select></label>
+        <label id="context-replay-filter" hidden>Replay evidence
+          <select id="context-replay-status">
+            <option value="">All linked contexts</option>
+            <option value="measured">Effect measured</option>
+            <option value="unavailable">Replayed, effect unavailable</option>
+            <option value="untested">No replay report</option>
+            <option value="ready">Ready to plan, unmeasured</option>
+            <option value="gaps">Replay planning gaps</option>
+          </select>
+        </label>
+        <label id="context-view-filter" hidden>View
+          <select id="context-view">
+            <option value="list">Link list</option>
+            <option value="matrix">Source–decision matrix</option>
+          </select>
+        </label>
+        <label id="capture-filter" hidden>Capture status
+          <select id="capture-status">
+            <option value="">All calls</option>
+            <option value="request">Request unavailable</option>
+            <option value="empty">No context entries</option>
+            <option value="unavailable">Unavailable entries</option>
+            <option value="unmatched">Entries without a matching field</option>
+            <option value="multiple">Entries with multiple matching fields</option>
+          </select>
+        </label>
+        <label id="pattern-search-field">Filter <input id="pattern-search" type="search" placeholder="Tool, source, or finding"></label>
+        <div class="breakdown-configuration" id="breakdown-configuration" hidden>
+          <label>Group by <select id="conflict-group-by"></select></label>
+          <label>Then by <select id="conflict-then-by"></select></label>
+          <label>Rule key <input id="conflict-rule" type="search" list="conflict-rules" placeholder="All rules"></label>
+          <datalist id="conflict-rules"></datalist>
+        </div>
+      </div>
+      <details id="activation-dates" class="activation-dates" hidden>
+        <summary>Date range</summary>
+        <div class="activation-date-controls">
+          <fieldset>
+            <legend>Period A · UTC</legend>
+            <label>From <input id="activation-from" type="date" max="9999-12-31"></label>
+            <label>Through <input id="activation-through" type="date" max="9999-12-31"></label>
+          </fieldset>
+          <fieldset id="activation-period-b" hidden>
+            <legend>Period B · UTC</legend>
+            <label>From <input id="activation-from-b" type="date" max="9999-12-31"></label>
+            <label>Through <input id="activation-through-b" type="date" max="9999-12-31"></label>
+          </fieldset>
+        </div>
+        <div class="activation-date-actions">
+          <label><input id="activation-compare-dates" type="checkbox" aria-controls="activation-period-b"> Compare date ranges</label>
+          <button type="button" id="activation-clear-dates">Clear dates</button>
+        </div>
+        <p id="activation-date-status" class="muted" role="status" hidden></p>
+      </details>
+      <div id="pattern-list"></div>
+    </section>
+    <dialog id="copy-link-dialog" aria-labelledby="copy-link-title">
+      <form method="dialog">
+        <h2 id="copy-link-title">Copy inspector link</h2>
+        <label class="form-field">Link <input id="share-url" type="url" readonly></label>
+        <button type="submit">Done</button>
+      </form>
+    </dialog>
+    <dialog id="replay-planner" aria-labelledby="replay-planner-title">
+      <form id="replay-form">
+        <div class="dialog-heading">
+          <h2 id="replay-planner-title">Prepare controlled replay</h2>
+          <button type="button" id="close-replay-planner">Close</button>
+        </div>
+        <p id="replay-target" class="muted"></p>
+        <button type="button" id="use-recorded-request" hidden>Use captured request</button>
+        <button type="button" id="download-replay-evidence" hidden>Download call evidence</button>
+        <label class="form-field" id="replay-manual-request">
+          Original inference request (JSON)
+          <input id="replay-request" type="file" accept=".json,application/json">
+        </label>
+        <p class="muted" id="replay-request-source"></p>
+        <p id="replay-status" role="status"></p>
+        <fieldset id="replay-interventions" hidden>
+          <legend>Context to test</legend>
+          <p class="muted">Select context items and their replacements. Select two items to run each change on its own and both together.</p>
+          <div id="replay-candidates"></div>
+          <label><input id="replay-test-pair" type="checkbox" disabled> Also test both changes together</label>
+          <label id="replay-control-field" class="form-field" hidden>
+            Negative control
+            <select id="replay-negative-control">
+              <option value="">No negative control</option>
+            </select>
+            <small class="muted">Choose an edited input you expect to leave the decision unchanged.</small>
+          </label>
+        </fieldset>
+        <label class="form-field">Decision match
+          <select id="replay-match-kind">
+            <option value="exact">Exact decision</option>
+            <option value="kind_and_label">Decision kind and label</option>
+            <option value="outcome_fields">Selected JSON fields</option>
+            <option value="text_capture">Value captured from text</option>
+          </select>
+        </label>
+        <label id="replay-match-fields" class="form-field" hidden>Outcome JSON Pointers, one per line
+          <textarea id="replay-match-pointers" rows="2" placeholder="/sku"></textarea>
+        </label>
+        <label id="replay-match-text" class="form-field" hidden>Regular expression with one capture group
+          <input id="replay-match-pattern" placeholder="([0-9]+) units">
+        </label>
+        <div class="toolbar">
+          <label>Case ID <input id="replay-case-id" required></label>
+          <label>Runner ID <input id="replay-runner-id" placeholder="Runner and model configuration" required></label>
+          <label>Trials per condition <input id="replay-samples" type="number" min="1" step="1" value="3" required></label>
+        </div>
+        <label class="form-field">
+          <span><input id="replay-independent" type="checkbox"> Runner uses independent samples</span>
+          <small class="muted">Enable this for fresh, independent draws within and across conditions to include 95% intervals.</small>
+        </label>
+        <button id="download-replay-case" type="submit" disabled>Download replay case</button>
+      </form>
+    </dialog>
+  </main>
+</body>
+</html>

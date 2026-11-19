@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave activation effects query",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "block"],
+  "properties": {
+    "version": { "const": 1 },
+    "block": { "type": "integer", "minimum": 0, "description": "Zero-based decoder block." },
+    "scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "workspace" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "organization_id"],
+          "properties": {
+            "kind": { "const": "organization" },
+            "organization_id": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "user_id"],
+          "properties": {
+            "kind": { "const": "user" },
+            "organization_id": { "type": ["string", "null"] },
+            "user_id": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "thread": {
+      "description": "Match the complete conversation identity within the selected scope. An omitted owner field matches runs without that field.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["trace_source", "conversation_id"],
+      "properties": {
+        "trace_source": { "type": "string" },
+        "organization_id": { "type": ["string", "null"] },
+        "user_id": { "type": ["string", "null"] },
+        "conversation_id": { "type": "string" }
+      }
+    },
+    "source_id": { "type": ["string", "null"], "description": "Match the exact declared source ID." },
+    "checkpoint": { "type": ["string", "null"], "description": "Match the exact checkpoint label." },
+    "after": { "type": ["string", "null"], "format": "date-time", "description": "Include calls starting at or after this time. A time filter excludes untimed calls." },
+    "before": { "type": ["string", "null"], "format": "date-time", "description": "Include calls starting before this time. A time filter excludes untimed calls." },
+    "group": {
+      "type": ["string", "null"],
+      "description": "Copy a key from the groups response and keep the same query filters to fetch measurements."
+    },
+    "include_excerpts": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include bounded edit text and token contrasts when the process has enabled excerpts."
+    },
+    "offset": { "type": "integer", "minimum": 0, "default": 0 },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+  }
+}

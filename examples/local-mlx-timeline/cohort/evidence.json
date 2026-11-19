@@ -1,0 +1,542 @@
+[
+  {
+    "schema_version": 1,
+    "id": "local-model-return-instructions-a",
+    "source": "local-mlx",
+    "conversation_id": "return-instructions-a",
+    "calls": [
+      {
+        "id": "model-inference",
+        "started_at": "2026-10-07T14:00:00Z",
+        "model": "LFM2.5-1.2B-Instruct MLX 8-bit",
+        "context": [
+          {
+            "id": "format-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Use the supplied policies. Reply with two lines only: Window: <number> days\nRefund: <number> days",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            }
+          },
+          {
+            "id": "returns-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Returns policy: the standard return window is 30 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "source_id": "returns-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "refund-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Refund policy: approved refunds arrive within 14 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "source_id": "refund-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "source_id": "store-name",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "What is the standard return window, and how long do approved refunds take?",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "return-instructions",
+            "kind": "model_output",
+            "label": "Return and refund instructions",
+            "outcome": "Window: 30 days  \nRefund: 14 days",
+            "evidence": {
+              "field": "local_mlx.generated_text"
+            }
+          }
+        ]
+      }
+    ],
+    "organization_id": "demo-retail-north",
+    "user_id": "customer-01"
+  },
+  {
+    "schema_version": 1,
+    "id": "local-model-return-instructions-b",
+    "source": "local-mlx",
+    "conversation_id": "return-instructions-b",
+    "calls": [
+      {
+        "id": "model-inference",
+        "started_at": "2026-10-28T14:00:00Z",
+        "model": "LFM2.5-1.2B-Instruct MLX 8-bit",
+        "context": [
+          {
+            "id": "format-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Use the supplied policies. Reply with two lines only: Window: <number> days\nRefund: <number> days",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            }
+          },
+          {
+            "id": "returns-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Returns policy: the standard return window is 30 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "source_id": "returns-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "refund-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Refund policy: approved refunds arrive within 14 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "source_id": "refund-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "source_id": "store-name",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "How many days do I have to return a purchase, and when would the refund arrive?",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "return-instructions",
+            "kind": "model_output",
+            "label": "Return and refund instructions",
+            "outcome": "Window: 30 days  \nRefund: 14 days",
+            "evidence": {
+              "field": "local_mlx.generated_text"
+            }
+          }
+        ]
+      }
+    ],
+    "organization_id": "demo-retail-north",
+    "user_id": "customer-01"
+  },
+  {
+    "schema_version": 1,
+    "id": "local-model-return-instructions-c",
+    "source": "local-mlx",
+    "conversation_id": "return-instructions-c",
+    "calls": [
+      {
+        "id": "model-inference",
+        "started_at": "2026-11-11T14:00:00Z",
+        "model": "LFM2.5-1.2B-Instruct MLX 8-bit",
+        "context": [
+          {
+            "id": "format-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Use the supplied policies. Reply with two lines only: Window: <number> days\nRefund: <number> days",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            }
+          },
+          {
+            "id": "returns-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Returns policy: the standard return window is 30 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "source_id": "returns-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "refund-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Refund policy: approved refunds arrive within 14 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "source_id": "refund-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "source_id": "store-name",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "I am deciding whether to make a return. Please tell me the standard return deadline and the refund wait after approval.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "return-instructions",
+            "kind": "model_output",
+            "label": "Return and refund instructions",
+            "outcome": "Window: 30 days  \nRefund: 14 days",
+            "evidence": {
+              "field": "local_mlx.generated_text"
+            }
+          }
+        ]
+      }
+    ],
+    "organization_id": "demo-retail-north",
+    "user_id": "customer-01"
+  },
+  {
+    "schema_version": 1,
+    "id": "local-model-return-instructions-d",
+    "source": "local-mlx",
+    "conversation_id": "return-instructions-d",
+    "calls": [
+      {
+        "id": "model-inference",
+        "started_at": "2026-11-17T14:00:00Z",
+        "model": "LFM2.5-1.2B-Instruct MLX 8-bit",
+        "context": [
+          {
+            "id": "format-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Use the supplied policies. Reply with two lines only: Window: <number> days\nRefund: <number> days",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            }
+          },
+          {
+            "id": "returns-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Returns policy: the standard return window is 30 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "source_id": "returns-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "refund-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Refund policy: approved refunds arrive within 14 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "source_id": "refund-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "source_id": "store-name",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "A gift may need to go back. What are the normal return window and refund timing?",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "return-instructions",
+            "kind": "model_output",
+            "label": "Return and refund instructions",
+            "outcome": "Window: 30 days\nRefund: 14 days",
+            "evidence": {
+              "field": "local_mlx.generated_text"
+            }
+          }
+        ]
+      }
+    ],
+    "organization_id": "demo-retail-north",
+    "user_id": "customer-02"
+  },
+  {
+    "schema_version": 1,
+    "id": "local-model-return-instructions-e",
+    "source": "local-mlx",
+    "conversation_id": "return-instructions-e",
+    "calls": [
+      {
+        "id": "model-inference",
+        "started_at": "2026-10-14T14:00:00Z",
+        "model": "LFM2.5-1.2B-Instruct MLX 8-bit",
+        "context": [
+          {
+            "id": "format-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Use the supplied policies. Reply with two lines only: Window: <number> days\nRefund: <number> days",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            }
+          },
+          {
+            "id": "returns-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Returns policy: the standard return window is 30 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "source_id": "returns-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "refund-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Refund policy: approved refunds arrive within 14 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "source_id": "refund-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "source_id": "store-name",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "Could you confirm the number of days allowed for a return and the number of days for an approved refund?",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "return-instructions",
+            "kind": "model_output",
+            "label": "Return and refund instructions",
+            "outcome": "Window: 30 days\nRefund: 14 days",
+            "evidence": {
+              "field": "local_mlx.generated_text"
+            }
+          }
+        ]
+      }
+    ],
+    "organization_id": "demo-retail-south",
+    "user_id": "customer-01"
+  },
+  {
+    "schema_version": 1,
+    "id": "local-model-return-instructions-f",
+    "source": "local-mlx",
+    "conversation_id": "return-instructions-f",
+    "calls": [
+      {
+        "id": "model-inference",
+        "started_at": "2026-11-03T14:00:00Z",
+        "model": "LFM2.5-1.2B-Instruct MLX 8-bit",
+        "context": [
+          {
+            "id": "format-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Use the supplied policies. Reply with two lines only: Window: <number> days\nRefund: <number> days",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            }
+          },
+          {
+            "id": "returns-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Returns policy: the standard return window is 30 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "source_id": "returns-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "refund-policy",
+            "kind": "message",
+            "role": "user",
+            "text": "Refund policy: approved refunds arrive within 14 days.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "source_id": "refund-policy",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "source_id": "store-name",
+            "source_version": "demo-v1"
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "I'm checking the refund turnaround and how long I have to start a return. What are both deadlines?",
+            "availability": "included",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "return-instructions",
+            "kind": "model_output",
+            "label": "Return and refund instructions",
+            "outcome": "Window: 30 days  \nRefund: 14 days",
+            "evidence": {
+              "field": "local_mlx.generated_text"
+            }
+          }
+        ]
+      }
+    ],
+    "organization_id": "demo-retail-south",
+    "user_id": "customer-01"
+  }
+]

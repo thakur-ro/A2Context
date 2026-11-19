@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "id": "lfm-inventory-quantity",
+  "runner_id": "LFM2.5-1.2B-Instruct MLX 8-bit, temperature 0.55",
+  "request": {
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer the stock question using the inventory tool result. Use one short natural sentence, and include the quantity in the form 'number units', even when no units are in stock."
+      },
+      {
+        "role": "user",
+        "content": "How many units of MUG-42 are in stock?"
+      },
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "type": "function",
+            "function": {
+              "name": "look_up_inventory",
+              "arguments": {
+                "sku": "MUG-42"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "content": {
+          "sku": "MUG-42",
+          "quantity": 42,
+          "in_stock": true
+        }
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "look_up_inventory",
+          "description": "Look up current stock for a product by SKU.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "sku": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sku"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "get_store_hours",
+          "description": "Read the store's business hours.",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      }
+    ],
+    "temperature": 0.55,
+    "max_tokens": 96
+  },
+  "samples": 6,
+  "test_pair": false,
+  "location": {
+    "run_id": "local-model-inventory-quantity",
+    "call_id": "model-inference",
+    "decision_id": "inventory-answer"
+  },
+  "interventions": [
+    {
+      "context_id": "inventory-result",
+      "pointer": "/messages/3/content",
+      "operation": "replace_json",
+      "replacement": "{\"sku\":\"MUG-42\",\"quantity\":0,\"in_stock\":false}"
+    }
+  ],
+  "match_rule": {
+    "kind": "text_capture",
+    "pattern": "\\b([0-9]+) units?\\b"
+  }
+}

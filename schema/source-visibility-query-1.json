@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave source visibility query",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "location", "report_id"],
+  "properties": {
+    "version": { "const": 1 },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "call_id", "decision_id"],
+      "properties": {
+        "run_id": { "type": "string" },
+        "call_id": { "type": "string" },
+        "decision_id": { "type": "string" }
+      }
+    },
+    "report_id": { "type": "string", "description": "Select a source visibility report from get_turn_evidence." },
+    "view": {
+      "default": { "kind": "timeline" },
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "timeline" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "output_token"],
+          "properties": {
+            "kind": { "enum": ["sources", "pairs"] },
+            "output_token": { "type": "integer", "minimum": 0, "description": "Zero-based recorded output token index." }
+          }
+        }
+      ]
+    },
+    "offset": { "type": "integer", "minimum": 0, "default": 0 },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 24, "default": 12 },
+    "include_excerpts": { "type": "boolean", "default": false, "description": "Include the token fragment and ID when the host enables excerpts." }
+  }
+}

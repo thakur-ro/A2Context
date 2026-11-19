@@ -1,0 +1,345 @@
+{
+  "version": 2,
+  "id": "lfm-matched-return-and-refund-activation",
+  "location": {
+    "run_id": "mlx-matched-return-and-refund",
+    "call_id": "model-inference",
+    "decision_id": "return-and-refund"
+  },
+  "case_id": "lfm-matched-return-and-refund",
+  "model_id": "LiquidAI/LFM2.5-1.2B-Instruct-MLX-8bit",
+  "model_revision": "ce5150fd0de58d2bba8d88cc87f13e4fbda5977a",
+  "runtime": "mlx-lm 0.32.2",
+  "prompt_sha256": "3343da186bf53aae075e27b2eb388102046b17b3fea19a6ef873fed1ef6bf8f9",
+  "tokenizer_sha256": "df1d8d5ec5d091b460562ffd545e4a5e91d17d4a0db7ebe733be34ed374377bd",
+  "readout": "next_token_log_odds",
+  "layer_count": 16,
+  "baseline_answer": "Window: 3 days. Refund: 4 days.",
+  "prompt_token_count": 109,
+  "output_token_ids": [
+    19619,
+    535,
+    730,
+    528,
+    3378,
+    523,
+    12620,
+    1356,
+    535,
+    730,
+    529,
+    3378,
+    523
+  ],
+  "sources": [
+    {
+      "context_id": "returns-policy",
+      "before": "3",
+      "after": "6",
+      "captured_text_sha256": "18d3da4c063abb1a9190c020365836069299dbf640646ec9473c5b2476b270ff",
+      "token_range": [
+        44,
+        56
+      ],
+      "edited_token_range": [
+        53,
+        54
+      ],
+      "edited_outcome": "Window: 6 days. Refund: 4 days."
+    },
+    {
+      "context_id": "refund-policy",
+      "before": "4",
+      "after": "7",
+      "captured_text_sha256": "ed1ed79eb0e1534bd08e583a113a20b5277d138f50d56323e45829bb52a778ad",
+      "token_range": [
+        61,
+        74
+      ],
+      "edited_token_range": [
+        71,
+        72
+      ],
+      "edited_outcome": "Window: 3 days. Refund: 7 days."
+    },
+    {
+      "context_id": "store-name",
+      "before": "Alder",
+      "after": "Rowan",
+      "captured_text_sha256": "7f6728c126d6232e6fc10cb7e0d765fd818ae85d39bbfc32103d528375e816ad",
+      "token_range": [
+        79,
+        89
+      ],
+      "edited_token_range": [
+        86,
+        88
+      ],
+      "edited_outcome": "Window: 3 days. Refund: 4 days."
+    }
+  ],
+  "checkpoints": [
+    {
+      "label": "Return window",
+      "output_token": 3,
+      "answer_prefix": "Window: ",
+      "alternatives": [
+        "3",
+        "6"
+      ],
+      "choice_token_ids": [
+        528,
+        531
+      ],
+      "baseline_margin": 7.5625,
+      "edited_margins": {
+        "returns-policy": -7.625,
+        "refund-policy": 7.4375,
+        "store-name": 7.6875
+      },
+      "checks": {
+        "layer": 8,
+        "source_context_id": "returns-policy",
+        "clean_patch_margin": 7.5625,
+        "full_donor_margin": -7.625
+      },
+      "sweeps": [
+        {
+          "source_context_id": "returns-policy",
+          "target": "source_tokens",
+          "token_range": [
+            53,
+            54
+          ],
+          "margins": [
+            -6.875,
+            -6.75,
+            -6.75,
+            -6.5,
+            -6.5,
+            -6.375,
+            -6.125,
+            -6.0,
+            -6.0,
+            -6.125,
+            -5.875,
+            -5.625,
+            -1.0,
+            -1.0,
+            7.5625,
+            7.5625
+          ]
+        },
+        {
+          "source_context_id": "refund-policy",
+          "target": "source_tokens",
+          "token_range": [
+            71,
+            72
+          ],
+          "margins": [
+            7.375,
+            7.625,
+            7.75,
+            7.6875,
+            7.875,
+            7.9375,
+            7.9375,
+            7.875,
+            7.875,
+            7.9375,
+            7.875,
+            7.875,
+            7.625,
+            7.75,
+            7.5625,
+            7.5625
+          ]
+        },
+        {
+          "source_context_id": "store-name",
+          "target": "source_tokens",
+          "token_range": [
+            86,
+            88
+          ],
+          "margins": [
+            7.6875,
+            7.6875,
+            7.625,
+            7.625,
+            7.75,
+            7.8125,
+            7.625,
+            7.625,
+            7.625,
+            7.625,
+            7.5625,
+            7.5625,
+            7.5625,
+            7.5625,
+            7.5625,
+            7.5625
+          ]
+        },
+        {
+          "source_context_id": "returns-policy",
+          "target": "prediction_token",
+          "token_range": [
+            111,
+            112
+          ],
+          "margins": [
+            7.5625,
+            7.5625,
+            7.5,
+            7.5625,
+            7.4375,
+            7.375,
+            7.5,
+            7.5,
+            7.4375,
+            7.375,
+            7.25,
+            7.3125,
+            2.875,
+            2.875,
+            -7.375,
+            -7.625
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Refund timing",
+      "output_token": 10,
+      "answer_prefix": "Window: 3 days. Refund: ",
+      "alternatives": [
+        "4",
+        "7"
+      ],
+      "choice_token_ids": [
+        529,
+        532
+      ],
+      "baseline_margin": 7.125,
+      "edited_margins": {
+        "returns-policy": 0.875,
+        "refund-policy": -9.625,
+        "store-name": 7.125
+      },
+      "checks": {
+        "layer": 8,
+        "source_context_id": "refund-policy",
+        "clean_patch_margin": 7.125,
+        "full_donor_margin": -9.625
+      },
+      "sweeps": [
+        {
+          "source_context_id": "returns-policy",
+          "target": "source_tokens",
+          "token_range": [
+            53,
+            54
+          ],
+          "margins": [
+            0.75,
+            0.75,
+            1.375,
+            1.375,
+            1.25,
+            2.25,
+            2.25,
+            6.25,
+            6.25,
+            6.375,
+            6.375,
+            6.375,
+            6.875,
+            6.875,
+            7.125,
+            7.125
+          ]
+        },
+        {
+          "source_context_id": "refund-policy",
+          "target": "source_tokens",
+          "token_range": [
+            71,
+            72
+          ],
+          "margins": [
+            -9.75,
+            -9.875,
+            -9.75,
+            -9.625,
+            -9.625,
+            -9.25,
+            -9.125,
+            -9.125,
+            -9.0,
+            -9.0,
+            -9.125,
+            -9.0,
+            -3.0,
+            -3.0,
+            7.125,
+            7.125
+          ]
+        },
+        {
+          "source_context_id": "store-name",
+          "target": "source_tokens",
+          "token_range": [
+            86,
+            88
+          ],
+          "margins": [
+            7.25,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.0,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125
+          ]
+        },
+        {
+          "source_context_id": "refund-policy",
+          "target": "prediction_token",
+          "token_range": [
+            118,
+            119
+          ],
+          "margins": [
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.125,
+            7.0,
+            7.0,
+            6.0,
+            6.125,
+            -0.375,
+            -0.375,
+            -9.125,
+            -9.625
+          ]
+        }
+      ]
+    }
+  ]
+}

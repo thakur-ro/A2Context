@@ -1,0 +1,13 @@
+[
+  {
+    "run_id": "exgentic:5b9274b3192a_00ab38c6",
+    "call_id": "2fc5b81fbcf51804",
+    "relationship": {
+      "decision_id": "output:0:0",
+      "context_id": "input:0:0",
+      "relation": "Retail policy calls for identity lookup",
+      "basis": "declared",
+      "excerpt": "authenticate the user identity by locating their user id via email, or via name + zip code."
+    }
+  }
+]

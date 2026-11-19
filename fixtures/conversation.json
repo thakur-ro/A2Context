@@ -1,0 +1,104 @@
+[
+  {
+    "schema_version": 1,
+    "id": "jacket-return-trace",
+    "source": "fixture",
+    "organization_id": "Northland Retail",
+    "user_id": "Customer 042",
+    "conversation_id": "Return a jacket",
+    "calls": [
+      {
+        "id": "standard-window",
+        "turn_id": "standard-window",
+        "started_at": "2026-11-18T09:42:00Z",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy", "kind": "instruction", "role": "developer",
+            "source_id": "Returns policy", "source_version": "v4", "availability": "included",
+            "text": "Standard returns are accepted within 30 days.",
+            "evidence": { "field": "request.policy" },
+            "rule": { "key": "return_window_days", "scope": "standard", "value": 30 }
+          },
+          {
+            "id": "first-question", "kind": "message", "role": "user", "availability": "included",
+            "text": "What’s your standard return window?",
+            "evidence": { "field": "request.messages", "message_index": 0 }
+          }
+        ],
+        "decisions": [{
+          "id": "answer", "kind": "model_output", "label": "Standard return window",
+          "outcome": "Our standard return window is 30 days.",
+          "evidence": { "field": "response.text" },
+          "applies_to": { "key": "return_window_days", "scope": "standard" }
+        }],
+        "tool_results": [],
+        "relationships": [{
+          "decision_id": "answer", "context_id": "returns-policy",
+          "relation": "Policy for this answer", "basis": "declared",
+          "excerpt": "Standard returns are accepted within 30 days."
+        }]
+      },
+      {
+        "id": "look-up-order",
+        "turn_id": "jacket-eligibility",
+        "started_at": "2026-11-18T09:43:00Z",
+        "model": "synthetic-support",
+        "context": [{
+          "id": "jacket-question", "kind": "message", "role": "user", "availability": "included",
+          "text": "Can I return this jacket after 45 days? My order is J-104.",
+          "evidence": { "field": "request.messages", "message_index": 2 }
+        }],
+        "decisions": [{
+          "id": "lookup", "kind": "tool_call", "label": "look_up_order",
+          "outcome": { "order_id": "J-104" },
+          "evidence": { "field": "response.tool_calls", "part_index": 0 },
+          "tool_call_id": "lookup-jacket"
+        }],
+        "tool_results": []
+      },
+      {
+        "id": "jacket-answer",
+        "turn_id": "jacket-eligibility",
+        "started_at": "2026-11-18T09:43:02Z",
+        "model": "synthetic-support",
+        "context": [
+          {
+            "id": "returns-policy", "kind": "instruction", "role": "developer",
+            "source_id": "Returns policy", "source_version": "v4", "availability": "included",
+            "text": "Standard returns are accepted within 30 days.",
+            "evidence": { "field": "request.policy" },
+            "rule": { "key": "return_window_days", "scope": "standard", "value": 30 }
+          },
+          {
+            "id": "support-faq", "kind": "instruction", "role": "developer",
+            "source_id": "Support FAQ", "source_version": "v2", "availability": "included",
+            "text": "Standard returns are accepted within 60 days.",
+            "evidence": { "field": "request.faq" },
+            "rule": { "key": "return_window_days", "scope": "standard", "value": 60 }
+          },
+          {
+            "id": "jacket-question", "kind": "message", "role": "user", "availability": "included",
+            "text": "Can I return this jacket after 45 days? My order is J-104.",
+            "evidence": { "field": "request.messages", "message_index": 2 }
+          }
+        ],
+        "decisions": [{
+          "id": "answer", "kind": "model_output", "label": "Jacket return eligibility",
+          "outcome": "Yes. You have up to 60 days to return the jacket.",
+          "evidence": { "field": "response.text" },
+          "applies_to": { "key": "return_window_days", "scope": "standard" }
+        }],
+        "tool_results": [{
+          "tool_call_id": "lookup-jacket", "outcome": { "order_id": "J-104", "age_days": 45 },
+          "evidence": { "field": "request.tool_results", "part_index": 0 }
+        }],
+        "relationships": [{
+          "decision_id": "answer", "context_id": "support-faq",
+          "relation": "FAQ supplied for this answer", "basis": "declared",
+          "excerpt": "Standard returns are accepted within 60 days."
+        }]
+      }
+    ]
+  }
+]
