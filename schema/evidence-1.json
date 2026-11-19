@@ -137,6 +137,23 @@
             "issue": { "type": ["string", "null"] }
           }
         },
+        "preflight_receipt": {
+          "type": ["object", "null"],
+          "required": ["evidence"],
+          "properties": {
+            "evidence": { "$ref": "#/$defs/evidence" },
+            "receipt": {
+              "type": ["object", "null"],
+              "required": ["version", "fingerprint"],
+              "additionalProperties": false,
+              "properties": {
+                "version": { "type": "integer", "minimum": 0 },
+                "scope": { "anyOf": [{ "$ref": "#/$defs/decision_scope" }, { "type": "null" }] },
+                "fingerprint": { "type": "string" }
+              }
+            }
+          }
+        },
         "context": {
           "type": "array",
           "items": {

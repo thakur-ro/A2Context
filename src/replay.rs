@@ -633,7 +633,7 @@ fn path_includes(parent: &str, child: &str) -> bool {
         .is_some_and(|suffix| suffix.is_empty() || suffix.starts_with('/'))
 }
 
-fn sha256(bytes: &[u8]) -> String {
+pub(crate) fn sha256(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 

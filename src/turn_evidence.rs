@@ -1,6 +1,6 @@
 //! Paginated evidence for a recorded decision and its turn.
 
-use crate::{activation, inspect, replay, Call, ContextItem, Run};
+use crate::{activation, inspect, preflight::Verification, replay, Call, ContextItem, Run};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -61,6 +61,23 @@ pub fn query<'a>(
     let decision_id = decision.map(|decision| decision.id.as_str());
     let include_excerpts = request.include_excerpts;
     let inspection = inspect(std::slice::from_ref(run))?;
+    let preflight = inspection
+        .preflight_checks
+        .iter()
+        .find(|check| check.call_id == call.id);
+    let preflight_report = preflight.and_then(|check| match &check.verification {
+        Verification::Matched { report } => Some(report),
+        Verification::Unverified { .. } => None,
+    });
+    let preflight_summary = preflight.map(|check| match &check.verification {
+        Verification::Matched { report } => json!({
+            "status": "matched", "anchor": check.evidence, "scope": check.scope,
+            "finding_count": report.findings.len(), "scoped_rule_items": report.scoped_rule_items,
+        }),
+        Verification::Unverified { issue } => json!({
+            "status": "unverified", "anchor": check.evidence, "issue": issue,
+        }),
+    });
     let at_decision = |call_id: &str, id: &str| call_id == call.id && decision_id == Some(id);
     let findings = inspection
         .findings
@@ -101,6 +118,15 @@ pub fn query<'a>(
         "retrieved_documents": retrieval.map_or(0, |retrieval| retrieval.documents.len()),
     });
 
+    let preflight_rows = preflight_report.into_iter().flat_map(|report| &report.findings).map(|finding| json!({
+        "kind": "preflight_finding", "finding": finding.kind, "rule": finding.key, "scope": finding.scope,
+        "inputs": finding.sources.iter().map(|source| json!({
+            "context_id": source.context_id, "source_id": source.source_id,
+            "source_version": source.source_version, "anchor": source.evidence,
+            "request_fragment": source.request_fragment,
+            "rule_value": source.value.as_ref().filter(|_| include_excerpts),
+        })).collect::<Vec<_>>(),
+    }));
     let finding_rows = findings.map(|finding| json!({
         "kind": "rule_finding", "finding": finding.kind, "rule": finding.key, "scope": finding.scope,
         "inputs": finding.context_ids.iter().filter_map(|id| call.context.iter().find(|item| &item.id == id))
@@ -150,7 +176,8 @@ pub fn query<'a>(
                 "document_identity": item.document_identity,
             })
         });
-    let mut rows = finding_rows
+    let mut rows = preflight_rows
+        .chain(finding_rows)
         .chain(annotation_rows)
         .chain(link_rows)
         .chain(replay_rows)
@@ -178,7 +205,7 @@ pub fn query<'a>(
                 }
             }),
         })),
-        "counts": counts, "recorded_tool_result": recorded_tool_result,
+        "counts": counts, "recorded_tool_result": recorded_tool_result, "preflight": preflight_summary,
         "captured_excerpts_enabled": allow_excerpts,
         "retrieval_label": retrieval.map(|retrieval| &retrieval.label),
         "original_request_captured": call.recorded_request.is_some(),

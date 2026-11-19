@@ -78,6 +78,8 @@ pub struct Call {
     pub recorded_request: Option<RecordedRequest>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_metadata: Option<ContextMetadata>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preflight_receipt: Option<preflight::CapturedReceipt>,
     pub context: Vec<ContextItem>,
     pub decisions: Vec<Decision>,
     pub tool_results: Vec<ToolResult>,
@@ -217,7 +219,7 @@ pub struct Decision {
     pub applies_to: Option<DecisionScope>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DecisionScope {
     pub key: String,
     pub scope: String,
@@ -266,6 +268,8 @@ pub struct Inspection<'a> {
     pub context_patterns: Vec<context_patterns::ContextPattern<'a>>,
     pub source_profiles: Vec<source_profiles::SourceProfile<'a>>,
     pub capture_profiles: Vec<replay::CallCapture<'a>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub preflight_checks: Vec<preflight::RecordedCheck<'a>>,
     #[serde(flatten)]
     pub context_history: context_changes::ContextHistory<'a>,
     pub document_handoffs: Vec<document_handoffs::DocumentHandoff<'a>>,
@@ -485,11 +489,13 @@ pub fn inspect(runs: &[Run]) -> Result<Inspection<'_>, String> {
     let mut findings = Vec::new();
     let mut tool_links = Vec::new();
     let mut context_links = Vec::new();
+    let mut preflight_checks = Vec::new();
     let mut groups = BTreeMap::new();
 
     for run in unique.values() {
         context_links.extend(context_links::link_run(run));
         for (index, call) in run.calls.iter().enumerate() {
+            preflight_checks.extend(preflight::recorded(&run.id, call));
             for decision in &call.decisions {
                 if let Some(id) = &decision.tool_call_id {
                     if let Some((result_call, result)) = nearest_result(run, index, id) {
@@ -597,6 +603,7 @@ pub fn inspect(runs: &[Run]) -> Result<Inspection<'_>, String> {
         document_handoffs: document_handoffs::link(unique.values().copied()),
         source_profiles: source_profiles::group(unique.values().copied(), &context_links),
         capture_profiles: replay::capture_profiles(unique.values().copied())?,
+        preflight_checks,
         context_history: context_changes::history(unique.values().copied()),
         context_patterns,
         tool_patterns: tool_patterns::group(unique.values().copied(), &context_links),

@@ -31,6 +31,23 @@ curl -fsS -H 'Content-Type: application/json' \
 
 The endpoint accepts up to 1 MiB and returns HTTP `200` for a completed check, including when findings are present. Invalid requests return `400`. The endpoint discards the request after returning its report. Reuse the same source IDs and versions in your recorded trace to investigate those sources after the run. [How preflight, trace analysis, and replay fit together](architecture.md)
 
+### Show preflight alongside the recorded answer
+
+When the check includes `nexusweave.request.body`, the response includes a `receipt`. Attach it to the same inference call as `nexusweave.preflight`. For OTLP, serialize the receipt as a JSON string span attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `nexusweave.span.id` to the inference run's exact `id`.
+
+Capture the same JSON body string and source declarations on the recorded call. Retain the original bytes when serializing the trace. NexusWeave matches the receipt against the request and the declared rule sources in its scope, independent of the field paths assigned by the trace importer. The check can be reported by the workflow before inference. The receipt verifies the matching inputs and declarations, and the workflow supplies the timing.
+
+Try the same returns request before inference and after a synthetic recorded answer.
+
+```sh
+cargo run --locked -- preflight examples/preflight-returns.json
+demo_dir=$(mktemp -d)
+cargo run --locked -- import-langsmith examples/preflight-returns-langsmith.json "$demo_dir/evidence.json"
+cargo run --locked -- serve "$demo_dir/evidence.json"
+```
+
+Open **Conversation** and select the turn evidence. Under **Preflight**, expand either source to see its original text and request range beside the 60-day answer. The chronological **Timeline** shows the same check on the inference call. If the captured inputs differ from the receipt or are unavailable, the inspector shows why the check could not be verified. The MCP `get_turn_evidence` tool returns the verification status and matching findings, with declared values available when captured excerpts are enabled and requested. [Open the local inspector](http://127.0.0.1:8040)
+
 ## Try a decision replay
 
 ```sh

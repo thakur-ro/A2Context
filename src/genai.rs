@@ -19,6 +19,7 @@ pub(crate) fn empty_call(
         retrieval: None,
         recorded_request: None,
         context_metadata: None,
+        preflight_receipt: None,
         context: Vec::new(),
         decisions: Vec::new(),
         tool_results: Vec::new(),

@@ -141,12 +141,18 @@ function turnLocation({ run_id, call_id, decision }) {
 }
 
 function renderTurn(page) {
-  const { counts, rows } = page.data;
+  const { counts, rows, preflight } = page.data;
   result.append(element("p", [
     countLabel(counts.rule_findings, "finding"),
     countLabel(counts.context_links, "context link"),
     countLabel(counts.replay_tests, "replay test"),
   ].join(" · "), "muted"));
+  if (preflight) {
+    const summary = preflight.status === "matched"
+      ? countLabel(preflight.finding_count, "finding") + " from the workflow's preflight check"
+      : preflight.issue;
+    result.append(element("p", "Preflight · " + summary, "muted"));
+  }
   if (page.data.captured_excerpts_enabled && !page.args.include_excerpts) {
     result.append(button("Show captured text", () => requestPage(
       "get_turn_evidence", { ...page.args, include_excerpts: true }, page.title, page.back,
@@ -172,10 +178,12 @@ function renderTurn(page) {
   inputs.append(element("summary", "Captured inputs on this page"));
   for (const item of rows) {
     const row = element("section", undefined, "row");
-    if (item.kind === "rule_finding") {
-      row.append(element("h2", [item.finding, item.rule, item.scope].join(" · ")));
+    if (item.kind === "rule_finding" || item.kind === "preflight_finding") {
+      const phase = item.kind === "preflight_finding" ? "Preflight · " : "";
+      row.append(element("h2", phase + [item.finding.replaceAll("_", " "), item.rule, item.scope].join(" · ")));
       for (const input of item.inputs) {
         row.append(element("p", [input.source_id || input.context_id, input.source_version, input.anchor?.field].filter(Boolean).join(" · ")));
+        if (input.rule_value != null) row.append(element("p", JSON.stringify(input.rule_value)));
         appendExcerpt(row, input.excerpt);
       }
     } else if (item.kind === "context_link") {

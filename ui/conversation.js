@@ -117,11 +117,14 @@ function selectConversationAnswer() {
 function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
   const links = new Set();
   let conflicts = 0;
+  let preflightConflicts = 0;
   let changed = false;
   let visibility = false;
   let maskReplay = false;
   for (const { run, call } of turn.calls) {
     const key = contextCallKey({ run_id: run.id, call_id: call.id });
+    const check = preflightChecksByCall.get(key);
+    preflightConflicts += check?.report?.findings.filter(({ kind }) => kind === "conflict").length ?? 0;
     for (const { item } of contextPatternsByCall.get(key) || []) links.add(JSON.stringify([key, item.context_id]));
     conflicts += callFindings(run.id, call.id).filter(({ kind }) => kind === "conflict").length;
     changed ||= Boolean(transitionsByCall.get(key)?.changes.length);
@@ -133,6 +136,7 @@ function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
       && [...variants, pair].some((test) => test && test.difference_pp !== null))
   );
   return [
+    preflightConflicts && countLabel(preflightConflicts, "preflight conflict"),
     conflicts && countLabel(conflicts, "conflict"), links.size && countLabel(links.size, "linked input"),
     maskReplay ? "Saved masked replays" : visibility && "Measured source effects",
     measured && "Measured replay", changed && "Context changed",
@@ -271,6 +275,38 @@ function evidenceSection(parent, label, open, populate) {
   parent.append(section);
 }
 
+function renderRecordedPreflight(parent, run, call, open) {
+  const check = preflightChecksByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
+  if (!check) return;
+  const findings = check.report?.findings || [];
+  const label = check.status === "matched"
+    ? "Preflight · " + (findings.length ? countLabel(findings.length, "finding") : "no findings")
+    : "Preflight · could not verify";
+  evidenceSection(parent, label, open, (section) => {
+    if (check.issue) {
+      section.append(node("p", check.issue));
+    } else {
+      section.append(node("p", "The workflow reported this check before inference. Its request and rule sources match the recorded call.", "muted"));
+      if (check.scope) section.append(node("small", check.scope.key + " · " + check.scope.scope, "anchor"));
+      if (!findings.length) {
+        section.append(node("p", countLabel(check.report.scoped_rule_items, "declared rule") + " checked."));
+      }
+      const inputs = new Map(call.context.map((item) => [item.id, item]));
+      for (const finding of findings) {
+        const card = node("article", undefined, "finding " + finding.kind);
+        card.append(node("h3", [labels[finding.kind], finding.key, finding.scope].join(" · ")));
+        for (const source of finding.sources) {
+          const detail = contextDetails(inputs.get(source.context_id), false);
+          detail.querySelector("summary").append(node("span", source.value === null ? "Value unavailable" : readable(source.value), "muted"));
+          card.append(detail);
+        }
+        section.append(card);
+      }
+    }
+    section.append(evidence(check.evidence));
+  });
+}
+
 function renderTurnEvidence() {
   const row = currentConversationRow();
   const panel = element("conversation-evidence");
@@ -308,6 +344,7 @@ function renderConversationEvidence() {
   const key = contextCallKey({ run_id: run.id, call_id: call.id });
   const links = (contextPatternsByCall.get(key) || []).filter(({ item }) => item.decision_id === decision?.id);
   const findings = decision ? callFindings(run.id, call.id, decision.id) : [];
+  renderRecordedPreflight(details, run, call, true);
   if (decision && decision.kind !== "model_output") {
     evidenceSection(details, "Recorded outcome", !findings.length && !links.length, (section) => {
       section.append(node("pre", decision.outcome === null ? "Outcome unavailable" : readable(decision.outcome)));

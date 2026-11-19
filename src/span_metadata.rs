@@ -9,6 +9,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
 const SEMANTICS: &str = "nexusweave.context.semantics";
+const PREFLIGHT: &str = "nexusweave.preflight";
 pub(crate) const REQUEST: &str = "nexusweave.request.body";
 
 #[derive(Deserialize)]
@@ -114,6 +115,16 @@ pub(crate) fn apply(call: &mut Call, metadata: &Value, field: impl Fn(&str) -> S
             .and_then(|declarations| declarations.bind(call, &evidence))
             .err();
         call.context_metadata = Some(ContextMetadata { evidence, issue });
+    }
+    if let Some(value) = metadata.get(PREFLIGHT) {
+        let receipt = match value {
+            Value::String(value) => serde_json::from_str(value),
+            value => crate::preflight::Receipt::deserialize(value),
+        };
+        call.preflight_receipt = Some(crate::preflight::CapturedReceipt {
+            evidence: evidence(PREFLIGHT),
+            receipt: receipt.ok(),
+        });
     }
 }
 

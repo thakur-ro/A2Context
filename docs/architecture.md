@@ -9,6 +9,7 @@ flowchart TD
     A[Assembled request] --> M[Model call]
     A --> P[Preflight check]
     P --> F[Conflicting or duplicate rules]
+    P -->|Attach receipt| T
     M --> T[Recorded trace]
     T --> I[Turn evidence and context links]
     I --> R[Controlled replay or runtime probe]
@@ -21,7 +22,7 @@ flowchart TD
 | Step | How it works | What you can conclude |
 | --- | --- | --- |
 | **Preflight** | Resolve source declarations against the assembled input. Group their rule values by exact key and scope. Compare the known JSON values for equality. | Two declared rules disagree, agree, or have missing values. The findings describe the supplied request. |
-| **Trace inspection** | Normalize spans and messages into calls, context items, decisions, and tool results. Preserve their original evidence locations. Join tool calls to later results by invocation ID. Surface declared relationships and exact matches such as tool names or IDs. | You can inspect what was present and follow exact evidence. A match gives you a source to investigate. |
+| **Trace inspection** | Normalize spans and messages into calls, context items, decisions, and tool results. Match a preflight receipt by hashing the captured request and scoped rule sources. Join tool calls to later results by invocation ID. Surface declared relationships and exact matches such as tool names or IDs. | You can inspect what was present and follow exact evidence. A source match gives you an input to investigate. |
 | **Controlled replay** | Sample the original request and variants with selected sources removed or replaced. Score each result against the same answer, tool, or argument criterion. Subtract the baseline match rate from the variant's match rate. | The difference measures how the selected edit affected the scored outcome under those replay conditions. |
 | **Runtime probe** | Use an instrumented local runtime to mask selected prompt sources or swap activations, then compare output token scores or continuations with a baseline. | The measurements describe effects at the tested positions for that model and intervention. |
 | **Patterns** | Group supported findings and measurements using their rule, source, or outcome identifiers and the selected scope. Keep links to the contributing calls and evidence. | You can see where a pattern repeats and inspect the turns behind it. User, thread, and organization views depend on captured identifiers. |

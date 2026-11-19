@@ -5,10 +5,15 @@
 //! The [workflow guide](https://github.com/thakur-ro/NexusWeave/blob/main/docs/guide.md#check-context-before-inference)
 //! walks through the same check from the CLI and HTTP API.
 
-use crate::{genai, span_metadata, DecisionScope, Evidence, FindingKind, RequestFragment};
+use crate::{
+    genai, span_metadata, Call, ContextItem, DecisionScope, Evidence, FindingKind, RequestFragment,
+    Rule,
+};
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
+
+const VERSION: u32 = 1;
 
 /// The context about to be sent for one inference request.
 #[derive(Debug, Deserialize, Serialize)]
@@ -31,6 +36,42 @@ pub struct Report {
     pub captured_items: usize,
     pub scoped_rule_items: usize,
     pub findings: Vec<Finding>,
+    /// Attach to the resulting inference span as `nexusweave.preflight`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receipt: Option<Receipt>,
+}
+
+/// The scope and fingerprint of a check on the exact captured request body.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Receipt {
+    pub version: u32,
+    pub scope: Option<DecisionScope>,
+    pub fingerprint: String,
+}
+
+/// A preflight receipt recorded on an inference call.
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct CapturedReceipt {
+    pub evidence: Evidence,
+    pub receipt: Option<Receipt>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecordedCheck<'a> {
+    pub run_id: &'a str,
+    pub call_id: &'a str,
+    pub evidence: &'a Evidence,
+    pub scope: Option<&'a DecisionScope>,
+    #[serde(flatten)]
+    pub verification: Verification,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum Verification {
+    Matched { report: Report },
+    Unverified { issue: &'static str },
 }
 
 /// A comparison of two or more declarations for the same rule key and scope.
@@ -84,7 +125,7 @@ pub fn check(request: Request) -> Result<Report, String> {
         scope,
         attributes,
     } = request;
-    if version != 1 {
+    if version != VERSION {
         return Err(format!("Unsupported preflight version {version}"));
     }
     if scope
@@ -102,8 +143,12 @@ pub fn check(request: Request) -> Result<Report, String> {
     let attributes = Value::Object(attributes);
     let mut call = genai::record_inference(call, &attributes)?;
     span_metadata::apply(&mut call, &attributes, str::to_owned);
-    if let Some(issue) = call.context_metadata.and_then(|metadata| metadata.issue) {
-        return Err(issue);
+    if let Some(issue) = call
+        .context_metadata
+        .as_ref()
+        .and_then(|metadata| metadata.issue.as_ref())
+    {
+        return Err(issue.clone());
     }
     let body = call
         .recorded_request
@@ -114,9 +159,7 @@ pub fn check(request: Request) -> Result<Report, String> {
         return Err("The captured request body must be a JSON object encoded as a string".into());
     }
 
-    let captured_items = call.context.len();
-    let mut groups = BTreeMap::<_, Vec<_>>::new();
-    for item in call.context {
+    for item in &call.context {
         if let Some(fragment) = &item.request_fragment {
             let selected = body.as_ref().and_then(|body| fragment.text(body));
             if selected.is_none() || selected != item.text.as_deref() {
@@ -126,24 +169,112 @@ pub fn check(request: Request) -> Result<Report, String> {
                 ));
             }
         }
-        let Some(rule) = item.rule else { continue };
-        if scope
-            .as_ref()
-            .is_some_and(|scope| (&rule.key, &rule.scope) != (&scope.key, &scope.scope))
-        {
-            continue;
-        }
+    }
+    let mut report = compare(&call, scope.as_ref());
+    if let Some(fingerprint) = fingerprint(&call, scope.as_ref()) {
+        report.receipt = Some(Receipt {
+            version,
+            scope,
+            fingerprint,
+        });
+    }
+    Ok(report)
+}
+
+pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<RecordedCheck<'a>> {
+    let captured = call.preflight_receipt.as_ref()?;
+    let scope = captured
+        .receipt
+        .as_ref()
+        .and_then(|receipt| receipt.scope.as_ref());
+    let verification = match verify(call, captured) {
+        Ok(()) => Verification::Matched {
+            report: compare(call, scope),
+        },
+        Err(issue) => Verification::Unverified { issue },
+    };
+    Some(RecordedCheck {
+        run_id,
+        call_id: &call.id,
+        evidence: &captured.evidence,
+        scope,
+        verification,
+    })
+}
+
+fn verify(call: &Call, captured: &CapturedReceipt) -> Result<(), &'static str> {
+    let receipt = captured
+        .receipt
+        .as_ref()
+        .ok_or("The workflow supplied an unreadable preflight receipt.")?;
+    if receipt.version != VERSION {
+        return Err("The preflight receipt version is unsupported.");
+    }
+    if call
+        .context_metadata
+        .as_ref()
+        .is_some_and(|metadata| metadata.issue.is_some())
+    {
+        return Err("The recorded source declarations could not be read.");
+    }
+    let actual = fingerprint(call, receipt.scope.as_ref())
+        .ok_or("The original request body was unavailable for verification.")?;
+    if actual != receipt.fingerprint {
+        return Err(
+            "The recorded request or its declared rule sources differ from the preflight check.",
+        );
+    }
+    Ok(())
+}
+
+fn fingerprint(call: &Call, scope: Option<&DecisionScope>) -> Option<String> {
+    let body = &call.recorded_request.as_ref()?.body;
+    let mut manifest: Vec<_> = rules(call, scope)
+        .map(|(item, rule)| {
+            crate::canonical_json(&json!([
+                item.source_id,
+                item.source_version,
+                item.authority,
+                item.availability,
+                item.request_fragment,
+                item.text,
+                rule,
+            ]))
+        })
+        .collect();
+    manifest.sort_unstable();
+    // Trace adapters can assign different context IDs and evidence anchors.
+    let body_hash = crate::replay::sha256(body.as_bytes());
+    let payload = json!(["nexusweave.preflight", VERSION, body_hash, scope, manifest]);
+    Some(crate::replay::sha256(payload.to_string().as_bytes()))
+}
+
+fn rules<'a>(
+    call: &'a Call,
+    scope: Option<&'a DecisionScope>,
+) -> impl Iterator<Item = (&'a ContextItem, &'a Rule)> {
+    call.context.iter().filter_map(move |item| {
+        let rule = item.rule.as_ref()?;
+        scope
+            .is_none_or(|scope| (&rule.key, &rule.scope) == (&scope.key, &scope.scope))
+            .then_some((item, rule))
+    })
+}
+
+fn compare(call: &Call, scope: Option<&DecisionScope>) -> Report {
+    let mut groups = BTreeMap::<_, Vec<_>>::new();
+    for (item, rule) in rules(call, scope) {
         groups
-            .entry((rule.key, rule.scope))
+            .entry((rule.key.clone(), rule.scope.clone()))
             .or_default()
             .push(Source {
-                context_id: item.id,
-                source_id: item.source_id,
-                source_version: item.source_version,
-                authority: item.authority,
-                value: rule.value,
-                evidence: item.evidence,
-                request_fragment: item.request_fragment,
+                context_id: item.id.clone(),
+                source_id: item.source_id.clone(),
+                source_version: item.source_version.clone(),
+                authority: item.authority.clone(),
+                value: rule.value.clone(),
+                evidence: item.evidence.clone(),
+                request_fragment: item.request_fragment.clone(),
             });
     }
     let scoped_rule_items = groups.values().map(Vec::len).sum();
@@ -170,11 +301,12 @@ pub fn check(request: Request) -> Result<Report, String> {
             }
         })
         .collect();
-    Ok(Report {
-        version,
-        model: call.model,
-        captured_items,
+    Report {
+        version: VERSION,
+        model: call.model.clone(),
+        captured_items: call.context.len(),
         scoped_rule_items,
         findings,
-    })
+        receipt: None,
+    }
 }

@@ -1,12 +1,34 @@
-use nexusweave::{inspect, langsmith, preflight, FindingKind};
+use nexusweave::{inspect, langsmith, otlp, preflight, turn_evidence, FindingKind, Run};
 use serde_json::{json, Value};
 use std::process::Command;
 
 const EXAMPLE: &str = include_str!("../examples/preflight-returns.json");
+const TRACE: &str = include_str!("../examples/preflight-returns-langsmith.json");
 const SEMANTICS: &str = "nexusweave.context.semantics";
 
 fn check(input: Value) -> Result<preflight::Report, String> {
     preflight::check(serde_json::from_value(input).unwrap())
+}
+
+fn fixture_trace() -> Value {
+    serde_json::from_str(TRACE).unwrap()
+}
+
+fn at_turn(recorded: &[Run], include_excerpts: bool) -> Value {
+    turn_evidence::query(
+        &turn_evidence::Request {
+            run_id: recorded[0].id.clone(),
+            call_id: recorded[0].calls[0].id.clone(),
+            decision_id: None,
+            include_excerpts,
+            offset: 0,
+            limit: 1,
+        },
+        recorded,
+        &[],
+        true,
+    )
+    .unwrap()
 }
 
 #[test]
@@ -62,21 +84,27 @@ fn checks_equal_missing_and_out_of_scope_values() {
 #[test]
 fn carries_the_same_source_identities_into_a_recorded_decision() {
     let input: Value = serde_json::from_str(EXAMPLE).unwrap();
-    let before = check(input.clone()).unwrap();
-    let mut metadata = json!({"nexusweave.span.id":"returns-run"});
-    metadata["nexusweave.request.body"] = input["attributes"]["nexusweave.request.body"].clone();
-    metadata[SEMANTICS] = input["attributes"][SEMANTICS].clone();
-    metadata[SEMANTICS]["decisions"] = json!([{
-        "anchor": {"field": "outputs.output"},
-        "applies_to": input["scope"]
-    }]);
-    let recorded = langsmith::import(&json!({
-        "id":"returns-run", "run_type":"llm",
-        "outputs":{"output":"You have 60 days to return it."},
-        "extra":{"metadata":metadata}
-    }))
-    .unwrap();
+    let before = check(input).unwrap();
+    let trace = fixture_trace();
+    assert_eq!(
+        serde_json::to_value(&before.receipt).unwrap(),
+        trace["extra"]["metadata"]["nexusweave.preflight"]
+    );
+    let recorded = langsmith::import(&trace).unwrap();
+    let normalized = serde_json::to_string(&recorded).unwrap();
+    let recorded: Vec<Run> = serde_json::from_str(&normalized).unwrap();
     let after = inspect(&recorded).unwrap();
+    let [checked] = after.preflight_checks.as_slice() else {
+        panic!("Expected one receipt")
+    };
+    let preflight::Verification::Matched { report } = &checked.verification else {
+        panic!("Expected a matched check")
+    };
+    assert_eq!(report.findings[0].kind, FindingKind::Conflict);
+    assert_eq!(
+        checked.evidence.field,
+        "extra.metadata[\"nexusweave.preflight\"]"
+    );
     assert_eq!(after.findings.len(), 1);
     let finding = &after.findings[0];
     assert_eq!(finding.kind, before.findings[0].kind);
@@ -91,6 +119,87 @@ fn carries_the_same_source_identities_into_a_recorded_decision() {
         assert_eq!(item.source_version, source.source_version);
         assert_eq!(item.request_fragment, source.request_fragment);
     }
+    let public = at_turn(&recorded, false);
+    assert_eq!(public["preflight"]["finding_count"], 1);
+    assert_eq!(public["rows"][0]["kind"], "preflight_finding");
+    assert!(public["rows"][0]["inputs"][0]["rule_value"].is_null());
+    let full = at_turn(&recorded, true);
+    assert_eq!(full["rows"][0]["inputs"][0]["rule_value"], 60);
+    assert_eq!(
+        full["rows"][0]["inputs"][0]["request_fragment"]["text_range"]["start_byte"],
+        25
+    );
+}
+
+#[test]
+fn rejects_changed_requests_and_rule_declarations_without_hiding_the_outcome() {
+    let trace = fixture_trace();
+    for (key, new_value) in [
+        (
+            "nexusweave.request.body",
+            json!(format!(
+                "{} ",
+                trace["extra"]["metadata"]["nexusweave.request.body"]
+                    .as_str()
+                    .unwrap()
+            )),
+        ),
+        (SEMANTICS, {
+            let mut semantics = trace["extra"]["metadata"][SEMANTICS].clone();
+            semantics["request_sources"][0]["rule"]["value"] = json!(90);
+            semantics
+        }),
+        ("nexusweave.preflight", json!("{invalid")),
+    ] {
+        let mut changed = trace.clone();
+        changed["extra"]["metadata"][key] = new_value;
+        let recorded = langsmith::import(&changed).unwrap();
+        let view = at_turn(&recorded, false);
+        assert_eq!(view["preflight"]["status"], "unverified");
+        assert_ne!(view["rows"][0]["kind"], "preflight_finding");
+        assert_eq!(view["decision"]["outcome_captured"], true);
+    }
+}
+
+#[test]
+fn matches_an_otlp_receipt_with_the_same_request_across_adapters() {
+    let mut trace = fixture_trace();
+    let metadata = &mut trace["extra"]["metadata"];
+    metadata[SEMANTICS]["decisions"][0]["anchor"] = json!({
+        "field":"gen_ai.output.messages", "message_index":0, "part_index":0,
+    });
+    let attributes = [
+        ("gen_ai.operation.name", "chat".to_owned()),
+        (
+            "gen_ai.output.messages",
+            json!([{"role":"assistant","parts":[{"type":"text","content":"60 days"}]}]).to_string(),
+        ),
+        (
+            "nexusweave.request.body",
+            metadata["nexusweave.request.body"]
+                .as_str()
+                .unwrap()
+                .to_owned(),
+        ),
+        (SEMANTICS, metadata[SEMANTICS].to_string()),
+        (
+            "nexusweave.preflight",
+            metadata["nexusweave.preflight"].to_string(),
+        ),
+    ]
+    .map(|(key, value)| json!({"key":key,"value":{"stringValue":value}}));
+    let export = json!({"resourceSpans":[{"scopeSpans":[{"spans":[{
+        "traceId":"11111111111111111111111111111111", "spanId":"2222222222222222",
+        "attributes": attributes,
+    }]}]}]});
+    let recorded = otlp::import(&export).unwrap();
+    let view = at_turn(&recorded, false);
+    assert_eq!(view["preflight"]["status"], "matched");
+    assert_eq!(view["preflight"]["anchor"]["field"], "nexusweave.preflight");
+    assert_eq!(
+        view["rows"][0]["inputs"][1]["source_id"],
+        "retail/returns-policy"
+    );
 }
 
 #[test]
