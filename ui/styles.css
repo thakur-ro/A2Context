@@ -286,6 +286,15 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.5 ui-monosp
 .visibility-repeat-filter input { margin: 0; }
 #visibility-pattern-token { width: 6.5rem; }
 .visibility-pattern-results > button { margin-bottom: .75rem; }
+.visibility-time-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+.visibility-time-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+.visibility-time-table :is(th, td) { padding: .6rem .45rem; border-bottom: 1px solid var(--line); text-align: start; vertical-align: top; }
+.visibility-time-table thead th:first-child { width: 30%; }
+.visibility-time-table th button { text-align: start; }
+.visibility-time-table small { display: block; font-weight: 400; }
+.visibility-time-track { position: relative; display: block; max-width: 12rem; height: .55rem; margin-block: .28rem; border-radius: .4rem; background: var(--background); }
+.visibility-time-track::before { content: ""; position: absolute; height: 100%; left: 50%; border-left: 1px solid var(--line); }
+.visibility-time-mark { position: absolute; top: 0; height: 100%; min-width: 2px; border-radius: .4rem; background: var(--accent); transform: translateX(-1px); }
 .visibility-pattern-row { padding-block: .8rem; border-top: 1px solid var(--line); }
 .visibility-pattern-row :is(h3, p) { margin: .25rem 0; }
 .visibility-pattern-links { display: flex; flex-wrap: wrap; gap: .35rem .75rem; margin-top: .35rem; }

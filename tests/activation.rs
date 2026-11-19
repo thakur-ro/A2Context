@@ -121,6 +121,47 @@ fn visibility_patterns_keep_changed_prefixes_and_source_versions_separate() {
 }
 
 #[test]
+fn visibility_timeline_aligns_utc_days_and_keeps_undated_evidence() {
+    use nexusweave::activation::visibility::patterns;
+    use serde_json::json;
+    let mut runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-cohort/evidence.json"
+    ))
+    .unwrap();
+    runs[0].calls[0].started_at = Some("2026-11-01T23:30:00-02:00".into());
+    runs[1].calls[0].started_at = Some("2026-11-02T00:10:00Z".into());
+    runs[2].calls[0].started_at = Some("2026-11-01T17:00:00Z".into());
+    runs[3].calls[0].started_at = None;
+    let reports: Vec<Report> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-cohort/reports.json"
+    ))
+    .unwrap();
+    let mut args = json!({"version":1,"output_token":13,"kind":"pair","source_id":"refund-policy-copy","min_conversations":2});
+    let ask = |args| patterns::query(&serde_json::from_value(args).unwrap(), &runs, &reports);
+    let groups = ask(args.clone()).unwrap();
+    args["group"] = groups["groups"][0]["key"].clone();
+    args["timeline"] = json!({"unit":"day"});
+    let page = ask(args.clone()).unwrap();
+    assert_eq!(page["total_periods"], 3);
+    assert_eq!(page["rows"][0]["period"], "2026-11-01");
+    assert_eq!(page["rows"][1]["period"], "2026-11-02");
+    assert_eq!(page["rows"][1]["scope_a"]["conversation_count"], 2);
+    assert_eq!(page["rows"][2]["period"], "undated");
+    assert_eq!(page["rows"][2]["scope_a"]["decision_count"], 1);
+    args["timeline"]["period"] = "undated".into();
+    let undated = ask(args.clone()).unwrap();
+    assert_eq!(undated["total_occurrences"], 1);
+    assert_eq!(undated["occurrences"][0]["conversation_id"], "south-1");
+    assert!(undated["occurrences"][0]["started_at"].is_null());
+    args["timeline"] = json!({"unit":"month"});
+    args["after"] = "2026-11-01T00:00:00Z".into();
+    let page = ask(args).unwrap();
+    assert_eq!(page["total_periods"], 1);
+    assert_eq!(page["rows"][0]["period"], "2026-11-01");
+    assert_eq!(page["rows"][0]["scope_a"]["measurement_count"], 3);
+}
+
+#[test]
 fn visibility_requires_the_original_request_and_full_source_coverage() {
     let runs: Vec<Run> =
         serde_json::from_str(include_str!("../examples/runtime-comparison/evidence.json")).unwrap();

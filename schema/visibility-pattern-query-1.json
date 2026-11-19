@@ -4,6 +4,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["version"],
+  "dependentRequired": { "timeline": ["group"] },
   "oneOf": [
     { "required": ["output_token"] },
     { "required": ["target"] }
@@ -69,6 +70,16 @@
     },
     "min_conversations": { "type": ["integer", "null"], "minimum": 0, "description": "Require at least this many identified conversations in either requested scope." },
     "group": { "type": ["string", "null"], "description": "Copy a key from a groups page to read its contributing turns." },
+    "timeline": {
+      "type": "object",
+      "description": "Group a pattern by calendar period in UTC. Omit period for summaries or pass a returned period to read its turns.",
+      "additionalProperties": false,
+      "required": ["unit"],
+      "properties": {
+        "unit": { "enum": ["day", "week", "month"], "description": "Weeks start on Monday." },
+        "period": { "type": "string", "minLength": 1, "description": "A returned period start date or undated." }
+      }
+    },
     "offset": { "type": "integer", "minimum": 0, "default": 0 },
     "compare_offset": { "type": "integer", "minimum": 0, "default": 0, "description": "Occurrence page offset for the second scope when reading a group." },
     "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }

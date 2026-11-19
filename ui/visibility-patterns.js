@@ -1,6 +1,9 @@
 "use strict";
 
 let visibilityPatternGroup = null;
+let visibilityPatternUnit = "";
+let visibilityPatternPeriod = "";
+const visibilityTimeUnits = new Map([["", "All occurrences"], ["day", "Day"], ["week", "Week"], ["month", "Month"]]);
 const visibilityPatternDateFields = ["after", "before"];
 const visibilityComparisonDateFields = ["after_b", "before_b"];
 const visibilityEffectFormat = new Intl.NumberFormat(undefined, {
@@ -49,11 +52,18 @@ function writeVisibilityPatternLink(params) {
     }
   }
   if (visibilityField("repeat").checked) params.set("recurring", "1");
-  if (visibilityPatternGroup) params.set("group", visibilityPatternGroup);
+  if (visibilityPatternGroup) {
+    params.set("group", visibilityPatternGroup);
+    if (visibilityPatternUnit) params.set("timeline", visibilityPatternUnit);
+    if (visibilityPatternPeriod) params.set("period", visibilityPatternPeriod);
+  }
 }
 
 function restoreVisibilityPatternLink(params) {
   visibilityPatternGroup = params.get("group");
+  const unit = params.get("timeline");
+  visibilityPatternUnit = visibilityPatternGroup && visibilityTimeUnits.has(unit) ? unit : "";
+  visibilityPatternPeriod = visibilityPatternUnit ? (params.get("period") ?? "") : "";
   visibilityField("kind").value = params.get("kind") === "pair" ? "pair" : "source";
   visibilityField("token").value = params.get("token") ?? "1";
   const target = params.get("target") ?? "";
@@ -156,31 +166,68 @@ function renderVisibilityPatterns(list, scope, scopes) {
   const results = node("div");
   const back = node("button", "All comparison groups");
   back.type = "button";
-  panel.append(back, results);
+  const controls = node("div", undefined, "visibility-time-controls");
+  const timePicker = node("select");
+  for (const [value, label] of visibilityTimeUnits) timePicker.append(new Option(label, value));
+  const timeLabel = node("label", "Group by UTC", "activation-picker");
+  timeLabel.append(timePicker);
+  const periods = node("button", "All periods");
+  periods.type = "button";
+  controls.append(timeLabel, periods);
+  panel.append(back, controls, results);
   function load(group, offset = 0, focus = false, compareOffset = 0) {
     visibilityPatternGroup = group;
     back.hidden = !group;
+    controls.hidden = !group;
+    if (!group) {
+      visibilityPatternUnit = "";
+      visibilityPatternPeriod = "";
+    }
+    timePicker.value = visibilityPatternUnit;
+    periods.hidden = !visibilityPatternPeriod;
     const request = { ...spec, offset, group };
+    if (visibilityPatternUnit) {
+      request.timeline = { unit: visibilityPatternUnit };
+      if (visibilityPatternPeriod) request.timeline.period = visibilityPatternPeriod;
+    }
     if (compare && group) request.compare_offset = compareOffset;
     showPatternPage(results, "/api/visibility-patterns", request, (page) => {
       const title = target ? "Effects on " + target : "Effects at token " + (spec.output_token + 1);
       const heading = node("h2", group ? visibilityGroupLabel(page.group) : title);
       heading.tabIndex = -1;
       results.append(heading);
-      if (compare) {
+      if (request.timeline?.period) {
+        results.append(node("p", visibilityPeriodLabel(request.timeline.unit, request.timeline.period), "count"));
+      }
+      const timeline = page.kind === "visibility_pattern_timeline";
+      if (timeline) {
+        renderVisibilityTimeline(results, page, captions, (period) => {
+          visibilityPatternPeriod = period;
+          load(group, 0, true);
+        });
+      } else if (compare) {
         renderVisibilityComparison(results, page, captions, group, offset, compareOffset, load);
       } else if (group) {
         appendVisibilityModel(results, page.group.comparison);
-        if (target) appendVisibilityCoverage(results, page.coverage);
+        if (target && !request.timeline?.period) appendVisibilityCoverage(results, page.coverage);
         appendVisibilityGroupSummary(results, page.group, page.metric);
         renderVisibilityOccurrences(results, page.occurrences);
       } else {
         renderVisibilityGroups(results, page, (key) => load(key, 0, true));
       }
-      if (!compare || !group) patternPager(results, offset, page.next_offset, (next) => load(group, next, true));
+      if (timeline || !compare || !group) patternPager(results, offset, page.next_offset, (next) => load(group, next, true));
       if (focus && state.view === "patterns") heading.focus();
     });
   }
+  timePicker.addEventListener("change", () => {
+    visibilityPatternUnit = timePicker.value;
+    visibilityPatternPeriod = "";
+    load(visibilityPatternGroup);
+  });
+  periods.addEventListener("click", () => {
+    visibilityPatternPeriod = "";
+    load(visibilityPatternGroup, 0, true);
+  });
   back.addEventListener("click", () => load(null, 0, true));
   load(visibilityPatternGroup);
 }
@@ -191,18 +238,77 @@ function visibilityGroupLabel(group) {
 }
 
 function appendVisibilityGroupSummary(parent, group, metric) {
-  const { effect } = group;
-  const number = visibilityEffectFormat.format;
-  const range = effect.minimum === effect.maximum ? number(effect.minimum)
-    : number(effect.minimum) + " to " + number(effect.maximum);
-  const unit = metric === "interaction_log_units" ? "interaction log units" : "change in log probability";
-  parent.append(node("p", range + " · " + unit, "count"));
+  parent.append(node("p", visibilityEffectRange(group.effect) + " · " + visibilityEffectUnit(metric), "count"));
   parent.append(node("p", [countLabel(group.conversation_count, "conversation"), countLabel(group.user_count, "user"),
     countLabel(group.organization_count, "organization"), countLabel(group.decision_count, "decision")].join(" · "), "muted"));
   if (group.output_prefix_count !== undefined) {
     const count = group.output_prefix_count;
     parent.append(node("p", count + (count === 1 ? " recorded prefix" : " recorded prefixes"), "muted"));
   }
+}
+
+function visibilityEffectRange({ minimum, maximum }) {
+  const number = visibilityEffectFormat.format;
+  return minimum === maximum ? number(minimum) : number(minimum) + " to " + number(maximum);
+}
+
+function visibilityEffectUnit(metric) {
+  return metric === "interaction_log_units" ? "interaction log units" : "change in log probability";
+}
+
+function visibilityPeriodLabel(unit, period) {
+  if (period === "undated") return "Time unavailable";
+  if (unit === "week") return "Week of " + period;
+  return unit === "month" ? period.slice(0, -3) : period;
+}
+
+function renderVisibilityTimeline(parent, page, captions, openPeriod) {
+  appendVisibilityModel(parent, page.group.comparison);
+  appendVisibilityCoverage(parent, page.coverage_a, captions.length ? " in Scope A" : "");
+  if (captions.length) appendVisibilityCoverage(parent, page.coverage_b, " in Scope B");
+  const unit = visibilityEffectUnit(page.metric);
+  parent.append(node("p", "Values show " + unit + ". All periods share a scale centered on zero.", "muted"));
+  const table = node("table", undefined, "visibility-time-table");
+  const headings = table.createTHead().insertRow();
+  const period = node("th", visibilityTimeUnits.get(page.unit));
+  period.scope = "col";
+  headings.append(period);
+  for (const [index, caption] of (captions.length ? captions : [""]).entries()) {
+    const label = node("th", captions.length ? (index ? "Scope B" : "Scope A") : "Measured effect");
+    label.scope = "col";
+    if (caption) label.append(node("small", caption, "muted"));
+    headings.append(label);
+  }
+  const body = table.createTBody();
+  const scale = page.maximum_absolute_effect || 1;
+  for (const row of page.rows) {
+    const line = body.insertRow();
+    const date = node("th");
+    date.scope = "row";
+    const button = node("button", visibilityPeriodLabel(page.unit, row.period));
+    button.type = "button";
+    button.addEventListener("click", () => openPeriod(row.period));
+    date.append(button);
+    line.append(date);
+    for (const scope of (captions.length ? [row.scope_a, row.scope_b] : [row.scope_a])) {
+      const cell = line.insertCell();
+      if (!scope) {
+        cell.append(node("span", "No measurements", "muted"));
+        continue;
+      }
+      const track = node("span", undefined, "visibility-time-track");
+      track.setAttribute("aria-hidden", "true");
+      const mark = node("span", undefined, "visibility-time-mark");
+      const { minimum, maximum } = scope.effect;
+      mark.style.left = (0.5 + minimum / scale / 2) * 100 + "%";
+      mark.style.width = (maximum / scale - minimum / scale) * 50 + "%";
+      track.append(mark);
+      cell.append(node("strong", visibilityEffectRange(scope.effect)), track,
+        node("small", countLabel(scope.conversation_count, "conversation") + " · " + countLabel(scope.decision_count, "decision"), "muted"));
+    }
+  }
+  if (!page.rows.length) parent.append(node("p", "There are no periods on this page.", "muted"));
+  else parent.append(table);
 }
 
 function appendVisibilityModel(parent, comparison) {
@@ -240,8 +346,10 @@ function appendVisibilityCoverage(parent, coverage, scope = "") {
 }
 
 function renderVisibilityComparison(parent, page, captions, key, offset, compareOffset, load) {
-  appendVisibilityCoverage(parent, page.coverage_a, " in Scope A");
-  appendVisibilityCoverage(parent, page.coverage_b, " in Scope B");
+  if (!visibilityPatternPeriod) {
+    appendVisibilityCoverage(parent, page.coverage_a, " in Scope A");
+    appendVisibilityCoverage(parent, page.coverage_b, " in Scope B");
+  }
   if (key) {
     appendVisibilityModel(parent, page.group.comparison);
     parent.append(visibilityComparisonColumns(captions, [page.scope_a, page.scope_b], (column, evidence, index) => {

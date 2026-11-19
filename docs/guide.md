@@ -830,6 +830,12 @@ In **Patterns → Masked-source effects**, select **Pair interactions** and set 
 
 Named targets group by key, model revision, runtime, tokenizer, and source identity. The score sums the measured token changes over the declared span. Each token keeps its own recorded earlier output, so the range describes measurements from different prefixes. Drill into the group for each span's positions, prefix digest, and inspector link to its first token. The workflow supplies what the target means.
 
+### View a measured pattern over time
+
+Open a group under **Masked-source effects** and choose a day, week, or month in **Group by UTC**. The rows show when the selected pattern was measured, its effect range, and its contributing conversation and decision counts. The range markers share a scale centered on zero. With **Compare with** selected, the two scopes use the same calendar rows, and a scope with no measurements in a period has an empty range. Open a row to read the turns for that period. **Copy view link** preserves the grouping and selected period.
+
+Through HTTP or MCP, include the group's `group` key and `"timeline":{"unit":"week"}` in the original query. Weeks start on Monday, and dates come from the captured call start in UTC. The timeline returns populated periods in order. It lists measurements with unavailable timestamps under `undated` when the date filters include them. Add the returned row's `period` to `timeline` to retrieve its occurrences. The recurring threshold applies to the group before the period is selected, so a week with a single measured conversation remains visible.
+
 ## Development
 
 See the [contributor guide](../CONTRIBUTING.md) for local checks and [credits](../CREDITS.md) for sources and dataset licensing.

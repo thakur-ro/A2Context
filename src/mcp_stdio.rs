@@ -222,7 +222,7 @@ impl Inspector {
             let pattern =
                 serde_json::from_str(include_str!("../schema/visibility-pattern-query-1.json"))?;
             definitions.push(tool(VISIBILITY_PATTERNS,
-                "Find recurring measured source or pair effects at an exact token or named output target across scoped conversations. Select a group key for chronological evidence and links.",
+                "Find recurring source or pair effects at an exact token or named output. Select a group key for evidence links or a timeline grouped by UTC day, week, or month.",
                 pattern,
             ));
         }

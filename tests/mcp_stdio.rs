@@ -694,6 +694,36 @@ fn visibility_targets_align_different_prefixes_and_keep_exact_span_links() {
         .unwrap()
         .ends_with("&visibility=7&pair=0"));
 
+    args["timeline"] = json!({"unit":"week"});
+    args["limit"] = 1.into();
+    let week = client.call(name, args.clone());
+    let week = &week["structuredContent"];
+    assert_eq!(week["kind"], "visibility_pattern_timeline");
+    assert_eq!(week["total_periods"], 3);
+    assert_eq!(week["rows"][0]["period"], "2026-10-26");
+    assert_eq!(week["rows"][0]["scope_a"]["conversation_count"], 1);
+    assert!(week["rows"][0]["scope_b"].is_null());
+    assert_eq!(week["next_offset"], 1);
+    args["offset"] = 2.into();
+    let later = client.call(name, args.clone());
+    let later = &later["structuredContent"];
+    assert_eq!(later["rows"][0]["period"], "2026-11-09");
+    assert_eq!(
+        later["maximum_absolute_effect"],
+        week["maximum_absolute_effect"]
+    );
+    assert_eq!(later["rows"][0]["scope_b"]["decision_count"], 1);
+    assert!(later["next_offset"].is_null());
+    args["offset"] = 0.into();
+    args["timeline"]["period"] = later["rows"][0]["period"].clone();
+    let selected = client.call(name, args.clone());
+    let selected = &selected["structuredContent"];
+    assert!(selected["scope_a"].is_null());
+    assert_eq!(
+        selected["scope_b"]["occurrences"][0]["inspector_path"],
+        south["inspector_path"]
+    );
+
     args["output_token"] = 13.into();
     assert_eq!(client.call(name, args)["isError"], true);
 }

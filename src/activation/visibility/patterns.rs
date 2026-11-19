@@ -1,5 +1,7 @@
 //! Compare source visibility measurements across traces.
 
+mod timeline;
+
 use super::{query, Report, Source};
 use crate::{
     activation::{self, patterns::query::Thread},
@@ -32,6 +34,7 @@ pub struct Request {
     compare: Option<Selection>,
     min_conversations: Option<usize>,
     group: Option<String>,
+    timeline: Option<timeline::Selection>,
     #[serde(default)]
     offset: usize,
     #[serde(default)]
@@ -147,6 +150,9 @@ pub fn query<'a>(
             .is_some_and(|key| key.is_empty() || key.trim() != key)
     {
         return Err("Select one output token or one named output target.".into());
+    }
+    if request.timeline.is_some() && request.group.is_none() {
+        return Err("Select a visibility pattern group to query its timeline.".into());
     }
     let runs: Vec<_> = runs.into_iter().collect();
     let window = TimeWindow::parse(request.after.as_deref(), request.before.as_deref())?;
@@ -370,11 +376,14 @@ fn single_cohort(request: &Request, cohort: Cohort<'_>, metric: &str) -> Result<
             if group_key(&comparison)? != *key {
                 continue;
             }
-            let mut page = occurrence_page(&comparison, group, key, request.offset, request.limit);
-            page["kind"] = json!("visibility_pattern_evidence");
-            page["metric"] = json!(metric);
-            page["coverage"] = coverage;
-            return Ok(page);
+            return group_page(
+                request,
+                key,
+                &comparison,
+                [Some(group), None],
+                [coverage, Value::Null],
+                metric,
+            );
         }
         return Err("The visibility pattern is unavailable in this scope.".into());
     }
@@ -417,17 +426,18 @@ fn compare_cohorts(
         .filter(|(_, sides)| size(sides) >= request.min_conversations.unwrap_or_default())
         .collect();
     if let Some(key) = &request.group {
-        for (comparison, [left, right]) in groups {
+        for (comparison, sides) in groups {
             if group_key(&comparison)? != *key {
                 continue;
             }
-            return Ok(json!({
-                "kind": "visibility_pattern_comparison_evidence", "metric": metric,
-                "group": {"key": key, "comparison": comparison},
-                "scope_a": left.map(|group| occurrence_page(&comparison, group, key, request.offset, request.limit)),
-                "scope_b": right.map(|group| occurrence_page(&comparison, group, key, request.compare_offset, request.limit)),
-                "coverage_a": a.coverage, "coverage_b": b.coverage,
-            }));
+            return group_page(
+                request,
+                key,
+                &comparison,
+                sides,
+                [a.coverage, b.coverage],
+                metric,
+            );
         }
         return Err("The visibility pattern is unavailable in either comparison scope.".into());
     }
@@ -451,6 +461,47 @@ fn compare_cohorts(
         "coverage_a": a.coverage, "coverage_b": b.coverage,
         "total_groups": total, "groups": rows, "next_offset": next_offset(request.offset, rows.len(), total),
     }))
+}
+
+fn group_page(
+    request: &Request,
+    key: &str,
+    comparison: &Comparison<'_>,
+    mut sides: [Option<Group<'_>>; 2],
+    [coverage_a, coverage_b]: [Value; 2],
+    metric: &str,
+) -> Result<Value, String> {
+    if let Some(timeline) = &request.timeline {
+        if let Some(period) = timeline.period.as_deref() {
+            sides = sides.map(|group| group.and_then(|group| timeline.filter(group, period)));
+            if sides.iter().all(Option::is_none) {
+                return Err("The visibility pattern has no measurements in this period.".into());
+            }
+        } else {
+            let mut page = timeline.overview(sides, request.offset, request.limit);
+            page["group"] = json!({"key": key, "comparison": comparison});
+            page["metric"] = json!(metric);
+            page["coverage_a"] = coverage_a;
+            page["coverage_b"] = coverage_b;
+            return Ok(page);
+        }
+    }
+    let [left, right] = sides;
+    if request.compare.is_some() {
+        return Ok(json!({
+            "kind": "visibility_pattern_comparison_evidence", "metric": metric,
+            "group": {"key": key, "comparison": comparison},
+            "scope_a": left.map(|group| occurrence_page(comparison, group, key, request.offset, request.limit)),
+            "scope_b": right.map(|group| occurrence_page(comparison, group, key, request.compare_offset, request.limit)),
+            "coverage_a": coverage_a, "coverage_b": coverage_b,
+        }));
+    }
+    let group = left.ok_or("The visibility pattern is unavailable in this scope.")?;
+    let mut page = occurrence_page(comparison, group, key, request.offset, request.limit);
+    page["kind"] = json!("visibility_pattern_evidence");
+    page["metric"] = json!(metric);
+    page["coverage"] = coverage_a;
+    Ok(page)
 }
 
 fn occurrence_page(
@@ -493,9 +544,17 @@ fn next_offset(offset: usize, length: usize, total: usize) -> Option<usize> {
 }
 
 fn summary(comparison: &Comparison<'_>, group: &Group<'_>, key: &str) -> Value {
+    let mut result = group_counts(group);
+    result["key"] = json!(key);
+    result["comparison"] = json!(comparison);
+    result
+}
+
+fn group_counts(group: &Group<'_>) -> Value {
     let mut decisions = BTreeMap::new();
     let mut users = BTreeSet::new();
     let mut organizations = BTreeSet::new();
+    let mut prefixes = BTreeSet::new();
     let mut minimum = f64::INFINITY;
     let mut maximum = f64::NEG_INFINITY;
     for item in &group.occurrences {
@@ -508,6 +567,9 @@ fn summary(comparison: &Comparison<'_>, group: &Group<'_>, key: &str) -> Value {
         }
         minimum = minimum.min(item.effect);
         maximum = maximum.max(item.effect);
+        if let Some(prefix) = item.target_prefix.as_deref() {
+            prefixes.insert(prefix);
+        }
         let signs = decisions
             .entry(&item.report.location)
             .or_insert((true, true));
@@ -515,19 +577,14 @@ fn summary(comparison: &Comparison<'_>, group: &Group<'_>, key: &str) -> Value {
         signs.1 &= item.effect > 0.0;
     }
     let mut result = json!({
-        "key": key, "comparison": comparison, "decision_count": decisions.len(),
+        "decision_count": decisions.len(),
         "conversation_count": group.conversations.len(), "measurement_count": group.occurrences.len(),
         "user_count": users.len(), "organization_count": organizations.len(),
         "negative_decisions": decisions.values().filter(|signs| signs.0).count(),
         "positive_decisions": decisions.values().filter(|signs| signs.1).count(),
         "effect": {"minimum": minimum, "maximum": maximum},
     });
-    if comparison.target.is_some() {
-        let prefixes: BTreeSet<_> = group
-            .occurrences
-            .iter()
-            .filter_map(|item| item.target_prefix.as_deref())
-            .collect();
+    if !prefixes.is_empty() {
         result["output_prefix_count"] = json!(prefixes.len());
     }
     result
