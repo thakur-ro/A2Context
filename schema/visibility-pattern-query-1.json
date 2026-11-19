@@ -51,9 +51,21 @@
     "source_id": { "type": ["string", "null"], "description": "Match a declared stable source ID, including either member of a pair." },
     "after": { "type": ["string", "null"], "format": "date-time", "description": "Inclusive call start in RFC 3339." },
     "before": { "type": ["string", "null"], "format": "date-time", "description": "Exclusive call start in RFC 3339." },
-    "min_conversations": { "type": ["integer", "null"], "minimum": 0, "description": "Require at least this many identified conversations in each group." },
+    "compare": {
+      "type": ["object", "null"],
+      "description": "Select a second scope or time window. Omitted scope defaults to workspace.",
+      "additionalProperties": false,
+      "properties": {
+        "scope": { "$ref": "#/properties/scope" },
+        "thread": { "$ref": "#/properties/thread" },
+        "after": { "$ref": "#/properties/after" },
+        "before": { "$ref": "#/properties/before" }
+      }
+    },
+    "min_conversations": { "type": ["integer", "null"], "minimum": 0, "description": "Require at least this many identified conversations in either requested scope." },
     "group": { "type": ["string", "null"], "description": "Copy a key from a groups page to read its contributing turns." },
     "offset": { "type": "integer", "minimum": 0, "default": 0 },
+    "compare_offset": { "type": "integer", "minimum": 0, "default": 0, "description": "Occurrence page offset for the second scope when reading a group." },
     "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
   }
 }

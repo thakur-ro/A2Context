@@ -675,7 +675,7 @@ function renderPatterns() {
     return;
   }
   if (patternType === "visibility") {
-    renderVisibilityPatterns(list, primaryScope);
+    renderVisibilityPatterns(list, primaryScope, scopes);
     return;
   }
   if (patternType === "context") {
@@ -829,7 +829,7 @@ function updatePatternThreadFilter(groups) {
 }
 
 function supportsScopeComparison(patternType) {
-  return patternType === "changes" || patternType === "controls";
+  return patternType === "changes" || patternType === "controls" || patternType === "visibility";
 }
 
 function comparisonPatternFilter(scopes, patterns) {
@@ -1454,11 +1454,13 @@ async function start() {
     element("pattern-compare-scope").addEventListener("change", (event) => {
       patternComparison.scope = event.target.value;
       patternComparison.thread = "";
+      visibilityPatternGroup = null;
       linkNotice();
       renderPatterns();
     });
     element("pattern-compare-thread").addEventListener("change", (event) => {
       patternComparison.thread = event.target.value;
+      visibilityPatternGroup = null;
       linkNotice();
       renderPatterns();
     });

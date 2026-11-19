@@ -810,6 +810,8 @@ In the browser, open **Patterns → Masked-source effects**. Choose **Pair inter
 
 The default `source` kind reports single-mask changes in log probability. The `pair` kind reports joint interactions in log units. Use `scope` to select a user or organization, `thread` for an exact conversation identity, or `after` and `before` for an inclusive-start, exclusive-end RFC 3339 time window. Copy a group `key` into `group` to page through chronological occurrences and open their exact token, pair, or captured source links.
 
+Choose **Compare with** to place two scopes side by side, or select the same scope twice and set different UTC date ranges. In HTTP or MCP, pass the second selection as `compare` with its own `scope`, `thread`, `after`, and `before`. Groups align on their comparison key, and `min_conversations` keeps a group when either side reaches the threshold. A side with no matching measurement is `null`. When opening a group, use `offset` and `compare_offset` to page through the two scopes independently.
+
 Groups require the same model revision, runtime, tokenizer, decision label, emitted token prefix through the scored token, and source identities. Each identity uses the declared source ID, version, kind, role, captured text digest, and masked token count. Captures without declared source IDs are counted as unavailable for grouping. The summaries count distinct identified conversations, users, and organizations, alongside decisions and measurements. The cohort's dates and ownership labels are synthetic. Across its four measured decisions the refund policy pair's interaction ranges from −5.84 to −5.18 log units at the recorded refund digit. The range describes those measured decisions.
 
 ## Development

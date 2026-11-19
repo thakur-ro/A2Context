@@ -28,12 +28,25 @@ pub struct Request {
     source_id: Option<String>,
     after: Option<String>,
     before: Option<String>,
+    compare: Option<Selection>,
     min_conversations: Option<usize>,
     group: Option<String>,
     #[serde(default)]
     offset: usize,
+    #[serde(default)]
+    compare_offset: usize,
     #[serde(default = "default_limit")]
     limit: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Selection {
+    #[serde(default)]
+    scope: Scope,
+    thread: Option<Thread>,
+    after: Option<String>,
+    before: Option<String>,
 }
 
 fn default_limit() -> usize {
@@ -88,6 +101,13 @@ struct Group<'a> {
     conversations: BTreeSet<ThreadKey<'a>>,
 }
 
+type Groups<'a> = BTreeMap<Comparison<'a>, Group<'a>>;
+
+struct Cohort<'a> {
+    groups: Groups<'a>,
+    coverage: Value,
+}
+
 impl<'a> Group<'a> {
     fn add(&mut self, occurrence: Occurrence<'a>) {
         let run = occurrence.run;
@@ -112,18 +132,42 @@ pub fn query<'a>(
     if request.version != 1 || !(1..=50).contains(&request.limit) {
         return Err("Use visibility pattern query version 1 and a page size from 1 to 50.".into());
     }
+    let runs: Vec<_> = runs.into_iter().collect();
     let window = TimeWindow::parse(request.after.as_deref(), request.before.as_deref())?;
-    let scoped: BTreeMap<_, _> = runs
-        .into_iter()
-        .filter(|run| {
-            request.scope.includes(run)
-                && request
-                    .thread
-                    .as_ref()
-                    .is_none_or(|thread| thread.includes(run))
-        })
+    let scoped = scope_runs(&runs, &request.scope, request.thread.as_ref());
+    let primary = gather(request, scoped, reports, &window);
+    let metric = match request.kind {
+        Mask::Source => "change_in_log_probability",
+        Mask::Pair => "interaction_log_units",
+    };
+    if let Some(compare) = &request.compare {
+        let window = TimeWindow::parse(compare.after.as_deref(), compare.before.as_deref())?;
+        let scoped = scope_runs(&runs, &compare.scope, compare.thread.as_ref());
+        let secondary = gather(request, scoped, reports, &window);
+        compare_cohorts(request, primary, secondary, metric)
+    } else {
+        single_cohort(request, primary, metric)
+    }
+}
+
+fn scope_runs<'a>(
+    runs: &[&'a Run],
+    scope: &Scope,
+    thread: Option<&Thread>,
+) -> BTreeMap<&'a str, &'a Run> {
+    runs.iter()
+        .copied()
+        .filter(|run| scope.includes(run) && thread.is_none_or(|thread| thread.includes(run)))
         .map(|run| (run.id.as_str(), run))
-        .collect();
+        .collect()
+}
+
+fn gather<'a>(
+    request: &Request,
+    scoped: BTreeMap<&'a str, &'a Run>,
+    reports: &'a [activation::Report],
+    window: &TimeWindow,
+) -> Cohort<'a> {
     let index = request.output_token;
     let mut groups = BTreeMap::<Comparison<'_>, Group<'_>>::new();
     let mut reports_at_token = 0;
@@ -253,11 +297,14 @@ pub fn query<'a>(
             }
         }
     }
-    let coverage = json!({"reports_at_token": reports_at_token, "measurements_without_source_id": measurements_without_source_id});
-    let metric = match request.kind {
-        Mask::Source => "change_in_log_probability",
-        Mask::Pair => "interaction_log_units",
-    };
+    Cohort {
+        groups,
+        coverage: json!({"reports_at_token": reports_at_token, "measurements_without_source_id": measurements_without_source_id}),
+    }
+}
+
+fn single_cohort(request: &Request, cohort: Cohort<'_>, metric: &str) -> Result<Value, String> {
+    let Cohort { groups, coverage } = cohort;
     let mut groups: Vec<_> = groups
         .into_iter()
         .filter(|(_, group)| {
@@ -265,31 +312,15 @@ pub fn query<'a>(
         })
         .collect();
     if let Some(key) = &request.group {
-        for (comparison, mut group) in groups {
+        for (comparison, group) in groups {
             if group_key(&comparison)? != *key {
                 continue;
             }
-            group.occurrences.sort_by_key(|item| {
-                (
-                    item.time.is_none(),
-                    item.time,
-                    &item.report.location,
-                    &item.report.id,
-                )
-            });
-            let total = group.occurrences.len();
-            let rows: Vec<_> = group
-                .occurrences
-                .iter()
-                .skip(request.offset)
-                .take(request.limit)
-                .map(|item| evidence(item, index))
-                .collect();
-            return Ok(json!({
-                "kind": "visibility_pattern_evidence", "metric": metric, "coverage": coverage,
-                "group": summary(&comparison, &group, key), "total_occurrences": total,
-                "occurrences": rows, "next_offset": next_offset(request.offset, rows.len(), total),
-            }));
+            let mut page = occurrence_page(&comparison, group, key, request.offset, request.limit);
+            page["kind"] = json!("visibility_pattern_evidence");
+            page["metric"] = json!(metric);
+            page["coverage"] = coverage;
+            return Ok(page);
         }
         return Err("The visibility pattern is unavailable in this scope.".into());
     }
@@ -305,6 +336,96 @@ pub fn query<'a>(
         "kind": "visibility_pattern_groups", "metric": metric, "coverage": coverage,
         "total_groups": total, "groups": rows, "next_offset": next_offset(request.offset, rows.len(), total),
     }))
+}
+
+fn compare_cohorts(
+    request: &Request,
+    a: Cohort<'_>,
+    b: Cohort<'_>,
+    metric: &str,
+) -> Result<Value, String> {
+    let mut combined = BTreeMap::<_, [Option<Group<'_>>; 2]>::new();
+    for (index, groups) in [a.groups, b.groups].into_iter().enumerate() {
+        for (key, group) in groups {
+            combined.entry(key).or_default()[index] = Some(group);
+        }
+    }
+    let size = |sides: &[Option<Group<'_>>; 2]| {
+        sides
+            .iter()
+            .flatten()
+            .map(|group| group.conversations.len())
+            .max()
+            .unwrap_or_default()
+    };
+    let mut groups: Vec<_> = combined
+        .into_iter()
+        .filter(|(_, sides)| size(sides) >= request.min_conversations.unwrap_or_default())
+        .collect();
+    if let Some(key) = &request.group {
+        for (comparison, [left, right]) in groups {
+            if group_key(&comparison)? != *key {
+                continue;
+            }
+            return Ok(json!({
+                "kind": "visibility_pattern_comparison_evidence", "metric": metric,
+                "group": {"key": key, "comparison": comparison},
+                "scope_a": left.map(|group| occurrence_page(&comparison, group, key, request.offset, request.limit)),
+                "scope_b": right.map(|group| occurrence_page(&comparison, group, key, request.compare_offset, request.limit)),
+                "coverage_a": a.coverage, "coverage_b": b.coverage,
+            }));
+        }
+        return Err("The visibility pattern is unavailable in either comparison scope.".into());
+    }
+    groups.sort_by_key(|(_, sides)| Reverse(size(sides)));
+    let total = groups.len();
+    let rows: Vec<_> = groups
+        .iter()
+        .skip(request.offset)
+        .take(request.limit)
+        .map(|(comparison, sides)| {
+            let key = group_key(comparison)?;
+            Ok(json!({
+                "key": key, "comparison": comparison,
+                "scope_a": sides[0].as_ref().map(|group| summary(comparison, group, &key)),
+                "scope_b": sides[1].as_ref().map(|group| summary(comparison, group, &key)),
+            }))
+        })
+        .collect::<Result<_, String>>()?;
+    Ok(json!({
+        "kind": "visibility_pattern_comparison", "metric": metric,
+        "coverage_a": a.coverage, "coverage_b": b.coverage,
+        "total_groups": total, "groups": rows, "next_offset": next_offset(request.offset, rows.len(), total),
+    }))
+}
+
+fn occurrence_page(
+    comparison: &Comparison<'_>,
+    mut group: Group<'_>,
+    key: &str,
+    offset: usize,
+    limit: usize,
+) -> Value {
+    group.occurrences.sort_by_key(|item| {
+        (
+            item.time.is_none(),
+            item.time,
+            &item.report.location,
+            &item.report.id,
+        )
+    });
+    let total = group.occurrences.len();
+    let rows: Vec<_> = group
+        .occurrences
+        .iter()
+        .skip(offset)
+        .take(limit)
+        .map(|item| evidence(item, comparison.output_token))
+        .collect();
+    json!({
+        "group": summary(comparison, &group, key), "total_occurrences": total,
+        "occurrences": rows, "next_offset": next_offset(offset, rows.len(), total),
+    })
 }
 
 fn group_key(comparison: &Comparison<'_>) -> Result<String, String> {

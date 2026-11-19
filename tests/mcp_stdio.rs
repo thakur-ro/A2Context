@@ -556,6 +556,89 @@ fn visibility_patterns_group_scoped_measurements_and_link_chronological_occurren
 }
 
 #[test]
+fn visibility_pattern_comparisons_keep_both_scopes_and_page_them_independently() {
+    let mut client = Client::start(
+        &[
+            "--activation-report",
+            "examples/runtime-comparison/visibility-cohort/reports.json",
+            "examples/runtime-comparison/visibility-cohort/evidence.json",
+        ],
+        true,
+    );
+    let name = "query_visibility_patterns";
+    let north = json!({"kind":"organization","organization_id":"retail-north"});
+    let mut args = json!({
+        "version":1, "kind":"pair", "output_token":13, "source_id":"refund-policy-copy",
+        "scope": north, "compare":{"scope":{"kind":"organization","organization_id":"retail-south"}},
+        "min_conversations":2, "limit":1
+    });
+    let result = client.call(name, args.clone());
+    let groups = &result["structuredContent"];
+    assert_eq!(groups["kind"], "visibility_pattern_comparison");
+    assert_eq!(groups["total_groups"], 1);
+    let group = &groups["groups"][0];
+    assert_eq!(group["scope_a"]["conversation_count"], 3);
+    assert_eq!(group["scope_b"]["conversation_count"], 1);
+    assert_ne!(group["scope_a"]["effect"], group["scope_b"]["effect"]);
+
+    args["group"] = group["key"].clone();
+    args["compare"] = json!({"scope":north,"after":"2026-11-05T00:00:00Z"});
+    args["compare_offset"] = 1.into();
+    let detail = client.call(name, args.clone());
+    let detail = &detail["structuredContent"];
+    assert_eq!(detail["kind"], "visibility_pattern_comparison_evidence");
+    assert_eq!(detail["scope_a"]["total_occurrences"], 3);
+    assert_eq!(
+        detail["scope_a"]["occurrences"][0]["conversation_id"],
+        "north-1"
+    );
+    assert_eq!(detail["scope_a"]["next_offset"], 1);
+    assert_eq!(detail["scope_b"]["total_occurrences"], 2);
+    assert_eq!(
+        detail["scope_b"]["occurrences"][0]["conversation_id"],
+        "north-3"
+    );
+    assert!(detail["scope_b"]["next_offset"].is_null());
+    assert!(detail["scope_b"]["occurrences"][0]["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&visibility=13&pair=0"));
+
+    args["compare"]["after"] = "2026-11-19T00:00:00Z".into();
+    let absent = client.call(name, args.clone());
+    assert!(absent["structuredContent"]["scope_b"].is_null());
+    assert_eq!(
+        absent["structuredContent"]["scope_a"]["total_occurrences"],
+        3
+    );
+
+    let dir = tempfile::tempdir().unwrap();
+    let restriction = dir.path().join("scope.json");
+    std::fs::write(&restriction, north.to_string()).unwrap();
+    let mut restricted = Client::start(
+        &[
+            "--scope",
+            restriction.to_str().unwrap(),
+            "--activation-report",
+            "examples/runtime-comparison/visibility-cohort/reports.json",
+            "examples/runtime-comparison/visibility-cohort/evidence.json",
+        ],
+        true,
+    );
+    args["compare"] = json!({"scope":{"kind":"organization","organization_id":"retail-south"}});
+    let constrained = restricted.call(name, args);
+    assert_eq!(
+        constrained["structuredContent"]["scope_a"]["total_occurrences"],
+        3
+    );
+    assert_eq!(
+        constrained["structuredContent"]["coverage_b"]["reports_at_token"],
+        0
+    );
+    assert!(constrained["structuredContent"]["scope_b"].is_null());
+}
+
+#[test]
 fn legacy_client_gets_the_cli_counts_and_cannot_widen_host_scope() {
     let dir = tempfile::tempdir().unwrap();
     let scope = dir.path().join("scope.json");
