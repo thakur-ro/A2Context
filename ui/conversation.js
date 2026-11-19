@@ -14,31 +14,43 @@ function isUserText(item) {
   return item.role === "user" && ["message", "text", "message_part"].includes(item.kind);
 }
 
-function capturedUserMessage(items) {
-  if (!items || items.some(({ role }) => role && role !== "user")) return "";
-  const parts = items.filter(isUserText);
-  if (parts.every(({ evidence }) => Number.isSafeInteger(evidence.part_index))) {
-    parts.sort((left, right) => left.evidence.part_index - right.evidence.part_index);
+function transcriptPosition({ field, span_id, message_index, part_index }, source) {
+  if (source === "langsmith" || source?.startsWith("langsmith:")) {
+    const path = /^(inputs\.messages(?:\[0\])?)\[(0|[1-9]\d*)\](?:\.(?:kwargs|data))?\.content(?:\[(0|[1-9]\d*)\])?$/.exec(field);
+    if (path) {
+      const [, stream, index, part] = path;
+      return { stream, span_id, index: Number(index), part: part === undefined ? null : Number(part) };
+    }
   }
-  return parts.filter(({ availability, text }) => availability === "included" && text?.trim())
+  return { stream: field, span_id, index: message_index, part: part_index };
+}
+
+function capturedUserMessage(items) {
+  if (!items || items.some(({ item }) => item.role && item.role !== "user")) return "";
+  const parts = items.filter(({ item }) => isUserText(item));
+  if (parts.every(({ part }) => Number.isSafeInteger(part))) {
+    parts.sort((left, right) => left.part - right.part);
+  }
+  return parts.map(({ item }) => item).filter(({ availability, text }) => availability === "included" && text?.trim())
     .map(({ text }) => text).join("\n");
 }
 
-function capturedUserInput(call, identifiedTurn) {
+function capturedUserInput(call, identifiedTurn, source) {
   const last = call.context.findLast(isUserText);
   if (!last) return null;
-  const { field, span_id, message_index } = last.evidence;
-  if (!Number.isSafeInteger(message_index)) {
-    const text = capturedUserMessage([last]);
-    return text ? { text, key: JSON.stringify([field, message_index, text]) } : null;
+  const { stream, span_id, index: lastIndex } = transcriptPosition(last.evidence, source);
+  if (!Number.isSafeInteger(lastIndex)) {
+    const text = capturedUserMessage([{ item: last }]);
+    return text ? { text, key: JSON.stringify([stream, lastIndex, text]) } : null;
   }
   const messages = new Map();
-  let latest = message_index;
+  let latest = lastIndex;
   for (const item of call.context) {
-    const index = item.evidence.message_index;
-    if (item.evidence.field !== field || item.evidence.span_id !== span_id || !Number.isSafeInteger(index)) continue;
+    const position = transcriptPosition(item.evidence, source);
+    const { index, part } = position;
+    if (position.stream !== stream || position.span_id !== span_id || !Number.isSafeInteger(index)) continue;
     if (!messages.has(index)) messages.set(index, []);
-    messages.get(index).push(item);
+    messages.get(index).push({ item, part });
     if (isUserText(item)) latest = Math.max(latest, index);
   }
   const lastText = capturedUserMessage(messages.get(latest));
@@ -51,7 +63,7 @@ function capturedUserInput(call, identifiedTurn) {
       inputs.push(text);
     }
   }
-  return { text: inputs.reverse().join("\n\n"), key: JSON.stringify([field, latest, lastText]) };
+  return { text: inputs.reverse().join("\n\n"), key: JSON.stringify([stream, latest, lastText]) };
 }
 
 function conversationTurns(calls) {
@@ -70,7 +82,7 @@ function conversationTurns(calls) {
       if (key !== null) byId.set(key, turn);
     }
     turn.calls.push(entry);
-    const input = capturedUserInput(call, id !== null);
+    const input = capturedUserInput(call, id !== null, run.source);
     if (input) {
       if (!turn.input && (id !== null || lastInputByRun.get(runIndex) !== input.key)) turn.input = input.text;
       lastInputByRun.set(runIndex, input.key);

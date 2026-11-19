@@ -166,6 +166,8 @@ The command reads the export locally and uses the same evidence format as the re
 
 Open **Timeline** and choose `retail-demo-thread` to inspect two traces together. The importer groups the export by trace ID and reads the conversation identifier from `extra.metadata.thread_id` or `extra.metadata.session_id`. LangSmith uses the top-level `session_id` for the tracing project. `organization_id`, `user_id`, and `turn_id` require explicit application metadata. Conflicting identities within a trace fail the import.
 
+In **Conversation**, a declared `turn_id` lets adjacent user messages appear together. The inspector reads their positions from the captured LangSmith content paths for flat message lists and single-prompt batches. The exact paths remain available for source evidence and annotations.
+
 The importer reads recorded prompts, chat messages, model generations and choices, and tool spans. It links tool results by explicit tool call ID. An export with missing or masked inputs or outputs can show the span while leaving its context or outcome unavailable. Export one prompt per run for batched requests. Application metadata can carry [context declarations and the original inference request](#declare-context-sources-and-decision-scope).
 
 ## Import OpenTelemetry traces

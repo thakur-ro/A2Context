@@ -58,6 +58,33 @@ test("keeps only the newest captured message when turn identity is unavailable",
   assert.equal(turns[2].input, null);
 });
 
+test("groups flat and single-batch LangSmith messages from their exact content paths", () => {
+  for (const [stream, source] of [["inputs.messages", "langsmith"], ["inputs.messages[0]", "langsmith:project"]]) {
+    const context = [
+      message(null, "Prior question.", { field: stream + "[0].content" }),
+      message(null, "Prior reply.", { field: stream + "[1].kwargs.content", role: "assistant" }),
+      message(null, "Check the price.", { field: stream + "[2].data.content" }),
+      message(null, "19.", { field: stream + "[3].data.content[1]" }),
+      message(null, "Product ID:", { field: stream + "[3].data.content[0]" }),
+    ];
+    const call = { id: "langsmith-call", turn_id: "price-check", context };
+    const [turn] = conversationTurns([{ runIndex: 0, run: { source, conversation_id: "thread" }, call }]);
+    assert.equal(turn.input, "Check the price.\n\nProduct ID:\n19.");
+    assert.equal(capturedUserInput(call, false, source).text, "Product ID:\n19.");
+    assert.equal(capturedUserInput(call, true, "different-exporter").text, "Product ID:");
+    assert.equal(context[4].evidence.field, stream + "[3].data.content[0]");
+    assert.equal(context[4].evidence.message_index, null);
+  }
+});
+
+test("keeps distinct LangSmith message streams separate", () => {
+  const context = [
+    message(null, "From a different message stream.", { field: "inputs.messages[1].content" }),
+    message(null, "Latest input.", { field: "inputs.messages[0][2].kwargs.content" }),
+  ];
+  assert.equal(capturedUserInput({ context }, true, "langsmith").text, "Latest input.");
+});
+
 function entry(id, turn_id, runIndex, conversation_id, text, message_index, extras = []) {
   const input = {
     kind: "text", role: "user", availability: "included", text,
