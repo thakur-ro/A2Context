@@ -1,0 +1,1176 @@
+[
+  {
+    "schema_version": 1,
+    "id": "qwen-routing-north-1-stock",
+    "source": "local-transformers",
+    "conversation_id": "north-1",
+    "calls": [
+      {
+        "id": "model-inference",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "recorded_request": {
+          "body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 42.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+          "evidence": {
+            "field": "local_transformers.request"
+          }
+        },
+        "context": [
+          {
+            "id": "routing-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+            "availability": "included",
+            "source_id": "routing-instruction",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            },
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 173
+              }
+            }
+          },
+          {
+            "id": "request-type",
+            "kind": "message",
+            "role": "user",
+            "text": "Request type: stock.",
+            "availability": "included",
+            "source_id": "request-type",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              }
+            }
+          },
+          {
+            "id": "product-id",
+            "kind": "message",
+            "role": "user",
+            "text": "Product ID: 42.",
+            "availability": "included",
+            "source_id": "product-id",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "request_fragment": {
+              "pointer": "/messages/2/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 15
+              }
+            }
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "source_id": "store-name",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "request_fragment": {
+              "pointer": "/messages/3/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              }
+            }
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "Please handle the request now.",
+            "availability": "included",
+            "source_id": "question",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            },
+            "request_fragment": {
+              "pointer": "/messages/4/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 30
+              }
+            }
+          },
+          {
+            "id": "tool-stock",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "stock",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read stock availability for a product.\",\"name\":\"stock\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 0
+            }
+          },
+          {
+            "id": "tool-price",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "price",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read the current price for a product.\",\"name\":\"price\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 1
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "product-route",
+            "kind": "tool_call",
+            "label": "stock",
+            "outcome": {
+              "product_id": 42
+            },
+            "evidence": {
+              "field": "local_transformers.tool_call"
+            }
+          }
+        ],
+        "turn_id": "stock-check",
+        "started_at": "2026-11-01T12:00:00Z"
+      }
+    ],
+    "organization_id": "retail-north",
+    "user_id": "analyst"
+  },
+  {
+    "schema_version": 1,
+    "id": "qwen-routing-north-1-price",
+    "source": "local-transformers",
+    "conversation_id": "north-1",
+    "calls": [
+      {
+        "id": "model-inference",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "recorded_request": {
+          "body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Check stock for product 42.\"},{\"role\":\"assistant\",\"content\":\"Stock for product 42 is available.\"},{\"role\":\"user\",\"content\":\"Request type: price.\"},{\"role\":\"user\",\"content\":\"Product ID: 19.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+          "evidence": {
+            "field": "local_transformers.request"
+          }
+        },
+        "context": [
+          {
+            "id": "routing-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+            "availability": "included",
+            "source_id": "routing-instruction",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            },
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 173
+              }
+            }
+          },
+          {
+            "id": "prior-request",
+            "kind": "message",
+            "role": "user",
+            "text": "Check stock for product 42.",
+            "availability": "included",
+            "source_id": "prior-request",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 27
+              }
+            }
+          },
+          {
+            "id": "prior-answer",
+            "kind": "message",
+            "role": "assistant",
+            "text": "Stock for product 42 is available.",
+            "availability": "included",
+            "source_id": "prior-answer",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "request_fragment": {
+              "pointer": "/messages/2/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 34
+              }
+            }
+          },
+          {
+            "id": "request-type",
+            "kind": "message",
+            "role": "user",
+            "text": "Request type: price.",
+            "availability": "included",
+            "source_id": "request-type",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "request_fragment": {
+              "pointer": "/messages/3/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              }
+            }
+          },
+          {
+            "id": "product-id",
+            "kind": "message",
+            "role": "user",
+            "text": "Product ID: 19.",
+            "availability": "included",
+            "source_id": "product-id",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            },
+            "request_fragment": {
+              "pointer": "/messages/4/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 15
+              }
+            }
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "source_id": "store-name",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 5
+            },
+            "request_fragment": {
+              "pointer": "/messages/5/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              }
+            }
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "Please handle the request now.",
+            "availability": "included",
+            "source_id": "question",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 6
+            },
+            "request_fragment": {
+              "pointer": "/messages/6/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 30
+              }
+            }
+          },
+          {
+            "id": "tool-stock",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "stock",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read stock availability for a product.\",\"name\":\"stock\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 0
+            }
+          },
+          {
+            "id": "tool-price",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "price",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read the current price for a product.\",\"name\":\"price\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 1
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "product-route",
+            "kind": "tool_call",
+            "label": "price",
+            "outcome": {
+              "product_id": 19
+            },
+            "evidence": {
+              "field": "local_transformers.tool_call"
+            }
+          }
+        ],
+        "turn_id": "price-check",
+        "started_at": "2026-11-01T12:04:00Z"
+      }
+    ],
+    "organization_id": "retail-north",
+    "user_id": "analyst"
+  },
+  {
+    "schema_version": 1,
+    "id": "qwen-routing-north-2-price",
+    "source": "local-transformers",
+    "conversation_id": "north-2",
+    "calls": [
+      {
+        "id": "model-inference",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "recorded_request": {
+          "body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: price.\"},{\"role\":\"user\",\"content\":\"Product ID: 42.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+          "evidence": {
+            "field": "local_transformers.request"
+          }
+        },
+        "context": [
+          {
+            "id": "routing-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+            "availability": "included",
+            "source_id": "routing-instruction",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            },
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 173
+              }
+            }
+          },
+          {
+            "id": "request-type",
+            "kind": "message",
+            "role": "user",
+            "text": "Request type: price.",
+            "availability": "included",
+            "source_id": "request-type",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              }
+            }
+          },
+          {
+            "id": "product-id",
+            "kind": "message",
+            "role": "user",
+            "text": "Product ID: 42.",
+            "availability": "included",
+            "source_id": "product-id",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "request_fragment": {
+              "pointer": "/messages/2/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 15
+              }
+            }
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "source_id": "store-name",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "request_fragment": {
+              "pointer": "/messages/3/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              }
+            }
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "Please handle the request now.",
+            "availability": "included",
+            "source_id": "question",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            },
+            "request_fragment": {
+              "pointer": "/messages/4/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 30
+              }
+            }
+          },
+          {
+            "id": "tool-stock",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "stock",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read stock availability for a product.\",\"name\":\"stock\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 0
+            }
+          },
+          {
+            "id": "tool-price",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "price",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read the current price for a product.\",\"name\":\"price\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 1
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "product-route",
+            "kind": "tool_call",
+            "label": "price",
+            "outcome": {
+              "product_id": 42
+            },
+            "evidence": {
+              "field": "local_transformers.tool_call"
+            }
+          }
+        ],
+        "turn_id": "price-check",
+        "started_at": "2026-11-05T12:00:00Z"
+      }
+    ],
+    "organization_id": "retail-north",
+    "user_id": "analyst"
+  },
+  {
+    "schema_version": 1,
+    "id": "qwen-routing-north-3-stock",
+    "source": "local-transformers",
+    "conversation_id": "north-3",
+    "calls": [
+      {
+        "id": "model-inference",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "recorded_request": {
+          "body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 19.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+          "evidence": {
+            "field": "local_transformers.request"
+          }
+        },
+        "context": [
+          {
+            "id": "routing-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+            "availability": "included",
+            "source_id": "routing-instruction",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            },
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 173
+              }
+            }
+          },
+          {
+            "id": "request-type",
+            "kind": "message",
+            "role": "user",
+            "text": "Request type: stock.",
+            "availability": "included",
+            "source_id": "request-type",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              }
+            }
+          },
+          {
+            "id": "product-id",
+            "kind": "message",
+            "role": "user",
+            "text": "Product ID: 19.",
+            "availability": "included",
+            "source_id": "product-id",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "request_fragment": {
+              "pointer": "/messages/2/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 15
+              }
+            }
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "source_id": "store-name",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "request_fragment": {
+              "pointer": "/messages/3/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              }
+            }
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "Please handle the request now.",
+            "availability": "included",
+            "source_id": "question",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            },
+            "request_fragment": {
+              "pointer": "/messages/4/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 30
+              }
+            }
+          },
+          {
+            "id": "tool-stock",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "stock",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read stock availability for a product.\",\"name\":\"stock\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 0
+            }
+          },
+          {
+            "id": "tool-price",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "price",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read the current price for a product.\",\"name\":\"price\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 1
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "product-route",
+            "kind": "tool_call",
+            "label": "stock",
+            "outcome": {
+              "product_id": 19
+            },
+            "evidence": {
+              "field": "local_transformers.tool_call"
+            }
+          }
+        ],
+        "turn_id": "stock-check",
+        "started_at": "2026-11-08T12:00:00Z"
+      }
+    ],
+    "organization_id": "retail-north",
+    "user_id": "operator"
+  },
+  {
+    "schema_version": 1,
+    "id": "qwen-routing-south-1-price",
+    "source": "local-transformers",
+    "conversation_id": "south-1",
+    "calls": [
+      {
+        "id": "model-inference",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "recorded_request": {
+          "body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: price.\"},{\"role\":\"user\",\"content\":\"Product ID: 42.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+          "evidence": {
+            "field": "local_transformers.request"
+          }
+        },
+        "context": [
+          {
+            "id": "routing-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+            "availability": "included",
+            "source_id": "routing-instruction",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            },
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 173
+              }
+            }
+          },
+          {
+            "id": "request-type",
+            "kind": "message",
+            "role": "user",
+            "text": "Request type: price.",
+            "availability": "included",
+            "source_id": "request-type",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              }
+            }
+          },
+          {
+            "id": "product-id",
+            "kind": "message",
+            "role": "user",
+            "text": "Product ID: 42.",
+            "availability": "included",
+            "source_id": "product-id",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "request_fragment": {
+              "pointer": "/messages/2/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 15
+              }
+            }
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "source_id": "store-name",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "request_fragment": {
+              "pointer": "/messages/3/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              }
+            }
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "Please handle the request now.",
+            "availability": "included",
+            "source_id": "question",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            },
+            "request_fragment": {
+              "pointer": "/messages/4/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 30
+              }
+            }
+          },
+          {
+            "id": "tool-stock",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "stock",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read stock availability for a product.\",\"name\":\"stock\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 0
+            }
+          },
+          {
+            "id": "tool-price",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "price",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read the current price for a product.\",\"name\":\"price\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 1
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "product-route",
+            "kind": "tool_call",
+            "label": "price",
+            "outcome": {
+              "product_id": 42
+            },
+            "evidence": {
+              "field": "local_transformers.tool_call"
+            }
+          }
+        ],
+        "turn_id": "price-check",
+        "started_at": "2026-11-01T13:00:00Z"
+      }
+    ],
+    "organization_id": "retail-south",
+    "user_id": "analyst"
+  },
+  {
+    "schema_version": 1,
+    "id": "qwen-routing-south-2-stock",
+    "source": "local-transformers",
+    "conversation_id": "south-2",
+    "calls": [
+      {
+        "id": "model-inference",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "recorded_request": {
+          "body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 19.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+          "evidence": {
+            "field": "local_transformers.request"
+          }
+        },
+        "context": [
+          {
+            "id": "routing-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+            "availability": "included",
+            "source_id": "routing-instruction",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            },
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 173
+              }
+            }
+          },
+          {
+            "id": "request-type",
+            "kind": "message",
+            "role": "user",
+            "text": "Request type: stock.",
+            "availability": "included",
+            "source_id": "request-type",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              }
+            }
+          },
+          {
+            "id": "product-id",
+            "kind": "message",
+            "role": "user",
+            "text": "Product ID: 19.",
+            "availability": "included",
+            "source_id": "product-id",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "request_fragment": {
+              "pointer": "/messages/2/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 15
+              }
+            }
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "source_id": "store-name",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "request_fragment": {
+              "pointer": "/messages/3/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              }
+            }
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "Please handle the request now.",
+            "availability": "included",
+            "source_id": "question",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            },
+            "request_fragment": {
+              "pointer": "/messages/4/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 30
+              }
+            }
+          },
+          {
+            "id": "tool-stock",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "stock",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read stock availability for a product.\",\"name\":\"stock\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 0
+            }
+          },
+          {
+            "id": "tool-price",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "price",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read the current price for a product.\",\"name\":\"price\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 1
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "product-route",
+            "kind": "tool_call",
+            "label": "stock",
+            "outcome": {
+              "product_id": 19
+            },
+            "evidence": {
+              "field": "local_transformers.tool_call"
+            }
+          }
+        ],
+        "turn_id": "stock-check",
+        "started_at": "2026-11-05T13:00:00Z"
+      }
+    ],
+    "organization_id": "retail-south",
+    "user_id": "analyst"
+  },
+  {
+    "schema_version": 1,
+    "id": "qwen-routing-south-3-price",
+    "source": "local-transformers",
+    "conversation_id": "south-3",
+    "calls": [
+      {
+        "id": "model-inference",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "recorded_request": {
+          "body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: price.\"},{\"role\":\"user\",\"content\":\"Product ID: 19.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+          "evidence": {
+            "field": "local_transformers.request"
+          }
+        },
+        "context": [
+          {
+            "id": "routing-instruction",
+            "kind": "message",
+            "role": "system",
+            "text": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+            "availability": "included",
+            "source_id": "routing-instruction",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 0
+            },
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 173
+              }
+            }
+          },
+          {
+            "id": "request-type",
+            "kind": "message",
+            "role": "user",
+            "text": "Request type: price.",
+            "availability": "included",
+            "source_id": "request-type",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            },
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              }
+            }
+          },
+          {
+            "id": "product-id",
+            "kind": "message",
+            "role": "user",
+            "text": "Product ID: 19.",
+            "availability": "included",
+            "source_id": "product-id",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            },
+            "request_fragment": {
+              "pointer": "/messages/2/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 15
+              }
+            }
+          },
+          {
+            "id": "store-name",
+            "kind": "message",
+            "role": "user",
+            "text": "Background: the store’s name is Alder.",
+            "availability": "included",
+            "source_id": "store-name",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 3
+            },
+            "request_fragment": {
+              "pointer": "/messages/3/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              }
+            }
+          },
+          {
+            "id": "question",
+            "kind": "message",
+            "role": "user",
+            "text": "Please handle the request now.",
+            "availability": "included",
+            "source_id": "question",
+            "source_version": "v1",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 4
+            },
+            "request_fragment": {
+              "pointer": "/messages/4/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 30
+              }
+            }
+          },
+          {
+            "id": "tool-stock",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "stock",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read stock availability for a product.\",\"name\":\"stock\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 0
+            }
+          },
+          {
+            "id": "tool-price",
+            "kind": "tool_definition",
+            "availability": "included",
+            "source_id": "price",
+            "source_version": "v1",
+            "text": "{\"function\":{\"description\":\"Read the current price for a product.\",\"name\":\"price\",\"parameters\":{\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"],\"type\":\"object\"}},\"type\":\"function\"}",
+            "evidence": {
+              "field": "request.tools",
+              "part_index": 1
+            }
+          }
+        ],
+        "tool_results": [],
+        "decisions": [
+          {
+            "id": "product-route",
+            "kind": "tool_call",
+            "label": "price",
+            "outcome": {
+              "product_id": 19
+            },
+            "evidence": {
+              "field": "local_transformers.tool_call"
+            }
+          }
+        ],
+        "turn_id": "price-check",
+        "started_at": "2026-11-08T13:00:00Z"
+      }
+    ],
+    "organization_id": "retail-south",
+    "user_id": "reviewer"
+  }
+]

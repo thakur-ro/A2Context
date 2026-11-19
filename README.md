@@ -37,7 +37,7 @@ Runtimes can send an OpenTelemetry trace and attach the activation report when i
 
 For a captured Qwen2 answer or tool proposal, test each aligned prompt source without writing replacement text. Mask two sources together to check whether they back each other up. [Inspect a text answer](docs/guide.md#test-source-visibility-on-a-recorded-answer), [Inspect a tool proposal](docs/guide.md#test-source-visibility-on-a-tool-proposal), [Try the paired test](docs/guide.md#test-a-pair-of-sources)
 
-Query recurring masked-source effects across conversations, users, and organizations, then open the exact contributing token and source. [Compare the measured cohort](docs/guide.md#find-recurring-masked-source-effects)
+Query recurring masked-source effects across conversations, users, and organizations, then open the exact contributing token and source. [Compare the measured answer cohort](docs/guide.md#find-recurring-masked-source-effects), [Compare stock and price proposals](docs/guide.md#compare-measured-tool-routes)
 
 Align measurements on a named output when different answers put the same decision in different places. [Follow a named output](docs/guide.md#follow-a-named-output-across-different-answers)
 

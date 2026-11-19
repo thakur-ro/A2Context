@@ -578,6 +578,66 @@ fn visibility_patterns_group_scoped_measurements_and_link_chronological_occurren
 }
 
 #[test]
+fn routing_patterns_compare_recorded_tools_and_keep_exact_scoped_turns() {
+    let mut client = Client::start(
+        &[
+            "--activation-report",
+            "examples/runtime-comparison/visibility-routing-cohort/reports.json",
+            "examples/runtime-comparison/visibility-routing-cohort/evidence.json",
+        ],
+        true,
+    );
+    let name = "query_visibility_patterns";
+    let base = json!({"version":1, "target":"routing.tool", "source_id":"stock"});
+    let mut args = base.clone();
+    args["tool_name"] = "stock".into();
+    args["compare"] = json!({"tool_name":"price"});
+    let result = client.call(name, args.clone());
+    let page = &result["structuredContent"];
+    assert_eq!(page["coverage_a"]["reports_with_target"], 3);
+    assert_eq!(page["coverage_b"]["reports_with_target"], 4);
+    let group = &page["groups"][0];
+    assert_eq!(page["total_groups"], 1);
+    assert_eq!(group["scope_a"]["organization_count"], 2);
+    assert_eq!(group["scope_b"]["organization_count"], 2);
+    assert_eq!(group["scope_a"]["conversation_count"], 3);
+    assert_eq!(group["scope_b"]["conversation_count"], 4);
+    assert!(group["scope_a"]["effect"]["maximum"].as_f64().unwrap() < -3.4);
+    assert!(group["scope_b"]["effect"]["minimum"].as_f64().unwrap() > 0.0);
+
+    args = base;
+    args["group"] = group["key"].clone();
+    args["scope"] = json!({"kind":"user","organization_id":"retail-north","user_id":"analyst"});
+    let user = client.call(name, args.clone());
+    assert_eq!(user["structuredContent"]["group"]["conversation_count"], 2);
+    assert_eq!(user["structuredContent"]["total_occurrences"], 3);
+    args["thread"] = json!({
+        "trace_source":"local-transformers","organization_id":"retail-north",
+        "user_id":"analyst","conversation_id":"north-1"
+    });
+    let thread = client.call(name, args.clone());
+    let turns = &thread["structuredContent"]["occurrences"];
+    assert_eq!(turns[0]["tool_name"], "stock");
+    assert_eq!(turns[1]["tool_name"], "price");
+    assert_eq!(turns[1]["turn_id"], "price-check");
+    assert_eq!(turns[1]["location"]["run_id"], "qwen-routing-north-1-price");
+    assert!(turns[1]["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&visibility=7&mask=tool%2Dstock"));
+
+    args["timeline"] = json!({"unit":"day"});
+    args["tool_name"] = "price".into();
+    let day = client.call(name, args.clone());
+    let periods = &day["structuredContent"]["rows"];
+    assert_eq!(day["structuredContent"]["total_periods"], 1);
+    assert_eq!(periods[0]["period"], "2026-11-01");
+    assert_eq!(periods[0]["scope_a"]["decision_count"], 1);
+    args["tool_name"] = " ".into();
+    assert_eq!(client.call(name, args)["isError"], true);
+}
+
+#[test]
 fn visibility_pattern_comparisons_keep_both_scopes_and_page_them_independently() {
     let mut client = Client::start(
         &[

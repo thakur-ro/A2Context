@@ -41,8 +41,9 @@ export function visibilityBackLabel(kind) {
   }
 }
 
-function scopeName(scope) {
-  return [scope?.organization_id, scope?.user_id].filter(Boolean).join(" / ") || "Workspace";
+function scopeName({ scope, tool_name } = {}) {
+  const identity = [scope?.organization_id, scope?.user_id].filter(Boolean).join(" / ") || "Workspace";
+  return [identity, tool_name].filter(Boolean).join(" · ");
 }
 
 function sectionSides(parent, args, [left, right], render, empty = "No measurements") {
@@ -54,7 +55,7 @@ function sectionSides(parent, args, [left, right], render, empty = "No measureme
   for (const [index, side] of [left, right].entries()) {
     const section = element("section");
     section.append(element("h3", index ? "Scope B" : "Scope A"));
-    if (args.version === 1) section.append(element("p", scopeName(index ? args.compare?.scope : args.scope), "muted"));
+    if (args.version === 1) section.append(element("p", scopeName(index ? args.compare : args), "muted"));
     if (side) render(section, side, index);
     else section.append(element("p", empty, "muted"));
     columns.append(section);
@@ -128,6 +129,7 @@ export function renderVisibility(parent, page, requestPage, pageControls) {
     if (next.timeline === undefined) delete next.timeline;
     requestPage(patternTool, next, title, previous);
   };
+  if (args.tool_name && !compared) parent.append(element("p", "Recorded tool · " + args.tool_name, "muted"));
   if (!args.timeline?.period) coverage(parent, data);
   if (data.groups) {
     if (navigation) {
@@ -191,7 +193,8 @@ function renderOccurrence(parent, item, metric, requestPage, back) {
   const first = item.output_token + 1;
   const span = item.output_token_end > first ? "Tokens " + first + "–" + item.output_token_end : "Token " + first;
   row.append(element("h3", item.conversation_id || item.location.run_id));
-  const labels = [item.organization_id, item.user_id, item.started_at || "Time unavailable"];
+  const labels = [item.organization_id, item.user_id, item.tool_name && "Proposed " + item.tool_name,
+    item.started_at || "Time unavailable"];
   row.append(element("p", labels.filter(Boolean).join(" · "), "muted"));
   row.append(element("p", span + " · " + format.format(item.effect)));
   const view = { output_token: item.output_token, kind: metric === "interaction_log_units" ? "pairs" : "sources" };

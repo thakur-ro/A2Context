@@ -884,6 +884,36 @@ In **Patterns → Masked-source effects**, select **Pair interactions** and set 
 
 Named targets group by key, model revision, runtime, tokenizer, and source identity. The score sums the measured token changes over the declared span. Each token keeps its own recorded earlier output, so the range describes measurements from different prefixes. Drill into the group for each span's positions, prefix digest, and inspector link to its first token. The workflow supplies what the target means.
 
+### Compare measured tool routes
+
+The synthetic routing cohort contains seven measured proposals across six conversations, four scoped users, and two organizations. One north conversation has two measured turns. Its second request includes the prior user request and assistant reply in the model input. The saved reports open without model weights. [Cohort inputs](../examples/runtime-comparison/visibility-routing-cohort/cohort.json)
+
+```sh
+cargo run --locked -- serve \
+  --activation-report examples/runtime-comparison/visibility-routing-cohort/reports.json \
+  examples/runtime-comparison/visibility-routing-cohort/evidence.json
+```
+
+In **Patterns → Masked-source effects**, set **Align by** to `routing.tool` and **Source** to `stock`. Set **Recorded tool** to `stock`, then set **Compare with** to **All imported runs** and **Recorded tool (B)** to `price`. Open the `stock` definition group to see the measured turns on both sides. Use the organization, user, and thread filters or the UTC timeline to narrow the same comparison. Each contributing turn shows which tool the model proposed.
+
+Apply the same comparison through the HTTP endpoint or the MCP tool. The `tool_name` filter matches the recorded proposal on its side and works with both single-source effects and pair interactions. A named output lets the same source group include different proposed names. [Query schema](../schema/visibility-pattern-query-1.json)
+
+```json
+{
+  "version": 1,
+  "target": "routing.tool",
+  "source_id": "stock",
+  "tool_name": "stock",
+  "compare": {"tool_name": "price"}
+}
+```
+
+To reproduce both evidence and measurements, use the same pinned Qwen checkpoint and environment as the single proposal example. The script requires every proposal and output span to match its declared case. [Experiment results](inference-attribution-plan.md#compare-routing-effects-across-conversations)
+
+```sh
+python3 scripts/probe_routing_visibility_cohort.py /path/to/local-qwen /tmp/routing-cohort
+```
+
 ### View a measured pattern over time
 
 Open a group under **Masked-source effects** and choose a day, week, or month in **Group by UTC**. The rows show when the selected pattern was measured, its effect range, and its contributing conversation and decision counts. The range markers share a scale centered on zero. With **Compare with** selected, the two scopes use the same calendar rows, and a scope with no measurements in a period has an empty range. Open a row to read the turns for that period. **Copy view link** preserves the grouping and selected period.

@@ -55,6 +55,7 @@
       }
     },
     "source_id": { "type": ["string", "null"], "description": "Match a declared stable source ID, including either member of a pair." },
+    "tool_name": { "type": ["string", "null"], "minLength": 1, "description": "Match the tool name in the recorded proposal exactly." },
     "after": { "type": ["string", "null"], "format": "date-time", "description": "Inclusive call start in RFC 3339." },
     "before": { "type": ["string", "null"], "format": "date-time", "description": "Exclusive call start in RFC 3339." },
     "compare": {
@@ -64,6 +65,7 @@
       "properties": {
         "scope": { "$ref": "#/properties/scope" },
         "thread": { "$ref": "#/properties/thread" },
+        "tool_name": { "$ref": "#/properties/tool_name" },
         "after": { "$ref": "#/properties/after" },
         "before": { "$ref": "#/properties/before" }
       }

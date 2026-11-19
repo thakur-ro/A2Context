@@ -29,6 +29,7 @@ pub struct Request {
     scope: Scope,
     thread: Option<Thread>,
     source_id: Option<String>,
+    tool_name: Option<String>,
     after: Option<String>,
     before: Option<String>,
     compare: Option<Selection>,
@@ -51,6 +52,7 @@ struct Selection {
     #[serde(default)]
     scope: Scope,
     thread: Option<Thread>,
+    tool_name: Option<String>,
     after: Option<String>,
     before: Option<String>,
 }
@@ -189,10 +191,22 @@ pub fn query<'a>(
     if request.timeline.is_some() && request.group.is_none() {
         return Err("Select a visibility pattern group to query its timeline.".into());
     }
+    let primary_tool = request.tool_name.as_deref();
+    let secondary_tool = request
+        .compare
+        .as_ref()
+        .and_then(|side| side.tool_name.as_deref());
+    if [primary_tool, secondary_tool]
+        .into_iter()
+        .flatten()
+        .any(|name| name.is_empty() || name.trim() != name)
+    {
+        return Err("Use a nonempty recorded tool name without surrounding whitespace.".into());
+    }
     let runs: Vec<_> = runs.into_iter().collect();
     let window = TimeWindow::parse(request.after.as_deref(), request.before.as_deref())?;
     let scoped = scope_runs(&runs, &request.scope, request.thread.as_ref());
-    let primary = gather(request, scoped, reports, &window)?;
+    let primary = gather(request, scoped, reports, &window, primary_tool)?;
     let metric = match request.kind {
         Mask::Source => "change_in_log_probability",
         Mask::Pair => "interaction_log_units",
@@ -200,7 +214,7 @@ pub fn query<'a>(
     if let Some(compare) = &request.compare {
         let window = TimeWindow::parse(compare.after.as_deref(), compare.before.as_deref())?;
         let scoped = scope_runs(&runs, &compare.scope, compare.thread.as_ref());
-        let secondary = gather(request, scoped, reports, &window)?;
+        let secondary = gather(request, scoped, reports, &window, secondary_tool)?;
         compare_cohorts(request, primary, secondary, metric)
     } else {
         single_cohort(request, primary, metric)
@@ -224,6 +238,7 @@ fn gather<'a>(
     scoped: BTreeMap<&'a str, &'a Run>,
     reports: &'a [activation::Report],
     window: &TimeWindow,
+    tool_name: Option<&str>,
 ) -> Result<Cohort<'a>, String> {
     let exact = request.target.is_none();
     let mut groups = BTreeMap::<Comparison<'_>, Group<'_>>::new();
@@ -258,6 +273,9 @@ fn gather<'a>(
         else {
             continue;
         };
+        if tool_name.is_some_and(|name| decision.kind != "tool_call" || decision.label != name) {
+            continue;
+        }
         reports_in_scope += 1;
         let target = request
             .target
@@ -647,6 +665,9 @@ fn evidence(item: &Occurrence<'_>) -> Value {
     if let Some(prefix) = &item.target_prefix {
         row["output_token_end"] = json!(end);
         row["output_prefix_sha256"] = json!(prefix);
+    }
+    if let Some(proposal) = &item.report.baseline_tool_call {
+        row["tool_name"] = json!(proposal.name);
     }
     row
 }

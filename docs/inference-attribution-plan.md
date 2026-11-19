@@ -168,3 +168,14 @@ We used the same Qwen2.5 checkpoint for a synthetic product lookup with two tool
 The table gives masked minus original log probability. The argument column sums the two digit scores, each conditioned on the preceding recorded tokens. Masking the stock definition alone lowered the recorded name's score more than masking the request type. Masking both definitions brought the score near the baseline, with an interaction of +3.41230 log units. The product ID had the largest measured effect on the argument.
 
 The instruction mask includes the two template newlines that share its last token. Its largest individual effect was −0.03797 log units at the opening `<tool_call>` delimiter. The tool-name score barely moved. Masking the instruction with the request type moved the score closer to the baseline than masking the request type alone. The interaction was +0.25482 log units. These are fixed-prefix effects from one proposal. Whether the model would generate a different tool call under the same masks remains open. [Reproduce the probe](guide.md#test-source-visibility-on-a-tool-proposal)
+
+## Compare routing effects across conversations
+
+We reproduced seven recorded `stock` or `price` proposals on the same Qwen2.5 checkpoint. The cohort uses synthetic conversation, user, and organization identifiers. Two request bodies repeat across organizations. The north follow-up adds the prior stock request and answer to the otherwise identical price request for product 19. [Cohort cases](../examples/runtime-comparison/visibility-routing-cohort/cohort.json), [Measured reports](../examples/runtime-comparison/visibility-routing-cohort/reports.json)
+
+| Masked source | Change when the recorded tool was `stock` | Change when the recorded tool was `price` |
+| --- | ---: | ---: |
+| Stock definition | −3.43540 to −3.42828 | +0.00008 to +0.19716 |
+| Price definition | +0.00019 | −7.97884 to −3.13614 |
+
+Each value is a change in log probability at the recorded tool-name token. The selected tool's definition had the largest negative effect on the name within each of the two cohorts when masked. In the follow-up, masking the prior assistant reply lowered the recorded `price` score by 1.08491 log units. The earlier output tokens stayed fixed. The ranges describe these seven measurements and the ownership labels let readers exercise the scope filters. [Inspect the cohort](guide.md#compare-measured-tool-routes)

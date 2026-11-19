@@ -6,10 +6,12 @@ let visibilityPatternPeriod = "";
 const visibilityTimeUnits = new Map([["", "All occurrences"], ["day", "Day"], ["week", "Week"], ["month", "Month"]]);
 const visibilityPatternDateFields = ["after", "before"];
 const visibilityComparisonDateFields = ["after_b", "before_b"];
+const visibilityToolFields = ["tool_name", "tool_name_b"];
 const visibilityField = (part) => element("visibility-pattern-" + part);
 
 function setupVisibilityPatterns() {
-  for (const field of ["kind", "token", "target", "source", "order", "repeat", ...visibilityPatternDateFields, ...visibilityComparisonDateFields]) {
+  for (const field of ["kind", "token", "target", "source", "order", "repeat",
+    ...visibilityToolFields, ...visibilityPatternDateFields, ...visibilityComparisonDateFields]) {
     visibilityField(field).addEventListener("change", () => {
       visibilityPatternGroup = null;
       linkNotice();
@@ -33,6 +35,7 @@ function openVisibilityPatterns(report, token, kind, target = "") {
   visibilityField("source").value = "";
   visibilityField("order").value = "recurrence";
   visibilityField("repeat").checked = false;
+  for (const field of visibilityToolFields) visibilityField(field).value = "";
   for (const date of [...visibilityPatternDateFields, ...visibilityComparisonDateFields]) visibilityField(date).value = "";
   linkNotice();
   render();
@@ -41,12 +44,12 @@ function openVisibilityPatterns(report, token, kind, target = "") {
 
 function writeVisibilityPatternLink(params) {
   const alignment = visibilityField("target").value ? "target" : "token";
-  for (const field of ["kind", alignment, "source", ...visibilityPatternDateFields]) {
+  for (const field of ["kind", alignment, "source", "tool_name", ...visibilityPatternDateFields]) {
     if (visibilityField(field).value) params.set(field, visibilityField(field).value);
   }
   if (visibilityField("order").value === "magnitude") params.set("order", "magnitude");
   if (patternComparison.scope) {
-    for (const field of visibilityComparisonDateFields) {
+    for (const field of ["tool_name_b", ...visibilityComparisonDateFields]) {
       if (visibilityField(field).value) params.set(field, visibilityField(field).value);
     }
   }
@@ -72,6 +75,10 @@ function restoreVisibilityPatternLink(params) {
   const source = params.get("source") ?? "";
   visibilityField("source").replaceChildren(new Option("All named sources", ""));
   if (source) visibilityField("source").add(new Option(source, source, true, true));
+  for (const field of visibilityToolFields) {
+    const tool = params.get(field) ?? "";
+    visibilityField(field).replaceChildren(new Option(tool, tool, true, true));
+  }
   let datesValid = true;
   for (const date of [...visibilityPatternDateFields, ...visibilityComparisonDateFields]) {
     const value = params.get(date) ?? "";
@@ -97,6 +104,18 @@ function visibilityReportsInScope({ organization, user }) {
   });
 }
 
+function visibilityToolFilter(field, records, thread) {
+  const select = visibilityField(field);
+  const selected = select.value;
+  const tools = new Set(records.filter(({ occurrence }) => !thread || patternThreadKey(occurrence) === thread)
+    .map(({ report }) => report.baseline_tool_call?.name).filter(Boolean));
+  if (selected) tools.add(selected);
+  select.replaceChildren(new Option("All decisions", ""), ...[...tools].sort().map((name) => new Option(name, name)));
+  select.value = selected;
+  visibilityField(field + "-field").hidden = !tools.size;
+  return selected;
+}
+
 function renderVisibilityPatterns(list, scope, scopes) {
   const entries = visibilityReportsInScope(scope);
   updatePatternThreadFilter([{ occurrences: entries.map(({ occurrence }) => occurrence) }]);
@@ -104,6 +123,8 @@ function renderVisibilityPatterns(list, scope, scopes) {
   const secondEntries = secondScope ? visibilityReportsInScope(secondScope) : [];
   const second = comparisonPatternFilter(scopes, [{ occurrences: secondEntries.map(({ occurrence }) => occurrence) }]);
   visibilityField("compare-dates").hidden = !second;
+  const tool = visibilityToolFilter("tool_name", entries, state.patternThread);
+  const secondTool = second && visibilityToolFilter("tool_name_b", secondEntries, second.thread);
   const tokenInput = visibilityField("token");
   const kind = visibilityField("kind").value;
   const select = visibilityField("source");
@@ -112,9 +133,10 @@ function renderVisibilityPatterns(list, scope, scopes) {
   const target = targetSelect.value;
   const sources = new Set();
   const targets = new Set();
-  for (const [records, thread] of [[entries, state.patternThread], [secondEntries, second?.thread]]) {
+  for (const [records, thread, name] of [[entries, state.patternThread, tool], [secondEntries, second?.thread, secondTool]]) {
     for (const { report, call, occurrence } of records) {
       if (thread && patternThreadKey(occurrence) !== thread) continue;
+      if (name && report.baseline_tool_call?.name !== name) continue;
       for (const item of report.targets || []) targets.add(item.key);
       const measured = new Set(kind === "pair" ? (report.pairs || []).flatMap(({ context_ids }) => context_ids)
         : report.sources.filter(({ masked_log_probs }) => masked_log_probs).map(({ context_id }) => context_id));
@@ -146,11 +168,17 @@ function renderVisibilityPatterns(list, scope, scopes) {
   }
   const selection = target ? { target } : { output_token: tokenInput.valueAsNumber - 1 };
   const spec = { version: 1, kind, ...selection, ...primary, order: visibilityField("order").value, limit: 20 };
-  if (compare) spec.compare = compare;
+  if (tool) spec.tool_name = tool;
+  if (compare) {
+    spec.compare = compare;
+    if (secondTool) spec.compare.tool_name = secondTool;
+  }
   if (selected) spec.source_id = selected;
   if (visibilityField("repeat").checked) spec.min_conversations = 2;
-  const captions = second ? [patternScopeCaption(scope, element("pattern-thread")),
-    patternScopeCaption(second.scope, element("pattern-compare-thread"))] : [];
+  const captions = second ? [
+    [patternScopeCaption(scope, element("pattern-thread")), tool].filter(Boolean).join(" · "),
+    [patternScopeCaption(second.scope, element("pattern-compare-thread")), secondTool].filter(Boolean).join(" · "),
+  ] : [];
   const results = node("div");
   const back = node("button", "All comparison groups");
   back.type = "button";
@@ -374,7 +402,7 @@ function renderVisibilityOccurrences(parent, occurrences) {
     const line = node("article", undefined, "visibility-pattern-row");
     const label = row.conversation_id || row.location.run_id;
     line.append(node("h3", label));
-    const recorded = [row.organization_id, row.user_id, row.turn_id].filter(Boolean);
+    const recorded = [row.organization_id, row.user_id, row.turn_id, row.tool_name && "Proposed " + row.tool_name].filter(Boolean);
     const details = node("p", recorded.length ? recorded.join(" · ") + " · " : undefined, "muted");
     const time = Date.parse(row.started_at);
     if (Number.isFinite(time)) {
