@@ -471,8 +471,15 @@ fn source_visibility_queries_follow_the_turn_to_ranked_sources_and_pairs() {
         .as_str()
         .unwrap()
         .ends_with("&context=returns%2Dpolicy"));
+    request["view"]["context_id"] = "refund-policy-copy".into();
+    let exact_source = client.call(name, request.clone());
+    assert_eq!(exact_source["structuredContent"]["total_rows"], 1);
+    assert_eq!(
+        exact_source["structuredContent"]["rows"][0]["context_id"],
+        "refund-policy-copy"
+    );
 
-    request["view"]["kind"] = "pairs".into();
+    request["view"] = json!({"kind":"pairs","output_token":13});
     let paired = client.call(name, request.clone());
     let paired = &paired["structuredContent"];
     let row = &paired["rows"][0];
@@ -504,6 +511,15 @@ fn source_visibility_queries_follow_the_turn_to_ranked_sources_and_pairs() {
         json!(["refund-policy", "store-name"])
     );
     assert!(control["structuredContent"]["next_offset"].is_null());
+    request["offset"] = 0.into();
+    request["view"]["context_ids"] = json!(["store-name", "refund-policy"]);
+    let exact_pair = client.call(name, request.clone());
+    let exact_pair = &exact_pair["structuredContent"];
+    assert_eq!(exact_pair["total_rows"], 1);
+    assert_eq!(
+        exact_pair["rows"][0]["inspector_path"],
+        control["structuredContent"]["rows"][0]["inspector_path"]
+    );
     request["view"]["output_token"] = 16.into();
     assert_eq!(client.call(name, request)["isError"], true);
 }
@@ -653,6 +669,23 @@ fn visibility_targets_align_different_prefixes_and_keep_exact_span_links() {
     );
     let name = "query_visibility_patterns";
     let target = "returns.refund_duration";
+    let tools = client.request("tools/list", json!({}));
+    let tool = tools["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|tool| tool["name"] == name)
+        .unwrap();
+    let uri = tool["_meta"]["ui"]["resourceUri"].as_str().unwrap();
+    let resource = client.request("resources/read", json!({"uri":uri}));
+    assert_eq!(
+        resource["contents"][0]["mimeType"],
+        "text/html;profile=mcp-app"
+    );
+    assert!(resource["contents"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("Masked-source effects"));
     let turn = client.call("get_turn_evidence", json!({
         "run_id":"qwen-target-refund-only", "call_id":"model-inference", "decision_id":"refund-duration"
     }));

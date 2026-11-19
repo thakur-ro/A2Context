@@ -1,28 +1,12 @@
 import { App } from "@modelcontextprotocol/ext-apps";
+import { button, countLabel, element } from "./dom.js";
+import { renderVisibility, visibilityBackLabel, visibilityTitle } from "./visibility.js";
 
 const app = new App({ name: "NexusWeave evidence", version: "1.0.0" });
 const result = document.getElementById("result");
 let initialQuery;
 let current;
 let generation = 0;
-
-function element(tag, text, className) {
-  const node = document.createElement(tag);
-  if (text !== undefined) node.textContent = text;
-  if (className) node.className = className;
-  return node;
-}
-
-function button(label, action) {
-  const control = element("button", label);
-  control.type = "button";
-  control.onclick = action;
-  return control;
-}
-
-function countLabel(count, noun) {
-  return count + " " + noun + (count === 1 ? "" : "s");
-}
 
 function showStatus(message, error = false) {
   const status = element("p", message, "muted");
@@ -41,8 +25,8 @@ function openPage(page, back, focus = false) {
   page.back = back;
   result.replaceChildren();
   if (back) {
-    const label = page.kind === "turn" ? "Back to contributing decisions" :
-      page.kind === "activation_evidence" ? "Back to activation groups" : "Back to conflict groups";
+    const label = visibilityBackLabel(back.page.kind) ?? (page.kind === "turn" ? "Back to contributing decisions" :
+      page.kind === "activation_evidence" ? "Back to activation groups" : "Back to conflict groups");
     const control = button(label, () => {
       openPage(back.page, back.previous, true);
     });
@@ -55,6 +39,7 @@ function openPage(page, back, focus = false) {
   else if (page.kind === "evidence") renderEvidence(page, back);
   else if (page.kind === "activation_groups") renderActivationGroups(page, back);
   else if (page.kind === "activation_evidence") renderActivationEvidence(page, back);
+  else if (page.kind.startsWith("visibility_")) renderVisibility(result, page, requestPage, pageControls);
   else renderTurn(page);
   if (focus) {
     heading.tabIndex = -1;
@@ -90,15 +75,15 @@ function groupName(key, dimensions) {
   }).join(" → ");
 }
 
-function pageControls(page, tool, back) {
-  const offset = page.args.offset || 0;
+function pageControls(page, tool, back, { container = result, offsetKey = "offset", next = page.data.next_offset } = {}) {
+  const offset = page.args[offsetKey] || 0;
   const limit = page.args.limit || 20;
-  if (!offset && page.data.next_offset == null) return;
+  if (!offset && next == null) return;
   const actions = element("div", undefined, "actions");
-  for (const [label, next] of [["Previous page", offset ? Math.max(0, offset - limit) : null], ["Next page", page.data.next_offset]]) {
-    if (next != null) actions.append(button(label, () => requestPage(tool, { ...page.args, offset: next }, page.title, back)));
+  for (const [label, target] of [["Previous page", offset ? Math.max(0, offset - limit) : null], ["Next page", next]]) {
+    if (target != null) actions.append(button(label, () => requestPage(tool, { ...page.args, [offsetKey]: target }, page.title, back)));
   }
-  result.append(actions);
+  container.append(actions);
 }
 
 function renderGroups(page, back) {
@@ -318,8 +303,9 @@ app.ontoolresult = (response) => {
       activation_groups: () => "Recurring activation effects",
       activation_evidence: () => activationTitle(data.group),
     };
-    if (!Object.hasOwn(titles, data.kind)) throw new Error("This result has no supported evidence view.");
-    openPage({ kind: data.kind, title: titles[data.kind](), args, data });
+    const title = Object.hasOwn(titles, data.kind) ? titles[data.kind]() : visibilityTitle(data);
+    if (!title) throw new Error("This result has no supported evidence view.");
+    openPage({ kind: data.kind, title, args, data });
   } catch (error) {
     showStatus(error.message, true);
   }

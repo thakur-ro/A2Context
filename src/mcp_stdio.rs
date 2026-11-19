@@ -224,7 +224,7 @@ impl Inspector {
             definitions.push(tool(VISIBILITY_PATTERNS,
                 "Find recurring source or pair effects at an exact token or named output. Select a group key for evidence links or a timeline grouped by UTC day, week, or month.",
                 pattern,
-            ));
+            ).with_meta(ui()));
         }
         let describe = json!({
             "dimensions": conflict["properties"]["group_by"]["items"]["enum"],

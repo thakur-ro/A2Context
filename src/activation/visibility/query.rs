@@ -32,9 +32,11 @@ enum View {
     Timeline,
     Sources {
         output_token: usize,
+        context_id: Option<String>,
     },
     Pairs {
         output_token: usize,
+        context_ids: Option<[String; 2]>,
     },
 }
 
@@ -148,11 +150,15 @@ pub fn query(
                 .collect();
             ("visibility_timeline", token_count, None, rows)
         }
-        View::Sources { output_token } if output_token < token_count => {
+        View::Sources {
+            output_token,
+            ref context_id,
+        } if output_token < token_count => {
             let baseline = report.baseline_log_probs[output_token];
             let mut sources: Vec<_> = report
                 .sources
                 .iter()
+                .filter(|source| context_id.as_deref().is_none_or(|id| source.id() == id))
                 .map(|source| {
                     let magnitude = source.measured().map_or(-1.0, |source| {
                         (source.masked_log_probs[output_token] - baseline).abs()
@@ -179,12 +185,21 @@ pub fn query(
                 rows,
             )
         }
-        View::Pairs { output_token } if output_token < token_count => {
+        View::Pairs {
+            output_token,
+            ref context_ids,
+        } if output_token < token_count => {
             let baseline = report.baseline_log_probs[output_token];
             let mut ranked: Vec<_> = report
                 .pairs
                 .iter()
                 .enumerate()
+                .filter(|(_, pair)| {
+                    context_ids.as_ref().is_none_or(|ids| {
+                        *ids == pair.context_ids
+                            || [&ids[1], &ids[0]] == pair.context_ids.each_ref()
+                    })
+                })
                 .map(|(id, pair)| {
                     (
                         id,

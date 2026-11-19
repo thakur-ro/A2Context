@@ -116,6 +116,12 @@ Use this request with the [six-conversation cohort](#find-repeated-activation-ef
 
 MCP Apps hosts can show the query inline. Change the decoder block, open a group, and then open a contributing turn. The default response contains measurements and references. The host must start the process with `--include-excerpts` before a request can use `include_excerpts: true` or the inline **Show tested values** button. This opt-in returns bounded edit text and token contrasts.
 
+### Inspect masked-source patterns in an MCP app
+
+Configure the evidence and report files from the [named-output example](#follow-a-named-output-across-different-answers) in your MCP server arguments. Call [`query_visibility_patterns`](../schema/visibility-pattern-query-1.json) with `{"version":1,"kind":"pair","target":"returns.refund_duration","source_id":"refund-policy-copy"}`. A host supporting MCP Apps can render the result inline. Open a group, optionally group it by UTC period, and choose **Inspect token** on a contributing turn. The app shows the individual and joint effects for that pair. It also offers the recorded turn and the paths to its local inspector and sources. **Show token text** appears when the MCP process allows excerpts. [MCP Apps specification](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx)
+
+For the same drill-down through tool calls, pass a pattern occurrence's `location` and `report_id` to [`query_source_visibility`](../schema/source-visibility-query-1.json). Use `view.kind` of `sources` or `pairs` with the occurrence's zero-based `output_token`. Supply `view.context_id` for one source or `view.context_ids` for an exact pair. These filters work even when the source or pair would appear on a later page of the ranked results.
+
 ## Import public retail traces
 
 Python dependencies are needed only to prepare the sample. Install `huggingface_hub` and `pyarrow` in a Python environment, then run:

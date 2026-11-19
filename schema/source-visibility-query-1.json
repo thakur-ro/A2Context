@@ -31,8 +31,23 @@
           "additionalProperties": false,
           "required": ["kind", "output_token"],
           "properties": {
-            "kind": { "enum": ["sources", "pairs"] },
-            "output_token": { "type": "integer", "minimum": 0, "description": "Zero-based recorded output token index." }
+            "kind": { "const": "sources" },
+            "output_token": { "type": "integer", "minimum": 0, "description": "Zero-based recorded output token index." },
+            "context_id": { "type": "string", "description": "Read one exact captured source by ID." }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "output_token"],
+          "properties": {
+            "kind": { "const": "pairs" },
+            "output_token": { "type": "integer", "minimum": 0, "description": "Zero-based recorded output token index." },
+            "context_ids": {
+              "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+              "items": { "type": "string" },
+              "description": "Read one exact measured pair, in either source order."
+            }
           }
         }
       ]
