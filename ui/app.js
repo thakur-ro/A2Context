@@ -664,6 +664,7 @@ function renderPatterns() {
   const patternType = element("pattern-type").value;
   element("activation-dates").hidden = patternType !== "activation";
   element("source-profile-dates").hidden = patternType !== "sources";
+  element("source-profile-evidence-field").hidden = patternType !== "sources";
   element("pattern-thread-filter").hidden = patternType === "tools" || patternType === "breakdown";
   element("breakdown-configuration").hidden = patternType !== "breakdown";
   element("visibility-pattern-filters").hidden = patternType !== "visibility";
@@ -1415,7 +1416,7 @@ async function start() {
     setupConflictBreakdown();
     setupVisibilityPatterns();
     setupProbePatterns();
-    setupSourceProfileDates();
+    setupSourceProfileFilters();
     const share = element("copy-view-link");
     share.hidden = false;
     share.addEventListener("click", () => copyInspectionLink());

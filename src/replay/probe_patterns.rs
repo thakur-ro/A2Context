@@ -66,7 +66,7 @@ impl Selection {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum Kind {
+pub(crate) enum Kind {
     Candidate,
     Shadow,
 }
@@ -78,6 +78,23 @@ impl Kind {
             Self::Shadow => "shadow",
         }
     }
+}
+
+pub(crate) fn source_path(
+    kind: Kind,
+    run: &str,
+    call: &str,
+    report: &str,
+    context: &str,
+) -> String {
+    let path = inspector_path(run, call, None);
+    let report = utf8_percent_encode(report, NON_ALPHANUMERIC);
+    let source = utf8_percent_encode(context, NON_ALPHANUMERIC);
+    let anchor = match kind {
+        Kind::Candidate => "probe",
+        Kind::Shadow => "shadow",
+    };
+    format!("{path}&{anchor}={report}&{anchor}_source={source}")
 }
 
 #[derive(Clone, Copy)]
@@ -164,18 +181,11 @@ struct Occurrence<'a> {
 
 impl<'a> Occurrence<'a> {
     fn evidence(self, kind: Kind) -> Value {
-        let path = inspector_path(&self.run.id, &self.call.id, None);
-        let report = utf8_percent_encode(self.report_id, NON_ALPHANUMERIC);
-        let source = utf8_percent_encode(self.context_id, NON_ALPHANUMERIC);
-        let anchor = match kind {
-            Kind::Candidate => "probe",
-            Kind::Shadow => "shadow",
-        };
         let mut record = json!({
             "run_id": self.run.id, "call_id": self.call.id, "report_id": self.report_id, "context_id": self.context_id,
             "trace_source": self.run.source, "organization_id": self.run.organization_id, "user_id": self.run.user_id,
             "conversation_id": self.run.conversation_id, "turn_id": self.call.turn_id, "started_at": self.call.started_at,
-            "inspector_path": format!("{path}&{anchor}={report}&{anchor}_source={source}"),
+            "inspector_path": source_path(kind, &self.run.id, &self.call.id, self.report_id, self.context_id),
         });
         self.measure.append_fields(&mut record);
         record

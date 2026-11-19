@@ -239,7 +239,7 @@ function currentConversationRow() {
 }
 
 function selectConversationStep({ run, call, decision }) {
-  Object.assign(state, { run, call, decision, reference: undefined, probeLink: undefined });
+  Object.assign(state, { run, call, decision, reference: undefined, probeLink: undefined, preflightSource: undefined });
 }
 
 function openConversation(run, call, decision = 0) {
@@ -303,6 +303,7 @@ function renderRecordedPreflight(parent, run, call, open) {
         card.append(node("h3", [labels[finding.kind], finding.key, finding.scope].join(" · ")));
         for (const source of finding.sources) {
           const detail = contextDetails(inputs.get(source.context_id), false);
+          if (finding.kind === "conflict") detail.dataset.preflightSource = source.context_id;
           detail.querySelector("summary").append(node("span", source.value === null ? "Value unavailable" : readable(source.value), "muted"));
           card.append(detail);
         }
@@ -364,14 +365,27 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
   });
 }
 
+function focusConversationEvidence(detail) {
+  if (!detail) return false;
+  detail.closest(".conversation-evidence-section").open = true;
+  detail.open = true;
+  detail.querySelector("summary").focus();
+  return true;
+}
+
+function focusPreflightSource(source) {
+  const detail = [...element("conversation-details").querySelectorAll("[data-preflight-source]")]
+    .find((item) => item.dataset.preflightSource === source);
+  if (!focusConversationEvidence(detail)) return false;
+  state.preflightSource = source;
+  return true;
+}
+
 function focusProbeSource(kind, report, source) {
   const card = [...element("conversation-details").querySelectorAll("[data-probe-report]")]
     .find((item) => item.dataset.probeKind === kind && item.dataset.probeReport === report);
   const detail = card && [...card.querySelectorAll("[data-probe-source]")].find((item) => item.dataset.probeSource === source);
-  if (!detail) return false;
-  card.closest("details").open = true;
-  detail.open = true;
-  detail.querySelector("summary").focus();
+  if (!focusConversationEvidence(detail)) return false;
   state.probeLink = { kind, report, source };
   return true;
 }

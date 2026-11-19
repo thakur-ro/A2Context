@@ -46,6 +46,11 @@
     "source_id": { "type": ["string", "null"], "description": "Exact named source. Omit to list profiles instead of occurrences." },
     "source_version": { "type": ["string", "null"], "description": "Optional exact recorded source version." },
     "search": { "type": ["string", "null"], "description": "Case-insensitive substring of the named source, recorded version, or trace source. A match in either scope retains both results." },
+    "evidence_filter": {
+      "enum": ["all", "conflicts", "measured", "unmeasured"],
+      "default": "all",
+      "description": "Filter occurrences in both scopes. Conflicts include verified preflight and scoped recorded decisions. Measured effects include usable zero results."
+    },
     "after": { "type": ["string", "null"], "format": "date-time", "description": "Inclusive recorded call start in RFC 3339." },
     "before": { "type": ["string", "null"], "format": "date-time", "description": "Exclusive recorded call start in RFC 3339." },
     "compare": {

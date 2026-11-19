@@ -1,9 +1,8 @@
 //! Read-only breakdowns of recorded decisions and verified preflight rule checks.
 
-use crate::{
-    applicable_rules, compare_rules, preflight, Call, ContextItem, Decision, FindingKind, Rule, Run,
-};
+use crate::{applicable_rules, preflight, Call, ContextItem, Decision, Rule, Run};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime, UtcOffset};
 
@@ -275,13 +274,50 @@ pub enum Page<'a> {
     },
 }
 
-struct RuleCheck<'a> {
-    decision: Option<&'a Decision>,
-    scope: (&'a str, &'a str),
-    rules: Vec<(&'a ContextItem, &'a Rule)>,
+pub(crate) struct RuleCheck<'a> {
+    pub(crate) decision: Option<&'a Decision>,
+    pub(crate) scope: (&'a str, &'a str),
+    pub(crate) rules: Vec<(&'a ContextItem, &'a Rule)>,
 }
 
-fn visit_rule_checks<'a>(
+pub(crate) struct OpposingRules<'a> {
+    first: &'a ContextItem,
+    first_value: &'a Value,
+    other: &'a ContextItem,
+}
+
+impl<'a> OpposingRules<'a> {
+    pub(crate) fn opposing_source(&self, value: &Value) -> &'a ContextItem {
+        if value == self.first_value {
+            self.other
+        } else {
+            self.first
+        }
+    }
+}
+
+impl<'a> RuleCheck<'a> {
+    pub(crate) fn comparison(&self) -> (bool, Option<OpposingRules<'a>>) {
+        let mut known = self
+            .rules
+            .iter()
+            .filter_map(|(item, rule)| Some((*item, rule.value.as_ref()?)))
+            .peekable();
+        let first = known.next();
+        let comparable = known.peek().is_some();
+        let conflict = first.and_then(|(first, first_value)| {
+            let (other, _) = known.find(|(_, value)| *value != first_value)?;
+            Some(OpposingRules {
+                first,
+                first_value,
+                other,
+            })
+        });
+        (comparable, conflict)
+    }
+}
+
+pub(crate) fn visit_rule_checks<'a>(
     call: &'a Call,
     phase: Phase,
     rule_filter: Option<&str>,
@@ -415,16 +451,8 @@ pub fn query<'a>(
                 .then(|| time.map(|time| time.to_offset(UtcOffset::UTC).date().to_string()))
                 .flatten();
             visit_rule_checks(call, spec.phase, spec.filters.rule.as_deref(), |check| {
-                let mut known = check
-                    .rules
-                    .iter()
-                    .filter(|(_, rule)| rule.value.is_some())
-                    .peekable();
-                let first = known.next();
-                let comparable = known.peek().is_some();
-                let conflict = first.is_some_and(|(_, first)| {
-                    known.any(|(_, rule)| compare_rules(first, rule) == FindingKind::Conflict)
-                });
+                let (comparable, conflict) = check.comparison();
+                let conflict = conflict.is_some();
                 let key_for = |item| {
                     dimensions
                         .iter()

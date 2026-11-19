@@ -179,6 +179,14 @@
           </select>
         </label>
         <label id="pattern-search-field">Filter <input id="pattern-search" type="search" placeholder="Tool, source, or finding"></label>
+        <label id="source-profile-evidence-field" hidden>Evidence
+          <select id="source-profile-evidence">
+            <option value="all">All occurrences</option>
+            <option value="conflicts">Rule conflicts</option>
+            <option value="measured">Measured effects</option>
+            <option value="unmeasured">Without measurements</option>
+          </select>
+        </label>
         <div class="breakdown-configuration" id="breakdown-configuration" hidden>
           <label>Check stage <select id="conflict-phase">
             <option value="decision">Recorded decisions</option>

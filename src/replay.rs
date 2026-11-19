@@ -4,7 +4,7 @@ pub mod candidates;
 mod capture;
 mod distribution;
 mod matching;
-mod probe_patterns;
+pub(crate) mod probe_patterns;
 pub mod shadow;
 mod source_binding;
 pub(crate) use capture::{

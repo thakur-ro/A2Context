@@ -151,7 +151,7 @@ function inspectionLink(reference = state.reference) {
         const { kind, report, source } = state.probeLink;
         params.set(kind, report);
         params.set(kind + "_source", source);
-      }
+      } else if (state.preflightSource) params.set("preflight_source", state.preflightSource);
       if (reference) {
         params.set("view", "decisions");
         writeReference(params, reference, state);
@@ -302,6 +302,10 @@ function restoreInspectionLink() {
       if (probe) {
         if (!focusProbeSource(probe, params.get(probe), params.get(probe + "_source"))) {
           unavailableLink("The linked probe source is unavailable on this call.");
+        }
+      } else if (params.has("preflight_source")) {
+        if (!focusPreflightSource(params.get("preflight_source"))) {
+          unavailableLink("The linked preflight conflict is unavailable on this call.");
         }
       } else currentConversationRow()?.button.focus();
       return true;

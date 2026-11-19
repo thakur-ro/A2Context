@@ -15,9 +15,9 @@ function queueSourceProfileSearch() {
   }, 160);
 }
 
-function setupSourceProfileDates() {
-  for (const date of [...sourceDates, ...sourceComparisonDates]) {
-    sourceProfileField(date).addEventListener("change", () => {
+function setupSourceProfileFilters() {
+  for (const field of ["evidence", ...sourceDates, ...sourceComparisonDates]) {
+    sourceProfileField(field).addEventListener("change", () => {
       linkNotice();
       renderPatterns();
     });
@@ -26,6 +26,8 @@ function setupSourceProfileDates() {
 
 function writeSourceProfileLink(params) {
   if (sourceProfileId) params.set("source_id", sourceProfileId);
+  const evidence = sourceProfileField("evidence").value;
+  if (evidence !== "all") params.set("evidence_filter", evidence);
   const fields = patternComparison.scope ? [...sourceDates, ...sourceComparisonDates] : sourceDates;
   for (const field of fields) {
     const value = sourceProfileField(field).value;
@@ -35,7 +37,11 @@ function writeSourceProfileLink(params) {
 
 function restoreSourceProfileLink(params) {
   sourceProfileId = params.get("source_id") ?? "";
-  let valid = true;
+  const filter = params.get("evidence_filter") ?? "all";
+  const evidence = sourceProfileField("evidence");
+  evidence.value = filter;
+  let valid = evidence.value === filter;
+  if (!valid) evidence.value = "all";
   let open = false;
   for (const field of [...sourceDates, ...sourceComparisonDates]) {
     const input = sourceProfileField(field);
@@ -77,7 +83,7 @@ function renderSourceProfiles(list, scope, scopes, query) {
 
   const captions = second ? [patternScopeCaption(scope, element("pattern-thread")),
     patternScopeCaption(second.scope, element("pattern-compare-thread"))] : [];
-  const spec = { version: 1, ...primary, search: query, limit: 20 };
+  const spec = { version: 1, ...primary, search: query, evidence_filter: sourceProfileField("evidence").value, limit: 20 };
   if (compare) spec.compare = compare;
   const results = node("div");
   list.append(results);
@@ -143,8 +149,17 @@ function appendSourceProfileSummary(container, profile) {
   if (profile.conversation_count) counts.push(countLabel(profile.conversation_count, "known thread"));
   counts.push(countLabel(profile.linked_decision_count, "linked decision"));
   container.append(node("p", counts.join(" · "), "count"));
-  container.append(node("p", countLabel(profile.occurrence_count, "recorded occurrence") + " · "
-    + profile.replayed_occurrences + " with a measured replay · " + profile.masked_occurrences + " with a source mask", "muted"));
+  const coverage = [countLabel(profile.occurrence_count, "recorded occurrence"), profile.measured_occurrences + " measured"];
+  if (profile.conflicted_occurrences) coverage.push(profile.conflicted_occurrences + " with a rule conflict");
+  container.append(node("p", coverage.join(" · "), "muted"));
+  const evidenceTypes = [
+    [profile.replayed_occurrences, "with a measured replay"],
+    [profile.masked_occurrences, "with a source mask"],
+    [profile.candidate_probed_occurrences, "with candidate scores"],
+    [profile.shadow_probed_occurrences, "with a shadow comparison"],
+    [profile.shadow_unavailable_occurrences, "with an unavailable shadow comparison"],
+  ].filter(([amount]) => amount > 0).map(([amount, label]) => amount + " " + label);
+  if (evidenceTypes.length) container.append(node("p", evidenceTypes.join(" · "), "muted"));
 
   const versions = node("ul", undefined, "source-version-list");
   for (const version of profile.versions) {
@@ -165,7 +180,7 @@ function renderSourceOccurrences(container, occurrences) {
   const scroll = node("div", undefined, "effects-scroll");
   const table = node("table", undefined, "effects-table");
   const heading = table.createTHead().insertRow();
-  for (const label of ["Thread and call", "Version", "Availability", "Decision evidence"]) {
+  for (const label of ["Thread and call", "Version", "Availability", "Evidence"]) {
     const header = node("th", label);
     header.scope = "col";
     heading.append(header);
@@ -188,6 +203,19 @@ function renderSourceOccurrences(container, occurrences) {
     row.insertCell().textContent = labels[item.availability];
     const evidence = row.insertCell();
     evidence.textContent = countLabel(item.linked_decision_ids.length, "linked decision");
+    for (const [label, conflict] of [["Preflight conflict", item.preflight_conflict_example], ["Decision conflict", item.decision_conflict_example]]) {
+      if (!conflict) continue;
+      const opposing = conflict.opposing_source_id || conflict.opposing_context_id;
+      evidence.append(sourceProfileEvidenceLink(conflict.inspector_path, label + " · " + conflict.key + " · " + opposing));
+    }
+    if (item.candidate_example) {
+      const { inspector_path, change_log_odds } = item.candidate_example;
+      evidence.append(sourceProfileEvidenceLink(inspector_path, "Candidate probe · " + activationMargin.format(change_log_odds) + " log odds"));
+    }
+    if (item.shadow_example) {
+      const { inspector_path, difference_pp } = item.shadow_example;
+      evidence.append(sourceProfileEvidenceLink(inspector_path, "Shadow probe · " + shadowContrast(difference_pp)));
+    }
     if (item.replay_example) {
       evidence.append(sourceProfileEvidenceLink(item.replay_example.inspector_path, "Open replay · " + effectText(item.replay_example.difference_pp)));
     }

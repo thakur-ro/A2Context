@@ -1,16 +1,14 @@
 //! Page through named sources and their captured occurrences.
 
+mod evidence;
+
+use self::evidence::{encode, Filter, Input, InputEvidence};
 use super::{group, SourceOccurrence, SourceProfile};
 use crate::{
-    activation::{
-        self,
-        patterns::query::Thread,
-        visibility::query::{measured_masks, SourceMask},
-    },
+    activation::{self, patterns::query::Thread},
     conflict_query::{timestamp, Scope, TimeWindow},
     context_links, replay, Availability, Run,
 };
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
@@ -31,6 +29,8 @@ pub struct Request {
     source_id: Option<String>,
     source_version: Option<String>,
     search: Option<String>,
+    #[serde(default)]
+    evidence_filter: Filter,
     compare: Option<Selection>,
     #[serde(default)]
     offset: usize,
@@ -54,20 +54,11 @@ fn default_limit() -> usize {
     20
 }
 
-type Input<'a> = (&'a str, &'a str, &'a str);
 type Profiles<'p, 'a> = BTreeMap<&'a str, Vec<&'p SourceOccurrence<'a>>>;
 
 struct Cohort<'a> {
     runs: BTreeSet<&'a str>,
     window: TimeWindow,
-}
-
-#[derive(Default)]
-struct Measurements<'a> {
-    replay_count: usize,
-    mask_count: usize,
-    replay: Option<(&'a replay::Replay, &'a replay::Variant)>,
-    mask: Option<SourceMask<'a>>,
 }
 
 #[derive(Serialize)]
@@ -82,9 +73,22 @@ struct Counts<'a> {
     version_count: usize,
     unversioned_occurrences: usize,
     included_occurrences: usize,
+    #[serde(flatten)]
+    evidence: EvidenceCoverage,
+    versions: Vec<VersionCounts<'a>>,
+}
+
+#[derive(Default, Serialize)]
+struct EvidenceCoverage {
     replayed_occurrences: usize,
     masked_occurrences: usize,
-    versions: Vec<VersionCounts<'a>>,
+    candidate_probed_occurrences: usize,
+    shadow_probed_occurrences: usize,
+    shadow_unavailable_occurrences: usize,
+    measured_occurrences: usize,
+    conflicted_occurrences: usize,
+    preflight_conflicted_occurrences: usize,
+    decision_conflicted_occurrences: usize,
 }
 
 #[derive(Serialize)]
@@ -133,7 +137,7 @@ pub fn query<'a>(
         .iter()
         .flat_map(|run| context_links::link_run(run))
         .collect();
-    let profiles = group(runs.into_iter(), &links);
+    let profiles = group(runs.iter().copied(), &links);
     let search = request
         .search
         .as_deref()
@@ -162,36 +166,42 @@ pub fn query<'a>(
         .flatten()
         .map(|row| input_key(row))
         .collect();
-    let measurements = index_measurements(&eligible, replays, reports);
+    let evidence = evidence::index(&eligible, &runs, replays, reports);
+    if !matches!(request.evidence_filter, Filter::All) {
+        for cohort in std::iter::once(&mut left).chain(right.iter_mut()) {
+            cohort.retain(|_, rows| {
+                rows.retain(|row| {
+                    request
+                        .evidence_filter
+                        .includes(evidence.get(&input_key(row)))
+                });
+                !rows.is_empty()
+            });
+        }
+    }
     if let Some(id) = request.source_id.as_deref() {
         let left = left
             .get(id)
-            .map(|rows| occurrences(id, rows, request.offset, request.limit, &measurements));
+            .map(|rows| occurrences(id, rows, request.offset, request.limit, &evidence));
         if let Some(right) = right {
             let right = right.get(id).map(|rows| {
-                occurrences(
-                    id,
-                    rows,
-                    request.compare_offset,
-                    request.limit,
-                    &measurements,
-                )
+                occurrences(id, rows, request.compare_offset, request.limit, &evidence)
             });
             return Ok(json!({
                 "version": 1, "kind": "context_source_occurrence_comparison", "source_id": id,
                 "scope_a": left, "scope_b": right,
             }));
         }
-        return Ok(left.unwrap_or_else(|| {
-            occurrences(id, &[], request.offset, request.limit, &measurements)
-        }));
+        return Ok(
+            left.unwrap_or_else(|| occurrences(id, &[], request.offset, request.limit, &evidence))
+        );
     }
     if let Some(right) = right {
-        return Ok(compare_profiles(request, left, right, &measurements));
+        return Ok(compare_profiles(request, left, right, &evidence));
     }
     let mut counts: Vec<_> = left
         .iter()
-        .map(|(id, rows)| summarize(id, rows, &measurements))
+        .map(|(id, rows)| summarize(id, rows, &evidence))
         .collect();
     counts.sort_by_key(|row| (Reverse(row.call_count), row.source_id));
     let rows: Vec<_> = counts
@@ -261,12 +271,12 @@ fn compare_profiles(
     request: &Request,
     left: Profiles<'_, '_>,
     right: Profiles<'_, '_>,
-    measurements: &BTreeMap<Input<'_>, Measurements<'_>>,
+    evidence: &BTreeMap<Input<'_>, InputEvidence<'_>>,
 ) -> Value {
     let mut aligned = BTreeMap::<_, [Option<Counts<'_>>; 2]>::new();
     for (side, cohort) in [left, right].into_iter().enumerate() {
         for (id, rows) in cohort {
-            aligned.entry(id).or_default()[side] = Some(summarize(id, &rows, measurements));
+            aligned.entry(id).or_default()[side] = Some(summarize(id, &rows, evidence));
         }
     }
     let mut counts: Vec<_> = aligned.into_iter().collect();
@@ -303,42 +313,10 @@ fn started_at(row: &SourceOccurrence<'_>) -> Option<OffsetDateTime> {
     row.started_at.and_then(|value| timestamp(value).ok())
 }
 
-fn index_measurements<'a>(
-    eligible: &BTreeSet<Input<'_>>,
-    replays: &'a [replay::Replay],
-    reports: &'a [activation::Report],
-) -> BTreeMap<Input<'a>, Measurements<'a>> {
-    let mut index = BTreeMap::<_, Measurements<'_>>::new();
-    for report in replays {
-        for variant in &report.variants {
-            let key = (
-                report.location.run_id.as_str(),
-                report.location.call_id.as_str(),
-                variant.intervention.context_id.as_str(),
-            );
-            if variant.difference_pp.is_some() && eligible.contains(&key) {
-                let entry = index.entry(key).or_default();
-                entry.replay_count += 1;
-                entry.replay.get_or_insert((report, variant));
-            }
-        }
-    }
-    for mask in measured_masks(reports) {
-        let (location, id) = mask.input();
-        let key = (location.run_id.as_str(), location.call_id.as_str(), id);
-        if eligible.contains(&key) {
-            let entry = index.entry(key).or_default();
-            entry.mask_count += 1;
-            entry.mask.get_or_insert(mask);
-        }
-    }
-    index
-}
-
 fn summarize<'a>(
     source_id: &'a str,
     occurrences: &[&SourceOccurrence<'a>],
-    measurements: &BTreeMap<Input<'_>, Measurements<'_>>,
+    evidence: &BTreeMap<Input<'_>, InputEvidence<'_>>,
 ) -> Counts<'a> {
     let mut calls = BTreeSet::new();
     let mut threads = BTreeSet::new();
@@ -346,7 +324,8 @@ fn summarize<'a>(
     let mut organizations = BTreeSet::new();
     let mut decisions = BTreeSet::new();
     let mut versions = BTreeMap::<_, (usize, usize, BTreeSet<&str>)>::new();
-    let (mut unversioned, mut included, mut replays, mut masks) = (0, 0, 0, 0);
+    let (mut unversioned, mut included) = (0, 0);
+    let mut coverage = EvidenceCoverage::default();
     for row in occurrences {
         calls.insert((row.run_id, row.call_id));
         if let Some(thread) = row.conversation_id {
@@ -372,9 +351,16 @@ fn summarize<'a>(
         if let Some(form) = row.text_sha256.as_deref() {
             forms.insert(form);
         }
-        if let Some(entry) = measurements.get(&input_key(row)) {
-            replays += usize::from(entry.replay_count > 0);
-            masks += usize::from(entry.mask_count > 0);
+        if let Some(entry) = evidence.get(&input_key(row)) {
+            coverage.replayed_occurrences += usize::from(entry.replay_count > 0);
+            coverage.masked_occurrences += usize::from(entry.mask_count > 0);
+            coverage.candidate_probed_occurrences += usize::from(entry.candidate_count > 0);
+            coverage.shadow_probed_occurrences += usize::from(entry.shadow_count > 0);
+            coverage.shadow_unavailable_occurrences += usize::from(entry.shadow_unavailable > 0);
+            coverage.measured_occurrences += usize::from(entry.measured());
+            coverage.conflicted_occurrences += usize::from(entry.conflicted());
+            coverage.preflight_conflicted_occurrences += usize::from(entry.preflight_conflict());
+            coverage.decision_conflicted_occurrences += usize::from(entry.decision_conflicts > 0);
         }
     }
     Counts {
@@ -388,8 +374,7 @@ fn summarize<'a>(
         version_count: versions.keys().flatten().count(),
         unversioned_occurrences: unversioned,
         included_occurrences: included,
-        replayed_occurrences: replays,
-        masked_occurrences: masks,
+        evidence: coverage,
         versions: versions
             .into_iter()
             .map(
@@ -411,9 +396,9 @@ fn occurrences(
     rows: &[&SourceOccurrence<'_>],
     offset: usize,
     limit: usize,
-    measurements: &BTreeMap<Input<'_>, Measurements<'_>>,
+    evidence: &BTreeMap<Input<'_>, InputEvidence<'_>>,
 ) -> Value {
-    let totals = (!rows.is_empty()).then(|| summarize(id, rows, measurements));
+    let totals = (!rows.is_empty()).then(|| summarize(id, rows, evidence));
     let mut items = rows.to_vec();
     items.sort_by_cached_key(|row| {
         let time = started_at(row);
@@ -429,7 +414,7 @@ fn occurrences(
         .iter()
         .skip(offset)
         .take(limit)
-        .map(|row| detail(row, measurements.get(&input_key(row))))
+        .map(|row| detail(row, evidence.get(&input_key(row))))
         .collect();
     json!({
         "version": 1, "kind": "context_source_occurrences", "source": totals,
@@ -438,7 +423,7 @@ fn occurrences(
     })
 }
 
-fn detail(row: &SourceOccurrence<'_>, measurements: Option<&Measurements<'_>>) -> Value {
+fn detail(row: &SourceOccurrence<'_>, evidence: Option<&InputEvidence<'_>>) -> Value {
     let mut value = json!(row);
     let context = encode(row.context_id);
     let path = activation::decision_view_path(
@@ -447,24 +432,10 @@ fn detail(row: &SourceOccurrence<'_>, measurements: Option<&Measurements<'_>>) -
         row.linked_decision_ids.first().copied(),
     );
     value["inspector_path"] = json!(format!("{path}&context={context}"));
-    value["replay_measurement_count"] = json!(measurements.map_or(0, |entry| entry.replay_count));
-    value["mask_measurement_count"] = json!(measurements.map_or(0, |entry| entry.mask_count));
-    if let Some((report, variant)) = measurements.and_then(|entry| entry.replay) {
-        let path = activation::decision_path(&report.location);
-        let replay = encode(&report.id);
-        value["replay_example"] = json!({
-            "replay_id": report.id, "location": report.location, "difference_pp": variant.difference_pp,
-            "inspector_path": format!("{path}&replay={replay}&variant={context}"),
-        });
-    }
-    if let Some(mask) = measurements.and_then(|entry| entry.mask.as_ref()) {
-        value["mask_example"] = mask.reference();
-    }
+    evidence
+        .unwrap_or(&InputEvidence::default())
+        .describe(input_key(row), &mut value);
     value
-}
-
-fn encode(value: &str) -> impl std::fmt::Display + '_ {
-    utf8_percent_encode(value, NON_ALPHANUMERIC)
 }
 
 fn next_offset(offset: usize, shown: usize, total: usize) -> Option<usize> {
