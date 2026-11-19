@@ -119,6 +119,15 @@ export function renderVisibility(parent, page, requestPage, pageControls) {
   };
   if (!args.timeline?.period) coverage(parent, data);
   if (data.groups) {
+    if (navigation) {
+      const label = element("label", "Order by ", "visibility-controls");
+      const select = element("select");
+      select.append(new Option("Most conversations", "recurrence"), new Option("Largest measured effect", "magnitude"));
+      select.value = data.order ?? "recurrence";
+      select.onchange = () => query({ order: select.value }, page.title, back);
+      label.append(select);
+      parent.append(label);
+    }
     for (const group of data.groups) {
       const row = element("section", undefined, "row");
       const title = groupTitle(group);

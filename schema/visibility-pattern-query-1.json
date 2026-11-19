@@ -69,6 +69,7 @@
       }
     },
     "min_conversations": { "type": ["integer", "null"], "minimum": 0, "description": "Require at least this many identified conversations in either requested scope." },
+    "order": { "enum": ["recurrence", "magnitude"], "default": "recurrence", "description": "Sort groups by distinct conversation count or largest absolute measured effect. Compare scopes using the larger value for each measure." },
     "group": { "type": ["string", "null"], "description": "Copy a key from a groups page to read its contributing turns." },
     "timeline": {
       "type": "object",

@@ -9,7 +9,7 @@ const visibilityComparisonDateFields = ["after_b", "before_b"];
 const visibilityField = (part) => element("visibility-pattern-" + part);
 
 function setupVisibilityPatterns() {
-  for (const field of ["kind", "token", "target", "source", "repeat", ...visibilityPatternDateFields, ...visibilityComparisonDateFields]) {
+  for (const field of ["kind", "token", "target", "source", "order", "repeat", ...visibilityPatternDateFields, ...visibilityComparisonDateFields]) {
     visibilityField(field).addEventListener("change", () => {
       visibilityPatternGroup = null;
       linkNotice();
@@ -31,6 +31,7 @@ function openVisibilityPatterns(report, token, kind, target = "") {
   visibilityField("target").replaceChildren(new Option(target, target, true, true));
   visibilityField("token").value = String(token + 1);
   visibilityField("source").value = "";
+  visibilityField("order").value = "recurrence";
   visibilityField("repeat").checked = false;
   for (const date of [...visibilityPatternDateFields, ...visibilityComparisonDateFields]) visibilityField(date).value = "";
   linkNotice();
@@ -43,6 +44,7 @@ function writeVisibilityPatternLink(params) {
   for (const field of ["kind", alignment, "source", ...visibilityPatternDateFields]) {
     if (visibilityField(field).value) params.set(field, visibilityField(field).value);
   }
+  if (visibilityField("order").value === "magnitude") params.set("order", "magnitude");
   if (patternComparison.scope) {
     for (const field of visibilityComparisonDateFields) {
       if (visibilityField(field).value) params.set(field, visibilityField(field).value);
@@ -62,6 +64,7 @@ function restoreVisibilityPatternLink(params) {
   visibilityPatternUnit = visibilityPatternGroup && visibilityTimeUnits.has(unit) ? unit : "";
   visibilityPatternPeriod = visibilityPatternUnit ? (params.get("period") ?? "") : "";
   visibilityField("kind").value = params.get("kind") === "pair" ? "pair" : "source";
+  visibilityField("order").value = params.get("order") === "magnitude" ? "magnitude" : "recurrence";
   visibilityField("token").value = params.get("token") ?? "1";
   const target = params.get("target") ?? "";
   visibilityField("target").replaceChildren(new Option(target, target, true, true));
@@ -142,7 +145,7 @@ function renderVisibilityPatterns(list, scope, scopes) {
     return;
   }
   const selection = target ? { target } : { output_token: tokenInput.valueAsNumber - 1 };
-  const spec = { version: 1, kind, ...selection, ...primary, limit: 20 };
+  const spec = { version: 1, kind, ...selection, ...primary, order: visibilityField("order").value, limit: 20 };
   if (compare) spec.compare = compare;
   if (selected) spec.source_id = selected;
   if (visibilityField("repeat").checked) spec.min_conversations = 2;

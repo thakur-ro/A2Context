@@ -720,6 +720,20 @@ fn tool_proposal_visibility_links_measured_arguments_to_named_patterns() {
     assert!((interaction - 3.412300).abs() < 1e-6);
 
     let name = "query_visibility_patterns";
+    let routing_groups = client.call(
+        name,
+        json!({"version":1, "target":"routing.tool", "limit":2}),
+    );
+    let routing_groups = &routing_groups["structuredContent"]["groups"];
+    assert_eq!(
+        routing_groups[0]["comparison"]["sources"][0]["source_id"],
+        "stock"
+    );
+    assert_eq!(
+        routing_groups[1]["comparison"]["sources"][0]["source_id"],
+        "request-type"
+    );
+
     let mut request = json!({
         "version":1, "kind":"source", "target":"routing.product_id", "source_id":"product-id"
     });

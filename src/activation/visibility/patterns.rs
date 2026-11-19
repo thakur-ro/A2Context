@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
-    cmp::Reverse,
+    cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
 };
 use time::OffsetDateTime;
@@ -33,6 +33,8 @@ pub struct Request {
     before: Option<String>,
     compare: Option<Selection>,
     min_conversations: Option<usize>,
+    #[serde(default)]
+    order: GroupOrder,
     group: Option<String>,
     timeline: Option<timeline::Selection>,
     #[serde(default)]
@@ -63,6 +65,29 @@ enum Mask {
     #[default]
     Source,
     Pair,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum GroupOrder {
+    #[default]
+    Recurrence,
+    Magnitude,
+}
+
+impl GroupOrder {
+    fn compare(
+        self,
+        (left_count, left_effect): (usize, f64),
+        (right_count, right_effect): (usize, f64),
+    ) -> Ordering {
+        let recurrence = right_count.cmp(&left_count);
+        let magnitude = right_effect.total_cmp(&left_effect);
+        match self {
+            Self::Recurrence => recurrence.then(magnitude),
+            Self::Magnitude => magnitude.then(recurrence),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -112,6 +137,7 @@ type ThreadKey<'a> = (&'a str, Option<&'a str>, Option<&'a str>, &'a str);
 struct Group<'a> {
     occurrences: Vec<Occurrence<'a>>,
     conversations: BTreeSet<ThreadKey<'a>>,
+    maximum_absolute_effect: f64,
 }
 
 type Groups<'a> = BTreeMap<Comparison<'a>, Group<'a>>;
@@ -132,7 +158,12 @@ impl<'a> Group<'a> {
                 thread,
             ));
         }
+        self.maximum_absolute_effect = self.maximum_absolute_effect.max(occurrence.effect.abs());
         self.occurrences.push(occurrence);
+    }
+
+    fn rank(&self) -> (usize, f64) {
+        (self.conversations.len(), self.maximum_absolute_effect)
     }
 }
 
@@ -393,7 +424,7 @@ fn single_cohort(request: &Request, cohort: Cohort<'_>, metric: &str) -> Result<
         }
         return Err("The visibility pattern is unavailable in this scope.".into());
     }
-    groups.sort_by_key(|(_, group)| Reverse(group.conversations.len()));
+    groups.sort_by(|(_, a), (_, b)| request.order.compare(a.rank(), b.rank()));
     let total = groups.len();
     let rows: Vec<_> = groups
         .iter()
@@ -402,7 +433,7 @@ fn single_cohort(request: &Request, cohort: Cohort<'_>, metric: &str) -> Result<
         .map(|(comparison, group)| Ok(summary(comparison, group, &group_key(comparison)?)))
         .collect::<Result<_, String>>()?;
     Ok(json!({
-        "kind": "visibility_pattern_groups", "metric": metric, "coverage": coverage,
+        "kind": "visibility_pattern_groups", "metric": metric, "coverage": coverage, "order": request.order,
         "total_groups": total, "groups": rows, "next_offset": next_offset(request.offset, rows.len(), total),
     }))
 }
@@ -419,17 +450,17 @@ fn compare_cohorts(
             combined.entry(key).or_default()[index] = Some(group);
         }
     }
-    let size = |sides: &[Option<Group<'_>>; 2]| {
-        sides
-            .iter()
-            .flatten()
-            .map(|group| group.conversations.len())
-            .max()
-            .unwrap_or_default()
+    let rank = |sides: &[Option<Group<'_>>; 2]| {
+        sides.iter().flatten().map(Group::rank).fold(
+            (0, 0.0_f64),
+            |(count, effect), (side_count, side_effect)| {
+                (count.max(side_count), effect.max(side_effect))
+            },
+        )
     };
     let mut groups: Vec<_> = combined
         .into_iter()
-        .filter(|(_, sides)| size(sides) >= request.min_conversations.unwrap_or_default())
+        .filter(|(_, sides)| rank(sides).0 >= request.min_conversations.unwrap_or_default())
         .collect();
     if let Some(key) = &request.group {
         for (comparison, sides) in groups {
@@ -447,7 +478,7 @@ fn compare_cohorts(
         }
         return Err("The visibility pattern is unavailable in either comparison scope.".into());
     }
-    groups.sort_by_key(|(_, sides)| Reverse(size(sides)));
+    groups.sort_by(|(_, a), (_, b)| request.order.compare(rank(a), rank(b)));
     let total = groups.len();
     let rows: Vec<_> = groups
         .iter()
@@ -463,7 +494,7 @@ fn compare_cohorts(
         })
         .collect::<Result<_, String>>()?;
     Ok(json!({
-        "kind": "visibility_pattern_comparison", "metric": metric,
+        "kind": "visibility_pattern_comparison", "metric": metric, "order": request.order,
         "coverage_a": a.coverage, "coverage_b": b.coverage,
         "total_groups": total, "groups": rows, "next_offset": next_offset(request.offset, rows.len(), total),
     }))

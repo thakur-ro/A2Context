@@ -180,6 +180,74 @@ fn visibility_patterns_keep_changed_prefixes_and_source_versions_separate() {
 }
 
 #[test]
+fn visibility_pattern_order_keeps_scope_filters_and_stable_group_links() {
+    use nexusweave::activation::visibility::patterns;
+    use serde_json::json;
+    let mut runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-cohort/evidence.json"
+    ))
+    .unwrap();
+    let reports: Vec<Report> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-cohort/reports.json"
+    ))
+    .unwrap();
+    for run in &mut runs {
+        if run.organization_id.as_deref() == Some("retail-north") {
+            for item in &mut run.calls[0].context {
+                if item.source_id.as_deref() == Some("returns-policy") {
+                    item.source_id = None;
+                }
+            }
+        }
+    }
+    let ask = |args| patterns::query(&serde_json::from_value(args).unwrap(), &runs, &reports);
+    let mut args = json!({"version":1,"output_token":13,"limit":1});
+    let recurring = ask(args.clone()).unwrap();
+    assert_eq!(recurring["order"], "recurrence");
+    assert_eq!(recurring["groups"][0]["conversation_count"], 4);
+    assert_eq!(
+        recurring["groups"][0]["comparison"]["sources"][0]["source_id"],
+        "format-instruction"
+    );
+
+    args["order"] = "magnitude".into();
+    let magnitude = ask(args.clone()).unwrap();
+    assert_eq!(magnitude["order"], "magnitude");
+    let strongest = &magnitude["groups"][0];
+    assert_eq!(
+        strongest["comparison"]["sources"][0]["source_id"],
+        "returns-policy"
+    );
+    assert_eq!(strongest["conversation_count"], 1);
+    args["offset"] = magnitude["next_offset"].clone();
+    assert_eq!(
+        ask(args.clone()).unwrap()["groups"][0]["key"],
+        recurring["groups"][0]["key"]
+    );
+
+    args["offset"] = 0.into();
+    args["scope"] = json!({"kind":"organization","organization_id":"retail-north"});
+    args["compare"] = json!({"scope":{"kind":"organization","organization_id":"retail-south"}});
+    let comparison = ask(args.clone()).unwrap();
+    let first = &comparison["groups"][0];
+    assert_eq!(first["key"], strongest["key"]);
+    assert!(first["scope_a"].is_null());
+    assert_eq!(first["scope_b"]["conversation_count"], 1);
+    args["min_conversations"] = 2.into();
+    assert_eq!(
+        ask(args.clone()).unwrap()["groups"][0]["key"],
+        recurring["groups"][0]["key"]
+    );
+    args["min_conversations"] = Value::Null;
+    args["group"] = strongest["key"].clone();
+    args["order"] = "recurrence".into();
+    assert_eq!(
+        ask(args).unwrap()["scope_b"]["occurrences"][0]["conversation_id"],
+        "south-1"
+    );
+}
+
+#[test]
 fn visibility_timeline_aligns_utc_days_and_keeps_undated_evidence() {
     use nexusweave::activation::visibility::patterns;
     use serde_json::json;
