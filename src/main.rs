@@ -23,6 +23,7 @@ const USAGE: &str = "Usage:
   nexusweave rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>
   nexusweave validate <evidence.json> [...]
   nexusweave preflight <request.json|->
+  nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
   nexusweave query-conflicts <view.json> <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
@@ -124,6 +125,22 @@ fn run(args: Vec<String>) -> Result<()> {
             serde_json::to_writer_pretty(std::io::stdout().lock(), &report)?;
             println!();
         }
+        ["probe-candidates", request, specification, output, "--", program, scorer_args @ ..] => {
+            if Path::new(output).exists() {
+                return Err(format!("candidate probe output already exists: {output}").into());
+            }
+            let request = serde_json::from_reader(fs::File::open(request)?)?;
+            let case = serde_json::from_reader(fs::File::open(specification)?)?;
+            let report = replay::candidates::execute(request, &case, |input| {
+                run_json(program, scorer_args, input, Stdio::inherit())
+                    .map_err(|error| error.to_string())
+            })?;
+            write_new(output, &serde_json::to_vec_pretty(&report)?)?;
+            println!(
+                "Measured {} source edits to {output}.",
+                report.effects.len()
+            );
+        }
         ["query-conflicts", spec, paths @ ..] if !paths.is_empty() => {
             let runs = read_runs(paths)?;
             validate_loaded_runs(&runs)?;
@@ -148,21 +165,34 @@ fn run(args: Vec<String>) -> Result<()> {
 }
 
 fn sample(program: &str, arguments: &[&str], request: &Value) -> Option<replay::Choice> {
+    run_json(program, arguments, request, Stdio::null()).ok()
+}
+
+fn run_json<T: DeserializeOwned>(
+    program: &str,
+    arguments: &[&str],
+    request: &impl Serialize,
+    stderr: Stdio,
+) -> Result<T> {
     use std::io::Write;
-    let input = serde_json::to_vec(request).ok()?;
+    let input = serde_json::to_vec(request)?;
     let mut child = Command::new(program)
         .args(arguments)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
-    let sent = child.stdin.take()?.write_all(&input);
-    let output = child.wait_with_output().ok()?;
-    if sent.is_err() || !output.status.success() {
-        return None;
+        .stderr(stderr)
+        .spawn()?;
+    let sent = child
+        .stdin
+        .take()
+        .expect("piped child stdin")
+        .write_all(&input);
+    let output = child.wait_with_output()?;
+    if !output.status.success() {
+        return Err(format!("{program} exited with {}", output.status).into());
     }
-    serde_json::from_slice(&output.stdout).ok()
+    sent?;
+    Ok(serde_json::from_slice(&output.stdout)?)
 }
 
 fn read_jsonl<T: DeserializeOwned>(path: &str) -> Result<Vec<T>> {

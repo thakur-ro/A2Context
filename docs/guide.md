@@ -48,6 +48,39 @@ cargo run --locked -- serve "$demo_dir/evidence.json"
 
 Open **Conversation** and select the turn evidence. Under **Preflight**, expand either source to see its original text and request range beside the 60-day answer. The chronological **Timeline** shows the same check on the inference call. If the captured inputs differ from the receipt or are unavailable, the inspector shows why the check could not be verified. The MCP `get_turn_evidence` tool returns the verification status and matching findings, with declared values available when captured excerpts are enabled and requested. [Open the local inspector](http://127.0.0.1:8040)
 
+## Measure candidate preference before a decision
+
+Use a candidate probe when you know the alternatives a workflow may choose, such as two tool names or two answer values. Supply the assembled request in the same input format as preflight, including its captured JSON body, and a probe case with the exact candidate continuations and source edits. Each edit has to match its captured text or JSON container. The probe uses one edit at a time. [Probe case schema](../schema/candidate-probe-1.json)
+
+The Qwen2 scorer runs forward passes at a fixed assistant prefix. It sums the natural log probabilities of each candidate's tokens, conditional on that prefix and the earlier candidate tokens. The margin is the first candidate's sum minus the second's. Positive values favor the first candidate. The effect is the edited margin minus the original margin. The scorer checks that the prefix and candidate token sequences are stable across conditions. It makes no free-form generation and executes no tools. The measurements depend on the chosen candidates, prefix, model, and request edits.
+
+Point the scorer at the same pinned local Qwen2.5 checkpoint used in the [source visibility example](#test-source-visibility-on-a-recorded-answer). The first case compares `30 days.` and `60 days.` after `The return window is`. The second holds the tool-call prefix fixed and compares the `stock` and `price` name continuations.
+
+```sh
+out_dir=$(mktemp -d)
+for scenario in pending-returns pending-routing; do
+  base="examples/runtime-comparison/$scenario"
+  cargo run --locked -- probe-candidates "$base/request.json" "$base/case.json" "$out_dir/$scenario.json" -- \
+    python3 scripts/score_qwen_candidates.py "$model_dir" \
+    --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2
+done
+```
+
+Read `baseline_log_odds` and each edit's `log_odds` and `change_log_odds`. The report also records the original request hash, source versions, JSON Pointers and byte ranges, the tokenizer hash, rendered-prefix hashes, and the actual token IDs. It includes the candidate text and configured replacements. [Saved returns report](../examples/runtime-comparison/pending-returns/report.json) · [Saved routing report](../examples/runtime-comparison/pending-routing/report.json)
+
+| Candidate pair | Original margin | Edit | Margin after the edit |
+| --- | ---: | --- | ---: |
+| 30 days over 60 days | +1.98 | Withhold the company policy's duration | −5.61 |
+| 30 days over 60 days | +1.98 | Rename the store | +2.04 |
+| `stock` over `price` | +8.27 | Change the requested operation to price | −8.96 |
+| `stock` over `price` | +8.27 | Rename the store | +8.18 |
+
+### Connect another scoring runtime
+
+The CLI sends one JSON `ScoringRequest` on stdin. It contains `version: 1`, `assistant_prefix`, the two `candidates`, and `conditions`. Each condition contains an `id` and a `request`. The original request comes first as `baseline`. NexusWeave verifies all source edits before calling the scorer.
+
+Return one JSON `ScoringResult` on stdout with `version: 1`, `model_id`, `model_revision`, `runtime`, `tokenizer_sha256`, `assistant_prefix_token_ids`, `candidate_token_ids`, and `conditions`. Keep the same token boundaries across the batch and return one row per condition in the original order. Each row contains its `id`, `rendered_prefix_sha256`, and the two finite `log_probs` in candidate order. The two candidate token sequences need to be nonempty and neither can be a prefix of the other. Use raw continuation probabilities from the same model and tokenizer across conditions. Rust integrations can call `nexusweave::replay::candidates::execute` with a scoring callback instead of a subprocess. [Rust scoring interface](../src/replay/candidates.rs)
+
 ## Try a decision replay
 
 ```sh

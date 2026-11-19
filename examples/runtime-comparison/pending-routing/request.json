@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "attributes": {
+    "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 42.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+    "nexusweave.context.semantics": {
+      "version": 1,
+      "request_sources": [
+        {
+          "id": "request-type",
+          "source_id": "request-type",
+          "source_version": "v1",
+          "request_fragment": {
+            "pointer": "/messages/1/content",
+            "text_range": {
+              "start_byte": 0,
+              "end_byte": 20
+            }
+          }
+        },
+        {
+          "id": "store-name",
+          "source_id": "store-name",
+          "source_version": "v1",
+          "request_fragment": {
+            "pointer": "/messages/3/content",
+            "text_range": {
+              "start_byte": 0,
+              "end_byte": 40
+            }
+          }
+        }
+      ]
+    }
+  }
+}

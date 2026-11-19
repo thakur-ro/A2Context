@@ -1,5 +1,6 @@
 //! Controlled request replays. A runner proposes a decision and returns it as JSON.
 
+pub mod candidates;
 mod capture;
 mod distribution;
 mod matching;

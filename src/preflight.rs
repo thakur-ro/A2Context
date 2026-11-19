@@ -120,6 +120,21 @@ pub struct Source {
 /// Rejects unsupported versions, output attributes, invalid declarations, and
 /// request fragments that do not match the captured body.
 pub fn check(request: Request) -> Result<Report, String> {
+    let (call, _, scope) = pending_call(request)?;
+    let mut report = compare(&call, scope.as_ref());
+    if let Some(fingerprint) = fingerprint(&call, scope.as_ref()) {
+        report.receipt = Some(Receipt {
+            version: VERSION,
+            scope,
+            fingerprint,
+        });
+    }
+    Ok(report)
+}
+
+pub(crate) fn pending_call(
+    request: Request,
+) -> Result<(Call, Option<Value>, Option<DecisionScope>), String> {
     let Request {
         version,
         scope,
@@ -170,15 +185,7 @@ pub fn check(request: Request) -> Result<Report, String> {
             }
         }
     }
-    let mut report = compare(&call, scope.as_ref());
-    if let Some(fingerprint) = fingerprint(&call, scope.as_ref()) {
-        report.receipt = Some(Receipt {
-            version,
-            scope,
-            fingerprint,
-        });
-    }
-    Ok(report)
+    Ok((call, body, scope))
 }
 
 pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<RecordedCheck<'a>> {

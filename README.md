@@ -12,6 +12,8 @@ cargo run --locked -- preflight examples/preflight-returns.json
 
 The report flags a conflict between a 30-day policy and a 60-day FAQ in the same request. Each source comes with a version and the exact range in the assembled prompt. The check uses declared rule values and makes no model call. [Run it from your workflow](docs/guide.md#check-context-before-inference)
 
+A candidate probe measures how a source edit shifts the model's preference between two fixed choices before the workflow commits to either. The saved local experiments cover a return window and a tool name. [Run a candidate probe](docs/guide.md#measure-candidate-preference-before-a-decision)
+
 ## Try the conversation inspector
 
 With a stable Rust toolchain, run this from the repository root.

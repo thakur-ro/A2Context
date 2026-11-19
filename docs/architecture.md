@@ -5,9 +5,11 @@ NexusWeave connects the sources assembled for an inference request to the eviden
 ```mermaid
 flowchart TD
     accTitle: Evidence from request to recurring patterns
-    accDescr: Preflight checks the assembled request. After the model call, the recorded trace supports turn evidence, controlled experiments, and patterns.
+    accDescr: Preflight checks the request and candidate probes score alternatives. After the model call, the trace supports turn evidence, controlled experiments, and patterns.
     A[Assembled request] --> M[Model call]
     A --> P[Preflight check]
+    A --> B[Score fixed candidates]
+    B --> S[Preference shifts by source edit]
     P --> F[Conflicting or duplicate rules]
     P -->|Attach receipt| T
     M --> T[Recorded trace]
@@ -22,6 +24,7 @@ flowchart TD
 | Step | How it works | What you can conclude |
 | --- | --- | --- |
 | **Preflight** | Resolve source declarations against the assembled input. Group their rule values by exact key and scope. Compare the known JSON values for equality. | Two declared rules disagree, agree, or have missing values. The findings describe the supplied request. |
+| **Candidate probe** | Use the pending request and exact source edits to score two known token sequences at the same fixed assistant prefix. Compare the edited and original log odds. | You can measure how an edit shifted the model's preference between those two candidates before committing a decision. |
 | **Trace inspection** | Normalize spans and messages into calls, context items, decisions, and tool results. Match a preflight receipt by hashing the captured request and scoped rule sources. Join tool calls to later results by invocation ID. Surface declared relationships and exact matches such as tool names or IDs. | You can inspect what was present and follow exact evidence. A source match gives you an input to investigate. |
 | **Controlled replay** | Sample the original request and variants with selected sources removed or replaced. Score each result against the same answer, tool, or argument criterion. Subtract the baseline match rate from the variant's match rate. | The difference measures how the selected edit affected the scored outcome under those replay conditions. |
 | **Runtime probe** | Use an instrumented local runtime to mask selected prompt sources or swap activations, then compare output token scores or continuations with a baseline. | The measurements describe effects at the tested positions for that model and intervention. |
