@@ -1,9 +1,10 @@
 //! Paginate activation evidence for an agent within the selected trace scope.
 
-use super::{group, Group, Occurrence};
+use super::{group, Comparison, Occurrence};
 use crate::{
     activation::Report,
     conflict_query::{timestamp, Scope, TimeWindow},
+    scoped_calls::next_offset,
     turn_evidence, Run,
 };
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
@@ -24,13 +25,26 @@ pub struct Request {
     checkpoint: Option<String>,
     after: Option<String>,
     before: Option<String>,
+    compare: Option<Selection>,
     group: Option<String>,
     #[serde(default)]
     include_excerpts: bool,
     #[serde(default)]
     offset: usize,
+    #[serde(default)]
+    compare_offset: usize,
     #[serde(default = "default_limit")]
     limit: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Selection {
+    #[serde(default)]
+    scope: Scope,
+    thread: Option<Thread>,
+    after: Option<String>,
+    before: Option<String>,
 }
 
 fn default_limit() -> usize {
@@ -70,19 +84,27 @@ pub fn query<'a>(
     if request.include_excerpts && !allow_excerpts {
         return Err("This MCP process has not enabled excerpts.".into());
     }
-    let window = TimeWindow::parse(request.after.as_deref(), request.before.as_deref())?;
-    let scoped: Vec<_> = runs
+    let primary = TimeWindow::parse(request.after.as_deref(), request.before.as_deref())?;
+    let comparison = request
+        .compare
+        .as_ref()
+        .map(|side| TimeWindow::parse(side.after.as_deref(), side.before.as_deref()))
+        .transpose()?;
+    let membership: BTreeMap<_, _> = runs
         .into_iter()
-        .filter(|run| {
-            request.scope.includes(run)
-                && request
-                    .thread
-                    .as_ref()
-                    .is_none_or(|thread| thread.includes(run))
+        .filter_map(|run| {
+            let a = includes(run, &request.scope, request.thread.as_ref());
+            let b = request
+                .compare
+                .as_ref()
+                .is_some_and(|side| includes(run, &side.scope, side.thread.as_ref()));
+            (a || b).then_some((run.id.as_str(), (run, a, b)))
         })
         .collect();
-    let mut groups: Vec<_> = group(&scoped, reports)
-        .into_iter()
+    let scoped: Vec<_> = membership.values().map(|(run, _, _)| *run).collect();
+    let grouped = group(&scoped, reports);
+    let groups: Vec<_> = grouped
+        .iter()
         .filter(|entry| {
             request.block < entry.comparison.layer_count
                 && request
@@ -94,82 +116,127 @@ pub fn query<'a>(
                     .as_deref()
                     .is_none_or(|label| entry.comparison.checkpoint.label == label)
         })
+        .filter_map(|entry| {
+            let mut sides = [Vec::new(), Vec::new()];
+            for item in &entry.occurrences {
+                let (_, a, b) = membership[item.location.run_id.as_str()];
+                let time = item.started_at.and_then(|value| timestamp(value).ok());
+                if a && primary.includes(time) {
+                    sides[0].push(item);
+                }
+                if b && comparison
+                    .as_ref()
+                    .is_some_and(|window| window.includes(time))
+                {
+                    sides[1].push(item);
+                }
+            }
+            sides
+                .iter()
+                .any(|side| !side.is_empty())
+                .then_some((&entry.comparison, sides))
+        })
         .collect();
-    if request.after.is_some() || request.before.is_some() {
-        groups.retain_mut(|group| {
-            group.occurrences.retain(|item| {
-                window.includes(item.started_at.and_then(|value| timestamp(value).ok()))
-            });
-            !group.occurrences.is_empty()
-        });
-    }
 
     if let Some(key) = &request.group {
-        let mut entry = None;
-        for candidate in &groups {
-            if group_key(candidate)? == *key {
-                entry = Some(candidate);
-                break;
+        for (identity, [mut a, mut b]) in groups {
+            if group_key(identity)? != *key {
+                continue;
             }
+            let group = group_summary(identity, key, request, [&a, &b]);
+            if comparison.is_some() {
+                return Ok(json!({
+                    "kind": "activation_evidence_comparison", "block": request.block,
+                    "captured_excerpts_enabled": allow_excerpts, "group": group,
+                    "scope_a": occurrence_page(&mut a, request.block, request.offset, request.limit),
+                    "scope_b": occurrence_page(&mut b, request.block, request.compare_offset, request.limit),
+                }));
+            }
+            let mut page = occurrence_page(&mut a, request.block, request.offset, request.limit);
+            page["kind"] = json!("activation_evidence");
+            page["block"] = json!(request.block);
+            page["captured_excerpts_enabled"] = json!(allow_excerpts);
+            page["group"] = group;
+            return Ok(page);
         }
-        let entry = entry.ok_or("The activation group is unavailable for this scope and block.")?;
-        let items = &entry.occurrences;
-        let rows: Vec<_> = items
-            .iter()
-            .skip(request.offset)
-            .take(request.limit)
-            .map(|item| evidence(item, request.block))
-            .collect();
-        return Ok(json!({
-            "kind": "activation_evidence",
-            "block": request.block,
-            "captured_excerpts_enabled": allow_excerpts,
-            "group": summarize(entry, key, request.block, request.include_excerpts),
-            "total_occurrences": items.len(),
-            "occurrences": rows,
-            "next_offset": next_offset(request, rows.len(), items.len()),
-        }));
+        return Err("The activation group is unavailable for this scope and block.".into());
     }
     let rows: Vec<_> = groups
         .iter()
         .skip(request.offset)
         .take(request.limit)
-        .map(|entry| {
-            Ok(summarize(
-                entry,
-                &group_key(entry)?,
-                request.block,
-                request.include_excerpts,
+        .map(|(identity, [a, b])| {
+            Ok(group_summary(
+                identity,
+                &group_key(identity)?,
+                request,
+                [a, b],
             ))
         })
         .collect::<Result<_, String>>()?;
     Ok(json!({
-        "kind": "activation_groups",
+        "kind": if comparison.is_some() { "activation_group_comparison" } else { "activation_groups" },
         "block": request.block,
         "captured_excerpts_enabled": allow_excerpts,
         "total_groups": groups.len(),
         "groups": rows,
-        "next_offset": next_offset(request, rows.len(), groups.len()),
+        "next_offset": next_offset(request.offset, request.limit, groups.len()),
     }))
 }
 
-fn next_offset(request: &Request, page_count: usize, total: usize) -> Option<usize> {
-    let next = request.offset.saturating_add(page_count);
-    (next < total).then_some(next)
+fn includes(run: &Run, scope: &Scope, thread: Option<&Thread>) -> bool {
+    scope.includes(run) && thread.is_none_or(|thread| thread.includes(run))
 }
 
-fn group_key(group: &Group<'_>) -> Result<String, String> {
-    let bytes = serde_json::to_vec(&group.comparison).map_err(|error| error.to_string())?;
+fn group_key(identity: &Comparison<'_>) -> Result<String, String> {
+    let bytes = serde_json::to_vec(identity).map_err(|error| error.to_string())?;
     Ok(format!("{:x}", Sha256::digest(bytes)))
 }
 
-fn summarize(group: &Group<'_>, key: &str, block: usize, include_excerpts: bool) -> Value {
-    let comparison = &group.comparison;
+fn group_summary(
+    comparison: &Comparison<'_>,
+    key: &str,
+    request: &Request,
+    [a, b]: [&[&Occurrence<'_>]; 2],
+) -> Value {
+    let mut result = json!({
+        "key": key, "model_id": comparison.model_id, "model_revision": comparison.model_revision,
+        "runtime": comparison.runtime, "layer_count": comparison.layer_count,
+        "decision_kind": comparison.decision_kind, "decision_label": comparison.decision_label,
+        "source_id": comparison.source_id, "source_version": comparison.source_version,
+        "checkpoint": comparison.checkpoint.label, "output_token": comparison.checkpoint.output_token,
+    });
+    if request.compare.is_some() {
+        result["scope_a"] = json!(summarize(a, request.block));
+        result["scope_b"] = json!(summarize(b, request.block));
+    } else if let Some(summary) = summarize(a, request.block) {
+        result
+            .as_object_mut()
+            .expect("group object")
+            .extend(summary);
+    }
+    if request.include_excerpts {
+        result["contrasts"] = json!({
+            "before": turn_evidence::excerpt(comparison.before),
+            "after": turn_evidence::excerpt(comparison.after),
+            "alternatives": comparison.checkpoint.alternatives.each_ref().map(|text| turn_evidence::excerpt(text)),
+        });
+    }
+    result
+}
+
+fn summarize(
+    occurrences: &[&Occurrence<'_>],
+    block: usize,
+) -> Option<serde_json::Map<String, Value>> {
+    if occurrences.is_empty() {
+        return None;
+    }
     let mut decisions = BTreeMap::new();
     let mut conversations = BTreeSet::new();
     let mut minimum = f64::INFINITY;
     let mut maximum = f64::NEG_INFINITY;
-    for item in &group.occurrences {
+    for item in occurrences {
         if let Some(conversation) = item.conversation_id {
             conversations.insert((
                 item.trace_source,
@@ -186,26 +253,51 @@ fn summarize(group: &Group<'_>, key: &str, block: usize, include_excerpts: bool)
         entry.0 &= change < 0.0;
         entry.1 &= item.baseline_margin > 0.0 && patched < 0.0;
     }
-    let mut result = json!({
-        "key": key, "model_id": comparison.model_id, "model_revision": comparison.model_revision,
-        "runtime": comparison.runtime, "layer_count": comparison.layer_count,
-        "decision_kind": comparison.decision_kind, "decision_label": comparison.decision_label,
-        "source_id": comparison.source_id, "source_version": comparison.source_version,
-        "checkpoint": comparison.checkpoint.label, "output_token": comparison.checkpoint.output_token,
-        "decision_count": decisions.len(), "measurement_count": group.occurrences.len(),
-        "conversation_count": conversations.len(),
-        "lower_score_count": decisions.values().filter(|(lower, _)| *lower).count(),
-        "flipped_count": decisions.values().filter(|(_, flipped)| *flipped).count(),
-        "change_log_odds": { "minimum": minimum, "maximum": maximum },
+    Some(
+        [
+            ("decision_count", json!(decisions.len())),
+            ("measurement_count", json!(occurrences.len())),
+            ("conversation_count", json!(conversations.len())),
+            (
+                "lower_score_count",
+                json!(decisions.values().filter(|(lower, _)| *lower).count()),
+            ),
+            (
+                "flipped_count",
+                json!(decisions.values().filter(|(_, flipped)| *flipped).count()),
+            ),
+            (
+                "change_log_odds",
+                json!({"minimum": minimum, "maximum": maximum}),
+            ),
+        ]
+        .into_iter()
+        .map(|(key, value)| (key.into(), value))
+        .collect(),
+    )
+}
+
+fn occurrence_page(
+    items: &mut [&Occurrence<'_>],
+    block: usize,
+    offset: usize,
+    limit: usize,
+) -> Value {
+    items.sort_by_cached_key(|item| {
+        let time = item.started_at.and_then(|value| timestamp(value).ok());
+        (
+            time.is_none(),
+            time,
+            item.location,
+            item.report_id,
+            item.context_id,
+        )
     });
-    if include_excerpts {
-        result["contrasts"] = json!({
-            "before": turn_evidence::excerpt(comparison.before),
-            "after": turn_evidence::excerpt(comparison.after),
-            "alternatives": comparison.checkpoint.alternatives.each_ref().map(|text| turn_evidence::excerpt(text)),
-        });
-    }
-    result
+    json!({
+        "total_occurrences": items.len(),
+        "occurrences": items.iter().skip(offset).take(limit).map(|item| evidence(item, block)).collect::<Vec<_>>(),
+        "next_offset": next_offset(offset, limit, items.len()),
+    })
 }
 
 fn evidence(item: &Occurrence<'_>, block: usize) -> Value {

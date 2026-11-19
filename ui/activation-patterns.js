@@ -36,8 +36,9 @@ function setupActivationDates() {
 }
 
 function writeActivationDateLink(params) {
-  const comparing = element("activation-compare-dates").checked;
-  if (comparing) params.set("compare_dates", "1");
+  const compareDates = element("activation-compare-dates").checked;
+  const comparing = compareDates || Boolean(patternComparison.scope);
+  if (compareDates) params.set("compare_dates", "1");
   for (const [key, id] of Object.entries(activationDateFields)) {
     const value = element(id).value;
     if (value && (comparing || !key.endsWith("_b"))) params.set(key, value);
@@ -45,8 +46,9 @@ function writeActivationDateLink(params) {
 }
 
 function restoreActivationDateLink(params) {
-  const comparing = params.get("compare_dates") === "1";
-  element("activation-compare-dates").checked = comparing;
+  const compareDates = params.get("compare_dates") === "1";
+  const comparing = compareDates || Boolean(params.get("scope_b"));
+  element("activation-compare-dates").checked = compareDates;
   let valid = true;
   let dated = false;
   for (const [key, id] of Object.entries(activationDateFields)) {
@@ -60,8 +62,9 @@ function restoreActivationDateLink(params) {
   return valid;
 }
 
-function readActivationPeriods() {
-  const comparing = element("activation-compare-dates").checked;
+function readActivationPeriods(secondScope) {
+  const comparing = secondScope || element("activation-compare-dates").checked;
+  element("activation-compare-dates-control").hidden = secondScope;
   element("activation-period-b").hidden = !comparing;
   const fields = Object.values(activationDateFields).map(element);
   const active = comparing ? fields : fields.slice(0, 2);
@@ -106,10 +109,13 @@ function summarizeActivationEffects(occurrences, block) {
   return { minimum, maximum, lower, flipped, decisions: decisions.size };
 }
 
-function activationGroupsByPeriod(groups, thread, periods, query) {
+function activationGroupsByPeriod(groups, selections, query) {
   return groups.flatMap((group) => {
-    const scoped = group.occurrences.filter((item) => !thread || thread === patternThreadKey(item, group));
-    const cohorts = periods.map((period) => scoped.filter((item) => inActivationPeriod(item, period)));
+    const cohorts = selections.map(({ scope, thread, period }) => group.occurrences.filter((item) =>
+      inPatternScope(item, scope.organization, scope.user)
+      && (!thread || thread === patternThreadKey(item, group))
+      && inActivationPeriod(item, period)
+    ));
     const sameSource = [group.source_id, group.before, group.after, group.model_id, group.runtime, group.checkpoint.label];
     const matching = cohorts.flat();
     const searchable = [...sameSource, ...matching.map((item) => item.context_id)].join(" ").toLowerCase();
@@ -117,12 +123,16 @@ function activationGroupsByPeriod(groups, thread, periods, query) {
   });
 }
 
-function renderActivationPatterns(list, organization, user, query) {
-  const scoped = scopedPatternGroups(data.activation_patterns || [], organization, user);
-  updatePatternThreadFilter(scoped);
-  const periods = readActivationPeriods();
+function renderActivationPatterns(list, scope, scopes, query) {
+  const patterns = data.activation_patterns || [];
+  updatePatternThreadFilter(scopedPatternGroups(patterns, scope.organization, scope.user));
+  const second = comparisonPatternFilter(scopes, patterns);
+  const periods = readActivationPeriods(Boolean(second));
   if (!periods) return;
-  const groups = activationGroupsByPeriod(scoped, state.patternThread, periods, query);
+  const selections = periods.map((period, index) => index && second
+    ? { ...second, period }
+    : { scope, thread: state.patternThread, period });
+  const groups = activationGroupsByPeriod(patterns, selections, query);
   if (!groups.length) {
     list.append(node("p", "No measured answer checkpoints match these filters.", "muted"));
     return;
@@ -143,13 +153,16 @@ function renderActivationPatterns(list, organization, user, query) {
   scroller.setAttribute("aria-label", "Recurring source effects at the selected block");
   const table = node("table", undefined, "activation-pattern-table");
   const header = table.createTHead().insertRow();
-  const labels = comparing ? ["Source edit", "Answer checkpoint", "Period A", "Period B"]
+  const labels = comparing ? ["Source edit", "Answer checkpoint", second ? "Scope A" : "Period A", second ? "Scope B" : "Period B"]
     : ["Source edit", "Answer checkpoint", "Change in log odds", "Lower score", "Flipped", "Evidence"];
+  const captions = second ? [patternScopeCaption(scope, element("pattern-thread")),
+    patternScopeCaption(second.scope, element("pattern-compare-thread"))] : [];
   for (const [index, label] of labels.entries()) {
     const cell = node("th", label);
     cell.scope = "col";
     if (comparing && index >= 2) {
       const period = index - 2;
+      if (captions[period]) cell.append(node("small", captions[period], "activation-date-range"));
       cell.append(node("small", periods[period].label, "activation-date-range"),
         node("small", activationCoverage(groups.flatMap(({ cohorts }) => cohorts[period])), "activation-date-range"));
     }
@@ -184,7 +197,9 @@ function renderActivationPatterns(list, organization, user, query) {
         continue;
       }
       for (const [index, selected] of cohorts.entries()) {
-        const period = comparing ? labels[index + 2] : "";
+        const period = !comparing ? "" : second
+          ? [labels[index + 2], captions[index], periods[index].label].join(" · ")
+          : labels[index + 2];
         appendActivationPeriod(row, evidence, group, selected, name, period);
       }
     }

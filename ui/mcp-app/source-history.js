@@ -1,4 +1,4 @@
-import { button, countLabel, element } from "./dom.js";
+import { button, countLabel, element, scopeColumns } from "./dom.js";
 
 const tool = "query_context_sources";
 const signed = new Intl.NumberFormat(undefined, { maximumFractionDigits: 5, signDisplay: "exceptZero" });
@@ -24,26 +24,6 @@ export function sourceHistoryTitle(data, args) {
 export function sourceHistoryBackLabel(kind) {
   if (kind.startsWith("context_source_occurrence")) return "Back to source history";
   if (kind.startsWith("context_source_profile")) return "Back to context sources";
-}
-
-function scopeCaption({ scope, thread, after, before } = {}) {
-  const identity = [scope?.organization_id ?? thread?.organization_id, scope?.user_id ?? thread?.user_id]
-    .filter(Boolean).join(" / ") || "Workspace";
-  const period = [after && "From " + after, before && (after ? "before " : "Before ") + before].filter(Boolean).join(" ");
-  return [identity, thread?.conversation_id, period].filter(Boolean).join(" · ");
-}
-
-function renderComparison(parent, args, sides, show) {
-  const columns = element("div", undefined, "visibility-columns");
-  sides.forEach((side, index) => {
-    const section = element("section");
-    section.append(element("h3", index ? "Scope B" : "Scope A"));
-    if (args.version === 1) section.append(element("p", scopeCaption(index ? args.compare : args), "muted"));
-    if (side) show(section, side, index);
-    else section.append(element("p", "No recorded occurrences", "muted"));
-    columns.append(section);
-  });
-  parent.append(columns);
 }
 
 function appendSummary(parent, profile) {
@@ -165,7 +145,7 @@ export function renderSourceHistory(parent, page, requestPage, pageControls) {
         tool, { ...args, source_id: profile.source_id, offset: 0, compare_offset: 0 },
         profile.source_id, { page, previous: back },
       )) : element("h2", profile.source_id));
-      if (compared) renderComparison(row, args, [profile.scope_a, profile.scope_b], appendSummary);
+      if (compared) scopeColumns(row, args, [profile.scope_a, profile.scope_b], appendSummary, "No recorded occurrences");
       else appendSummary(row, profile);
       parent.append(row);
     }
@@ -183,6 +163,6 @@ export function renderSourceHistory(parent, page, requestPage, pageControls) {
       container: section, offsetKey: index ? "compare_offset" : "offset", next: side.next_offset,
     });
   };
-  if (compared) renderComparison(parent, args, [data.scope_a, data.scope_b], show);
+  if (compared) scopeColumns(parent, args, [data.scope_a, data.scope_b], show, "No recorded occurrences");
   else show(parent, data, 0);
 }

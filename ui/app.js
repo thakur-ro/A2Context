@@ -701,7 +701,7 @@ function renderPatterns() {
     return;
   }
   if (patternType === "activation") {
-    renderActivationPatterns(list, organization, user, query);
+    renderActivationPatterns(list, primaryScope, scopes, query);
     return;
   }
   if (patternType === "sources") {
@@ -812,11 +812,13 @@ function effectRange(occurrences, field) {
 function scopedPatternGroups(patterns, organization, user) {
   return patterns.map((group) => ({
     ...group,
-    occurrences: group.occurrences.filter((item) =>
-      (organization === null && user === null)
-      || (item.organization_id === organization && (user === null || item.user_id === user))
-    ),
+    occurrences: group.occurrences.filter((item) => inPatternScope(item, organization, user)),
   })).filter((group) => group.occurrences.length);
+}
+
+function inPatternScope(item, organization, user) {
+  return (organization === null && user === null)
+    || (item.organization_id === organization && (user === null || item.user_id === user));
 }
 
 function patternThreads(groups) {
@@ -843,7 +845,7 @@ function updatePatternThreadFilter(groups) {
 }
 
 function supportsScopeComparison(patternType) {
-  return isAssessmentPattern(patternType) || ["changes", "controls", "visibility", "sources"].includes(patternType);
+  return isAssessmentPattern(patternType) || ["changes", "controls", "activation", "visibility", "sources"].includes(patternType);
 }
 
 function comparisonPatternFilter(scopes, patterns) {

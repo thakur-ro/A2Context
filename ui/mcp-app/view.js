@@ -1,5 +1,5 @@
 import { App } from "@modelcontextprotocol/ext-apps";
-import { button, countLabel, element } from "./dom.js";
+import { button, countLabel, element, scopeColumns } from "./dom.js";
 import { renderSourceHistory, sourceHistoryBackLabel, sourceHistoryTitle } from "./source-history.js";
 import { renderVisibility, visibilityBackLabel, visibilityTitle } from "./visibility.js";
 
@@ -29,8 +29,9 @@ function openPage(page, back, focus = false) {
     const screenBack = back.page.kind.startsWith("screening_")
       ? (back.page.kind.endsWith("_groups") ? "Back to screened pairs" : "Back to contributing turns") : null;
     const label = screenBack ?? sourceHistoryBackLabel(back.page.kind) ?? visibilityBackLabel(back.page.kind) ?? (back.page.kind === "turn" ? "Back to turn evidence" :
+      back.page.kind.startsWith("activation_evidence") ? "Back to activation evidence" :
       page.kind === "turn" ? "Back to contributing decisions" :
-      page.kind === "activation_evidence" ? "Back to activation groups" : "Back to conflict groups");
+      page.kind.startsWith("activation_evidence") ? "Back to activation groups" : "Back to conflict groups");
     const control = button(label, () => {
       openPage(back.page, back.previous, true);
     });
@@ -41,8 +42,8 @@ function openPage(page, back, focus = false) {
   result.append(heading);
   if (page.kind === "groups") renderGroups(page, back);
   else if (page.kind === "evidence") renderEvidence(page, back);
-  else if (page.kind === "activation_groups") renderActivationGroups(page, back);
-  else if (page.kind === "activation_evidence") renderActivationEvidence(page, back);
+  else if (page.kind === "activation_groups" || page.kind === "activation_group_comparison") renderActivationGroups(page, back);
+  else if (page.kind.startsWith("activation_evidence")) renderActivationEvidence(page, back);
   else if (/^(candidate|shadow|screening)_pattern_/.test(page.kind)) renderAssessmentPatterns(page, back);
   else if (page.kind.startsWith("visibility_")) renderVisibility(result, page, requestPage, pageControls);
   else if (page.kind.startsWith("context_source_")) renderSourceHistory(result, page, requestPage, pageControls);
@@ -484,12 +485,21 @@ function activationTitle(group) {
   return source.replaceAll("-", " ") + " at " + group.checkpoint;
 }
 
-function activationSummary(parent, group) {
-  const { minimum, maximum } = group.change_log_odds;
+function activationStats(parent, stats) {
+  const { minimum, maximum } = stats.change_log_odds;
   const range = minimum === maximum ? signed.format(minimum) : signed.format(minimum) + " to " + signed.format(maximum);
   parent.append(element("p", range + " log odds · "
-    + group.lower_score_count + "/" + group.decision_count + " lower · "
-    + group.flipped_count + "/" + group.decision_count + " flipped", "muted"));
+    + stats.lower_score_count + "/" + stats.decision_count + " lower · "
+    + stats.flipped_count + "/" + stats.decision_count + " flipped", "muted"));
+}
+
+function activationScopeStats(parent, stats) {
+  parent.append(element("p", countLabel(stats.measurement_count, "measurement") + " · "
+    + countLabel(stats.conversation_count, "identified conversation")));
+  activationStats(parent, stats);
+}
+
+function activationDetails(parent, group) {
   parent.append(element("small", group.model_id + " · " + group.runtime + " · token " + (group.output_token + 1)));
   if (group.contrasts) {
     const { before, after, alternatives } = group.contrasts;
@@ -536,32 +546,52 @@ function renderActivationGroups(page, back) {
     const title = activationTitle(group);
     if (page.args.version === 1) {
       row.append(button(title, () => requestPage(
-        activationTool, { ...page.args, group: group.key, offset: 0 }, title, { page, previous: back },
+        activationTool, { ...page.args, group: group.key, offset: 0, compare_offset: 0 }, title, { page, previous: back },
       )));
     } else {
       row.append(element("h2", title));
     }
-    activationSummary(row, group);
+    if (page.kind === "activation_group_comparison") {
+      scopeColumns(row, page.args, [group.scope_a, group.scope_b], activationScopeStats, "No measurements");
+    } else {
+      activationStats(row, group);
+    }
+    activationDetails(row, group);
     result.append(row);
   }
   if (page.args.version === 1) pageControls(page, activationTool, back);
 }
 
 function renderActivationEvidence(page, back) {
-  result.append(element("p", countLabel(page.data.total_occurrences, "measurement")
-    + " · decoder block " + page.data.block, "muted"));
-  activationSummary(result, page.data.group);
+  const { data } = page;
+  const compared = page.kind === "activation_evidence_comparison";
+  result.append(element("p", (compared ? "" : countLabel(data.total_occurrences, "measurement") + " · ")
+    + "Decoder block " + data.block, "muted"));
+  if (!compared) activationStats(result, data.group);
+  activationDetails(result, data.group);
   activationExcerptsButton(page, back);
   const { source_id, source_version } = page.data.group;
   if (source_id) {
-    const selection = Object.fromEntries(["scope", "thread", "after", "before"]
+    const selection = Object.fromEntries(["scope", "thread", "after", "before", "compare"]
       .filter((key) => Object.hasOwn(page.args, key)).map((key) => [key, page.args[key]]));
     result.append(button("View source history for " + source_id, () => requestPage(
       "query_context_sources", { version: 1, source_id, source_version, ...selection, evidence_filter: "activation_swaps" },
       source_id, { page, previous: back },
     )));
   }
-  for (const item of page.data.occurrences) {
+  if (compared) {
+    const sides = [data.scope_a, data.scope_b].map((side) => side.total_occurrences ? side : null);
+    scopeColumns(result, page.args, sides, (section, side, index) => {
+      activationScopeStats(section, index ? data.group.scope_b : data.group.scope_a);
+      renderActivationOccurrences(section, side, page, back, index);
+    }, "No measurements");
+  } else {
+    renderActivationOccurrences(result, data, page, back, 0);
+  }
+}
+
+function renderActivationOccurrences(parent, side, page, back, index) {
+  for (const item of side.occurrences) {
     const row = element("section", undefined, "row");
     const title = item.conversation_id || item.location.run_id;
     row.append(button(title, () => requestPage(
@@ -571,14 +601,17 @@ function renderActivationEvidence(page, back) {
       + signed.format(item.patched_log_odds) + " log odds", "muted"));
     const owner = [item.organization_id, item.user_id, item.context_id].filter(Boolean).join(" · ");
     if (owner) row.append(element("p", owner, "muted"));
+    if (item.started_at) row.append(element("p", item.started_at, "muted"));
     const paths = element("details");
     paths.append(element("summary", "Local inspector paths"));
     paths.append(element("p", "Checkpoint"), element("code", item.inspector_path));
     paths.append(element("p", "Source"), element("code", item.source_inspector_path));
     row.append(paths);
-    result.append(row);
+    parent.append(row);
   }
-  if (page.args.version === 1) pageControls(page, activationTool, back);
+  if (page.args.version === 1) pageControls(page, activationTool, back, {
+    container: parent, offsetKey: index ? "compare_offset" : "offset", next: side.next_offset,
+  });
 }
 
 app.ontoolinput = ({ arguments: args }) => { initialQuery = args; };
@@ -593,7 +626,9 @@ app.ontoolresult = (response) => {
       evidence: () => args.group ? groupName(args.group, args.group_by || [])
         : data.phase === "preflight" ? "Contributing checks" : "Contributing decisions",
       activation_groups: () => "Recurring activation effects",
+      activation_group_comparison: () => "Compare activation effects",
       activation_evidence: () => activationTitle(data.group),
+      activation_evidence_comparison: () => activationTitle(data.group),
       candidate_pattern_groups: () => "Candidate preference shifts",
       candidate_pattern_evidence: () => probeGroupName(data.group.setup),
       shadow_pattern_groups: () => "Shadow proposal shifts",

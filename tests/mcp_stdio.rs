@@ -336,11 +336,94 @@ fn activation_tool_queries_and_drills_into_only_the_host_scoped_measurements() {
         json!({"version": 1, "block": 0, "scope": outside}),
     );
     assert_eq!(empty["structuredContent"]["total_groups"], 0);
+    let restricted_comparison = client.call(
+        "query_activation_effects",
+        json!({
+            "version": 1, "block": 0, "source_id": "returns-policy",
+            "compare": {"scope":{"kind":"organization","organization_id":"demo-retail-south"}}
+        }),
+    );
+    let groups = restricted_comparison["structuredContent"]["groups"]
+        .as_array()
+        .unwrap();
+    assert!(!groups.is_empty());
+    assert!(groups.iter().all(|group| group["scope_b"].is_null()));
+    assert!(!restricted_comparison
+        .to_string()
+        .contains("demo-retail-south"));
     let blocked = client.call(
         "query_activation_effects",
         json!({"version": 1, "block": 0, "include_excerpts": true}),
     );
     assert_eq!(blocked["isError"], true);
+}
+
+#[test]
+fn compares_the_same_activation_intervention_and_pages_both_scopes() {
+    let mut client = Client::start(
+        &[
+            "--activation-report",
+            ACTIVATION_REPORTS,
+            ACTIVATION_EVIDENCE,
+        ],
+        true,
+    );
+    let tool = "query_activation_effects";
+    let mut args = json!({
+        "version":1,"block":0,"source_id":"returns-policy","checkpoint":"Return window","limit":1,
+        "scope":{"kind":"user","organization_id":"demo-retail-north","user_id":"customer-01"}
+    });
+    let single = client.call(tool, args.clone());
+    let key = single["structuredContent"]["groups"][0]["key"].clone();
+    args["compare"] =
+        json!({"scope":{"kind":"organization","organization_id":"demo-retail-south"}});
+    let compared = client.call(tool, args.clone());
+    let view = &compared["structuredContent"];
+    assert_eq!(view["kind"], "activation_group_comparison");
+    assert_eq!(view["total_groups"], 1);
+    let group = &view["groups"][0];
+    assert_eq!(group["key"], key);
+    assert_eq!(group["scope_a"]["decision_count"], 3);
+    assert_eq!(group["scope_a"]["flipped_count"], 3);
+    assert_eq!(
+        group["scope_a"]["change_log_odds"],
+        json!({"minimum":-12.0,"maximum":-9.875})
+    );
+    assert_eq!(group["scope_b"]["decision_count"], 2);
+    assert_eq!(group["scope_b"]["flipped_count"], 2);
+    assert_eq!(
+        group["scope_b"]["change_log_odds"],
+        json!({"minimum":-13.125,"maximum":-9.25})
+    );
+
+    args["group"] = key;
+    args["compare_offset"] = 1.into();
+    let compared = client.call(tool, args.clone());
+    let evidence = &compared["structuredContent"];
+    assert_eq!(evidence["kind"], "activation_evidence_comparison");
+    assert_eq!(
+        evidence["scope_a"]["occurrences"][0]["conversation_id"],
+        "return-instructions-a"
+    );
+    assert_eq!(evidence["scope_a"]["next_offset"], 1);
+    assert_eq!(
+        evidence["scope_b"]["occurrences"][0]["conversation_id"],
+        "return-instructions-f"
+    );
+    assert!(evidence["scope_b"]["next_offset"].is_null());
+    assert!(evidence["scope_b"]["occurrences"][0]["inspector_path"]
+        .as_str()
+        .unwrap()
+        .contains("&source_swap=returns%2Dpolicy"));
+
+    args["compare_offset"] = 0.into();
+    args["compare"]["after"] = "2026-11-08T00:00:00Z".into();
+    let missing = client.call(tool, args);
+    assert!(missing["structuredContent"]["group"]["scope_b"].is_null());
+    assert_eq!(
+        missing["structuredContent"]["scope_b"]["total_occurrences"],
+        0
+    );
 }
 
 #[test]

@@ -33,14 +33,32 @@ test("compares UTC days and keeps unmatched rows visible in the other period", (
     occurrences: [occurrence("only-b", "2026-11-01T00:30:00Z")],
   }];
   const periods = [activationPeriod("", "2026-10-31"), activationPeriod("2026-11-01", "2026-11-01")];
-  const result = activationGroupsByPeriod(groups, "", periods, "policy");
+  const scope = { organization: null, user: null };
+  const result = activationGroupsByPeriod(groups, periods.map((period) => ({ scope, period })), "policy");
   const ids = (occurrences) => Array.from(occurrences, (item) => item.context_id);
   assert.equal(result.length, 2);
   assert.deepEqual(ids(result[0].cohorts[0]), ["last-in-a"]);
   assert.deepEqual(ids(result[0].cohorts[1]), ["first-in-b"]);
   assert.deepEqual(ids(result[1].cohorts[0]), []);
   assert.deepEqual(ids(result[1].cohorts[1]), ["only-b"]);
-  const all = activationGroupsByPeriod(groups, "", [activationPeriod("", "")], "untimed");
+  const all = activationGroupsByPeriod(groups, [{ scope, period: activationPeriod("", "") }], "untimed");
   assert.equal(all[0].cohorts[0].length, 3);
   assert.equal(activationPeriod("2026-11-01", "2026-10-31").valid, false);
+});
+
+test("aligns matching interventions across scopes while preserving one-sided groups", () => {
+  const { activationPeriod, activationGroupsByPeriod } = runInNewContext(app + "\n" + source
+    + "\n({ activationPeriod, activationGroupsByPeriod });", { document: { addEventListener() {} } });
+  const reported = (organization_id, user_id) => ({ organization_id, user_id });
+  const groups = [{ source_id: "policy", checkpoint: { label: "Return window" },
+    occurrences: [reported("north", "sam"), reported("north", "lee"), reported("south", "sam")] },
+    { source_id: "policy", checkpoint: { label: "Refund timing" }, occurrences: [reported("south", "pat")] }];
+  const period = activationPeriod("", "");
+  const rows = activationGroupsByPeriod(groups, [
+    { scope: { organization: "north", user: "sam" }, period },
+    { scope: { organization: "south", user: null }, period },
+  ], "policy");
+  assert.equal(rows.length, 2);
+  assert.deepEqual(Array.from(rows[0].cohorts, side => side.length), [1, 1]);
+  assert.deepEqual(Array.from(rows[1].cohorts, side => side.length), [0, 1]);
 });
