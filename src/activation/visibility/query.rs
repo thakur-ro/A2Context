@@ -215,14 +215,14 @@ pub fn query(
     Ok(result)
 }
 
-struct PairScores {
+pub(super) struct PairScores {
     first: f64,
     second: f64,
     joint: f64,
-    interaction: f64,
+    pub(super) interaction: f64,
 }
 
-fn pair_scores(
+pub(super) fn pair_scores(
     pair: &Pair,
     measured: &BTreeMap<&str, &Measurement>,
     baseline: f64,
@@ -257,7 +257,7 @@ fn token_row(report: &Report, index: usize, include_excerpts: bool) -> Value {
     row
 }
 
-fn visibility_path(report: &Report, token: usize, pair: Option<usize>) -> String {
+pub(super) fn visibility_path(report: &Report, token: usize, pair: Option<usize>) -> String {
     let mut path = format!(
         "{}&visibility={token}",
         activation::activation_report_path(&report.location, &report.id)
@@ -268,7 +268,7 @@ fn visibility_path(report: &Report, token: usize, pair: Option<usize>) -> String
     path
 }
 
-fn source_path(report: &Report, context: &str) -> String {
+pub(super) fn source_path(report: &Report, context: &str) -> String {
     let path = activation::decision_path(&report.location);
     let id = utf8_percent_encode(context, NON_ALPHANUMERIC);
     format!("{path}&context={id}")

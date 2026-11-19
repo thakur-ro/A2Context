@@ -37,6 +37,8 @@ Runtimes can send an OpenTelemetry trace and attach the activation report when i
 
 For a captured Qwen2 text answer, test each aligned prompt source without writing replacement text. Mask two sources together to check whether they back each other up. [Inspect source visibility](docs/guide.md#test-source-visibility-on-a-recorded-answer), [Try the paired test](docs/guide.md#test-a-pair-of-sources)
 
+Query recurring masked-source effects across conversations, users, and organizations, then open the exact contributing token and source. [Compare the measured cohort](docs/guide.md#find-recurring-masked-source-effects)
+
 The same report format carries measured results from MLX and Transformers on the same prompt. [Inspect results across runtimes](docs/guide.md#inspect-the-same-task-across-runtimes)
 
 Inspect how a source swap changed the probability of any recorded output token, including repeated words and tool arguments. [Try the full-output view](docs/guide.md#inspect-every-recorded-output-token)

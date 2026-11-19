@@ -39,7 +39,7 @@ fn default_limit() -> usize {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Thread {
+pub(crate) struct Thread {
     trace_source: String,
     organization_id: Option<String>,
     user_id: Option<String>,
@@ -47,7 +47,7 @@ struct Thread {
 }
 
 impl Thread {
-    fn includes(&self, run: &Run) -> bool {
+    pub(crate) fn includes(&self, run: &Run) -> bool {
         run.source == self.trace_source
             && run.organization_id == self.organization_id
             && run.user_id == self.user_id

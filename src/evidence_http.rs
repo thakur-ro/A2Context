@@ -11,7 +11,7 @@ pub fn route<'a>(
     request: &mut Request,
     runs: impl Iterator<Item = &'a Run>,
     replays: &[replay::Replay],
-    reports: &[activation::Report],
+    reports: &'a [activation::Report],
 ) -> Option<Reply> {
     if request.method() != &Method::Post {
         return None;
@@ -33,6 +33,9 @@ pub fn route<'a>(
         }),
         "/api/source-visibility" => query(request, |input| {
             activation::visibility::query::query(input, reports, true)
+        }),
+        "/api/visibility-patterns" => query(request, |input| {
+            activation::visibility::patterns::query(input, runs, reports)
         }),
         _ => return None,
     };

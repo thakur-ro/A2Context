@@ -509,6 +509,53 @@ fn source_visibility_queries_follow_the_turn_to_ranked_sources_and_pairs() {
 }
 
 #[test]
+fn visibility_patterns_group_scoped_measurements_and_link_chronological_occurrences() {
+    let mut client = Client::start(
+        &[
+            "--activation-report",
+            "examples/runtime-comparison/visibility-cohort/reports.json",
+            "examples/runtime-comparison/visibility-cohort/evidence.json",
+        ],
+        true,
+    );
+    let name = "query_visibility_patterns";
+    let mut args =
+        json!({"version":1,"kind":"pair","output_token":13,"source_id":"refund-policy-copy"});
+    let all = client.call(name, args.clone());
+    let group = &all["structuredContent"]["groups"][0];
+    assert_eq!(all["structuredContent"]["total_groups"], 1);
+    assert_eq!(group["conversation_count"], 4);
+    assert_eq!(group["user_count"], 3);
+    assert_eq!(group["organization_count"], 2);
+    assert_eq!(group["negative_decisions"], 4);
+    assert!(group["effect"]["maximum"].as_f64().unwrap() < -5.1);
+
+    args["group"] = group["key"].clone();
+    args["scope"] = json!({"kind":"user","organization_id":"retail-north","user_id":"sample-user"});
+    args["limit"] = 1.into();
+    let north = client.call(name, args.clone());
+    let north = &north["structuredContent"];
+    assert_eq!(north["total_occurrences"], 2);
+    assert_eq!(north["occurrences"][0]["conversation_id"], "north-1");
+    assert_eq!(north["next_offset"], 1);
+    assert!(north["occurrences"][0]["inspector_path"]
+        .as_str()
+        .unwrap()
+        .ends_with("&visibility=13&pair=0"));
+    args["after"] = "2026-11-05T12:00:00Z".into();
+    args["before"] = "2026-11-08T12:00:00Z".into();
+    args["thread"] = json!({"trace_source":"local-transformers","organization_id":"retail-north","user_id":"sample-user","conversation_id":"north-2"});
+    let matched = client.call(name, args.clone());
+    assert_eq!(matched["structuredContent"]["total_occurrences"], 1);
+    assert_eq!(
+        matched["structuredContent"]["occurrences"][0]["conversation_id"],
+        "north-2"
+    );
+    args["min_conversations"] = 2.into();
+    assert_eq!(client.call(name, args)["isError"], true);
+}
+
+#[test]
 fn legacy_client_gets_the_cli_counts_and_cannot_widen_host_scope() {
     let dir = tempfile::tempdir().unwrap();
     let scope = dir.path().join("scope.json");

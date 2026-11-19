@@ -268,6 +268,7 @@ Use the same request schemas as the MCP tools. These routes accept HTTP `POST` w
 | [`/api/output-token-effects`](../schema/output-token-effects-request-1.json) | Effects of source interventions on each recorded token at one decoder block. |
 | [`/api/generation-branches`](../schema/generation-branches-request-1.json) | Measured continuations after an activation swap, including the zero-based index of the first token that differs from the recorded output. |
 | [`/api/source-visibility`](../schema/source-visibility-query-1.json) | A timeline of measured attention-mask effects, ranked source effects at a token, or paired-mask comparisons at that token. |
+| [`/api/visibility-patterns`](../schema/visibility-pattern-query-1.json) | Recurring source effects or pair interactions at a matching output token, with links to each contributing decision. |
 
 ```sh
 curl -fsS http://127.0.0.1:8040/api/activation-effects \
@@ -786,6 +787,28 @@ For example, use this request with the saved paired report. API token indices st
 ```
 
 Open a returned `inspector_path` to select the measured token and pair, or open a `source_inspector_path` to see the recorded prompt fragment. **Copy link** in the probe preserves its current token and pair. Generated token text and IDs require `include_excerpts: true`, and for MCP they also require the host's `--include-excerpts` flag.
+
+### Find recurring masked-source effects
+
+Load the four-conversation [synthetic cohort](../examples/runtime-comparison/visibility-cohort/evidence.json) and its [measured reports](../examples/runtime-comparison/visibility-cohort/reports.json). Use the files with the inspector or `mcp-stdio`.
+
+```sh
+cargo run --locked -- serve \
+  --activation-report examples/runtime-comparison/visibility-cohort/reports.json \
+  examples/runtime-comparison/visibility-cohort/evidence.json
+```
+
+Pass the same request to [`query_visibility_patterns`](../schema/visibility-pattern-query-1.json) or the local HTTP route. The example finds pairs containing the copied refund policy at the recorded refund digit.
+
+```sh
+curl -fsS http://127.0.0.1:8040/api/visibility-patterns \
+  -H 'Content-Type: application/json' \
+  --data '{"version":1,"kind":"pair","output_token":13,"source_id":"refund-policy-copy","min_conversations":2}'
+```
+
+The default `source` kind reports single-mask changes in log probability. The `pair` kind reports joint interactions in log units. Use `scope` to select a user or organization, `thread` for an exact conversation identity, or `after` and `before` for an inclusive-start, exclusive-end RFC 3339 time window. Copy a group `key` into `group` to page through chronological occurrences and open their exact token, pair, or captured source links.
+
+Groups require the same model revision, runtime, tokenizer, decision label, emitted token prefix through the scored token, and source identities. Each identity uses the declared source ID, version, kind, role, captured text digest, and masked token count. Captures without declared source IDs are counted as unavailable for grouping. The summaries count distinct identified conversations, users, and organizations, alongside decisions and measurements. The cohort's dates and ownership labels are synthetic. Across its four measured decisions the refund policy pair's interaction ranges from −5.84 to −5.18 log units at the recorded refund digit. The range describes those measured decisions.
 
 ## Development
 

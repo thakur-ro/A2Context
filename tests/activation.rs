@@ -60,6 +60,38 @@ fn visibility_pairs_require_two_measured_disjoint_sources_and_one_score_per_toke
 }
 
 #[test]
+fn visibility_patterns_keep_changed_prefixes_and_source_versions_separate() {
+    use nexusweave::activation::visibility::patterns;
+    let mut runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-cohort/evidence.json"
+    ))
+    .unwrap();
+    let mut reports: Vec<Value> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-cohort/reports.json"
+    ))
+    .unwrap();
+    reports[1]["output_token_ids"][0] = 1.into();
+    runs[2].calls[0].context[2].source_version = Some("new-version".into());
+    runs[3].calls[0].context[2].source_id = None;
+    let reports: Vec<Report> = reports
+        .into_iter()
+        .map(|report| serde_json::from_value(report).unwrap())
+        .collect();
+    let spec = serde_json::from_value(
+        serde_json::json!({"version":1,"output_token":13,"source_id":"refund-policy"}),
+    )
+    .unwrap();
+    let result = patterns::query(&spec, &runs, &reports).unwrap();
+    assert_eq!(result["total_groups"], 3);
+    assert_eq!(result["coverage"]["measurements_without_source_id"], 1);
+    assert!(result["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|group| group["conversation_count"] == 1));
+}
+
+#[test]
 fn visibility_requires_the_original_request_and_full_source_coverage() {
     let runs: Vec<Run> =
         serde_json::from_str(include_str!("../examples/runtime-comparison/evidence.json")).unwrap();

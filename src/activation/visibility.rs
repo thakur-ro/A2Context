@@ -1,5 +1,6 @@
 //! Measure changes in recorded token scores when a prompt source is masked.
 
+pub mod patterns;
 pub mod query;
 
 use super::{inside, is_digest};
