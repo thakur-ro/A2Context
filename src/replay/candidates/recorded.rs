@@ -1,10 +1,12 @@
 //! Bind reported candidate measurements to the exact recorded request and sources.
 
 use super::{
-    margin, prepare_edit, sha256, validate_case, validate_scores, Candidate, Effect, Report,
-    ScoringResult,
+    margin, prepare_edit, sha256, validate_case, validate_scores, Candidate, Report, ScoringResult,
 };
-use crate::{replay::Operation, Call, ContextItem, Evidence, TextRange};
+use crate::{
+    replay::{source_binding, Operation},
+    Call, ContextItem, Evidence, TextRange,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -154,7 +156,13 @@ fn verify<'a>(
         if effect.condition_id != format!("edit:{}", effect.intervention.context_id) {
             return Err("A candidate probe condition does not identify its source edit.".into());
         }
-        let item = source(call, effect).ok_or_else(|| {
+        let item = source_binding::resolve(
+            call,
+            &effect.intervention,
+            effect.source_id.as_deref(),
+            effect.source_version.as_deref(),
+        )
+        .ok_or_else(|| {
             format!(
                 "The probe source {} does not identify one captured context entry.",
                 effect.intervention.context_id
@@ -211,31 +219,6 @@ fn verify<'a>(
         baseline_log_odds: baseline,
         effects,
     })
-}
-
-fn source<'a>(call: &'a Call, effect: &Effect) -> Option<&'a ContextItem> {
-    let identity_matches = |item: &&ContextItem| {
-        item.source_id == effect.source_id && item.source_version == effect.source_version
-    };
-    let mut matching = call.context.iter().filter(identity_matches);
-    if let Some(item) = matching
-        .clone()
-        .find(|item| item.id == effect.intervention.context_id)
-    {
-        return Some(item);
-    }
-    effect.source_id.as_ref()?;
-    let mut candidates = matching.by_ref().filter(|item| {
-        match (&item.request_fragment, effect.intervention.text_range) {
-            (Some(fragment), Some(range)) => {
-                fragment.pointer == effect.intervention.pointer && fragment.text_range == range
-            }
-            (None, None) => true,
-            _ => false,
-        }
-    });
-    let item = candidates.next()?;
-    candidates.next().is_none().then_some(item)
 }
 
 fn same_score(actual: f64, reported: f64) -> bool {

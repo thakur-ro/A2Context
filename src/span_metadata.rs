@@ -11,6 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 const SEMANTICS: &str = "nexusweave.context.semantics";
 const PREFLIGHT: &str = "nexusweave.preflight";
 const CANDIDATES: &str = "nexusweave.candidate_probes";
+const SHADOW: &str = "nexusweave.shadow_probes";
 pub(crate) const REQUEST: &str = "nexusweave.request.body";
 
 #[derive(Deserialize)]
@@ -134,6 +135,16 @@ pub(crate) fn apply(call: &mut Call, metadata: &Value, field: impl Fn(&str) -> S
         };
         call.candidate_probes = Some(crate::replay::candidates::CapturedReports {
             evidence: evidence(CANDIDATES),
+            reports: reports.ok(),
+        });
+    }
+    if let Some(value) = metadata.get(SHADOW) {
+        let reports = match value {
+            Value::String(value) => serde_json::from_str(value),
+            value => Vec::<crate::replay::shadow::Report>::deserialize(value),
+        };
+        call.shadow_probes = Some(crate::replay::shadow::CapturedReports {
+            evidence: evidence(SHADOW),
             reports: reports.ok(),
         });
     }

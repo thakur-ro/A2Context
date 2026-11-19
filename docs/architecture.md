@@ -5,12 +5,12 @@ NexusWeave connects an assembled inference request to a turn, a measured effect,
 ```mermaid
 flowchart TD
     accTitle: Evidence before and after a model call
-    accDescr: Preflight and both pending probes use the assembled request. Recorded calls link to matched preflight receipts and candidate reports. Shadow probes produce standalone reports.
+    accDescr: Preflight and both pending probes use the assembled request. Recorded calls can carry matching preflight receipts and candidate or shadow reports.
     A[Assembled request] --> M[Model call]
     A --> P[Preflight check]
     A --> B[Candidate probe]
     A --> S[Shadow probe]
-    S --> H[Standalone proposal report]
+    S -->|Report| T
     B -->|Report| T
     P -->|Receipt| T
     M --> T[Recorded trace]

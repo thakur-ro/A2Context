@@ -115,6 +115,8 @@ pub struct Call {
     pub preflight_receipt: Option<preflight::CapturedReceipt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub candidate_probes: Option<replay::candidates::CapturedReports>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow_probes: Option<replay::shadow::CapturedReports>,
     pub context: Vec<ContextItem>,
     pub decisions: Vec<Decision>,
     pub tool_results: Vec<ToolResult>,
@@ -309,6 +311,8 @@ pub struct Inspection<'a> {
     pub preflight_checks: Vec<preflight::RecordedCheck<'a>>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub candidate_probes: Vec<replay::candidates::RecordedProbe<'a>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub shadow_probes: Vec<replay::shadow::RecordedProbe<'a>>,
     #[serde(flatten)]
     pub context_history: context_changes::ContextHistory<'a>,
     pub document_handoffs: Vec<document_handoffs::DocumentHandoff<'a>>,
@@ -537,6 +541,7 @@ pub fn inspect(runs: &[Run]) -> Result<Inspection<'_>, String> {
     let mut context_links = Vec::new();
     let mut preflight_checks = Vec::new();
     let mut candidate_probes = Vec::new();
+    let mut shadow_probes = Vec::new();
     let mut groups = BTreeMap::new();
 
     for run in unique.values() {
@@ -544,6 +549,7 @@ pub fn inspect(runs: &[Run]) -> Result<Inspection<'_>, String> {
         for (index, call) in run.calls.iter().enumerate() {
             preflight_checks.extend(preflight::recorded(&run.id, call));
             candidate_probes.extend(replay::candidates::recorded(&run.id, call));
+            shadow_probes.extend(replay::shadow::recorded(&run.id, call));
             for decision in &call.decisions {
                 if let Some(id) = &decision.tool_call_id {
                     if let Some((result_call, result)) = nearest_result(run, index, id) {
@@ -653,6 +659,7 @@ pub fn inspect(runs: &[Run]) -> Result<Inspection<'_>, String> {
         capture_profiles: replay::capture_profiles(unique.values().copied())?,
         preflight_checks,
         candidate_probes,
+        shadow_probes,
         context_history: context_changes::history(unique.values().copied()),
         context_patterns,
         tool_patterns: tool_patterns::group(unique.values().copied(), &context_links),

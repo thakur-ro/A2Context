@@ -440,28 +440,30 @@ fn serialize_inspection(
             call_id: profile.call_id.to_owned(),
         })
         .collect();
-    let redacted_runs: Vec<_> =
-        if !hide_requests {
-            Vec::new()
-        } else {
-            inspection
-                .runs
-                .iter()
-                .map(|&run| {
-                    if !run.calls.iter().any(|call| {
-                        call.recorded_request.is_some() || call.candidate_probes.is_some()
-                    }) {
-                        return Cow::Borrowed(run);
-                    }
-                    let mut run = run.clone();
-                    for call in &mut run.calls {
-                        call.recorded_request = None;
-                        call.candidate_probes = None;
-                    }
-                    Cow::Owned(run)
-                })
-                .collect()
-        };
+    let redacted_runs: Vec<_> = if !hide_requests {
+        Vec::new()
+    } else {
+        inspection
+            .runs
+            .iter()
+            .map(|&run| {
+                if !run.calls.iter().any(|call| {
+                    call.recorded_request.is_some()
+                        || call.candidate_probes.is_some()
+                        || call.shadow_probes.is_some()
+                }) {
+                    return Cow::Borrowed(run);
+                }
+                let mut run = run.clone();
+                for call in &mut run.calls {
+                    call.recorded_request = None;
+                    call.candidate_probes = None;
+                    call.shadow_probes = None;
+                }
+                Cow::Owned(run)
+            })
+            .collect()
+    };
     if !redacted_runs.is_empty() {
         inspection.runs = redacted_runs.iter().map(Cow::as_ref).collect();
     }

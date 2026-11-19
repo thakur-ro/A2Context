@@ -163,6 +163,20 @@ Set `samples` to the number of trials per condition. NexusWeave verifies every e
 
 The CLI sends one inference request object on stdin per trial. Return one JSON object with `kind`, `label`, and `outcome` on stdout. For a tool proposal, use the tool name as `label` and its argument object as `outcome`. For an answer, put the text in `outcome`. Call the inference endpoint directly and stop before dispatching tools or accepting actions. Use a `runner_id` that identifies the model and sampling configuration. Rust integrations can supply a runner callback to `nexusweave::replay::shadow::execute`. [Rust runner interface](../src/replay/shadow.rs)
 
+### Show shadow proposals on the recorded turn
+
+Attach an array of [shadow reports](../schema/shadow-report-1.json) to the same inference call as `nexusweave.shadow_probes`. For OTLP, use a JSON string span attribute. For LangSmith, use the array or JSON string in `extra.metadata` and set `nexusweave.span.id` to the inference run's exact ID. Keep the original `nexusweave.request.body` string and the source declarations on that call.
+
+NexusWeave matches the request hash, resolves each source to its captured location, and rebuilds the edited request hashes. It recalculates the counts, match-rate shifts, and any joint or control comparisons from the supplied trials. The workflow supplies the proposals and their timing. A report can match a call with no recorded output yet. An attachment that cannot be verified shows the reason beside the call.
+
+```sh
+demo_dir=$(mktemp -d)
+cargo run --locked -- import-langsmith examples/runtime-comparison/pending-routing/shadow-trace.json "$demo_dir/evidence.json"
+cargo run --locked -- serve "$demo_dir/evidence.json"
+```
+
+The demo puts the saved Qwen shadow report beside a recorded `stock` proposal. Under **Shadow probes** on the turn, expand `request-type` to see the original text, exact request range, and replacement next to its +100 percentage point change in `price(42)` proposals. The same report appears on the model call in **Timeline** and in **Decisions**. MCP `get_turn_evidence` returns the verification, counts, and paginated effects. Enable and request captured excerpts to see the expected outcome and replacement text through MCP. [Open the local inspector](http://127.0.0.1:8040)
+
 ## Try a decision replay
 
 ```sh

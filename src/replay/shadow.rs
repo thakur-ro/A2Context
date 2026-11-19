@@ -3,6 +3,13 @@
 //! The runner returns a model proposal for each request. It can use an API that
 //! exposes generated outputs without exposing token scores.
 
+mod recorded;
+
+pub(crate) use recorded::recorded;
+pub use recorded::{
+    CapturedReports, Measurement, RecordedEffect, RecordedPair, RecordedProbe, Verification,
+};
+
 use super::{
     compare_control, complete_difference, complete_interaction, control_index, edited_requests,
     interval, prepare_edits, recorded_context, sample_conditions, sha256, summarize, Choice,
@@ -35,7 +42,7 @@ pub struct Case {
 }
 
 /// Proposals, trial coverage, and changes in the declared proposal's match rate.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Report {
     pub version: u32,
@@ -55,7 +62,7 @@ pub struct Report {
 }
 
 /// An individual request edit and the proposal outcomes it produced.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Effect {
     pub source_id: Option<String>,
     pub source_version: Option<String>,
@@ -66,7 +73,7 @@ pub struct Effect {
 }
 
 /// The joint edit of two declared interventions.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct JointEffect {
     pub request_sha256: String,
     #[serde(flatten)]
@@ -176,8 +183,8 @@ pub fn execute(
             },
         }
     });
-    let control_comparison =
-        control.map(|index| compare_control(index, &variants, case.sampling_design));
+    let control_comparison = control
+        .map(|index| compare_control(&variants[index], &variants[1 - index], case.sampling_design));
     let effects = variants
         .into_iter()
         .zip(&requests[1..])

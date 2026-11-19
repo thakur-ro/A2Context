@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave shadow proposal report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version", "id", "runner_id", "expected", "match_rule", "sampling_design",
+    "captured_request_sha256", "baseline", "baseline_summary", "effects"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "$ref": "shadow-case-1.json#/properties/id" },
+    "runner_id": { "$ref": "shadow-case-1.json#/properties/runner_id" },
+    "expected": { "$ref": "shadow-case-1.json#/properties/expected" },
+    "match_rule": { "$ref": "shadow-case-1.json#/properties/match_rule" },
+    "sampling_design": { "$ref": "shadow-case-1.json#/properties/sampling_design" },
+    "captured_request_sha256": { "$ref": "#/$defs/sha256" },
+    "baseline": { "$ref": "#/$defs/trials" },
+    "baseline_summary": { "$ref": "#/$defs/counts" },
+    "effects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["request_sha256", "intervention", "captured_context_sha256", "trials", "summary"],
+        "properties": {
+          "source_id": { "type": ["string", "null"] },
+          "source_version": { "type": ["string", "null"] },
+          "evidence": { "$ref": "evidence-1.json#/$defs/evidence" },
+          "request_sha256": { "$ref": "#/$defs/sha256" },
+          "intervention": { "$ref": "candidate-probe-1.json#/properties/interventions/items" },
+          "captured_context_sha256": { "$ref": "#/$defs/sha256" },
+          "trials": { "$ref": "#/$defs/trials" },
+          "summary": { "$ref": "#/$defs/counts" },
+          "difference_pp": { "type": ["number", "null"] },
+          "difference_95_interval_pp": { "$ref": "#/$defs/optional_interval" }
+        }
+      }
+    },
+    "pair": {
+      "type": ["object", "null"],
+      "required": ["request_sha256", "trials", "summary"],
+      "properties": {
+        "request_sha256": { "$ref": "#/$defs/sha256" },
+        "trials": { "$ref": "#/$defs/trials" },
+        "summary": { "$ref": "#/$defs/counts" },
+        "difference_pp": { "type": ["number", "null"] },
+        "interaction_pp": { "type": ["number", "null"] },
+        "difference_95_interval_pp": { "$ref": "#/$defs/optional_interval" },
+        "interaction_95_interval_pp": { "$ref": "#/$defs/optional_interval" }
+      }
+    },
+    "control_comparison": {
+      "type": ["object", "null"],
+      "required": ["control_context_id"],
+      "properties": {
+        "control_context_id": { "type": "string" },
+        "target_minus_control_pp": { "type": ["number", "null"] },
+        "target_minus_control_95_interval_pp": { "$ref": "#/$defs/optional_interval" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "trials": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["status", "choice"],
+            "properties": {
+              "status": { "const": "completed" },
+              "choice": { "$ref": "shadow-case-1.json#/properties/expected" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["status"],
+            "properties": { "status": { "const": "failed" } }
+          }
+        ]
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["attempted", "completed", "matched"],
+      "properties": {
+        "attempted": { "type": "integer", "minimum": 1 },
+        "completed": { "type": "integer", "minimum": 0 },
+        "matched": { "type": "integer", "minimum": 0 },
+        "unscored": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "optional_interval": {
+      "type": ["object", "null"],
+      "required": ["lower", "upper"],
+      "properties": {
+        "lower": { "type": "integer" },
+        "upper": { "type": "integer" }
+      }
+    }
+  }
+}

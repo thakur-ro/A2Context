@@ -86,6 +86,14 @@ pub fn query<'a>(
         .clone()
         .map(|probe| candidate_summary(probe, include_excerpts))
         .collect();
+    let shadow_probes = inspection
+        .shadow_probes
+        .iter()
+        .filter(|probe| probe.call_id == call.id);
+    let shadow_summary: Vec<_> = shadow_probes
+        .clone()
+        .map(|probe| shadow_summary(probe, include_excerpts))
+        .collect();
     let at_decision = |call_id: &str, id: &str| call_id == call.id && decision_id == Some(id);
     let findings = inspection
         .findings
@@ -186,6 +194,7 @@ pub fn query<'a>(
         });
     let mut rows = preflight_rows
         .chain(candidate_probes.flat_map(|probe| candidate_rows(probe, include_excerpts)))
+        .chain(shadow_probes.flat_map(|probe| shadow_rows(probe, include_excerpts)))
         .chain(finding_rows)
         .chain(annotation_rows)
         .chain(link_rows)
@@ -222,6 +231,9 @@ pub fn query<'a>(
     });
     if !candidate_summary.is_empty() {
         result["candidate_probes"] = json!(candidate_summary);
+    }
+    if !shadow_summary.is_empty() {
+        result["shadow_probes"] = json!(shadow_summary);
     }
     Ok(result)
 }
@@ -264,6 +276,50 @@ fn candidate_rows<'a>(
         "log_odds": effect.log_odds, "change_log_odds": effect.change_log_odds,
         "candidate_ids": measurement.candidates.each_ref().map(|candidate| &candidate.id),
     })))
+}
+
+fn shadow_summary(probe: &replay::shadow::RecordedProbe<'_>, include_excerpts: bool) -> Value {
+    use replay::shadow::Verification;
+    match &probe.verification {
+        Verification::Matched { measurement } => json!({
+            "report_id": probe.report_id, "status": "matched", "anchor": probe.evidence,
+            "runner_id": measurement.runner_id, "sampling_design": measurement.sampling_design,
+            "baseline": measurement.baseline, "effect_count": measurement.effects.len(),
+            "pair": measurement.pair, "control_comparison": measurement.control_comparison,
+            "expected_kind": measurement.expected.kind,
+            "match_rule": include_excerpts.then_some(measurement.match_rule),
+            "expected_label": include_excerpts.then(|| excerpt(&measurement.expected.label)),
+            "expected_outcome": include_excerpts.then(|| match &measurement.expected.outcome {
+                Value::String(text) => excerpt(text),
+                value => excerpt(&value.to_string()),
+            }),
+        }),
+        Verification::Unverified { issue } => json!({
+            "report_id": probe.report_id, "status": "unverified", "anchor": probe.evidence, "issue": issue,
+        }),
+    }
+}
+
+fn shadow_rows<'a>(
+    probe: &'a replay::shadow::RecordedProbe<'_>,
+    include_excerpts: bool,
+) -> impl Iterator<Item = Value> + 'a {
+    use replay::shadow::Verification;
+    let effects = match &probe.verification {
+        Verification::Matched { measurement } => measurement.effects.as_slice(),
+        Verification::Unverified { .. } => &[],
+    };
+    effects.iter().map(move |effect| {
+        let edit = effect.intervention;
+        json!({
+            "kind": "shadow_probe_effect", "report_id": probe.report_id,
+            "context_id": effect.context_id, "source_id": effect.source_id, "source_version": effect.source_version,
+            "anchor": effect.evidence, "pointer": edit.pointer, "text_range": edit.text_range,
+            "operation": edit.operation, "replacement_excerpt": include_excerpts.then(|| excerpt(&edit.replacement)),
+            "summary": effect.summary, "difference_pp": effect.difference_pp,
+            "difference_95_interval_pp": effect.difference_95_interval_pp,
+        })
+    })
 }
 
 pub(crate) fn inspector_path(run: &str, call: &str, decision: Option<&str>) -> String {

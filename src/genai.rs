@@ -21,6 +21,7 @@ pub(crate) fn empty_call(
         context_metadata: None,
         preflight_receipt: None,
         candidate_probes: None,
+        shadow_probes: None,
         context: Vec::new(),
         decisions: Vec::new(),
         tool_results: Vec::new(),

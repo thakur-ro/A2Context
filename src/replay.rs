@@ -5,6 +5,7 @@ mod capture;
 mod distribution;
 mod matching;
 pub mod shadow;
+mod source_binding;
 pub(crate) use capture::{
     capture_availability, capture_profiles, captured_container, has_input_profile,
 };
@@ -128,7 +129,7 @@ pub struct Replay {
     pub control_comparison: Option<ControlComparison>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Variant {
     pub intervention: Intervention,
     pub captured_context_sha256: String,
@@ -139,7 +140,7 @@ pub struct Variant {
     pub difference_95_interval_pp: Option<ReplayInterval>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Pair {
     pub trials: Vec<Trial>,
     pub summary: Summary,
@@ -151,7 +152,7 @@ pub struct Pair {
     pub interaction_95_interval_pp: Option<ReplayInterval>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ControlComparison {
     pub control_context_id: String,
     pub target_minus_control_pp: Option<f64>,
@@ -165,7 +166,7 @@ pub struct ReplayInterval {
     pub upper: i16,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Summary {
     pub attempted: usize,
     pub completed: usize,
@@ -334,8 +335,8 @@ pub fn execute(
             summary,
         }
     });
-    let control_comparison =
-        control.map(|index| compare_control(index, &variants, case.sampling_design));
+    let control_comparison = control
+        .map(|index| compare_control(&variants[index], &variants[1 - index], case.sampling_design));
     Ok(Replay {
         version: 1,
         id: case.id.clone(),
@@ -439,7 +440,11 @@ pub fn rescore(
             &control.control_context_id,
             report.variants.iter().map(|variant| &variant.intervention),
         )?;
-        *control = compare_control(index, &report.variants, SamplingDesign::Unspecified);
+        *control = compare_control(
+            &report.variants[index],
+            &report.variants[1 - index],
+            SamplingDesign::Unspecified,
+        );
     }
     let prior_id = std::mem::replace(&mut report.id, new_id.into());
     if report.rescored_from.is_none() {
@@ -535,7 +540,13 @@ pub fn validate_report(report: &Replay, runs: &[Run]) -> Result<(), String> {
             &control.control_context_id,
             report.variants.iter().map(|variant| &variant.intervention),
         )?;
-        if *control != compare_control(index, &report.variants, sampling_design) {
+        if *control
+            != compare_control(
+                &report.variants[index],
+                &report.variants[1 - index],
+                sampling_design,
+            )
+        {
             return Err(
                 "negative control comparison does not match the trial outcomes and sampling design"
                     .into(),
@@ -728,12 +739,10 @@ fn interval(
 }
 
 fn compare_control(
-    control_index: usize,
-    variants: &[Variant],
+    control: &Variant,
+    target: &Variant,
     design: SamplingDesign,
 ) -> ControlComparison {
-    let control = &variants[control_index];
-    let target = &variants[1 - control_index];
     let samples = target.summary.attempted;
     let contrast = (target.difference_pp.is_some() && control.difference_pp.is_some()).then(|| {
         // The common baseline cancels. Both variants have the same number of trials.

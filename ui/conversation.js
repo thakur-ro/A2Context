@@ -122,10 +122,12 @@ function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
   let visibility = false;
   let maskReplay = false;
   let candidateProbe = false;
+  let shadowProbe = false;
   for (const { run, call } of turn.calls) {
     const key = contextCallKey({ run_id: run.id, call_id: call.id });
     const check = preflightChecksByCall.get(key);
     candidateProbe ||= candidateProbesByCall.get(key)?.some(({ status }) => status === "matched") ?? false;
+    shadowProbe ||= shadowProbesByCall.get(key)?.some(({ status }) => status === "matched") ?? false;
     preflightConflicts += check?.report?.findings.filter(({ kind }) => kind === "conflict").length ?? 0;
     for (const { item } of contextPatternsByCall.get(key) || []) links.add(JSON.stringify([key, item.context_id]));
     conflicts += callFindings(run.id, call.id).filter(({ kind }) => kind === "conflict").length;
@@ -140,6 +142,7 @@ function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
   return [
     preflightConflicts && countLabel(preflightConflicts, "preflight conflict"),
     candidateProbe && "Candidate preference measured",
+    shadowProbe && "Shadow proposal probe",
     conflicts && countLabel(conflicts, "conflict"), links.size && countLabel(links.size, "linked input"),
     maskReplay ? "Saved masked replays" : visibility && "Measured source effects",
     measured && "Measured replay", changed && "Context changed",
@@ -372,6 +375,62 @@ function focusCandidateSource(report, source) {
   return true;
 }
 
+function renderRecordedShadowProbes(parent, run, call, open) {
+  const probes = shadowProbesByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
+  if (!probes?.length) return;
+  const count = ({ matched, attempted, completed, unscored = 0 }) => [
+    matched + " of " + attempted + " matched",
+    attempted > completed && countLabel(attempted - completed, "failed trial"),
+    unscored && countLabel(unscored, "unscored trial"),
+  ].filter(Boolean).join(" · ");
+  const contrast = (value, interval) => value === null
+    ? "comparison unavailable"
+    : activationMargin.format(value) + " pp" + (interval ? " · 95% bounds " + interval.lower + " to " + interval.upper + " pp" : "");
+
+  evidenceSection(parent, "Shadow probes · " + countLabel(probes.length, "report"), open, (section) => {
+    const context = new Map(call.context.map((item) => [item.id, item]));
+    for (const probe of probes) {
+      const card = node("article", undefined, "finding");
+      if (probe.status === "unverified") {
+        card.append(node("h3", "Could not verify shadow probe"), node("p", probe.issue));
+      } else {
+        const { expected, baseline, effects, pair, control_comparison: control, runner_id: runner, match_rule: rule } = probe.measurement;
+        card.append(node("h3", "Tracked proposal · " + expected.label),
+          node("p", "Original request · " + count(baseline)), node("p", runner, "muted"));
+        const expectedDetails = node("details");
+        expectedDetails.append(node("summary", "Proposal and match rule"),
+          node("small", (labels[expected.kind] || expected.kind) + " · " + rule.kind.replaceAll("_", " "), "anchor"),
+          node("pre", readable(expected.outcome)));
+        if (rule.pointers) expectedDetails.append(node("p", rule.pointers.join(", ")));
+        if (rule.pattern) expectedDetails.append(node("pre", rule.pattern));
+        card.append(expectedDetails);
+        for (const effect of effects) {
+          const { pointer, text_range: range, operation = "replace_text", replacement } = effect.intervention;
+          const source = contextDetails(context.get(effect.context_id), false);
+          source.append(node("small", "Edited request path " + requestFieldLabel(pointer, range), "anchor"),
+            node("p", operation.replaceAll("_", " ")));
+          if (operation !== "remove_json") source.append(node("pre", replacement || "Empty replacement"));
+          const row = node("div", undefined, "conversation-link");
+          row.append(source, node("p", "After edit · " + count(effect.summary)),
+            node("small", "Shift · " + contrast(effect.difference_pp, effect.difference_95_interval_pp), "muted"));
+          card.append(row);
+        }
+        if (pair) {
+          card.append(node("p", "Joint edit · " + count(pair.summary) + " · " + contrast(pair.difference_pp, pair.difference_95_interval_pp)),
+            node("small", "Interaction · " + contrast(pair.interaction_pp, pair.interaction_95_interval_pp), "muted"));
+        }
+        if (control) {
+          const source = effects.find((effect) => effect.intervention.context_id === control.control_context_id);
+          card.append(node("p", "Target vs control (" + (source?.source_id ?? source?.context_id ?? control.control_context_id) + ") · "
+            + contrast(control.target_minus_control_pp, control.target_minus_control_95_interval_pp)));
+        }
+      }
+      card.append(evidence(probe.evidence));
+      section.append(card);
+    }
+  });
+}
+
 function renderTurnEvidence() {
   const row = currentConversationRow();
   const panel = element("conversation-evidence");
@@ -411,6 +470,7 @@ function renderConversationEvidence() {
   const findings = decision ? callFindings(run.id, call.id, decision.id) : [];
   renderRecordedPreflight(details, run, call, true);
   renderRecordedCandidateProbes(details, run, call, true);
+  renderRecordedShadowProbes(details, run, call, true);
   if (decision && decision.kind !== "model_output") {
     evidenceSection(details, "Recorded outcome", !findings.length && !links.length, (section) => {
       section.append(node("pre", decision.outcome === null ? "Outcome unavailable" : readable(decision.outcome)));

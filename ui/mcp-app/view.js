@@ -205,7 +205,7 @@ function renderCandidatePatterns(page, back) {
 }
 
 function renderTurn(page) {
-  const { counts, rows, preflight, candidate_probes = [] } = page.data;
+  const { counts, rows, preflight, candidate_probes = [], shadow_probes = [] } = page.data;
   result.append(element("p", [
     countLabel(counts.rule_findings, "finding"),
     countLabel(counts.context_links, "context link"),
@@ -236,6 +236,25 @@ function renderTurn(page) {
         appendExcerpt(setup, probe.prefix_excerpt);
         for (const candidate of probe.candidate_excerpts) appendExcerpt(setup, candidate);
         section.append(setup);
+      }
+    }
+    result.append(section);
+  }
+  for (const probe of shadow_probes) {
+    const section = element("section", undefined, "row");
+    section.append(element("h2", "Shadow probe" + (probe.report_id ? " · " + probe.report_id : "")));
+    if (probe.status === "unverified") section.append(element("p", probe.issue));
+    else {
+      section.append(element("p", "Original request · " + shadowCounts(probe.baseline)),
+        element("p", probe.runner_id, "muted"));
+      appendExcerpt(section, probe.expected_label);
+      appendExcerpt(section, probe.expected_outcome);
+      if (probe.pair) {
+        section.append(element("p", "Joint edit · " + shadowCounts(probe.pair.summary) + " · " + proposalShift(probe.pair.difference_pp)),
+          element("p", "Interaction · " + proposalShift(probe.pair.interaction_pp), "muted"));
+      }
+      if (probe.control_comparison) {
+        section.append(element("p", "Target vs control · " + proposalShift(probe.control_comparison.target_minus_control_pp)));
       }
     }
     result.append(section);
@@ -274,6 +293,13 @@ function renderTurn(page) {
       const range = item.text_range ? " · UTF-8 bytes " + item.text_range.start_byte + " to " + item.text_range.end_byte : "";
       row.append(element("small", item.pointer + range));
       appendExcerpt(row, item.replacement_excerpt);
+    } else if (item.kind === "shadow_probe_effect") {
+      const range = item.text_range ? " · UTF-8 bytes " + item.text_range.start_byte + " to " + item.text_range.end_byte : "";
+      row.append(element("h2", "Shadow edit · " + [item.source_id || item.context_id, item.source_version].filter(Boolean).join(" · ")),
+        element("p", "After edit · " + shadowCounts(item.summary)),
+        element("p", "Shift · " + proposalShift(item.difference_pp), "muted"),
+        element("small", item.pointer + range));
+      appendExcerpt(row, item.replacement_excerpt);
     } else if (item.kind === "context_link") {
       row.append(element("h2", "Context link"), element("p", [item.label || item.relationship, item.context_id].filter(Boolean).join(" · ")));
       if (item.excerpt) {
@@ -304,6 +330,17 @@ function renderTurn(page) {
   }
   if (inputs.childElementCount > 1) result.append(inputs);
   pageControls(page, "get_turn_evidence", page.back);
+}
+
+function shadowCounts({ attempted, matched, completed, unscored = 0 }) {
+  let text = matched + " of " + attempted + " matched";
+  if (attempted > completed) text += " · " + countLabel(attempted - completed, "failed trial");
+  if (unscored) text += " · " + countLabel(unscored, "unscored trial");
+  return text;
+}
+
+function proposalShift(value) {
+  return value == null ? "comparison unavailable" : signed.format(value) + " pp";
 }
 
 function appendExcerpt(parent, excerpt) {
