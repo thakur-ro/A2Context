@@ -121,6 +121,18 @@ function patternApiScope({ organization, user }) {
   return { kind: "workspace" };
 }
 
+function patternScopeSelection(scope, thread, [after, before]) {
+  if (!after.validity.valid || !before.validity.valid || (after.value && before.value && after.value >= before.value)) return null;
+  const selection = { scope: patternApiScope(scope) };
+  if (thread) {
+    const [trace_source, organization_id, user_id, conversation_id] = JSON.parse(thread);
+    selection.thread = { trace_source, organization_id, user_id, conversation_id };
+  }
+  if (after.value) selection.after = after.value + "T00:00:00Z";
+  if (before.value) selection.before = before.value + "T00:00:00Z";
+  return selection;
+}
+
 function renderConflictBreakdown(list, scope) {
   const first = element("conflict-group-by").value;
   const second = element("conflict-then-by");

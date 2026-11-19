@@ -877,11 +877,81 @@ fn context_source_queries_scope_recorded_coverage_and_link_measurements() {
         south["structuredContent"]["source"]["masked_occurrences"],
         0
     );
+    let mut comparison = args.clone();
+    comparison["compare"] =
+        json!({"scope":{"kind":"organization","organization_id":"retail-north"}});
+    let restricted_comparison = restricted.call(name, comparison);
+    assert_eq!(
+        restricted_comparison["structuredContent"]["scope_a"]["total_occurrences"],
+        1
+    );
+    assert!(restricted_comparison["structuredContent"]["scope_b"].is_null());
     args["thread"] = json!({"trace_source":"local-transformers","organization_id":"retail-north",
         "user_id":"sample-user","conversation_id":"north-1"});
     let outside = restricted.call(name, args);
     assert_eq!(outside["structuredContent"]["total_occurrences"], 0);
     assert!(outside["structuredContent"]["source"].is_null());
+}
+
+#[test]
+fn context_source_comparison_retains_both_versions_and_paginates_by_scope() {
+    let temp = tempfile::tempdir().unwrap();
+    let mut runs: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-cohort/evidence.json"
+    ))
+    .unwrap();
+    runs[3]["calls"][0]["context"][3]["source_version"] = "v2".into();
+    runs[3]["calls"][0]["context"][5]["source_id"] = "south-only-question".into();
+    let path = temp.path().join("versions.json");
+    std::fs::write(&path, runs.to_string()).unwrap();
+    let mut client = Client::start(&[path.to_str().unwrap()], true);
+    let north = json!({"kind":"organization","organization_id":"retail-north"});
+    let south = json!({"kind":"organization","organization_id":"retail-south"});
+    let mut args =
+        json!({"version":1, "search":"V2", "limit":1, "scope":north, "compare":{"scope":south}});
+    let name = "query_context_sources";
+    let result = client.call(name, args.clone());
+    let page = &result["structuredContent"];
+    assert_eq!(page["kind"], "context_source_profile_comparison");
+    assert_eq!(page["total_sources"], 1);
+    assert_eq!(page["rows"][0]["source_id"], "refund-policy-copy");
+    assert_eq!(
+        page["rows"][0]["scope_a"]["versions"][0]["source_version"],
+        "v1"
+    );
+    assert_eq!(
+        page["rows"][0]["scope_b"]["versions"][0]["source_version"],
+        "v2"
+    );
+
+    args["source_id"] = "refund-policy-copy".into();
+    args["offset"] = 1.into();
+    let result = client.call(name, args.clone());
+    let page = &result["structuredContent"];
+    assert_eq!(page["kind"], "context_source_occurrence_comparison");
+    assert_eq!(page["scope_a"]["rows"][0]["conversation_id"], "north-2");
+    assert_eq!(page["scope_b"]["rows"][0]["conversation_id"], "south-1");
+    assert_eq!(page["scope_a"]["next_offset"], 2);
+    assert!(page["scope_b"]["next_offset"].is_null());
+
+    args["search"] = "".into();
+    args["compare"]["before"] = "2026-11-11T12:00:00Z".into();
+    let result = client.call(name, args);
+    assert_eq!(
+        result["structuredContent"]["scope_a"]["total_occurrences"],
+        3
+    );
+    assert!(result["structuredContent"]["scope_b"].is_null());
+
+    let only_south = client.call(
+        name,
+        json!({"version":1,"scope":north,"compare":{"scope":south},"search":"south-only"}),
+    );
+    assert!(only_south["structuredContent"]["rows"][0]["scope_a"].is_null());
+    assert_eq!(
+        only_south["structuredContent"]["rows"][0]["scope_b"]["occurrence_count"],
+        1
+    );
 }
 
 #[test]

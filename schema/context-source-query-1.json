@@ -45,9 +45,22 @@
     },
     "source_id": { "type": ["string", "null"], "description": "Exact named source. Omit to list profiles instead of occurrences." },
     "source_version": { "type": ["string", "null"], "description": "Optional exact recorded source version." },
+    "search": { "type": ["string", "null"], "description": "Case-insensitive substring of the named source, recorded version, or trace source. A match in either scope retains both results." },
     "after": { "type": ["string", "null"], "format": "date-time", "description": "Inclusive recorded call start in RFC 3339." },
     "before": { "type": ["string", "null"], "format": "date-time", "description": "Exclusive recorded call start in RFC 3339." },
+    "compare": {
+      "type": ["object", "null"],
+      "description": "Compare named source exposure in a second scope, conversation, or time window.",
+      "additionalProperties": false,
+      "properties": {
+        "scope": { "$ref": "#/properties/scope" },
+        "thread": { "$ref": "#/properties/thread" },
+        "after": { "$ref": "#/properties/after" },
+        "before": { "$ref": "#/properties/before" }
+      }
+    },
     "offset": { "type": "integer", "minimum": 0, "default": 0 },
+    "compare_offset": { "type": "integer", "minimum": 0, "default": 0, "description": "Occurrence page offset for the second scope when a source ID is selected." },
     "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
   }
 }

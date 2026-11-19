@@ -12,7 +12,6 @@ const labels = {
 let data;
 const contextPatternsByCall = new Map();
 const replaysByContext = new Map();
-const measuredSourceItems = new Map();
 const recordedRequests = new Set();
 const noContextReplay = { status: "untested", effects: [] };
 const contextReplayStatus = {
@@ -655,10 +654,12 @@ function renderPatterns() {
   list.replaceChildren();
   const patternType = element("pattern-type").value;
   element("activation-dates").hidden = patternType !== "activation";
+  element("source-profile-dates").hidden = patternType !== "sources";
   element("pattern-thread-filter").hidden = patternType === "tools" || patternType === "breakdown";
   element("breakdown-configuration").hidden = patternType !== "breakdown";
   element("visibility-pattern-filters").hidden = patternType !== "visibility";
   element("pattern-search-field").hidden = patternType === "breakdown" || patternType === "visibility";
+  element("pattern-search").placeholder = patternType === "sources" ? "Source, version, or trace type" : "Tool, source, or finding";
   element("context-replay-filter").hidden = patternType !== "context";
   element("context-view-filter").hidden = patternType !== "context";
   element("capture-filter").hidden = patternType !== "capture";
@@ -686,7 +687,7 @@ function renderPatterns() {
     return;
   }
   if (patternType === "sources") {
-    renderSourceProfiles(list, organization, user, query);
+    renderSourceProfiles(list, primaryScope, scopes, query);
     return;
   }
   if (patternType === "capture") {
@@ -824,7 +825,7 @@ function updatePatternThreadFilter(groups) {
 }
 
 function supportsScopeComparison(patternType) {
-  return patternType === "changes" || patternType === "controls" || patternType === "visibility";
+  return patternType === "changes" || patternType === "controls" || patternType === "visibility" || patternType === "sources";
 }
 
 function comparisonPatternFilter(scopes, patterns) {
@@ -852,6 +853,18 @@ function patternScopeColumn(index) {
   const column = node("section", undefined, "pattern-scope-column");
   column.append(node("h3", index ? "Scope B" : "Scope A"));
   return column;
+}
+
+function patternScopeColumns(captions, sides, renderSide, empty = "No comparable measurements") {
+  const columns = node("div", undefined, "compare-grid pattern-scope-columns");
+  sides.forEach((side, index) => {
+    const column = patternScopeColumn(index);
+    column.append(node("p", captions[index], "muted"));
+    if (side) renderSide(column, side, index);
+    else column.append(node("p", empty, "muted"));
+    columns.append(column);
+  });
+  return columns;
 }
 
 function patternScopeSummary(title, scopes, counts, shared, className) {
@@ -1354,10 +1367,6 @@ async function start() {
       });
       const measured = effects.find(({ group, effect }) => !group.pair && effect.difference_pp !== null);
       replaysByContext.set(contextReplayKey(item), { effects, status: measured ? "measured" : "unavailable" });
-      if (measured) {
-        const key = sourceItemKey(item);
-        if (!measuredSourceItems.has(key)) measuredSourceItems.set(key, measured.effect);
-      }
     }
     for (const group of data.context_patterns) {
       for (const item of group.occurrences) {
@@ -1383,6 +1392,7 @@ async function start() {
     state.patternScope = defaultPatternScope;
     setupConflictBreakdown();
     setupVisibilityPatterns();
+    setupSourceProfileDates();
     const share = element("copy-view-link");
     share.hidden = false;
     share.addEventListener("click", () => copyInspectionLink());
@@ -1437,7 +1447,8 @@ async function start() {
     for (const id of ["pattern-type", "context-replay-status", "context-view", "capture-status", "pattern-search"]) {
       element(id).addEventListener(id === "pattern-search" ? "input" : "change", () => {
         linkNotice();
-        renderPatterns();
+        if (id === "pattern-search" && element("pattern-type").value === "sources") queueSourceProfileSearch();
+        else renderPatterns();
       });
     }
     setupActivationDates();

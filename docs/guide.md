@@ -414,7 +414,9 @@ Open **Investigate context** on a turn in **Conversation** or **Decisions** to s
 
 **Patterns → Context sources** shows how many recorded occurrences have a measured replay or a source mask in the selected workspace, organization, user, or thread. Open a source's occurrences to see which calls have each kind of measurement and jump to those results. A single occurrence can count in both methods.
 
-Use [`query_context_sources`](../schema/context-source-query-1.json) in MCP or `POST /api/context-sources` to query the same coverage. Omit `source_id` to list named sources, ordered by distinct calls. Pass a source ID to read its occurrences in chronological order. Use `source_version`, `scope`, `thread`, and an inclusive `after` or exclusive `before` to narrow the results.
+Choose **Compare with** to compare recorded exposure and measurement coverage side by side. Select the same scope twice and set two **Date range** windows to see how source coverage changed over time. The view aligns sources by declared name and shows each side's recorded versions. A source found in only one scope remains visible. **Copy view link** preserves the scopes, dates, and selected source.
+
+The browser uses the same query as [`query_context_sources`](../schema/context-source-query-1.json) in MCP and `POST /api/context-sources` in HTTP. Omit `source_id` to list named sources, ordered by distinct calls. Pass a source ID to read its occurrences in chronological order. Use `source_version`, `scope`, `thread`, and an inclusive `after` or exclusive `before` to narrow the results.
 
 ```json
 {
@@ -425,6 +427,8 @@ Use [`query_context_sources`](../schema/context-source-query-1.json) in MCP or `
 ```
 
 Each occurrence is one captured input on one call, even if several decisions link to or measure it. The result includes the captured input path, linked decision IDs, and counts of individual mask and replay measurements. Each method includes one example link when measurements are available. A replay with a measured zero change counts as measured. The tool returns source metadata and references, while captured text is available through the separate turn evidence query under the host's excerpt settings.
+
+Pass a second scope or time window in `compare`. A missing side is returned as `null`. Use `offset` and `compare_offset` to page through a selected source's occurrences independently. A case-insensitive `search` matches the source name, trace source, or version, and retains both sides when either side matches.
 
 An exact match is a request string, JSON container, or declared text fragment that equals the captured entry. Open **Test this context** on a matched entry to plan an edit. Multiple matches require choosing the field to change. The inventory is scoped to entries present in the trace. The inspection JSON exposes these records under `capture_profiles`. `matching_fields` is omitted when the original request or entry value is unavailable. The browser's inspection response includes the request's evidence anchor. The replay planner loads the original request when you select **Use captured request**.
 

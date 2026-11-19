@@ -199,6 +199,17 @@
           <label class="visibility-repeat-filter"><span><input id="visibility-pattern-repeat" type="checkbox"> Recurring only</span></label>
         </div>
       </div>
+      <details id="source-profile-dates" class="activation-dates" hidden>
+        <summary>Date range</summary>
+        <div class="activation-date-controls">
+          <label>From (UTC) <input id="source-profile-after" type="date" max="9999-12-31"></label>
+          <label>Before (UTC) <input id="source-profile-before" type="date" max="9999-12-31"></label>
+          <div id="source-profile-compare-dates" class="activation-date-controls" hidden>
+            <label>From B (UTC) <input id="source-profile-after_b" type="date" max="9999-12-31"></label>
+            <label>Before B (UTC) <input id="source-profile-before_b" type="date" max="9999-12-31"></label>
+          </div>
+        </div>
+      </details>
       <details id="activation-dates" class="activation-dates" hidden>
         <summary>Date range</summary>
         <div class="activation-date-controls">

@@ -94,18 +94,6 @@ function visibilityReportsInScope({ organization, user }) {
   });
 }
 
-function visibilityPatternSelection(scope, thread, [after, before]) {
-  if (!after.validity.valid || !before.validity.valid || (after.value && before.value && after.value >= before.value)) return null;
-  const selection = { scope: patternApiScope(scope) };
-  if (thread) {
-    const [trace_source, organization_id, user_id, conversation_id] = JSON.parse(thread);
-    selection.thread = { trace_source, organization_id, user_id, conversation_id };
-  }
-  if (after.value) selection.after = after.value + "T00:00:00Z";
-  if (before.value) selection.before = before.value + "T00:00:00Z";
-  return selection;
-}
-
 function renderVisibilityPatterns(list, scope, scopes) {
   const entries = visibilityReportsInScope(scope);
   updatePatternThreadFilter([{ occurrences: entries.map(({ occurrence }) => occurrence) }]);
@@ -146,8 +134,8 @@ function renderVisibilityPatterns(list, scope, scopes) {
     panel.append(node("p", "Enter a positive whole number for the output token.", "muted"));
     return;
   }
-  const primary = visibilityPatternSelection(scope, state.patternThread, visibilityPatternDateFields.map(visibilityField));
-  const compare = second && visibilityPatternSelection(second.scope, second.thread, visibilityComparisonDateFields.map(visibilityField));
+  const primary = patternScopeSelection(scope, state.patternThread, visibilityPatternDateFields.map(visibilityField));
+  const compare = second && patternScopeSelection(second.scope, second.thread, visibilityComparisonDateFields.map(visibilityField));
   if (!primary || (second && !compare)) {
     const side = second ? " for Scope " + (primary ? "B" : "A") : "";
     panel.append(node("p", "Enter complete dates" + side + ". The From date must precede the Before date.", "muted"));
@@ -349,7 +337,7 @@ function renderVisibilityComparison(parent, page, captions, key, offset, compare
   }
   if (key) {
     appendVisibilityModel(parent, page.group.comparison);
-    parent.append(visibilityComparisonColumns(captions, [page.scope_a, page.scope_b], (column, evidence, index) => {
+    parent.append(patternScopeColumns(captions, [page.scope_a, page.scope_b], (column, evidence, index) => {
       appendVisibilityGroupSummary(column, evidence.group, page.metric);
       renderVisibilityOccurrences(column, evidence.occurrences);
       patternPager(column, index ? compareOffset : offset, evidence.next_offset, (next) => {
@@ -366,34 +354,11 @@ function renderVisibilityComparison(parent, page, captions, key, offset, compare
     button.addEventListener("click", () => load(group.key, 0, true));
     line.append(button);
     appendVisibilityModel(line, group.comparison);
-    line.append(visibilityComparisonColumns(captions, [group.scope_a, group.scope_b], (column, summary) => {
+    line.append(patternScopeColumns(captions, [group.scope_a, group.scope_b], (column, summary) => {
       appendVisibilityGroupSummary(column, summary, page.metric);
     }));
     parent.append(line);
   }
-}
-
-function visibilityComparisonColumns(captions, sides, renderSide) {
-  const columns = node("div", undefined, "compare-grid pattern-scope-columns");
-  sides.forEach((side, index) => {
-    const column = patternScopeColumn(index);
-    column.append(node("p", captions[index], "muted"));
-    if (side) renderSide(column, side, index);
-    else column.append(node("p", "No comparable measurements", "muted"));
-    columns.append(column);
-  });
-  return columns;
-}
-
-function visibilityEvidenceLink(path, label) {
-  const link = node("a", label);
-  link.href = path;
-  link.addEventListener("click", (event) => {
-    if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
-      window.history.replaceState(null, "", inspectionLink().href);
-    }
-  });
-  return link;
 }
 
 function renderVisibilityOccurrences(parent, occurrences) {
@@ -415,8 +380,8 @@ function renderVisibilityOccurrences(parent, occurrences) {
     const links = node("div", undefined, "visibility-pattern-links");
     const first = row.output_token + 1;
     const tokens = row.output_token_end > first ? "tokens " + first + "–" + row.output_token_end : "token " + first;
-    links.append(visibilityEvidenceLink(row.inspector_path, "Open " + tokens));
-    row.source_inspector_paths.forEach((path, index) => links.append(visibilityEvidenceLink(path, row.context_ids[index])));
+    links.append(patternEvidenceLink(row.inspector_path, "Open " + tokens));
+    row.source_inspector_paths.forEach((path, index) => links.append(patternEvidenceLink(path, row.context_ids[index])));
     line.append(node("strong", visibilityEffectFormat.format(row.effect)), links);
     if (row.output_prefix_sha256) line.append(node("small", "Prefix " + row.output_prefix_sha256.slice(0, 8), "anchor"));
     parent.append(line);

@@ -253,6 +253,8 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.5 ui-monosp
 .effects-table :is(th, td) { text-align: left; vertical-align: top; padding: .42rem; border-bottom: 1px solid var(--line); }
 .effects-table td:not(:first-child) { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .source-history .effects-table thead th { white-space: nowrap; }
+.source-history .pattern-scope-columns + button { margin-top: .65rem; }
+#source-profile-compare-dates { display: contents; }
 .replay-breakdown { margin: .65rem 0; }
 .replay-breakdown-bar { display: flex; gap: 2px; height: .45rem; max-width: 28rem; border-radius: .5rem; overflow: hidden; }
 .replay-breakdown-bar span { flex-basis: 0; background: var(--effect-color); }

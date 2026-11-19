@@ -171,6 +171,7 @@ function inspectionLink(reference = state.reference) {
       if (kind === "breakdown") writeConflictBreakdownLink(params);
       else if (kind === "visibility") writeVisibilityPatternLink(params);
       else if (element("pattern-search").value) params.set("q", element("pattern-search").value);
+      if (kind === "sources") writeSourceProfileLink(params);
       if (kind === "context") {
         params.set("presentation", element("context-view").value);
         params.set("replay_status", element("context-replay-status").value);
@@ -190,6 +191,17 @@ function inspectionLink(reference = state.reference) {
   }
   url.hash = params.toString();
   return url;
+}
+
+function patternEvidenceLink(path, label) {
+  const link = node("a", label);
+  link.href = path;
+  link.addEventListener("click", (event) => {
+    if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+      window.history.replaceState(null, "", inspectionLink().href);
+    }
+  });
+  return link;
 }
 
 async function copyInspectionLink(reference) {
@@ -232,6 +244,7 @@ function restorePatternLink(params) {
   const activation = kind === "activation";
   if (activation) activationPatternBlock = Number(params.get("block")) || 0;
   const datesAvailable = activation ? restoreActivationDateLink(params)
+    : kind === "sources" ? restoreSourceProfileLink(params)
     : kind !== "visibility" || restoreVisibilityPatternLink(params);
   const compare = supportsScopeComparison(element("pattern-type").value);
   const comparisonScope = compare ? params.get("scope_b") ?? "" : "";
