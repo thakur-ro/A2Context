@@ -165,7 +165,7 @@ pub fn query<'a>(
     rows.truncate(request.limit);
 
     Ok(json!({
-        "version": 1, "run_id": run.id, "call_id": call.id, "turn_id": call.turn_id, "started_at": call.started_at,
+        "version": 1, "kind": "turn_evidence", "run_id": run.id, "call_id": call.id, "turn_id": call.turn_id, "started_at": call.started_at,
         "turn_order": turn_order, "trace_source": run.source,
         "organization_id": run.organization_id, "user_id": run.user_id, "conversation_id": run.conversation_id,
         "decision": decision.map(|item| json!({

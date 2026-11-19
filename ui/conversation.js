@@ -67,17 +67,19 @@ function selectConversationAnswer() {
   if (answer) selectConversationStep(answer);
 }
 
-function conversationSignal(turn, measuredSourceCalls) {
+function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
   const links = new Set();
   let conflicts = 0;
   let changed = false;
   let visibility = false;
+  let maskReplay = false;
   for (const { run, call } of turn.calls) {
     const key = contextCallKey({ run_id: run.id, call_id: call.id });
     for (const { item } of contextPatternsByCall.get(key) || []) links.add(JSON.stringify([key, item.context_id]));
     conflicts += callFindings(run.id, call.id).filter(({ kind }) => kind === "conflict").length;
     changed ||= Boolean(transitionsByCall.get(key)?.changes.length);
     visibility ||= measuredSourceCalls.has(key);
+    maskReplay ||= maskReplayCalls.has(key);
   }
   const measured = turn.calls.some(({ call, run }) =>
     data.replays.some(({ location, variants, pair }) => location.run_id === run.id && location.call_id === call.id
@@ -85,7 +87,8 @@ function conversationSignal(turn, measuredSourceCalls) {
   );
   return [
     conflicts && countLabel(conflicts, "conflict"), links.size && countLabel(links.size, "linked input"),
-    visibility && "Measured source effects", measured && "Measured replay", changed && "Context changed",
+    maskReplay ? "Saved masked replays" : visibility && "Measured source effects",
+    measured && "Measured replay", changed && "Context changed",
   ].filter(Boolean).join(" · ");
 }
 
@@ -117,8 +120,9 @@ function renderConversation() {
     if (panel.parentNode !== rail) rail.append(panel);
     const list = element("conversation-turns");
     list.replaceChildren();
-    const measuredSourceCalls = new Set((data.activation_reports || [])
-      .filter(({ kind, sources }) => kind === "source_visibility" && sources.some(({ masked_log_probs }) => masked_log_probs))
+    const visibilityReports = (data.activation_reports || []).filter(({ kind }) => kind === "source_visibility");
+    const measuredSourceCalls = new Set(visibilityReports.map(({ location }) => contextCallKey(location)));
+    const maskReplayCalls = new Set(visibilityReports.filter(({ continuations }) => continuations?.length)
       .map(({ location }) => contextCallKey(location)));
     let known = 0;
     conversationRows = conversationTurns(thread.calls).map((turn, position) => {
@@ -149,7 +153,7 @@ function renderConversation() {
       } else if (other.length) {
         item.append(node("p", countLabel(other.length, "recorded step"), "muted"));
       }
-      const signal = conversationSignal(turn, measuredSourceCalls);
+      const signal = conversationSignal(turn, measuredSourceCalls, maskReplayCalls);
       const button = node("button", signal || "Turn evidence", "conversation-turn-button");
       button.type = "button";
       button.setAttribute("aria-controls", "conversation-evidence");
@@ -292,6 +296,13 @@ function renderConversationEvidence() {
       }
     });
   }
+  const reports = activationReports(run, call, decision);
+  const maskReports = reports.filter(({ kind, continuations }) => kind === "source_visibility" && continuations?.length);
+  if (maskReports.length) {
+    const count = maskReports.reduce((sum, report) => sum + report.continuations.length, 0);
+    evidenceSection(details, "Masked replays · " + countLabel(count, "saved result"), true,
+      (section) => renderTurnMaskReplays(section, maskReports, call));
+  }
   if (decision) {
     renderDecisionInvestigation(details, run, call, decision, captureOnCall(run.id, call.id),
       exactDecisionLinks(run, call, decision));
@@ -306,15 +317,52 @@ function renderConversationEvidence() {
     && location.decision_id === decision.id)) {
     evidenceSection(details, "Replay results", false, (section) => renderReplays(section, run, call, decision));
   }
-  const reports = activationReports(run, call, decision);
   if (reports.length) {
-    evidenceSection(details, "Activation probe", true, (section) => renderActivationReports(section, reports, call));
+    evidenceSection(details, "Activation probe", !maskReports.length, (section) => renderActivationReports(section, reports, call));
   }
   appendTimelineChanges(details, transitionsByCall.get(key));
   const inspect = node("button", "Open decision details");
   inspect.type = "button";
   inspect.addEventListener("click", () => openDecision(state.run, state.call, state.decision));
   details.append(inspect);
+}
+
+function renderTurnMaskReplays(section, reports, call) {
+  const names = new Map(call.context.map(({ id, source_id }) => [id, source_id || id.replaceAll("-", " ")]));
+  const results = node("div", undefined, "turn-mask-replays");
+  const reportPicker = node("select");
+  options(reportPicker, reports.map(({ model_id, id }) => model_id + " · " + id), 0);
+  if (reports.length > 1) {
+    const label = node("label", "Saved probe ", "activation-picker");
+    label.append(reportPicker);
+    section.append(label);
+  }
+  section.append(results);
+
+  function load(offset = 0) {
+    const report = reports[Number(reportPicker.value)];
+    showPatternPage(results, "/api/source-visibility", {
+      version: 1, location: report.location, report_id: report.id, view: { kind: "continuations" }, offset, limit: 20,
+    }, (page) => {
+      const list = node("ul");
+      for (const row of page.rows) {
+        const sources = row.context_ids.map((id) => names.get(id)).join(" + ");
+        const token = row.start_output_token + 1;
+        const item = node("li");
+        item.append(node("strong", sources), node("small", maskOutcomeLabels[row.outcome] + " · Token " + token, "muted"));
+        const open = occurrenceButton(report.location, "Open replay", {
+          activation_id: report.id, visibility_token: row.start_output_token, visibility_continuation: row.continuation_index,
+        });
+        open.setAttribute("aria-label", "Open replay for " + sources + " from token " + token);
+        item.append(open);
+        list.append(item);
+      }
+      results.append(list);
+      patternPager(results, offset, page.next_offset, load);
+    });
+  }
+  reportPicker.addEventListener("change", () => load());
+  load();
 }
 
 function returnToConversation() {

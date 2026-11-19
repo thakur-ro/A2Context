@@ -256,12 +256,7 @@ function visibilityGroupLabel(group) {
 function visibilityReplaySummary(group) {
   const replay = group.continuation_outcomes;
   if (!replay) return "";
-  const labels = {
-    changed_tool: "Tool changed", changed_arguments: "Arguments changed", same_proposal: "Same proposal",
-    unparsed_proposal: "No parsed proposal", changed_output: "Output changed", same_output: "Same output",
-    token_limit: "Token limit reached", mixed: "Mixed outcomes",
-  };
-  const outcomes = Object.entries(replay.by_outcome).map(([kind, count]) => labels[kind] + " " + count);
+  const outcomes = Object.entries(replay.by_outcome).map(([kind, count]) => maskOutcomeLabels[kind] + " " + count);
   return ["Replayed " + replay.decisions_tested + " of " + countLabel(group.decision_count, "decision"), ...outcomes].join(" · ");
 }
 

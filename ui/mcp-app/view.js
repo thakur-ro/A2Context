@@ -25,7 +25,8 @@ function openPage(page, back, focus = false) {
   page.back = back;
   result.replaceChildren();
   if (back) {
-    const label = visibilityBackLabel(back.page.kind) ?? (page.kind === "turn" ? "Back to contributing decisions" :
+    const label = visibilityBackLabel(back.page.kind) ?? (back.page.kind === "turn" ? "Back to turn evidence" :
+      page.kind === "turn" ? "Back to contributing decisions" :
       page.kind === "activation_evidence" ? "Back to activation groups" : "Back to conflict groups");
     const control = button(label, () => {
       openPage(back.page, back.previous, true);
@@ -135,6 +136,10 @@ function renderEvidence(page, back) {
   if (page.args.group_by) pageControls(page, "query_conflicts", back);
 }
 
+function turnLocation({ run_id, call_id, decision }) {
+  return { run_id, call_id, decision_id: decision?.id };
+}
+
 function renderTurn(page) {
   const { counts, rows } = page.data;
   result.append(element("p", [
@@ -148,6 +153,20 @@ function renderTurn(page) {
     )));
   }
   if (page.data.decision?.outcome_excerpt) appendExcerpt(result, page.data.decision.outcome_excerpt);
+  const measured = (page.data.source_visibility_reports || []).filter(({ measured_continuations }) => measured_continuations > 0);
+  if (measured.length) {
+    const section = element("section", undefined, "row");
+    section.append(element("h2", "Masked replays"));
+    for (const report of measured) {
+      section.append(element("p", report.model_id + " · " + report.runtime, "muted"));
+      section.append(button("Open " + countLabel(report.measured_continuations, "saved replay"), () => requestPage(
+        "query_source_visibility", {
+          version: 1, location: turnLocation(page.data), report_id: report.report_id, view: { kind: "continuations" },
+        }, "Decoding with sources masked", { page, previous: page.back },
+      )));
+    }
+    result.append(section);
+  }
   const calls = element("ol");
   const inputs = element("details", undefined, "row");
   inputs.append(element("summary", "Captured inputs on this page"));
@@ -296,16 +315,18 @@ app.ontoolresult = (response) => {
   try {
     generation += 1;
     const data = payload(response);
-    const args = initialQuery || {};
+    const turn = data.kind === "turn_evidence";
+    const args = turn ? { ...turnLocation(data), ...initialQuery } : initialQuery || {};
     const titles = {
       groups: () => "Conflicts across recorded decisions",
       evidence: () => args.group ? groupName(args.group, args.group_by || []) : "Contributing decisions",
       activation_groups: () => "Recurring activation effects",
       activation_evidence: () => activationTitle(data.group),
+      turn_evidence: () => "Turn evidence",
     };
     const title = Object.hasOwn(titles, data.kind) ? titles[data.kind]() : visibilityTitle(data);
     if (!title) throw new Error("This result has no supported evidence view.");
-    openPage({ kind: data.kind, title, args, data });
+    openPage({ kind: turn ? "turn" : data.kind, title, args, data });
   } catch (error) {
     showStatus(error.message, true);
   }

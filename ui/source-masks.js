@@ -5,6 +5,11 @@ const masksBySourceItem = new Map();
 const visibilityEffectFormat = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 5, signDisplay: "exceptZero",
 });
+const maskOutcomeLabels = {
+  changed_tool: "Tool changed", changed_arguments: "Arguments changed", same_proposal: "Same proposal",
+  unparsed_proposal: "No parsed proposal", changed_output: "Output changed", same_output: "Same output",
+  token_limit: "Token limit reached", mixed: "Mixed outcomes",
+};
 
 function visibilityInteraction(baseline, first, second, joint) {
   return (joint - first) - (second - baseline);

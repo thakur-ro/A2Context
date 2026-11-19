@@ -827,7 +827,9 @@ cargo run --locked -- serve \
   examples/runtime-comparison/visibility-routing/evidence.json
 ```
 
-In **Decisions**, open **Activation probe → Context visibility test → Decoding with sources masked**. Pick a source or pair and starting token. The inspector shows the recorded and masked outputs side by side. In **Patterns**, a contributing turn links to its continuation when the mask and starting token match the measured source and output span.
+In **Conversation**, a turn with saved results shows **Saved masked replays**. Open its evidence to see each source or pair, its starting token, and what changed. Select **Open replay** to compare the recorded and masked outputs side by side, then **Back to conversation** to return to the same turn. In **Patterns**, a contributing turn links to its continuation when the mask and starting token match the measured source and output span.
+
+The MCP App opens these measurements from `get_turn_evidence`. Under **Masked replays**, open a saved report to read its results. The same turn evidence is available as structured data.
 
 Use `view.kind` of `continuations` with `query_source_visibility` or `POST /api/source-visibility`. Optionally filter by `output_token` and `context_ids`. Results give the first changed token, stopping condition, and whether the parsed tool name or arguments changed. Generated text requires `include_excerpts: true` and the MCP host's `--include-excerpts` flag. [Query schema](../schema/source-visibility-query-1.json)
 

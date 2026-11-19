@@ -121,6 +121,7 @@ impl MaskContinuation {
         let path = query::visibility_path(report, self.start_output_token, None);
         let mut row = json!({
             "context_ids": self.context_ids, "start_output_token": self.start_output_token,
+            "continuation_index": index,
             "max_new_tokens": self.max_new_tokens, "stop_reason": self.masked.stop_reason,
             "first_changed_output_token": changed, "total_output_tokens": self.masked.token_ids.len(),
             "outcome": self.outcome(report), "inspector_path": format!("{path}&continuation={index}"),
