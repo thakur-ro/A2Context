@@ -11,7 +11,7 @@ Traces show what was recorded. Conflict checks use declared rules, and replay ef
 | An assembled request | [Check declared rules](#check-context-before-inference) or [screen captured text](#screen-captured-text-for-overlap) → [Score alternatives](#measure-candidate-preference-before-a-decision) or [compare shadow proposals](#test-context-with-shadow-proposals) |
 | A recorded answer or action | [Import OTLP](#import-opentelemetry-traces) or [LangSmith](#import-langsmith-traces) → [Inspect a decision](#investigate-an-unfamiliar-decision) → [Replay one source edit](#test-a-context-item-with-a-controlled-replay) |
 | A thread with changing context | [Follow changes across calls](#follow-context-changes-through-a-thread) → [Compare two decisions](#compare-two-recorded-decisions) |
-| A question across sessions | [Group conflicts](#group-recurring-conflicts), [compare candidate shifts](#find-recurring-candidate-preference-shifts), or [compare proposal shifts](#find-recurring-shadow-proposal-shifts) → Open a contributing turn |
+| A question across sessions | [Group conflicts](#group-recurring-conflicts), [compare screened pairs](#find-recurring-screened-pairs), [compare candidate shifts](#find-recurring-candidate-preference-shifts), or [compare proposal shifts](#find-recurring-shadow-proposal-shifts) → Open a contributing turn |
 | Access to an instrumented model | [Follow influence across an answer](#follow-context-influence-across-an-answer) → [Test source visibility](#test-source-visibility-on-a-recorded-answer) or [compare masked continuations](#continue-decoding-with-sources-masked) |
 | A workflow to integrate | [Declare sources](#declare-context-sources-and-decision-scope) → [Send traces](#receive-live-opentelemetry-traces) or [emit evidence directly](#emit-evidence-from-another-workflow) → [Connect an MCP client](#connect-an-mcp-client) |
 
@@ -100,6 +100,29 @@ cargo run --locked -- screen-recorded-context examples/context-screening/evidenc
 To connect a different scorer, read one JSON object from stdin with `version: 1` and `pairs` containing `id`, `left`, and `right`. Return one object with `version: 1`, `scorer` containing `model_id`, `revision`, and `runtime`, and one result per input pair in the same order. A result carries its `id` and either `status: "scored"` with `left_to_right` and `right_to_left` distributions or `status: "unscored"` with `reason: "too_long"` or `"unavailable"`. Each distribution has `contradiction`, `entailment`, and `neutral` scores summing to one within `0.0001`. The selected scorer receives the captured text.
 
 Attach a pending report to the inference call as `nexusweave.context_screening`. For OTLP, use a JSON string attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `nexusweave.span.id` to the inference run's exact ID. NexusWeave matches the captured selection and text digests and checks that the scores and labels follow the report contract. The inspector shows which sources were screened on the recorded call. MCP `get_turn_evidence` includes the scores and anchors, with text available under the existing excerpt setting. [Report and selection schema](../schema/context-screening-report-1.json)
+
+### Find recurring screened pairs
+
+```sh
+cargo run --locked -- serve examples/context-screening/cohort.json
+```
+
+Open **Patterns → Screened context pairs**. Select **User · retail-north / routing-sample**, choose **Possible conflict** under **Relationship**, and compare with **Organization · retail-south**. The pair about viewing receipts was flagged in two north conversations and one south conversation. A second south conversation screened an overlap but lacked the conflicting pair. The owners, dates, and conversations are synthetic. The saved scores came from the pinned MiniLM classifier. [Saved cohort](../examples/context-screening/cohort.json)
+
+Choose **See contributing turns** to browse each side in time order. **Open pair on turn** expands the exact two captured sources and their directional scores. From that turn, **Find recurring pairs** opens the user's scope. Filter by thread or UTC date range to narrow either side. **Recurring only** requires a flag in at least two identified conversations in either scope.
+
+Grouping uses the exact captured text of both sources and their roles, kinds, and declared names and versions when available. Classifier comparisons also share the model, revision, and runtime. The same pair can arrive in either order. Counts cover distinct calls with that pair screened. An assessed call has at least one model score or exact-text comparison for the pair. The group keeps scored calls with no flag and shows how many calls lack a usable comparison. Multiple copies of a pair within one call count once in the summary.
+
+The CLI, HTTP, and MCP use the same versioned query. Save this example as `screening-view.json`, then use `nexusweave query-screening-patterns screening-view.json examples/context-screening/cohort.json`, `POST /api/screening-patterns`, or MCP `query_screening_patterns`. Pass a returned `key` as `group` to page through the pairs. The MCP view shows captured source references and scores. Use turn evidence with captured excerpts enabled to see the underlying text. [Query schema](../schema/screening-pattern-query-1.json)
+
+```json
+{
+  "version": 1,
+  "relation": "possible_conflict",
+  "selection": { "scope": { "kind": "user", "organization_id": "retail-north", "user_id": "routing-sample" } },
+  "compare": { "scope": { "kind": "organization", "organization_id": "retail-south" } }
+}
+```
 
 ## Measure candidate preference before a decision
 

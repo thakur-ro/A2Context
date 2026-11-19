@@ -29,7 +29,7 @@
   <script src="/activation-patterns.js" defer></script>
   <script src="/conflict-breakdown.js" defer></script>
   <script src="/visibility-patterns.js" defer></script>
-  <script src="/candidate-patterns.js" defer></script>
+  <script src="/assessment-patterns.js" defer></script>
 </head>
 <body>
   <header class="masthead">
@@ -148,6 +148,7 @@
             <option value="visibility">Masked-source effects</option>
             <option value="candidates">Candidate preference shifts</option>
             <option value="shadow">Shadow proposal shifts</option>
+            <option value="screening">Screened context pairs</option>
           </select>
         </label>
         <label id="pattern-thread-filter" hidden>Thread <select id="pattern-thread"></select></label>
@@ -223,6 +224,14 @@
         <div class="breakdown-configuration" id="candidate-pattern-filters" hidden>
           <label>Source <input id="candidate-pattern-source" type="search" list="candidate-sources" placeholder="All named sources"></label>
           <datalist id="candidate-sources"></datalist>
+          <label id="screening-relation-filter" hidden>Relationship
+            <select id="candidate-pattern-relation">
+              <option value="">All flagged pairs</option>
+              <option value="exact_text_reuse">Exact text reuse</option>
+              <option value="possible_overlap">Possible overlap</option>
+              <option value="possible_conflict">Possible conflict</option>
+            </select>
+          </label>
           <label>From (UTC) <input id="candidate-pattern-after" type="date" max="9999-12-31"></label>
           <label>Before (UTC) <input id="candidate-pattern-before" type="date" max="9999-12-31"></label>
           <div id="candidate-pattern-compare-dates" class="breakdown-configuration" hidden>

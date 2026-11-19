@@ -30,6 +30,7 @@ const USAGE: &str = "Usage:
   nexusweave query-conflicts <view.json> <evidence.json> [...]
   nexusweave query-candidate-patterns <view.json> <evidence.json> [...]
   nexusweave query-shadow-patterns <view.json> <evidence.json> [...]
+  nexusweave query-screening-patterns <view.json> <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
   nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
@@ -226,6 +227,14 @@ fn run(args: Vec<String>) -> Result<()> {
             } else {
                 replay::shadow::patterns::query(&spec, &runs, true)?
             };
+            serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
+            println!();
+        }
+        ["query-screening-patterns", spec, paths @ ..] if !paths.is_empty() => {
+            let runs = read_runs(paths)?;
+            validate_loaded_runs(&runs)?;
+            let spec = serde_json::from_reader(fs::File::open(spec)?)?;
+            let page = context_screening::patterns::query(&spec, &runs, true)?;
             serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
             println!();
         }
@@ -828,10 +837,10 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 "text/javascript; charset=utf-8",
                 include_bytes!("../ui/visibility-patterns.js").as_slice(),
             ),
-            (true, &Method::Get, "/candidate-patterns.js") => (
+            (true, &Method::Get, "/assessment-patterns.js") => (
                 200,
                 "text/javascript; charset=utf-8",
-                include_bytes!("../ui/candidate-patterns.js").as_slice(),
+                include_bytes!("../ui/assessment-patterns.js").as_slice(),
             ),
             (true, &Method::Get, "/styles.css") => (
                 200,

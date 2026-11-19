@@ -1,5 +1,7 @@
 //! Screen captured text for reuse and possible semantic overlap or conflict.
 
+pub mod patterns;
+
 use crate::{preflight, replay::sha256, Availability, Call, Evidence, RequestFragment};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -49,7 +51,7 @@ pub struct ScoringRequest<'a> {
 }
 
 /// The scorer's model and runtime identity.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Scorer {
     pub model_id: String,
@@ -158,7 +160,7 @@ pub struct ScoringResult {
     pub pairs: Vec<ScoredPair>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Suggestion {
     ExactTextReuse,

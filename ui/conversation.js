@@ -242,7 +242,7 @@ function currentConversationRow() {
 }
 
 function selectConversationStep({ run, call, decision }) {
-  Object.assign(state, { run, call, decision, reference: undefined, probeLink: undefined, preflightSource: undefined });
+  Object.assign(state, { run, call, decision, reference: undefined, probeLink: undefined, preflightSource: undefined, screenPair: undefined });
 }
 
 function openConversation(run, call, decision = 0) {
@@ -353,7 +353,7 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
             node("pre", effect.replacement || "Empty replacement"));
           if (effect.source_id?.trim()) {
             const recurring = node("button", "Find recurring shifts");
-            recurring.addEventListener("click", () => openProbePatterns("candidates", run, effect.source_id));
+            recurring.addEventListener("click", () => openAssessmentPatterns("candidates", run, effect.source_id));
             source.append(recurring);
           }
           const row = node("div", undefined, "conversation-link");
@@ -438,7 +438,7 @@ function renderRecordedShadowProbes(parent, run, call, open) {
           if (operation !== "remove_json") source.append(node("pre", replacement || "Empty replacement"));
           if (effect.source_id?.trim()) {
             const recurring = node("button", "Find recurring proposal shifts");
-            recurring.addEventListener("click", () => openProbePatterns("shadow", run, effect.source_id));
+            recurring.addEventListener("click", () => openAssessmentPatterns("shadow", run, effect.source_id));
             source.append(recurring);
           }
           const row = node("div", undefined, "conversation-link");

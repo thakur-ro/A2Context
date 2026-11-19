@@ -17,6 +17,16 @@ function contextScreenForCall(run, call) {
   return screensByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
 }
 
+function focusScreenPair(anchor) {
+  const card = [...element("conversation-details").querySelectorAll("[data-screen-pair]")]
+    .find((item) => item.dataset.screenPair === anchor);
+  if (!card) return false;
+  card.parentElement.closest("details")?.setAttribute("open", "");
+  if (!focusConversationEvidence(card)) return false;
+  state.screenPair = anchor;
+  return true;
+}
+
 function renderContextScreen(parent, run, call, open) {
   const screen = contextScreenForCall(run, call);
   if (!screen) return;
@@ -35,9 +45,19 @@ function renderContextScreen(parent, run, call, open) {
     if (report.scorer) {
       section.append(node("small", [report.scorer.model_id, report.scorer.revision, report.scorer.runtime].join(" · "), "anchor"));
     }
+    if (flagged.length) {
+      const recurring = node("button", "Find recurring pairs");
+      recurring.type = "button";
+      recurring.addEventListener("click", () => openAssessmentPatterns("screening", run, ""));
+      section.append(recurring);
+    }
     const sources = new Map(call.context.map((item) => [item.id, item]));
     function appendPair(container, pair) {
       const card = node("details", undefined, "finding");
+      card.dataset.screenPair = JSON.stringify(pair.sources.flatMap((index) => {
+        const source = report.sources[index];
+        return [source.context_id, source.text_sha256];
+      }));
       const items = pair.sources.map((index) => sources.get(report.sources[index].context_id));
       const sourceNames = items.map((item) => item.source_id || [item.role,
         item.evidence.message_index === null ? item.id : "message " + (item.evidence.message_index + 1),

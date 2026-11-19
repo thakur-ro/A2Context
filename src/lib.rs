@@ -54,6 +54,7 @@ pub mod otlp;
 pub mod preflight;
 pub mod replay;
 pub mod replay_effects;
+mod scoped_calls;
 pub mod source_profiles;
 mod span_metadata;
 mod tool_patterns;

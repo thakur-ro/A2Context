@@ -1,7 +1,6 @@
 use super::{ReplayInterval, Summary};
 use crate::{
-    activation::patterns::query::Thread,
-    conflict_query::{timestamp, Scope, TimeWindow},
+    scoped_calls::{self, conversation_key, next_offset, ScopedCall, Selection},
     turn_evidence::inspector_path,
     Call, Run,
 };
@@ -39,30 +38,6 @@ impl Request {
 
 fn default_limit() -> usize {
     20
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Selection {
-    #[serde(default)]
-    scope: Scope,
-    thread: Option<Thread>,
-    after: Option<String>,
-    before: Option<String>,
-}
-
-impl Selection {
-    fn includes(&self, run: &Run) -> bool {
-        self.scope.includes(run)
-            && self
-                .thread
-                .as_ref()
-                .is_none_or(|thread| thread.includes(run))
-    }
-
-    fn window(&self) -> Result<TimeWindow, String> {
-        TimeWindow::parse(self.after.as_deref(), self.before.as_deref())
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -190,16 +165,6 @@ impl<'a> Occurrence<'a> {
         self.measure.append_fields(&mut record);
         record
     }
-
-    fn conversation(self) -> Option<(&'a str, Option<&'a str>, Option<&'a str>, &'a str)> {
-        let run = self.run;
-        Some((
-            &run.source,
-            run.organization_id.as_deref(),
-            run.user_id.as_deref(),
-            run.conversation_id.as_deref()?,
-        ))
-    }
 }
 
 struct Stats {
@@ -221,11 +186,11 @@ fn summarize(rows: &[Occurrence<'_>], kind: Kind) -> Option<Stats> {
     let mut bounds: Option<(f64, f64)> = None;
     for &item in rows {
         calls.insert((&item.run.id, &item.call.id));
-        conversations.extend(item.conversation());
+        conversations.extend(conversation_key(item.run));
         organizations.extend(item.run.organization_id.as_deref());
         reversals += usize::from(item.measure.reversed());
         if let Some(change) = item.measure.change() {
-            measured_conversations.extend(item.conversation());
+            measured_conversations.extend(conversation_key(item.run));
             increased += usize::from(change > 0.0);
             decreased += usize::from(change < 0.0);
             unchanged += usize::from(change == 0.0);
@@ -305,35 +270,18 @@ pub(super) fn query<'a, Setup: Serialize>(
     if !(1..=50).contains(&request.limit) {
         return Err("Choose a page size from 1 to 50.".into());
     }
-    let primary_window = request.selection.window()?;
-    let comparison_window = request
-        .compare
-        .as_ref()
-        .map(Selection::window)
-        .transpose()?;
     let mut groups = BTreeMap::new();
-    for run in runs {
-        let primary_run = request.selection.includes(run);
-        let compare_run = request
-            .compare
-            .as_ref()
-            .is_some_and(|selection| selection.includes(run));
-        if !primary_run && !compare_run {
-            continue;
-        }
-        for call in &run.calls {
-            let time = call
-                .started_at
-                .as_deref()
-                .and_then(|value| timestamp(value).ok());
-            let primary = primary_run && primary_window.includes(time);
-            let comparison = compare_run
-                && comparison_window
-                    .as_ref()
-                    .is_some_and(|window| window.includes(time));
-            if !primary && !comparison {
-                continue;
-            }
+    scoped_calls::visit(
+        &request.selection,
+        request.compare.as_ref(),
+        runs,
+        |ScopedCall {
+             run,
+             call,
+             time,
+             primary,
+             comparison,
+         }| {
             for item in observe(run, call)? {
                 if request
                     .group
@@ -362,8 +310,9 @@ pub(super) fn query<'a, Setup: Serialize>(
                     group.comparison.push(occurrence);
                 }
             }
-        }
-    }
+            Ok(())
+        },
+    )?;
 
     let rows = groups
         .iter()
@@ -402,11 +351,6 @@ pub(super) fn query<'a, Setup: Serialize>(
         "groups": rows.iter().skip(request.offset).take(request.limit).map(Row::value).collect::<Vec<_>>(),
         "next_offset": next_offset(request.offset, request.limit, rows.len()),
     }))
-}
-
-fn next_offset(offset: usize, limit: usize, count: usize) -> Option<usize> {
-    let next = offset.saturating_add(limit);
-    (next < count).then_some(next)
 }
 
 fn occurrence_page(items: &mut [Occurrence<'_>], offset: usize, limit: usize, kind: Kind) -> Value {

@@ -25,7 +25,9 @@ function openPage(page, back, focus = false) {
   page.back = back;
   result.replaceChildren();
   if (back) {
-    const label = visibilityBackLabel(back.page.kind) ?? (back.page.kind === "turn" ? "Back to turn evidence" :
+    const screenBack = back.page.kind.startsWith("screening_")
+      ? (back.page.kind.endsWith("_groups") ? "Back to screened pairs" : "Back to contributing turns") : null;
+    const label = screenBack ?? visibilityBackLabel(back.page.kind) ?? (back.page.kind === "turn" ? "Back to turn evidence" :
       page.kind === "turn" ? "Back to contributing decisions" :
       page.kind === "activation_evidence" ? "Back to activation groups" : "Back to conflict groups");
     const control = button(label, () => {
@@ -40,7 +42,7 @@ function openPage(page, back, focus = false) {
   else if (page.kind === "evidence") renderEvidence(page, back);
   else if (page.kind === "activation_groups") renderActivationGroups(page, back);
   else if (page.kind === "activation_evidence") renderActivationEvidence(page, back);
-  else if (page.kind.startsWith("candidate_pattern_") || page.kind.startsWith("shadow_pattern_")) renderProbePatterns(page, back);
+  else if (/^(candidate|shadow|screening)_pattern_/.test(page.kind)) renderAssessmentPatterns(page, back);
   else if (page.kind.startsWith("visibility_")) renderVisibility(result, page, requestPage, pageControls);
   else renderTurn(page);
   if (focus) {
@@ -170,22 +172,45 @@ function appendProbeStats(parent, stats, label, shadow) {
     [countLabel(stats.calls, "call"), conversations, countLabel(stats.organizations, "organization")].join(" · "), "muted"));
 }
 
-function renderProbePatterns(page, back) {
+function screeningGroupName(group) {
+  const relation = group.suggestions.map((value) => value.replaceAll("_", " ")).join(" / ");
+  const sources = group.sources.map((source) => [source.source_id || source.role || source.kind,
+    source.source_version].filter(Boolean).join(" · "));
+  return relation + " · " + sources.join(" and ");
+}
+
+function appendScreeningStats(parent, stats, label) {
+  if (label) parent.append(element("h3", label));
+  if (!stats) {
+    parent.append(element("p", "No comparable screened pairs", "muted"));
+    return;
+  }
+  const counts = [countLabel(stats.flagged_conversations, "identified conversation") + " with flags"];
+  if (stats.flagged_organizations > 1) counts.push(countLabel(stats.flagged_organizations, "organization"));
+  if (stats.unscored_calls) counts.push(countLabel(stats.unscored_calls, "call") + " without scores");
+  parent.append(element("p", stats.flagged_calls + " of " + stats.assessed_calls + " assessed calls flagged"),
+    element("p", counts.join(" · "), "muted"));
+}
+
+function renderAssessmentPatterns(page, back) {
   const data = page.data;
   const shadow = data.kind.startsWith("shadow_");
-  const tool = shadow ? "query_shadow_patterns" : "query_candidate_patterns";
+  const screening = data.kind.startsWith("screening_");
+  const tool = screening ? "query_screening_patterns" : shadow ? "query_shadow_patterns" : "query_candidate_patterns";
+  const appendStats = screening ? appendScreeningStats : (parent, stats, label) => appendProbeStats(parent, stats, label, shadow);
   if (data.kind.endsWith("_groups")) {
-    result.append(element("p", countLabel(data.total_groups, "probe setup"), "muted"));
+    result.append(element("p", countLabel(data.total_groups, screening ? "source pair" : "probe setup"), "muted"));
     for (const group of data.groups) {
       const row = element("section", undefined, "row");
-      const title = probeGroupName(group.setup);
+      const title = screening ? screeningGroupName(group) : probeGroupName(group.setup);
       row.append(button(title, () => requestPage(tool,
         { ...page.args, group: group.key, offset: 0, compare_offset: 0 }, title, { page, previous: back })));
-      const method = shadow ? [group.setup.runner_id, group.setup.match_rule.replaceAll("_", " ")] :
+      const method = screening ? [group.scorer?.model_id, group.scorer?.revision] :
+        shadow ? [group.setup.runner_id, group.setup.match_rule.replaceAll("_", " ")] :
         [group.setup.model_id, group.setup.model_revision];
-      row.append(element("p", method.join(" · "), "muted"));
-      appendProbeStats(row, group.primary, data.compared ? "Scope A" : "", shadow);
-      if (data.compared) appendProbeStats(row, group.comparison, "Scope B", shadow);
+      if (method.some(Boolean)) row.append(element("p", method.join(" · "), "muted"));
+      appendStats(row, group.primary, data.compared ? "Scope A" : "");
+      if (data.compared) appendStats(row, group.comparison, "Scope B");
       result.append(row);
     }
     pageControls(page, tool, back);
@@ -195,15 +220,22 @@ function renderProbePatterns(page, back) {
   sides.forEach((side, index) => {
     const section = element("section", undefined, "row");
     const stats = index ? data.group.comparison : data.group.primary;
-    appendProbeStats(section, stats, data.compared ? "Scope " + (index ? "B" : "A") : "", shadow);
+    appendStats(section, stats, data.compared ? "Scope " + (index ? "B" : "A") : "");
     for (const item of side.rows) {
       const label = item.conversation_id || item.run_id;
       section.append(button(label, () => requestPage("get_turn_evidence", { run_id: item.run_id, call_id: item.call_id }, label, { page, previous: back })),
-        element("p", [item.started_at, item.organization_id, item.user_id, item.context_id].filter(Boolean).join(" · "), "muted"),
-        element("p", shadow ? shadowCounts(item.baseline) + " → " + shadowCounts(item.edited) + " · " + proposalShift(item.difference_pp)
+        element("p", [item.started_at, item.organization_id, item.user_id, item.context_id].filter(Boolean).join(" · "), "muted"));
+      if (screening) {
+        const pair = element("details");
+        pair.append(element("summary", screeningPairLabel(item)));
+        appendScreeningPair(pair, item.assessment, item.sources);
+        section.append(pair);
+      } else {
+        section.append(element("p", shadow ? shadowCounts(item.baseline) + " → " + shadowCounts(item.edited) + " · " + proposalShift(item.difference_pp)
           : signed.format(item.baseline_log_odds) + " → " + signed.format(item.edited_log_odds) + " log odds"));
+      }
       const path = element("details");
-      path.append(element("summary", "Local source link"), element("code", item.inspector_path));
+      path.append(element("summary", screening ? "Local pair link" : "Local source link"), element("code", item.inspector_path));
       section.append(path);
     }
     pageControls(page, tool, back, {
@@ -211,6 +243,23 @@ function renderProbePatterns(page, back) {
     });
     result.append(section);
   });
+}
+
+function screeningPairLabel(item) {
+  return item.suggestion?.replaceAll("_", " ") || (item.assessment.status === "scored" ? "No pair flagged" : item.assessment.reason.replaceAll("_", " "));
+}
+
+function appendScreeningPair(parent, assessment, inputs) {
+  for (const input of inputs) {
+    parent.append(element("p", [input.source_id || input.context_id, input.role, input.anchor?.field].filter(Boolean).join(" · ")));
+    appendExcerpt(parent, input.excerpt);
+  }
+  if (assessment.status === "scored") {
+    const scores = new Intl.NumberFormat(undefined, {style: "percent", maximumFractionDigits: 1});
+    const format = (direction) => Object.entries(direction).map(([name, value]) => name + " " + scores.format(value)).join(" · ");
+    parent.append(element("p", "First → second · " + format(assessment.left_to_right), "muted"),
+      element("p", "Second → first · " + format(assessment.right_to_left), "muted"));
+  }
 }
 
 function renderTurn(page) {
@@ -309,18 +358,8 @@ function renderTurn(page) {
       row.append(element("small", item.pointer + range));
       appendExcerpt(row, item.replacement_excerpt);
     } else if (item.kind === "context_screen_pair") {
-      const status = item.suggestion?.replaceAll("_", " ") || (item.assessment.status === "scored" ? "no pair flagged" : item.assessment.reason.replaceAll("_", " "));
-      row.append(element("h2", "Context screen · " + status));
-      for (const input of item.inputs) {
-        row.append(element("p", [input.source_id || input.context_id, input.role, input.anchor?.field].filter(Boolean).join(" · ")));
-        appendExcerpt(row, input.excerpt);
-      }
-      if (item.assessment.status === "scored") {
-        const scores = new Intl.NumberFormat(undefined, {style: "percent", maximumFractionDigits: 1});
-        const format = (direction) => Object.entries(direction).map(([name, value]) => name + " " + scores.format(value)).join(" · ");
-        row.append(element("p", "First → second · " + format(item.assessment.left_to_right), "muted"),
-          element("p", "Second → first · " + format(item.assessment.right_to_left), "muted"));
-      }
+      row.append(element("h2", "Context screen · " + screeningPairLabel(item)));
+      appendScreeningPair(row, item.assessment, item.inputs);
     } else if (item.kind === "shadow_probe_effect") {
       const range = item.text_range ? " · UTF-8 bytes " + item.text_range.start_byte + " to " + item.text_range.end_byte : "";
       row.append(element("h2", "Shadow edit · " + [item.source_id || item.context_id, item.source_version].filter(Boolean).join(" · ")),
@@ -493,6 +532,8 @@ app.ontoolresult = (response) => {
       candidate_pattern_evidence: () => probeGroupName(data.group.setup),
       shadow_pattern_groups: () => "Shadow proposal shifts",
       shadow_pattern_evidence: () => probeGroupName(data.group.setup),
+      screening_pattern_groups: () => "Screened context pairs",
+      screening_pattern_evidence: () => screeningGroupName(data.group),
       turn_evidence: () => "Turn evidence",
     };
     const title = Object.hasOwn(titles, data.kind) ? titles[data.kind]() : visibilityTitle(data);

@@ -152,6 +152,7 @@ function inspectionLink(reference = state.reference) {
         params.set(kind, report);
         params.set(kind + "_source", source);
       } else if (state.preflightSource) params.set("preflight_source", state.preflightSource);
+      else if (state.screenPair) params.set("screen_pair", state.screenPair);
       if (reference) {
         params.set("view", "decisions");
         writeReference(params, reference, state);
@@ -179,7 +180,7 @@ function inspectionLink(reference = state.reference) {
       }
       if (kind === "breakdown") writeConflictBreakdownLink(params);
       else if (kind === "visibility") writeVisibilityPatternLink(params);
-      else if (isProbePattern(kind)) writeProbePatternLink(params);
+      else if (isAssessmentPattern(kind)) writeAssessmentPatternLink(params);
       else if (element("pattern-search").value) params.set("q", element("pattern-search").value);
       if (kind === "sources") writeSourceProfileLink(params);
       if (kind === "context") {
@@ -255,7 +256,7 @@ function restorePatternLink(params) {
   if (activation) activationPatternBlock = Number(params.get("block")) || 0;
   const datesAvailable = activation ? restoreActivationDateLink(params)
     : kind === "sources" ? restoreSourceProfileLink(params)
-    : isProbePattern(kind) ? restoreProbePatternLink(params)
+    : isAssessmentPattern(kind) ? restoreAssessmentPatternLink(params)
     : kind !== "visibility" || restoreVisibilityPatternLink(params);
   const compare = supportsScopeComparison(element("pattern-type").value);
   const comparisonScope = compare ? params.get("scope_b") ?? "" : "";
@@ -306,6 +307,10 @@ function restoreInspectionLink() {
       } else if (params.has("preflight_source")) {
         if (!focusPreflightSource(params.get("preflight_source"))) {
           unavailableLink("The linked preflight conflict is unavailable on this call.");
+        }
+      } else if (params.has("screen_pair")) {
+        if (!focusScreenPair(params.get("screen_pair"))) {
+          unavailableLink("The linked screened pair is unavailable on this call.");
         }
       } else currentConversationRow()?.button.focus();
       return true;

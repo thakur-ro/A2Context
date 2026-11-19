@@ -1,7 +1,9 @@
 //! MCP transport for host-selected evidence files or a live inspector journal.
 
 use super::{activation_http, otlp_http};
-use nexusweave::{activation, conflict_query, replay, source_profiles, turn_evidence, Run};
+use nexusweave::{
+    activation, conflict_query, context_screening, replay, source_profiles, turn_evidence, Run,
+};
 use rmcp::{
     model::{
         CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
@@ -30,6 +32,7 @@ const SOURCE_VISIBILITY: &str = "query_source_visibility";
 const VISIBILITY_PATTERNS: &str = "query_visibility_patterns";
 const CANDIDATE_PATTERNS: &str = "query_candidate_patterns";
 const SHADOW_PATTERNS: &str = "query_shadow_patterns";
+const SCREENING_PATTERNS: &str = "query_screening_patterns";
 const APP_URI: &str = "ui://nexusweave/conflict-evidence.html";
 const APP_MIME: &str = "text/html;profile=mcp-app";
 const APP: &str = include_str!("../ui/mcp-app.html");
@@ -159,16 +162,17 @@ struct Inspector {
 
 impl Inspector {
     fn new(source: Source, allow_excerpts: bool) -> serde_json::Result<Self> {
-        let (file_reports, has_candidates, has_shadow) = match &source {
+        let (file_reports, has_candidates, has_shadow, has_screening) = match &source {
             Source::Files(evidence) => {
                 let mut calls = evidence.runs.iter().flat_map(|run| &run.calls);
                 (
                     Some(evidence.activations.as_slice()),
                     calls.clone().any(|call| call.candidate_probes.is_some()),
-                    calls.any(|call| call.shadow_probes.is_some()),
+                    calls.clone().any(|call| call.shadow_probes.is_some()),
+                    calls.any(|call| call.context_screening.is_some()),
                 )
             }
-            Source::Live(_) => (None, true, true),
+            Source::Live(_) => (None, true, true, true),
         };
         let conflict: JsonObject =
             serde_json::from_str(include_str!("../schema/conflict-view-1.json"))?;
@@ -206,6 +210,11 @@ impl Inspector {
             definitions.push(tool(SHADOW_PATTERNS,
                 "Compare recurring changes in a declared proposal's match rate, with source edits and contributing turns. Open turn evidence to inspect the outcome when captured excerpts are available.",
                 serde_json::from_str(include_str!("../schema/candidate-pattern-query-1.json"))?).with_meta(ui()));
+        }
+        if has_screening {
+            definitions.push(tool(SCREENING_PATTERNS,
+                "Find recurring screening flags and compare the same captured source pair across scopes or date ranges. Copy a group key to list the contributing turns.",
+                serde_json::from_str(include_str!("../schema/screening-pattern-query-1.json"))?).with_meta(ui()));
         }
         if file_reports
             .is_none_or(|reports| reports.iter().any(activation::Report::has_checkpoints))
@@ -362,6 +371,9 @@ fn execute_query<'a>(
         }
         CANDIDATE_PATTERNS => replay::candidates::patterns::query(&from_arguments(args)?, runs),
         SHADOW_PATTERNS => replay::shadow::patterns::query(&from_arguments(args)?, runs, false),
+        SCREENING_PATTERNS => {
+            context_screening::patterns::query(&from_arguments(args)?, runs, false)
+        }
         _ => Err("This tool is unavailable.".into()),
     }
 }
