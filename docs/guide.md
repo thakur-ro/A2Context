@@ -81,6 +81,22 @@ The CLI sends one JSON `ScoringRequest` on stdin. It contains `version: 1`, `ass
 
 Return one JSON `ScoringResult` on stdout with `version: 1`, `model_id`, `model_revision`, `runtime`, `tokenizer_sha256`, `assistant_prefix_token_ids`, `candidate_token_ids`, and `conditions`. Keep the same token boundaries across the batch and return one row per condition in the original order. Each row contains its `id`, `rendered_prefix_sha256`, and the two finite `log_probs` in candidate order. The two candidate token sequences need to be nonempty and neither can be a prefix of the other. Use raw continuation probabilities from the same model and tokenizer across conditions. Rust integrations can call `nexusweave::replay::candidates::execute` with a scoring callback instead of a subprocess. [Rust scoring interface](../src/replay/candidates.rs)
 
+### Show candidate scores on the recorded turn
+
+Attach an array of [candidate probe reports](../schema/candidate-probe-report-1.json) to the inference call as `nexusweave.candidate_probes`. For OTLP, send a JSON string span attribute. For LangSmith, put the array or encoded JSON string under `extra.metadata` and set `nexusweave.span.id` to the run's exact `id`. Keep the same raw `nexusweave.request.body` string and source declarations on the call.
+
+NexusWeave checks the request hash, resolves each edited source, walks its original request path, and verifies the edited request hash. It recomputes the margins from the reported scores. A report that fails verification shows a reason beside the recorded call. The scoring runtime supplies the model probabilities and the workflow supplies the timing. A matching probe can also appear on a call with no recorded output.
+
+The example trace pairs the saved candidate probe with the `stock` proposal from the [local routing run](../examples/runtime-comparison/visibility-routing/report.json). Load it without model weights or an API key.
+
+```sh
+demo_dir=$(mktemp -d)
+cargo run --locked -- import-langsmith examples/runtime-comparison/pending-routing/trace.json "$demo_dir/evidence.json"
+cargo run --locked -- serve "$demo_dir/evidence.json"
+```
+
+In **Conversation**, open the turn evidence and expand **Candidate probes**. The original request favors `stock`. Editing the request type shifts the score to `price`. Expand that source to inspect the captured text, JSON Pointer, UTF-8 byte range, and replacement. The same evidence is available on the call in **Timeline**, in **Decisions**, and through MCP `get_turn_evidence`. MCP includes the exact prefix, continuations, and replacement text when you enable and request captured excerpts. [Open the local inspector](http://127.0.0.1:8040)
+
 ## Try a decision replay
 
 ```sh

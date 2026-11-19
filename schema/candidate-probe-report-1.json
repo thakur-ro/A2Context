@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave candidate probe report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "scorer_id", "captured_request_sha256", "assistant_prefix", "candidates", "scores", "baseline_log_odds", "effects"],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "$ref": "candidate-probe-1.json#/properties/id" },
+    "scorer_id": { "$ref": "candidate-probe-1.json#/properties/scorer_id" },
+    "captured_request_sha256": { "$ref": "#/$defs/digest" },
+    "assistant_prefix": { "type": "string" },
+    "candidates": { "$ref": "candidate-probe-1.json#/properties/candidates" },
+    "scores": { "$ref": "#/$defs/scores" },
+    "baseline_log_odds": { "type": "number" },
+    "effects": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["condition_id", "intervention", "evidence", "request_sha256", "log_odds", "change_log_odds"],
+        "properties": {
+          "condition_id": { "type": "string" },
+          "intervention": { "$ref": "candidate-probe-1.json#/properties/interventions/items" },
+          "source_id": { "type": ["string", "null"] },
+          "source_version": { "type": ["string", "null"] },
+          "evidence": { "$ref": "evidence-1.json#/$defs/evidence" },
+          "request_sha256": { "$ref": "#/$defs/digest" },
+          "log_odds": { "type": "number" },
+          "change_log_odds": { "type": "number" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "token_ids": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "model_id", "model_revision", "runtime", "tokenizer_sha256", "assistant_prefix_token_ids", "candidate_token_ids", "conditions"],
+      "properties": {
+        "version": { "const": 1 },
+        "model_id": { "type": "string", "pattern": "\\S" },
+        "model_revision": { "type": "string", "pattern": "\\S" },
+        "runtime": { "type": "string", "pattern": "\\S" },
+        "tokenizer_sha256": { "$ref": "#/$defs/digest" },
+        "assistant_prefix_token_ids": { "$ref": "#/$defs/token_ids" },
+        "candidate_token_ids": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "$ref": "#/$defs/token_ids", "minItems": 1 }
+        },
+        "conditions": {
+          "type": "array", "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "rendered_prefix_sha256", "log_probs"],
+            "properties": {
+              "id": { "type": "string" },
+              "rendered_prefix_sha256": { "$ref": "#/$defs/digest" },
+              "log_probs": {
+                "type": "array", "minItems": 2, "maxItems": 2,
+                "items": { "type": "number", "maximum": 0 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

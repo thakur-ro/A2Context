@@ -4,6 +4,11 @@
 //! scores both candidates at the same assistant prefix for every condition.
 
 use super::{prepare_edit, sha256, Intervention};
+mod recorded;
+
+pub(crate) use recorded::recorded;
+pub use recorded::{CapturedReports, Measurement, RecordedEffect, RecordedProbe, Verification};
+
 use crate::{preflight, Evidence};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,7 +29,7 @@ pub struct Case {
     pub interventions: Vec<Intervention>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Candidate {
     pub id: String,
@@ -48,7 +53,7 @@ pub struct Condition {
 }
 
 /// A runtime's scores for the full batch, using one model and tokenizer.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ScoringResult {
     pub version: u32,
@@ -61,7 +66,7 @@ pub struct ScoringResult {
     pub conditions: Vec<ConditionScore>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConditionScore {
     pub id: String,
@@ -72,23 +77,25 @@ pub struct ConditionScore {
 }
 
 /// Conditional preference shifts and the exact source edits used to measure them.
-#[derive(Debug, Serialize)]
-pub struct Report<'a> {
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Report {
     pub version: u32,
-    pub id: &'a str,
-    pub scorer_id: &'a str,
+    pub id: String,
+    pub scorer_id: String,
     pub captured_request_sha256: String,
-    pub assistant_prefix: &'a str,
-    pub candidates: &'a [Candidate; 2],
+    pub assistant_prefix: String,
+    pub candidates: [Candidate; 2],
     pub scores: ScoringResult,
     pub baseline_log_odds: f64,
-    pub effects: Vec<Effect<'a>>,
+    pub effects: Vec<Effect>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct Effect<'a> {
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Effect {
     pub condition_id: String,
-    pub intervention: &'a Intervention,
+    pub intervention: Intervention,
     pub source_id: Option<String>,
     pub source_version: Option<String>,
     pub evidence: Evidence,
@@ -110,24 +117,14 @@ pub fn execute(
     input: preflight::Request,
     case: &Case,
     score: impl FnOnce(&ScoringRequest<'_>) -> Result<ScoringResult, String>,
-) -> Result<Report<'_>, String> {
-    let [first, second] = &case.candidates;
-    if case.version != VERSION || case.id.trim().is_empty() || case.scorer_id.trim().is_empty() {
-        return Err("Expected a named candidate probe and scorer with version 1.".into());
-    }
-    if first.id.trim().is_empty()
-        || second.id.trim().is_empty()
-        || first.id == second.id
-        || !disjoint(
-            first.continuation.as_bytes(),
-            second.continuation.as_bytes(),
-        )
-    {
-        return Err("Choose distinct candidate IDs and two non-overlapping continuations.".into());
-    }
-    if case.interventions.is_empty() {
-        return Err("A candidate probe requires at least one source edit.".into());
-    }
+) -> Result<Report, String> {
+    validate_case(
+        case.version,
+        &case.id,
+        &case.scorer_id,
+        &case.candidates,
+        case.interventions.len(),
+    )?;
     let (call, request, _) = preflight::pending_call(input)?;
     let request = request.ok_or("A candidate probe requires the captured request body.")?;
     let mut seen = BTreeSet::new();
@@ -160,7 +157,11 @@ pub fn execute(
         conditions,
     };
     let scores = score(&work)?;
-    validate_scores(&work, &scores)?;
+    validate_scores(
+        work.assistant_prefix,
+        work.conditions.iter().map(|row| row.id.as_str()),
+        &scores,
+    )?;
     let baseline_log_odds = margin(&scores.conditions[0]);
     let mut effects = Vec::new();
     for (((intervention, item), condition), score) in case
@@ -177,7 +178,7 @@ pub fn execute(
         }
         effects.push(Effect {
             condition_id: condition.id.clone(),
-            intervention,
+            intervention: intervention.clone(),
             source_id: item.source_id.clone(),
             source_version: item.source_version.clone(),
             evidence: item.evidence.clone(),
@@ -188,8 +189,8 @@ pub fn execute(
     }
     Ok(Report {
         version: VERSION,
-        id: &case.id,
-        scorer_id: &case.scorer_id,
+        id: case.id.clone(),
+        scorer_id: case.scorer_id.clone(),
         captured_request_sha256: sha256(
             call.recorded_request
                 .as_ref()
@@ -197,19 +198,50 @@ pub fn execute(
                 .body
                 .as_bytes(),
         ),
-        assistant_prefix: &case.assistant_prefix,
-        candidates: &case.candidates,
+        assistant_prefix: case.assistant_prefix.clone(),
+        candidates: case.candidates.clone(),
         scores,
         baseline_log_odds,
         effects,
     })
 }
 
+fn validate_case(
+    version: u32,
+    id: &str,
+    scorer_id: &str,
+    candidates: &[Candidate; 2],
+    edits: usize,
+) -> Result<(), String> {
+    let [first, second] = candidates;
+    if version != VERSION || id.trim().is_empty() || scorer_id.trim().is_empty() {
+        return Err("Expected a named candidate probe and scorer with version 1.".into());
+    }
+    if first.id.trim().is_empty()
+        || second.id.trim().is_empty()
+        || first.id == second.id
+        || !disjoint(
+            first.continuation.as_bytes(),
+            second.continuation.as_bytes(),
+        )
+    {
+        return Err("Choose distinct candidate IDs and two non-overlapping continuations.".into());
+    }
+    if edits == 0 {
+        return Err("A candidate probe requires at least one source edit.".into());
+    }
+    Ok(())
+}
+
 fn disjoint<T: PartialEq>(first: &[T], second: &[T]) -> bool {
     !first.starts_with(second) && !second.starts_with(first)
 }
 
-fn validate_scores(work: &ScoringRequest<'_>, scores: &ScoringResult) -> Result<(), String> {
+fn validate_scores<'a>(
+    prefix: &str,
+    conditions: impl IntoIterator<Item = &'a str>,
+    scores: &ScoringResult,
+) -> Result<(), String> {
     let digest = |value: &str| {
         value.len() == 64
             && value
@@ -225,16 +257,16 @@ fn validate_scores(work: &ScoringRequest<'_>, scores: &ScoringResult) -> Result<
             &scores.candidate_token_ids[0],
             &scores.candidate_token_ids[1],
         )
-        || scores.assistant_prefix_token_ids.is_empty() != work.assistant_prefix.is_empty()
+        || scores.assistant_prefix_token_ids.is_empty() != prefix.is_empty()
     {
         return Err("The scorer must identify its runtime and return disjoint candidate tokens at the fixed prefix.".into());
     }
-    if work.conditions.len() != scores.conditions.len() {
-        return Err("The scorer must return one score for every requested condition.".into());
-    }
-    for (condition, score) in work.conditions.iter().zip(&scores.conditions) {
+    let missing_score = "The scorer must return one score for every requested condition.";
+    let mut returned = scores.conditions.iter();
+    for id in conditions {
+        let score = returned.next().ok_or(missing_score)?;
         let [first, second] = score.log_probs;
-        if condition.id != score.id
+        if id != score.id
             || !digest(&score.rendered_prefix_sha256)
             || !score
                 .log_probs
@@ -242,11 +274,11 @@ fn validate_scores(work: &ScoringRequest<'_>, scores: &ScoringResult) -> Result<
                 .all(|value| value.is_finite() && *value <= 0.0)
             || first.exp() + second.exp() > 1.0 + 1e-5
         {
-            return Err(format!(
-                "Invalid or mismatched candidate scores for {}",
-                condition.id
-            ));
+            return Err(format!("Invalid or mismatched candidate scores for {id}"));
         }
+    }
+    if returned.next().is_some() {
+        return Err(missing_score.into());
     }
     Ok(())
 }

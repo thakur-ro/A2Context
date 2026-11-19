@@ -121,9 +121,11 @@ function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
   let changed = false;
   let visibility = false;
   let maskReplay = false;
+  let candidateProbe = false;
   for (const { run, call } of turn.calls) {
     const key = contextCallKey({ run_id: run.id, call_id: call.id });
     const check = preflightChecksByCall.get(key);
+    candidateProbe ||= candidateProbesByCall.get(key)?.some(({ status }) => status === "matched") ?? false;
     preflightConflicts += check?.report?.findings.filter(({ kind }) => kind === "conflict").length ?? 0;
     for (const { item } of contextPatternsByCall.get(key) || []) links.add(JSON.stringify([key, item.context_id]));
     conflicts += callFindings(run.id, call.id).filter(({ kind }) => kind === "conflict").length;
@@ -137,6 +139,7 @@ function conversationSignal(turn, measuredSourceCalls, maskReplayCalls) {
   );
   return [
     preflightConflicts && countLabel(preflightConflicts, "preflight conflict"),
+    candidateProbe && "Candidate preference measured",
     conflicts && countLabel(conflicts, "conflict"), links.size && countLabel(links.size, "linked input"),
     maskReplay ? "Saved masked replays" : visibility && "Measured source effects",
     measured && "Measured replay", changed && "Context changed",
@@ -312,6 +315,44 @@ function renderRecordedPreflight(parent, run, call, open) {
   });
 }
 
+function renderRecordedCandidateProbes(parent, run, call, open) {
+  const probes = candidateProbesByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
+  if (!probes?.length) return;
+  evidenceSection(parent, "Candidate probes · " + countLabel(probes.length, "report"), open, (section) => {
+    const context = new Map(call.context.map((item) => [item.id, item]));
+    for (const probe of probes) {
+      const card = node("article", undefined, "finding");
+      if (probe.status === "unverified") {
+        card.append(node("h3", "Could not verify candidate probe"), node("p", probe.issue));
+      } else {
+        const { candidates, baseline_log_odds, model_id, model_revision, runtime, assistant_prefix, effects } = probe.measurement;
+        const preference = (value) => (value === 0 ? "Tie" : "Favors " + candidates[value > 0 ? 0 : 1].id)
+          + " · " + activationMargin.format(value) + " log odds";
+        card.append(node("h3", candidates.map(({ id }) => id).join(" vs ")),
+          node("p", "Original request · " + preference(baseline_log_odds)),
+          node("p", model_id + " · " + runtime, "muted"));
+        const setup = node("details");
+        setup.append(node("summary", "Fixed prefix and candidates"), node("small", model_revision, "anchor"),
+          node("pre", assistant_prefix || "Empty assistant prefix"));
+        for (const candidate of candidates) setup.append(node("p", candidate.id), node("pre", candidate.continuation));
+        card.append(setup);
+        for (const effect of effects) {
+          const source = contextDetails(context.get(effect.context_id), false);
+          source.append(node("small", "Edited request path " + requestFieldLabel(effect.pointer, effect.text_range), "anchor"),
+            node("p", effect.operation.replaceAll("_", " ")),
+            node("pre", effect.replacement || "Empty replacement"));
+          const row = node("div", undefined, "conversation-link");
+          row.append(source, node("p", "After edit · " + preference(effect.log_odds)),
+            node("small", "Shift " + activationMargin.format(effect.change_log_odds) + " log odds", "muted"));
+          card.append(row);
+        }
+      }
+      card.append(evidence(probe.evidence));
+      section.append(card);
+    }
+  });
+}
+
 function renderTurnEvidence() {
   const row = currentConversationRow();
   const panel = element("conversation-evidence");
@@ -350,6 +391,7 @@ function renderConversationEvidence() {
   const links = (contextPatternsByCall.get(key) || []).filter(({ item }) => item.decision_id === decision?.id);
   const findings = decision ? callFindings(run.id, call.id, decision.id) : [];
   renderRecordedPreflight(details, run, call, true);
+  renderRecordedCandidateProbes(details, run, call, true);
   if (decision && decision.kind !== "model_output") {
     evidenceSection(details, "Recorded outcome", !findings.length && !links.length, (section) => {
       section.append(node("pre", decision.outcome === null ? "Outcome unavailable" : readable(decision.outcome)));

@@ -146,7 +146,7 @@ function turnLocation({ run_id, call_id, decision }) {
 }
 
 function renderTurn(page) {
-  const { counts, rows, preflight } = page.data;
+  const { counts, rows, preflight, candidate_probes = [] } = page.data;
   result.append(element("p", [
     countLabel(counts.rule_findings, "finding"),
     countLabel(counts.context_links, "context link"),
@@ -164,6 +164,23 @@ function renderTurn(page) {
     )));
   }
   if (page.data.decision?.outcome_excerpt) appendExcerpt(result, page.data.decision.outcome_excerpt);
+  for (const probe of candidate_probes) {
+    const section = element("section", undefined, "row");
+    section.append(element("h2", "Candidate probe" + (probe.report_id ? " · " + probe.report_id : "")));
+    if (probe.status === "unverified") section.append(element("p", probe.issue));
+    else {
+      section.append(element("p", "Original request · " + candidatePreference(probe.candidate_ids, probe.baseline_log_odds)),
+        element("p", probe.model_id + " · " + probe.runtime, "muted"));
+      if (probe.prefix_excerpt && probe.candidate_excerpts) {
+        const setup = element("details");
+        setup.append(element("summary", "Fixed prefix and candidates"));
+        appendExcerpt(setup, probe.prefix_excerpt);
+        for (const candidate of probe.candidate_excerpts) appendExcerpt(setup, candidate);
+        section.append(setup);
+      }
+    }
+    result.append(section);
+  }
   const measured = (page.data.source_visibility_reports || []).filter(({ measured_continuations }) => measured_continuations > 0);
   if (measured.length) {
     const section = element("section", undefined, "row");
@@ -191,6 +208,13 @@ function renderTurn(page) {
         if (input.rule_value != null) row.append(element("p", JSON.stringify(input.rule_value)));
         appendExcerpt(row, input.excerpt);
       }
+    } else if (item.kind === "candidate_probe_effect") {
+      row.append(element("h2", [item.source_id || item.context_id, item.source_version].filter(Boolean).join(" · ")),
+        element("p", "After edit · " + candidatePreference(item.candidate_ids, item.log_odds)),
+        element("p", "Shift " + signed.format(item.change_log_odds) + " log odds", "muted"));
+      const range = item.text_range ? " · UTF-8 bytes " + item.text_range.start_byte + " to " + item.text_range.end_byte : "";
+      row.append(element("small", item.pointer + range));
+      appendExcerpt(row, item.replacement_excerpt);
     } else if (item.kind === "context_link") {
       row.append(element("h2", "Context link"), element("p", [item.label || item.relationship, item.context_id].filter(Boolean).join(" · ")));
       if (item.excerpt) {
@@ -225,6 +249,11 @@ function renderTurn(page) {
 
 function appendExcerpt(parent, excerpt) {
   if (excerpt) parent.append(element("blockquote", excerpt.text + (excerpt.truncated ? "…" : "")));
+}
+
+function candidatePreference(ids, margin) {
+  const choice = margin === 0 ? "Tie" : "Favors " + ids[margin > 0 ? 0 : 1];
+  return choice + " · " + signed.format(margin) + " log odds";
 }
 
 const activationTool = "query_activation_effects";

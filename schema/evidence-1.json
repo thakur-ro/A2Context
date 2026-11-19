@@ -154,6 +154,17 @@
             }
           }
         },
+        "candidate_probes": {
+          "type": ["object", "null"],
+          "required": ["evidence"],
+          "properties": {
+            "evidence": { "$ref": "#/$defs/evidence" },
+            "reports": {
+              "type": ["array", "null"],
+              "items": { "$ref": "candidate-probe-report-1.json" }
+            }
+          }
+        },
         "context": {
           "type": "array",
           "items": {

@@ -78,6 +78,14 @@ pub fn query<'a>(
             "status": "unverified", "anchor": check.evidence, "issue": issue,
         }),
     });
+    let candidate_probes = inspection
+        .candidate_probes
+        .iter()
+        .filter(|probe| probe.call_id == call.id);
+    let candidate_summary: Vec<_> = candidate_probes
+        .clone()
+        .map(|probe| candidate_summary(probe, include_excerpts))
+        .collect();
     let at_decision = |call_id: &str, id: &str| call_id == call.id && decision_id == Some(id);
     let findings = inspection
         .findings
@@ -177,6 +185,7 @@ pub fn query<'a>(
             })
         });
     let mut rows = preflight_rows
+        .chain(candidate_probes.flat_map(|probe| candidate_rows(probe, include_excerpts)))
         .chain(finding_rows)
         .chain(annotation_rows)
         .chain(link_rows)
@@ -191,7 +200,7 @@ pub fn query<'a>(
     let next = (rows.len() > request.limit).then(|| request.offset.saturating_add(request.limit));
     rows.truncate(request.limit);
 
-    Ok(json!({
+    let mut result = json!({
         "version": 1, "kind": "turn_evidence", "run_id": run.id, "call_id": call.id, "turn_id": call.turn_id, "started_at": call.started_at,
         "turn_order": turn_order, "trace_source": run.source,
         "organization_id": run.organization_id, "user_id": run.user_id, "conversation_id": run.conversation_id,
@@ -210,7 +219,51 @@ pub fn query<'a>(
         "retrieval_label": retrieval.map(|retrieval| &retrieval.label),
         "original_request_captured": call.recorded_request.is_some(),
         "inspector_path": inspector_path(&run.id, &call.id, decision_id), "rows": rows, "next_offset": next,
-    }))
+    });
+    if !candidate_summary.is_empty() {
+        result["candidate_probes"] = json!(candidate_summary);
+    }
+    Ok(result)
+}
+
+fn candidate_summary(
+    probe: &replay::candidates::RecordedProbe<'_>,
+    include_excerpts: bool,
+) -> Value {
+    use replay::candidates::Verification;
+    match &probe.verification {
+        Verification::Matched { measurement } => json!({
+            "report_id": probe.report_id, "status": "matched", "anchor": probe.evidence,
+            "candidate_ids": measurement.candidates.each_ref().map(|candidate| &candidate.id),
+            "model_id": measurement.model_id, "model_revision": measurement.model_revision,
+            "runtime": measurement.runtime, "scorer_id": measurement.scorer_id,
+            "baseline_log_odds": measurement.baseline_log_odds, "effect_count": measurement.effects.len(),
+            "prefix_excerpt": include_excerpts.then(|| excerpt(measurement.assistant_prefix)),
+            "candidate_excerpts": include_excerpts.then(|| measurement.candidates.each_ref().map(|candidate| excerpt(&candidate.continuation))),
+        }),
+        Verification::Unverified { issue } => json!({
+            "report_id": probe.report_id, "status": "unverified", "anchor": probe.evidence, "issue": issue,
+        }),
+    }
+}
+
+fn candidate_rows<'a>(
+    probe: &'a replay::candidates::RecordedProbe<'_>,
+    include_excerpts: bool,
+) -> impl Iterator<Item = Value> + 'a {
+    use replay::candidates::Verification;
+    let report = match &probe.verification {
+        Verification::Matched { measurement } => Some(measurement),
+        Verification::Unverified { .. } => None,
+    };
+    report.into_iter().flat_map(move |measurement| measurement.effects.iter().map(move |effect| json!({
+        "kind": "candidate_probe_effect", "report_id": probe.report_id,
+        "context_id": effect.context_id, "source_id": effect.source_id, "source_version": effect.source_version,
+        "anchor": effect.evidence, "pointer": effect.pointer, "text_range": effect.text_range,
+        "operation": effect.operation, "replacement_excerpt": include_excerpts.then(|| excerpt(effect.replacement)),
+        "log_odds": effect.log_odds, "change_log_odds": effect.change_log_odds,
+        "candidate_ids": measurement.candidates.each_ref().map(|candidate| &candidate.id),
+    })))
 }
 
 fn inspector_path(run: &str, call: &str, decision: Option<&str>) -> String {

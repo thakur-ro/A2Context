@@ -12,6 +12,7 @@ const labels = {
 let data;
 const contextPatternsByCall = new Map();
 const preflightChecksByCall = new Map();
+const candidateProbesByCall = new Map();
 const replaysByContext = new Map();
 const recordedRequests = new Set();
 const noContextReplay = { status: "untested", effects: [] };
@@ -452,6 +453,7 @@ function renderDecision() {
   }));
   if (!call.context.length) context.append(node("p", "Captured context unavailable", "muted"));
   renderRecordedPreflight(context, run, call, false);
+  renderRecordedCandidateProbes(context, run, call, false);
   if (call.context_metadata) {
     const { issue, evidence: anchor } = call.context_metadata;
     const declaration = node("div", undefined, issue ? "finding insufficient_evidence" : "context-declaration");
@@ -516,6 +518,7 @@ function renderTimeline() {
     row.append(node("p", capture ? decisions : countLabel(call.context.length, "context item") + " · " + decisions, "muted"));
     renderCaptureSummary(row, capture);
     renderRecordedPreflight(row, run, call, false);
+    renderRecordedCandidateProbes(row, run, call, false);
     renderTimelineFindings(row, run, call);
     const replays = replaysByCall.get(JSON.stringify([run.id, call.id]));
     if (replays) {
@@ -1340,6 +1343,11 @@ async function start() {
     if (!response.ok) throw new Error("HTTP " + response.status);
     data = await response.json();
     for (const check of data.preflight_checks || []) preflightChecksByCall.set(contextCallKey(check), check);
+    for (const probe of data.candidate_probes || []) {
+      const key = contextCallKey(probe);
+      if (!candidateProbesByCall.has(key)) candidateProbesByCall.set(key, []);
+      candidateProbesByCall.get(key).push(probe);
+    }
     for (const { run_id, call_id } of data.recorded_requests || []) {
       recordedRequests.add(JSON.stringify([run_id, call_id]));
     }

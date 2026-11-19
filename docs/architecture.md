@@ -10,6 +10,7 @@ flowchart TD
     A --> P[Preflight check]
     A --> B[Score fixed candidates]
     B --> S[Preference shifts by source edit]
+    B -->|Attach report| T
     P --> F[Conflicting or duplicate rules]
     P -->|Attach receipt| T
     M --> T[Recorded trace]
