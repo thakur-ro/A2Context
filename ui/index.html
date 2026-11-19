@@ -177,6 +177,10 @@
         </label>
         <label id="pattern-search-field">Filter <input id="pattern-search" type="search" placeholder="Tool, source, or finding"></label>
         <div class="breakdown-configuration" id="breakdown-configuration" hidden>
+          <label>Check stage <select id="conflict-phase">
+            <option value="decision">Recorded decisions</option>
+            <option value="preflight">Before inference</option>
+          </select></label>
           <label>Group by <select id="conflict-group-by"></select></label>
           <label>Then by <select id="conflict-then-by"></select></label>
           <label>Rule key <input id="conflict-rule" type="search" list="conflict-rules" placeholder="All rules"></label>

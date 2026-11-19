@@ -300,6 +300,11 @@ function renderRecordedPreflight(parent, run, call, open) {
           detail.querySelector("summary").append(node("span", source.value === null ? "Value unavailable" : readable(source.value), "muted"));
           card.append(detail);
         }
+        if (finding.kind === "conflict") {
+          const recurring = node("button", "Find recurring preflight conflicts");
+          recurring.addEventListener("click", () => openConflictBreakdown(run, finding.key, "preflight"));
+          card.append(recurring);
+        }
         section.append(card);
       }
     }

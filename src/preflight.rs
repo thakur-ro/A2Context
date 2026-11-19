@@ -188,7 +188,7 @@ pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<RecordedCh
         .as_ref()
         .and_then(|receipt| receipt.scope.as_ref());
     let verification = match verify(call, captured) {
-        Ok(()) => Verification::Matched {
+        Ok(_) => Verification::Matched {
             report: compare(call, scope),
         },
         Err(issue) => Verification::Unverified { issue },
@@ -202,7 +202,7 @@ pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<RecordedCh
     })
 }
 
-fn verify(call: &Call, captured: &CapturedReceipt) -> Result<(), &'static str> {
+fn verify<'a>(call: &Call, captured: &'a CapturedReceipt) -> Result<&'a Receipt, &'static str> {
     let receipt = captured
         .receipt
         .as_ref()
@@ -224,7 +224,11 @@ fn verify(call: &Call, captured: &CapturedReceipt) -> Result<(), &'static str> {
             "The recorded request or its declared rule sources differ from the preflight check.",
         );
     }
-    Ok(())
+    Ok(receipt)
+}
+
+pub(crate) fn verified_receipt(call: &Call) -> Option<&Receipt> {
+    verify(call, call.preflight_receipt.as_ref()?).ok()
 }
 
 fn fingerprint(call: &Call, scope: Option<&DecisionScope>) -> Option<String> {
@@ -249,7 +253,7 @@ fn fingerprint(call: &Call, scope: Option<&DecisionScope>) -> Option<String> {
     Some(crate::replay::sha256(payload.to_string().as_bytes()))
 }
 
-fn rules<'a>(
+pub(crate) fn rules<'a>(
     call: &'a Call,
     scope: Option<&'a DecisionScope>,
 ) -> impl Iterator<Item = (&'a ContextItem, &'a Rule)> {

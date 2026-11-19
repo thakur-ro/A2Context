@@ -1,7 +1,7 @@
-//! Read-only breakdowns of recorded rule conflicts.
+//! Read-only breakdowns of recorded decisions and verified preflight rule checks.
 
 use crate::{
-    applicable_rules, compare_rules, Call, ContextItem, Decision, DecisionScope, FindingKind, Run,
+    applicable_rules, compare_rules, preflight, Call, ContextItem, Decision, FindingKind, Rule, Run,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -15,6 +15,8 @@ type Conversation<'a> = (&'a str, Option<&'a str>, Option<&'a str>, &'a str);
 pub struct ViewSpec {
     pub version: u32,
     #[serde(default)]
+    pub phase: Phase,
+    #[serde(default)]
     pub scope: Scope,
     pub group_by: Vec<Dimension>,
     #[serde(default)]
@@ -24,6 +26,20 @@ pub struct ViewSpec {
     pub offset: usize,
     #[serde(default = "default_limit")]
     pub limit: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Phase {
+    #[default]
+    Decision,
+    Preflight,
+}
+
+impl Phase {
+    fn is_decision(&self) -> bool {
+        matches!(self, Self::Decision)
+    }
 }
 
 fn default_limit() -> usize {
@@ -85,7 +101,7 @@ impl Dimension {
         self,
         run: &Run,
         call: &Call,
-        rule: &DecisionScope,
+        rule: (&str, &str),
         source: Option<&ContextItem>,
         day: Option<&str>,
     ) -> Vec<Option<String>> {
@@ -105,7 +121,7 @@ impl Dimension {
                 source.and_then(|item| item.source_id.clone()),
                 source.and_then(|item| item.source_version.clone()),
             ],
-            Self::Rule => vec![Some(rule.key.clone()), Some(rule.scope.clone())],
+            Self::Rule => vec![Some(rule.0.to_owned()), Some(rule.1.to_owned())],
             Self::Day => vec![day.map(str::to_owned)],
             Self::TraceSource => vec![Some(run.source.clone())],
         }
@@ -120,27 +136,50 @@ pub struct Filters {
     pub before: Option<String>,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Counts {
-    scoped_decisions: usize,
-    comparable_decisions: usize,
-    conflicting_decisions: usize,
+    #[serde(flatten)]
+    units: Units,
     affected_conversations: usize,
     conflicts_without_conversation: usize,
 }
 
+impl Default for Counts {
+    fn default() -> Self {
+        Counter::default().counts(Phase::Decision)
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+enum Units {
+    Decisions {
+        scoped_decisions: usize,
+        comparable_decisions: usize,
+        conflicting_decisions: usize,
+    },
+    Preflight {
+        scoped_checks: usize,
+        comparable_checks: usize,
+        conflicting_checks: usize,
+    },
+}
+
 #[derive(Default)]
 struct Counter<'a> {
-    counts: Counts,
+    scoped: usize,
+    comparable: usize,
+    conflicting: usize,
+    conflicts_without_conversation: usize,
     conversations: BTreeSet<Conversation<'a>>,
 }
 
 impl<'a> Counter<'a> {
     fn add(&mut self, run: &'a Run, comparable: bool, conflict: bool) {
-        self.counts.scoped_decisions += 1;
-        self.counts.comparable_decisions += usize::from(comparable);
+        self.scoped += 1;
+        self.comparable += usize::from(comparable);
         if conflict {
-            self.counts.conflicting_decisions += 1;
+            self.conflicting += 1;
             if let Some(thread) = &run.conversation_id {
                 self.conversations.insert((
                     &run.source,
@@ -148,10 +187,29 @@ impl<'a> Counter<'a> {
                     run.user_id.as_deref(),
                     thread,
                 ));
-                self.counts.affected_conversations = self.conversations.len();
             } else {
-                self.counts.conflicts_without_conversation += 1;
+                self.conflicts_without_conversation += 1;
             }
+        }
+    }
+
+    fn counts(self, phase: Phase) -> Counts {
+        let units = match phase {
+            Phase::Decision => Units::Decisions {
+                scoped_decisions: self.scoped,
+                comparable_decisions: self.comparable,
+                conflicting_decisions: self.conflicting,
+            },
+            Phase::Preflight => Units::Preflight {
+                scoped_checks: self.scoped,
+                comparable_checks: self.comparable,
+                conflicting_checks: self.conflicting,
+            },
+        };
+        Counts {
+            units,
+            affected_conversations: self.conversations.len(),
+            conflicts_without_conversation: self.conflicts_without_conversation,
         }
     }
 }
@@ -167,8 +225,12 @@ pub struct Group {
 pub struct Evidence<'a> {
     run_id: &'a str,
     call_id: &'a str,
-    decision_id: &'a str,
-    decision_label: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    decision_id: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    decision_label: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rule_scope: Option<(&'a str, &'a str)>,
     trace_source: &'a str,
     organization_id: Option<&'a str>,
     user_id: Option<&'a str>,
@@ -178,12 +240,13 @@ pub struct Evidence<'a> {
 }
 
 impl<'a> Evidence<'a> {
-    fn new(run: &'a Run, call: &'a Call, decision: &'a Decision) -> Self {
+    fn new(run: &'a Run, call: &'a Call, check: &RuleCheck<'a>) -> Self {
         Self {
             run_id: &run.id,
             call_id: &call.id,
-            decision_id: &decision.id,
-            decision_label: &decision.label,
+            decision_id: check.decision.map(|decision| decision.id.as_str()),
+            decision_label: check.decision.map(|decision| decision.label.as_str()),
+            rule_scope: check.decision.is_none().then_some(check.scope),
             trace_source: &run.source,
             organization_id: run.organization_id.as_deref(),
             user_id: run.user_id.as_deref(),
@@ -198,14 +261,75 @@ impl<'a> Evidence<'a> {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Page<'a> {
     Groups {
+        #[serde(skip_serializing_if = "Phase::is_decision")]
+        phase: Phase,
         totals: Counts,
         rows: Vec<Group>,
         next_offset: Option<usize>,
     },
     Evidence {
+        #[serde(skip_serializing_if = "Phase::is_decision")]
+        phase: Phase,
         rows: Vec<Evidence<'a>>,
         next_offset: Option<usize>,
     },
+}
+
+struct RuleCheck<'a> {
+    decision: Option<&'a Decision>,
+    scope: (&'a str, &'a str),
+    rules: Vec<(&'a ContextItem, &'a Rule)>,
+}
+
+fn visit_rule_checks<'a>(
+    call: &'a Call,
+    phase: Phase,
+    rule_filter: Option<&str>,
+    mut visit: impl FnMut(RuleCheck<'a>),
+) {
+    let matches = |key: &str| rule_filter.is_none_or(|filter| filter == key);
+    match phase {
+        Phase::Decision => {
+            for decision in &call.decisions {
+                let Some(scope) = decision
+                    .applies_to
+                    .as_ref()
+                    .filter(|scope| matches(&scope.key))
+                else {
+                    continue;
+                };
+                visit(RuleCheck {
+                    decision: Some(decision),
+                    scope: (&scope.key, &scope.scope),
+                    rules: applicable_rules(call, scope).collect(),
+                });
+            }
+        }
+        Phase::Preflight => {
+            let Some(receipt) = preflight::verified_receipt(call) else {
+                return;
+            };
+            let mut scopes = BTreeMap::<(&str, &str), Vec<_>>::new();
+            if let Some(scope) = receipt.scope.as_ref().filter(|scope| matches(&scope.key)) {
+                scopes.insert((&scope.key, &scope.scope), Vec::new());
+            }
+            for (item, rule) in preflight::rules(call, receipt.scope.as_ref())
+                .filter(|(_, rule)| matches(&rule.key))
+            {
+                scopes
+                    .entry((&rule.key, &rule.scope))
+                    .or_default()
+                    .push((item, rule));
+            }
+            for (scope, rules) in scopes {
+                visit(RuleCheck {
+                    decision: None,
+                    scope,
+                    rules,
+                });
+            }
+        }
+    }
 }
 
 pub(crate) fn timestamp(value: &str) -> Result<OffsetDateTime, String> {
@@ -290,20 +414,9 @@ pub fn query<'a>(
                 .contains(&Dimension::Day)
                 .then(|| time.map(|time| time.to_offset(UtcOffset::UTC).date().to_string()))
                 .flatten();
-            for decision in &call.decisions {
-                let Some(rule) = &decision.applies_to else {
-                    continue;
-                };
-                if spec
-                    .filters
-                    .rule
-                    .as_ref()
-                    .is_some_and(|key| key != &rule.key)
-                {
-                    continue;
-                }
-                let rules: Vec<_> = applicable_rules(call, rule).collect();
-                let mut known = rules
+            visit_rule_checks(call, spec.phase, spec.filters.rule.as_deref(), |check| {
+                let mut known = check
+                    .rules
                     .iter()
                     .filter(|(_, rule)| rule.value.is_some())
                     .peekable();
@@ -315,12 +428,14 @@ pub fn query<'a>(
                 let key_for = |item| {
                     dimensions
                         .iter()
-                        .map(|dimension| dimension.key(run, call, rule, item, day.as_deref()))
+                        .map(|dimension| {
+                            dimension.key(run, call, check.scope, item, day.as_deref())
+                        })
                         .collect::<GroupKey>()
                 };
                 let mut memberships = BTreeMap::new();
-                if by_source && !rules.is_empty() {
-                    for (item, rule) in rules {
+                if by_source && !check.rules.is_empty() {
+                    for (item, rule) in &check.rules {
                         memberships
                             .entry(key_for(Some(item)))
                             .and_modify(|known| *known |= rule.value.is_some())
@@ -332,7 +447,7 @@ pub fn query<'a>(
                 if let Some(group) = &spec.group {
                     if conflict && memberships.get(group) == Some(&true) {
                         if matches >= spec.offset && evidence.len() < spec.limit {
-                            evidence.push(Evidence::new(run, call, decision));
+                            evidence.push(Evidence::new(run, call, &check));
                         }
                         matches += 1;
                     }
@@ -346,32 +461,32 @@ pub fn query<'a>(
                         );
                     }
                 }
-            }
+            });
         }
     }
     let next = spec.offset.saturating_add(spec.limit);
     if spec.group.is_some() {
         return Ok(Page::Evidence {
+            phase: spec.phase,
             rows: evidence,
             next_offset: (next < matches).then_some(next),
         });
     }
     let size = groups.len();
-    let mut rows: Vec<_> = groups
-        .into_iter()
-        .map(|(key, counter)| Group {
-            key,
-            counts: counter.counts,
-        })
-        .collect();
-    rows.sort_by_key(|row| std::cmp::Reverse(row.counts.conflicting_decisions));
-    let rows = rows
+    let mut groups: Vec<_> = groups.into_iter().collect();
+    groups.sort_by_key(|(_, counter)| std::cmp::Reverse(counter.conflicting));
+    let rows = groups
         .into_iter()
         .skip(spec.offset)
         .take(spec.limit)
+        .map(|(key, counter)| Group {
+            key,
+            counts: counter.counts(spec.phase),
+        })
         .collect();
     Ok(Page::Groups {
-        totals: totals.counts,
+        phase: spec.phase,
+        totals: totals.counts(spec.phase),
         rows,
         next_offset: (next < size).then_some(next),
     })

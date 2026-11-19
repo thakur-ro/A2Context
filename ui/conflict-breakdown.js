@@ -20,7 +20,7 @@ function setupConflictBreakdown() {
     primary.add(new Option(label, key));
     secondary.add(new Option(label, key));
   }
-  for (const id of ["conflict-group-by", "conflict-then-by", "conflict-rule"]) {
+  for (const id of ["conflict-phase", "conflict-group-by", "conflict-then-by", "conflict-rule"]) {
     element(id).addEventListener("change", () => {
       conflictGroup = null;
       linkNotice();
@@ -29,11 +29,12 @@ function setupConflictBreakdown() {
   }
 }
 
-function openConflictBreakdown(run, rule) {
+function openConflictBreakdown(run, rule, phase = "decision") {
   state.view = "patterns";
   state.patternThread = "";
   state.patternScope = JSON.stringify([run.organization_id, run.user_id]);
   element("pattern-type").value = "breakdown";
+  element("conflict-phase").value = phase;
   element("conflict-group-by").value = "source_version";
   element("conflict-then-by").value = "";
   element("conflict-rule").value = rule;
@@ -44,6 +45,7 @@ function openConflictBreakdown(run, rule) {
 }
 
 function writeConflictBreakdownLink(params) {
+  if (element("conflict-phase").value === "preflight") params.set("phase", "preflight");
   params.set("group_by", element("conflict-group-by").value);
   if (element("conflict-then-by").value) params.set("then_by", element("conflict-then-by").value);
   if (element("conflict-rule").value.trim()) params.set("rule", element("conflict-rule").value.trim());
@@ -51,6 +53,7 @@ function writeConflictBreakdownLink(params) {
 }
 
 function restoreConflictBreakdownLink(params) {
+  element("conflict-phase").value = params.get("phase") === "preflight" ? "preflight" : "decision";
   selectLinkValue("conflict-group-by", conflictDimensions.has(params.get("group_by")) ? params.get("group_by") : "rule");
   selectLinkValue("conflict-then-by", conflictDimensions.has(params.get("then_by")) ? params.get("then_by") : "");
   element("conflict-rule").value = params.get("rule") || "";
@@ -134,6 +137,9 @@ function patternScopeSelection(scope, thread, [after, before]) {
 }
 
 function renderConflictBreakdown(list, scope) {
+  const phase = element("conflict-phase").value;
+  const beforeInference = phase === "preflight";
+  const unit = beforeInference ? "checks" : "decisions";
   const first = element("conflict-group-by").value;
   const second = element("conflict-then-by");
   for (const option of second.options) option.disabled = option.value === first;
@@ -144,14 +150,22 @@ function renderConflictBreakdown(list, scope) {
   for (const run of data.runs) {
     if ((organization !== null || user !== null) && run.organization_id !== organization) continue;
     if (user !== null && run.user_id !== user) continue;
-    for (const call of run.calls) for (const { applies_to } of call.decisions) {
-      if (applies_to) rules.add(applies_to.key);
+    for (const call of run.calls) {
+      if (beforeInference) {
+        const check = preflightChecksByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
+        if (check?.status !== "matched") continue;
+        if (check.scope) rules.add(check.scope.key);
+        else for (const { rule } of call.context) if (rule) rules.add(rule.key);
+      } else {
+        for (const { applies_to } of call.decisions) if (applies_to) rules.add(applies_to.key);
+      }
     }
   }
   element("conflict-rules").replaceChildren(...[...rules].sort().map((key) => new Option(key)));
   const rule = element("conflict-rule").value.trim();
   const spec = {
     version: 1,
+    phase,
     scope: patternApiScope(scope),
     group_by,
     filters: rule ? { rule } : {},
@@ -178,17 +192,18 @@ function renderConflictBreakdown(list, scope) {
         const title = [first.conversation_id || "Conversation ID unavailable", first.user_id, first.organization_id].filter(Boolean);
         if (!first.conversation_id) title.push(first.run_id);
         evidence.append(node("h3", title.join(" · ")));
-        const labels = entries.map(({ decision_label }) => decision_label);
-        for (const row of entries) {
+        const labels = entries.map((item) => item.decision_label ?? item.rule_scope.join(" · "));
+        for (const [index, row] of entries.entries()) {
           const entry = node("div", undefined, "breakdown-contributor");
-          entry.append(node("span", row.decision_label), conversationOccurrenceButton(row));
-          const repeated = labels.indexOf(row.decision_label) !== labels.lastIndexOf(row.decision_label);
+          const label = labels[index];
+          entry.append(node("span", label), conversationOccurrenceButton(row));
+          const repeated = labels.indexOf(label) !== labels.lastIndexOf(label);
           const position = [row.started_at, row.turn_id, repeated && row.call_id].filter(Boolean);
           if (position.length) entry.append(node("small", position.join(" · "), "muted"));
           evidence.append(entry);
         }
       }
-      if (!rows.length) evidence.append(node("p", "No conflicting decisions in this group.", "muted"));
+      if (!rows.length) evidence.append(node("p", "No conflicting " + unit + " in this group.", "muted"));
       patternPager(evidence, offset, next_offset, (next) => loadEvidence(group, next, true));
       if (focus && state.view === "patterns") heading.focus();
     });
@@ -196,16 +211,17 @@ function renderConflictBreakdown(list, scope) {
 
   function loadGroups(offset = 0, focus = false) {
     showPatternPage(results, "/api/conflict-query", { ...spec, offset }, ({ totals, rows, next_offset }) => {
-      const heading = node("h2", "Conflicts across recorded decisions");
+      const heading = node("h2", beforeInference ? "Conflicts found before inference" : "Conflicts across recorded decisions");
       heading.tabIndex = -1;
       results.append(heading);
-      results.append(node("p", totals.conflicting_decisions + " with conflicts · "
-        + totals.comparable_decisions + " comparable · " + totals.scoped_decisions + " with declared rule scope", "count"));
+      results.append(node("p", totals["conflicting_" + unit] + " with conflicts · "
+        + totals["comparable_" + unit] + " comparable · " + totals["scoped_" + unit] + " with declared rule scope", "count"));
       const missing = totals.conflicts_without_conversation;
       results.append(node("p", countLabel(totals.affected_conversations, "identified conversation") + " with conflicts"
         + (missing ? " · " + countLabel(missing, "conflict") + " without a conversation ID" : ""), "muted"));
       if (!rows.length) {
-        results.append(node("p", "No decisions with declared rule scope match this view.", "muted"));
+        results.append(node("p", beforeInference ? "No verified preflight checks match this view."
+          : "No decisions with declared rule scope match this view.", "muted"));
         return;
       }
       const table = node("table", undefined, "breakdown-table");
@@ -222,7 +238,7 @@ function renderConflictBreakdown(list, scope) {
         const head = node("th");
         head.scope = "row";
         line.append(head);
-        if (row.conflicting_decisions) {
+        if (row["conflicting_" + unit]) {
           const button = node("button", label);
           button.type = "button";
           button.dataset.groupKey = JSON.stringify(row.key);
@@ -234,7 +250,7 @@ function renderConflictBreakdown(list, scope) {
           head.textContent = label;
         }
         for (const count of [
-          row.conflicting_decisions, row.comparable_decisions, row.scoped_decisions, row.affected_conversations,
+          row["conflicting_" + unit], row["comparable_" + unit], row["scoped_" + unit], row.affected_conversations,
         ]) {
           const cell = line.insertCell();
           cell.textContent = String(count);
@@ -245,7 +261,10 @@ function renderConflictBreakdown(list, scope) {
       scroll.setAttribute("role", "region");
       scroll.setAttribute("aria-label", "Conflict groups and coverage");
       scroll.append(table);
-      results.append(scroll, node("p", "Comparable decisions have at least two captured rule values. A decision can appear in several source groups.", "muted"));
+      const coverage = beforeInference
+        ? "A verified check covers one rule scope on one request. Comparable checks have at least two known rule values."
+        : "Comparable decisions have at least two captured rule values. A decision can appear in several source groups.";
+      results.append(scroll, node("p", coverage, "muted"));
       patternPager(results, offset, next_offset, (next) => loadGroups(next, true));
       if (focus && state.view === "patterns") heading.focus();
     });

@@ -1,4 +1,4 @@
-use nexusweave::{conflict_query, Run};
+use nexusweave::{conflict_query, langsmith, preflight, Run};
 use serde_json::{json, Value};
 
 fn runs(source: &str) -> Vec<Run> {
@@ -130,4 +130,112 @@ fn rejects_ambiguous_or_unbounded_specs() {
         json!({"version": 1, "group_by": ["undeclared_workflow"]})
     )
     .is_err());
+}
+
+#[test]
+fn mines_verified_checks_across_scopes_and_opens_calls_without_output() {
+    let raw: Value =
+        serde_json::from_str(include_str!("../examples/preflight-returns-langsmith.json")).unwrap();
+    let mut first = langsmith::import(&raw).unwrap().remove(0);
+    first.calls[0].decisions.clear();
+    let mut second = first.clone();
+    second.id = "another-call-same-thread".into();
+    let mut third = first.clone();
+    third.id = "another-thread".into();
+    third.conversation_id = Some("another-thread".into());
+    third.calls[0].started_at = Some("2026-01-16T00:00:00Z".into());
+    let mut other = first.clone();
+    other.id = "other-organization".into();
+    other.organization_id = Some("other-organization".into());
+    let mut modified = first.clone();
+    modified.id = "unverified".into();
+    modified.calls[0]
+        .recorded_request
+        .as_mut()
+        .unwrap()
+        .body
+        .push(' ');
+    let mut no_receipt = first.clone();
+    no_receipt.id = "unchecked".into();
+    no_receipt.calls[0].preflight_receipt = None;
+    let source = [first, second, third, other, modified, no_receipt];
+    let mut spec = json!({
+        "version": 1, "phase": "preflight", "group_by": ["source_version", "day"],
+        "scope": {"kind": "user", "organization_id": "demo-retail", "user_id": "demo-shopper"},
+        "filters": {"rule": "return_window_days", "before": "2026-01-16T00:00:00Z"}, "limit": 1,
+    });
+    let page = query(spec.clone(), &source);
+    assert_eq!(page["phase"], "preflight");
+    assert_eq!(
+        page["totals"],
+        json!({
+            "scoped_checks": 2, "comparable_checks": 2, "conflicting_checks": 2,
+            "affected_conversations": 1, "conflicts_without_conversation": 0,
+        })
+    );
+    assert_eq!(page["next_offset"], 1);
+    assert_eq!(
+        page["rows"][0]["key"],
+        json!([["retail/archive-faq", "v2"], ["2026-01-15"]])
+    );
+    spec["group"] = page["rows"][0]["key"].clone();
+    let evidence = query(spec.clone(), &source);
+    assert_eq!(evidence["rows"][0]["call_id"], "returns-run");
+    assert_eq!(
+        evidence["rows"][0]["rule_scope"],
+        json!(["return_window_days", "standard"])
+    );
+    assert!(evidence["rows"][0].get("decision_id").is_none());
+    assert_eq!(evidence["next_offset"], 1);
+    spec["offset"] = json!(1);
+    let later = query(spec, &source);
+    assert_eq!(later["rows"][0]["run_id"], "another-call-same-thread");
+    assert!(later["next_offset"].is_null());
+
+    let organizations = query(
+        json!({"version": 1, "phase": "preflight", "group_by": ["organization"]}),
+        &source,
+    );
+    assert_eq!(organizations["rows"][0]["conflicting_checks"], 3);
+    assert_eq!(organizations["rows"][0]["affected_conversations"], 2);
+    assert_eq!(organizations["rows"][1]["conflicting_checks"], 1);
+    let conversations = query(
+        json!({"version": 1, "phase": "preflight", "group_by": ["conversation"]}),
+        &source,
+    );
+    assert_eq!(conversations["rows"].as_array().unwrap().len(), 3);
+    assert_eq!(conversations["rows"][0]["conflicting_checks"], 2);
+}
+
+#[test]
+fn counts_each_checked_rule_scope_and_does_not_mix_known_values_across_scopes() {
+    let mut input: Value =
+        serde_json::from_str(include_str!("../examples/preflight-returns.json")).unwrap();
+    let mut raw: Value =
+        serde_json::from_str(include_str!("../examples/preflight-returns-langsmith.json")).unwrap();
+    let declarations = "nexusweave.context.semantics";
+    input["scope"] = Value::Null;
+    let sources = &mut input["attributes"][declarations]["request_sources"];
+    let mut holiday = sources[0].clone();
+    holiday["id"] = json!("holiday-policy");
+    holiday["rule"]["scope"] = json!("holiday");
+    sources.as_array_mut().unwrap().push(holiday);
+    let metadata = &mut raw["extra"]["metadata"];
+    metadata[declarations]["request_sources"] = sources.clone();
+    let request = serde_json::from_value(input).unwrap();
+    metadata["nexusweave.preflight"] =
+        serde_json::to_value(preflight::check(request).unwrap().receipt).unwrap();
+    let recorded = langsmith::import(&raw).unwrap();
+    let result = query(
+        json!({"version": 1, "phase": "preflight", "group_by": ["rule"]}),
+        &recorded,
+    );
+    assert_eq!(result["totals"]["scoped_checks"], 2);
+    assert_eq!(result["totals"]["comparable_checks"], 1);
+    assert_eq!(result["totals"]["conflicting_checks"], 1);
+    assert_eq!(
+        result["rows"][1]["key"],
+        json!([["return_window_days", "holiday"]])
+    );
+    assert_eq!(result["rows"][1]["comparable_checks"], 0);
 }

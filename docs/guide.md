@@ -84,6 +84,21 @@ Links use recorded IDs and scope in the URL fragment. Pattern links also carry t
 
 Open **Patterns → Conflict breakdown**. Choose an organization or a user within an organization. Pick a field under **Group by** and use **Then by** to add another. A rule key narrows the results. From a conflict in the transcript, **Find recurring conflicts** opens a breakdown for that rule and the recorded user or organization.
 
+Set **Check stage** to **Before inference** to count conflicts from verified preflight receipts. Group by conversation to compare threads, by user or organization to see where a conflict repeats, or by **Day (UTC)** to track changes over time. Opening a group lists the contributing requests and rule scopes. **Open turn** opens the captured preflight evidence, including for a request with no model output. A conflict in **Conversation → Preflight** also offers **Find recurring preflight conflicts**.
+
+The preflight breakdown counts one check per request and checked rule scope. A comparable check has at least two known rule values in that scope. A conflicting check has at least two different known values. Grouping by source can place one check in more than one group. Date filters and day groups use the recorded call's start time. Receipts that cannot be verified appear on their turns with the reason.
+
+The CLI, local API, and MCP accept `"phase": "preflight"` in a conflict view. For example, group a user's verified checks by day and source version.
+
+```json
+{
+  "version": 1,
+  "phase": "preflight",
+  "scope": {"kind": "user", "organization_id": "demo-retail", "user_id": "demo-shopper"},
+  "group_by": ["day", "source_version"]
+}
+```
+
 Select a group to see the conversations that contributed to it. **Open turn** takes you to the exact decision. Decisions with missing conversation IDs appear by trace and count separately from identified conversations.
 
 The view counts each decision once in the scope totals. **Scoped** decisions declare a rule and its applicability. **Comparable** decisions have at least two captured values for that rule. **Conflicts** count decisions where a pair of those values disagrees. A source group includes decisions that carried that source and version. Its comparable count requires a captured value from that source, and its conflict count requires that value to disagree with another applicable value. One decision may contribute to several source groups.

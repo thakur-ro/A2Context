@@ -89,21 +89,24 @@ function pageControls(page, tool, back, { container = result, offsetKey = "offse
 
 function renderGroups(page, back) {
   const { totals, rows } = page.data;
-  result.append(element("p", totals.conflicting_decisions + " conflicting decisions · "
-    + totals.comparable_decisions + " comparable · " + totals.scoped_decisions + " scoped", "muted"));
-  for (const { key, conflicting_decisions, affected_conversations } of rows) {
+  const unit = page.data.phase === "preflight" ? "checks" : "decisions";
+  result.append(element("p", totals["conflicting_" + unit] + " conflicting " + unit + " · "
+    + totals["comparable_" + unit] + " comparable · " + totals["scoped_" + unit] + " scoped", "muted"));
+  for (const item of rows) {
+    const { key, affected_conversations } = item;
+    const conflicts = item["conflicting_" + unit];
     const name = groupName(key, page.args.group_by || []);
     const row = element("div", undefined, "row");
-    if (conflicting_decisions && page.args.group_by) {
+    if (conflicts && page.args.group_by) {
       row.append(button(name, () => requestPage("query_conflicts", { ...page.args, group: key, offset: 0 }, name, { page, previous: back })));
     } else {
       row.append(element("h2", name));
     }
-    row.append(element("p", countLabel(conflicting_decisions, "conflict") + " · "
+    row.append(element("p", countLabel(conflicts, "conflict") + " · "
       + countLabel(affected_conversations, "identified conversation"), "muted"));
     result.append(row);
   }
-  if (!rows.length) result.append(element("p", "No scoped decisions match this view.", "muted"));
+  if (!rows.length) result.append(element("p", "No scoped " + unit + " match this view.", "muted"));
   if (page.args.group_by) pageControls(page, "query_conflicts", back);
 }
 
@@ -121,10 +124,11 @@ function renderEvidence(page, back) {
     section.append(element("h2", first.conversation_id || first.run_id));
     const owner = [first.user_id, first.organization_id, first.conversation_id ? null : "Conversation ID unavailable"].filter(Boolean).join(" · ");
     if (owner) section.append(element("p", owner, "muted"));
-    for (const { run_id, call_id, decision_id, decision_label, turn_id } of rows) {
-      const label = [decision_label, turn_id, call_id].filter(Boolean).join(" · ");
+    for (const { run_id, call_id, decision_id, decision_label, rule_scope, turn_id } of rows) {
+      const title = decision_label || rule_scope.join(" · ");
+      const label = [title, turn_id, call_id].filter(Boolean).join(" · ");
       const control = button(label, () => requestPage(
-        "get_turn_evidence", { run_id, call_id, decision_id }, decision_label, { page, previous: back },
+        "get_turn_evidence", { run_id, call_id, decision_id }, title, { page, previous: back },
       ));
       const entry = element("div");
       entry.append(control);
@@ -132,7 +136,8 @@ function renderEvidence(page, back) {
     }
     result.append(section);
   }
-  if (!groups.size) result.append(element("p", "No conflicting decisions in this group.", "muted"));
+  if (!groups.size) result.append(element("p", page.data.phase === "preflight"
+    ? "No conflicting checks in this group." : "No conflicting decisions in this group.", "muted"));
   if (page.args.group_by) pageControls(page, "query_conflicts", back);
 }
 
@@ -326,8 +331,9 @@ app.ontoolresult = (response) => {
     const turn = data.kind === "turn_evidence";
     const args = turn ? { ...turnLocation(data), ...initialQuery } : initialQuery || {};
     const titles = {
-      groups: () => "Conflicts across recorded decisions",
-      evidence: () => args.group ? groupName(args.group, args.group_by || []) : "Contributing decisions",
+      groups: () => data.phase === "preflight" ? "Conflicts found before inference" : "Conflicts across recorded decisions",
+      evidence: () => args.group ? groupName(args.group, args.group_by || [])
+        : data.phase === "preflight" ? "Contributing checks" : "Contributing decisions",
       activation_groups: () => "Recurring activation effects",
       activation_evidence: () => activationTitle(data.group),
       turn_evidence: () => "Turn evidence",
