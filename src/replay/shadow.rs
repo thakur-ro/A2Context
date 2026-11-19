@@ -14,10 +14,10 @@ pub use recorded::{
 use super::{
     compare_control, complete_difference, complete_interaction, control_index, edited_requests,
     interval, prepare_edits, recorded_context, sample_conditions, sha256, summarize, Choice,
-    ControlComparison, Intervention, MatchRule, Matcher, Pair, SamplingDesign, Summary, Trial,
-    Variant,
+    ControlComparison, Intervention, MatchRule, Matcher, Pair, PreparedEdit, SamplingDesign,
+    Summary, Trial, Variant,
 };
-use crate::{preflight, Evidence};
+use crate::{preflight, Call, Evidence};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -81,6 +81,47 @@ pub struct JointEffect {
     pub result: Pair,
 }
 
+struct PreparedCase<'a> {
+    call: Call,
+    requests: Vec<Value>,
+    edits: Vec<PreparedEdit<'a>>,
+    control: Option<usize>,
+}
+
+fn prepare_case<'a>(input: preflight::Request, case: &'a Case) -> Result<PreparedCase<'a>, String> {
+    if case.version != VERSION || case.id.trim().is_empty() || case.runner_id.trim().is_empty() {
+        return Err("Expected a named shadow case and runner with version 1.".into());
+    }
+    if case.samples == 0 || case.interventions.is_empty() {
+        return Err("A shadow probe requires samples and at least one source edit.".into());
+    }
+    if !named(&case.expected) {
+        return Err("The expected proposal requires a kind and label.".into());
+    }
+    let control = case
+        .negative_control_context_id
+        .as_deref()
+        .map(|id| control_index(id, &case.interventions))
+        .transpose()?;
+    let (call, request, _) = preflight::pending_call(input)?;
+    let request = request.ok_or("A shadow probe requires the captured request body.")?;
+    let edits = prepare_edits(&call, &request, &case.interventions, case.test_pair)?;
+    let requests = edited_requests(request, &edits, case.test_pair)?;
+    Ok(PreparedCase {
+        call,
+        requests,
+        edits,
+        control,
+    })
+}
+
+/// Validate the proposal criterion and reconstruct the request edits without sampling.
+pub fn validate_case(input: preflight::Request, case: &Case) -> Result<(), String> {
+    prepare_case(input, case)?;
+    Matcher::new(&case.match_rule, &case.expected)?;
+    Ok(())
+}
+
 /// Run a shadow comparison against a declared proposal on a pending request.
 ///
 /// The runner is responsible for returning proposals before tool dispatch. All
@@ -94,26 +135,14 @@ pub fn execute(
     case: &Case,
     mut sample: impl FnMut(&Value) -> Option<Choice>,
 ) -> Result<Report, String> {
-    if case.version != VERSION || case.id.trim().is_empty() || case.runner_id.trim().is_empty() {
-        return Err("Expected a named shadow case and runner with version 1.".into());
-    }
-    if case.samples == 0 || case.interventions.is_empty() {
-        return Err("A shadow probe requires samples and at least one source edit.".into());
-    }
-    if !named(&case.expected) {
-        return Err("The expected proposal requires a kind and label.".into());
-    }
+    let PreparedCase {
+        call,
+        requests,
+        edits,
+        control,
+    } = prepare_case(input, case)?;
     let match_rule = case.match_rule.normalized();
     let matcher = Matcher::new(&match_rule, &case.expected)?;
-    let control = case
-        .negative_control_context_id
-        .as_deref()
-        .map(|id| control_index(id, &case.interventions))
-        .transpose()?;
-    let (call, request, _) = preflight::pending_call(input)?;
-    let request = request.ok_or("A shadow probe requires the captured request body.")?;
-    let edits = prepare_edits(&call, &request, &case.interventions, case.test_pair)?;
-    let requests = edited_requests(request, &edits, case.test_pair)?;
     let mut trials = sample_conditions(&requests, case.samples, |request| {
         sample(request).filter(named)
     });

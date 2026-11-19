@@ -29,10 +29,10 @@ function focusScreenPair(anchor) {
 
 function renderContextScreen(parent, run, call, open, decision) {
   const screen = contextScreenForCall(run, call);
-  renderContextScreenReport(parent, screen, call, open, run, decision);
+  renderContextScreenReport(parent, screen, call, { open, run, decision });
 }
 
-function renderContextScreenReport(parent, screen, call, open, run, decision) {
+function renderContextScreenReport(parent, screen, call, { open, run, decision, shadowAction }) {
   if (!screen) return;
   const report = screen.report;
   const flagged = report?.pairs.filter((pair) => pair.suggestion) || [];
@@ -95,6 +95,7 @@ function renderContextScreenReport(parent, screen, call, open, run, decision) {
           card.append(prepare);
         }
       }
+      if (pair.suggestion) shadowAction?.(card, contextIds, "Prepare shadow test for this pair");
       container.append(card);
     }
     flagged.forEach((pair) => appendPair(section, pair));

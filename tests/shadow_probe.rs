@@ -125,15 +125,22 @@ fn withholds_contrasts_for_incomplete_conditions_and_preserves_successful_trials
 
 #[test]
 fn rejects_invalid_captured_sources_and_outcome_rules_before_sampling() {
+    let (request, case) = setup();
+    shadow::validate_case(request, &case).unwrap();
+
     let (request, mut case) = setup();
     case.interventions[0].pointer = "/messages/2/content".into();
+    let plan_error = shadow::validate_case(setup().0, &case).unwrap_err();
     let error = shadow::execute(request, &case, |_| panic!("Unexpected runner call")).unwrap_err();
     assert!(error.contains("must match its declared fragment"));
+    assert_eq!(error, plan_error);
 
     let (request, mut case) = setup();
     case.expected.outcome = json!({"other_product":42});
+    let plan_error = shadow::validate_case(setup().0, &case).unwrap_err();
     let error = shadow::execute(request, &case, |_| panic!("Unexpected runner call")).unwrap_err();
     assert!(error.contains("reference outcome has no field"));
+    assert_eq!(error, plan_error);
 }
 
 #[test]

@@ -1,8 +1,8 @@
 //! Inspect a request or validate a replay case without invoking a runner.
 
-use nexusweave::{replay, Call, Run};
+use nexusweave::{preflight, replay, Call, Run};
 use percent_encoding::percent_decode_str;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::Read;
 use tiny_http::{Method, Request};
@@ -21,6 +21,19 @@ pub fn route<'a>(
                 replay::validate_case(&case, runs).map_err(|error| (400, error))?;
                 encode(&json!({}))
             }),
+        (&Method::Post, "/api/shadow-check") => {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Plan {
+                request: preflight::Request,
+                case: replay::shadow::Case,
+            }
+            read_json::<Plan>(request, 1024 * 1024).and_then(|plan| {
+                replay::shadow::validate_case(plan.request, &plan.case)
+                    .map_err(|error| (400, error))?;
+                encode(&json!({}))
+            })
+        }
         (&Method::Get, "/api/replay-input" | "/api/replay-fields")
         | (&Method::Post, "/api/replay-fields") => match target(request.url(), runs) {
             Some((_, call)) if request.method() == &Method::Post => {

@@ -36,6 +36,14 @@ jq -n --slurpfile request examples/preflight-returns.json '{request: $request[0]
 
 To see the same evidence on a recorded turn, download the preflight receipt or context screen and attach it to the inference span. Candidate and shadow reports can be attached to the same call. [Record preflight evidence](#show-preflight-alongside-the-recorded-answer) · [Record shadow proposals](#show-shadow-proposals-on-the-recorded-turn)
 
+### Prepare a shadow probe from captured sources
+
+Select **Prepare shadow probe** beside the request evidence. You can also start from an editable input, flagged pair, or rule conflict. Choose the outcome to measure and the exact locations to edit. If you start from an editable two-source finding, the planner selects both sources and includes a joint condition.
+
+To reproduce the routing example, select **Load routing example**, then set the proposal kind to `tool_call`, the label to `price`, and the outcome to `{"product_id": 42}`. Under **Proposal match**, select **Selected JSON fields** and enter `/product_id`. Replace `request-type` with `Request type: price.` and `store-name` with `Background: the store’s name is Rowan.`. Select both edits together and choose `store-name` as the negative control. Set the runner ID to identify your model and set **Trials per condition** to one for the greedy demonstration. [Reference shadow case](../examples/runtime-comparison/pending-routing/shadow-case.json)
+
+Download the pending request and validated case. Run them with a proposal-only runner, then attach the returned report to the pending view to read the measured differences. The planner validates the exact edits and match rule without invoking the model. [Run the shadow probe](#test-context-with-shadow-proposals)
+
 ## Check context before inference
 
 Run preflight after building a request and before handing it to the model. The example puts a 30-day policy and a 60-day FAQ in one system message. Both declare `return_window_days` for the `standard` scope. [Example request](../examples/preflight-returns.json)

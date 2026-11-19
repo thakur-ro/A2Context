@@ -87,6 +87,17 @@ function saveReplayFile(name, text) {
 }
 
 function openReplayPlanner(run, call, decision, suggested = []) {
+  openInterventionPlanner({ run, call, decision, suggested });
+}
+
+function openShadowPlanner(request, result, suggested = []) {
+  openInterventionPlanner({
+    call: { context: result.context }, suggested,
+    pending: { request, fields: result.request_fields },
+  });
+}
+
+function openInterventionPlanner({ run, call, decision, suggested, pending }) {
   const dialog = element("replay-planner");
   const form = element("replay-form");
   const input = element("replay-request");
@@ -101,21 +112,30 @@ function openReplayPlanner(run, call, decision, suggested = []) {
   const useRecorded = element("use-recorded-request");
   const downloadEvidence = element("download-replay-evidence");
   const requestSource = element("replay-request-source");
-  const hasCapture = hasRecordedRequest(run.id, call.id);
+  const caseName = pending ? "shadow" : "replay";
+  const hasCapture = !pending && hasRecordedRequest(run.id, call.id);
   const context = call.context.filter((item) => item.availability === "included" && typeof item.text === "string");
-  const fieldsEndpoint = "/api/replay-fields?run=" + encodeURIComponent(run.id) + "&call=" + encodeURIComponent(call.id);
+  const fieldsEndpoint = !pending && "/api/replay-fields?run=" + encodeURIComponent(run.id) + "&call=" + encodeURIComponent(call.id);
   let requestText = "";
   let candidates = [];
   let revision = 0;
   let caseRevision = 0;
 
   form.reset();
+  element("shadow-proposal").hidden = !pending;
+  element("shadow-proposal").disabled = !pending;
+  element("replay-planner-title").textContent = pending ? "Prepare shadow probe" : "Prepare controlled replay";
+  element("replay-match-label").textContent = pending ? "Proposal match" : "Decision match";
+  submit.textContent = pending ? "Download shadow case" : "Download replay case";
   useRecorded.hidden = !hasCapture;
   useRecorded.disabled = false;
-  downloadEvidence.hidden = true;
-  downloadEvidence.onclick = null;
-  element("replay-manual-request").hidden = hasCapture;
-  requestSource.textContent = hasCapture
+  downloadEvidence.hidden = !pending;
+  downloadEvidence.textContent = pending ? "Download pending request" : "Download call evidence";
+  downloadEvidence.onclick = pending ? () => saveReplayFile("pending-request", pending.request) : null;
+  element("replay-manual-request").hidden = hasCapture || Boolean(pending);
+  requestSource.textContent = pending
+    ? "Run the case with this request and a runner that stops before dispatch."
+    : hasCapture
     ? "Use the request captured on this call. Download the call evidence to run the case with the CLI."
     : "Choose the request body captured for this call. Request provenance cannot be verified from this trace.";
   const updateMatchFields = () => {
@@ -124,8 +144,9 @@ function openReplayPlanner(run, call, decision, suggested = []) {
   };
   matchKind.onchange = updateMatchFields;
   updateMatchFields();
-  element("replay-case-id").value = "replay-" + crypto.randomUUID();
-  element("replay-target").textContent = [decision.label, run.conversation_id || run.id, call.id].join(" · ");
+  element("replay-case-id").value = caseName + "-" + crypto.randomUUID();
+  element("replay-target").hidden = Boolean(pending);
+  element("replay-target").textContent = pending ? "" : [decision.label, run.conversation_id || run.id, call.id].join(" · ");
   status.textContent = "";
   fieldset.hidden = true;
   list.replaceChildren();
@@ -167,7 +188,7 @@ function openReplayPlanner(run, call, decision, suggested = []) {
   };
   const cancelValidation = () => {
     caseRevision += 1;
-    if (status.textContent === "Checking replay case…") status.textContent = "";
+    if (status.textContent === "Checking " + caseName + " case…") status.textContent = "";
   };
   form.oninput = cancelValidation;
   form.onchange = (event) => {
@@ -199,6 +220,10 @@ function openReplayPlanner(run, call, decision, suggested = []) {
     fieldset.hidden = false;
     updateSelection();
   };
+  if (pending) {
+    loadRequest(pending.request, pending.fields);
+    if (suggested.length === 2 && !testPair.disabled) testPair.checked = true;
+  }
   input.onchange = async () => {
     const file = input.files[0];
     const current = resetRequest();
@@ -292,11 +317,8 @@ function openReplayPlanner(run, call, decision, suggested = []) {
         return;
       }
     }
-    const metadata = {
-      version: 1, id, runner_id: runner, samples,
-      location: { run_id: run.id, call_id: call.id, decision_id: decision.id },
-      interventions,
-    };
+    const metadata = { version: 1, id, runner_id: runner, samples, interventions };
+    if (!pending) metadata.location = { run_id: run.id, call_id: call.id, decision_id: decision.id };
     if (testPair.checked) metadata.test_pair = true;
     if (negativeControl.value) metadata.negative_control_context_id = negativeControl.value;
     if (element("replay-independent").checked) metadata.sampling_design = "independent";
@@ -317,14 +339,34 @@ function openReplayPlanner(run, call, decision, suggested = []) {
     } else if (matchKind.value === "kind_and_label") {
       metadata.match_rule = { kind: "kind_and_label" };
     }
-    // Embed the captured JSON directly to preserve numeric settings and other literal values.
-    const json = JSON.stringify(metadata, null, 2).slice(0, -2) + ',\n  "request": ' + requestText + "\n}\n";
-    status.textContent = "Checking replay case…";
+    let field = "request";
+    let value = requestText;
+    if (pending) {
+      const kind = element("shadow-kind").value.trim();
+      const label = element("shadow-label").value.trim();
+      const outcome = element("shadow-outcome").value.trim();
+      try {
+        JSON.parse(outcome);
+      } catch {
+        status.textContent = "Enter the expected outcome as JSON.";
+        return;
+      }
+      if (!kind || !label) {
+        status.textContent = "Enter the expected proposal kind and label.";
+        return;
+      }
+      field = "expected";
+      value = JSON.stringify({ kind, label }).slice(0, -1) + ',"outcome":' + outcome + "}";
+    }
+    // Insert the raw JSON to preserve numeric values in the request or expected outcome.
+    const json = JSON.stringify(metadata, null, 2).slice(0, -2) + ',\n  "' + field + '": ' + value + "\n}\n";
+    status.textContent = "Checking " + caseName + " case…";
     try {
-      await replayJson("/api/replay-check", json);
+      const body = pending ? '{"request":' + requestText + ',"case":' + json + "}" : json;
+      await replayJson("/api/" + caseName + "-check", body);
       if (!isCurrentPlanner() || current !== caseRevision) return;
       saveReplayFile(id, json);
-      status.textContent = "Replay case downloaded. Run it with the NexusWeave CLI and your inference runner.";
+      status.textContent = (pending ? "Shadow" : "Replay") + " case downloaded.";
     } catch (error) {
       if (isCurrentPlanner() && current === caseRevision) status.textContent = error.message;
     }

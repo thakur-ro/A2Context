@@ -749,6 +749,12 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 "application/json",
                 include_bytes!("../examples/preflight-returns.json").as_slice(),
             ),
+            (true, &Method::Get, "/examples/pending-routing.json") => (
+                200,
+                "application/json",
+                include_bytes!("../examples/runtime-comparison/pending-routing/request.json")
+                    .as_slice(),
+            ),
             (true, &Method::Get, "/replay-planner.js") => (
                 200,
                 "text/javascript; charset=utf-8",

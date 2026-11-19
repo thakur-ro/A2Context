@@ -64,7 +64,8 @@
           </details>
           <div class="toolbar">
             <button type="submit">Inspect request</button>
-            <button type="button" id="pending-example">Load returns example</button>
+            <button type="button" data-pending-example="returns">Load returns example</button>
+            <button type="button" data-pending-example="routing">Load routing example</button>
           </div>
           <p id="pending-status" role="status"></p>
         </form>
@@ -320,6 +321,17 @@
         </label>
         <p class="muted" id="replay-request-source"></p>
         <p id="replay-status" role="status"></p>
+        <fieldset id="shadow-proposal" hidden disabled>
+          <legend>Proposal to measure</legend>
+          <div class="toolbar">
+            <label>Kind <input id="shadow-kind" list="shadow-kinds" value="model_output" required></label>
+            <datalist id="shadow-kinds"><option value="model_output">Answer</option><option value="tool_call">Tool call</option></datalist>
+            <label>Label <input id="shadow-label" placeholder="Model answer or tool name" required></label>
+          </div>
+          <label class="form-field">Expected outcome as JSON
+            <textarea id="shadow-outcome" rows="2" placeholder='{"product_id": 42}' required></textarea>
+          </label>
+        </fieldset>
         <fieldset id="replay-interventions" hidden>
           <legend>Context to test</legend>
           <p class="muted">Select context items and their replacements. Select two items to run each change on its own and both together.</p>
@@ -333,7 +345,7 @@
             <small class="muted">Choose an edited input you expect to leave the decision unchanged.</small>
           </label>
         </fieldset>
-        <label class="form-field">Decision match
+        <label class="form-field"><span id="replay-match-label">Decision match</span>
           <select id="replay-match-kind">
             <option value="exact">Exact decision</option>
             <option value="kind_and_label">Decision kind and label</option>

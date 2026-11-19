@@ -286,10 +286,10 @@ function evidenceSection(parent, label, open, populate) {
 
 function renderRecordedPreflight(parent, run, call, open) {
   const check = preflightChecksByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
-  renderPreflightCheck(parent, check, call, open, run);
+  renderPreflightCheck(parent, check, call, { open, run });
 }
 
-function renderPreflightCheck(parent, check, call, open, run) {
+function renderPreflightCheck(parent, check, call, { open, run, shadowAction }) {
   if (!check) return;
   const findings = check.report?.findings || [];
   const label = check.status === "matched"
@@ -314,10 +314,13 @@ function renderPreflightCheck(parent, check, call, open, run) {
           detail.querySelector("summary").append(node("span", source.value === null ? "Value unavailable" : readable(source.value), "declared-value muted"));
           card.append(detail);
         }
-        if (run && finding.kind === "conflict") {
-          const recurring = node("button", "Find recurring preflight conflicts");
-          recurring.addEventListener("click", () => openConflictBreakdown(run, finding.key, "preflight"));
-          card.append(recurring);
+        if (finding.kind === "conflict") {
+          if (run) {
+            const recurring = node("button", "Find recurring preflight conflicts");
+            recurring.addEventListener("click", () => openConflictBreakdown(run, finding.key, "preflight"));
+            card.append(recurring);
+          }
+          shadowAction?.(card, finding.sources.map(({ context_id }) => context_id), "Prepare shadow test for this conflict");
         }
         section.append(card);
       }

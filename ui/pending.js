@@ -20,12 +20,12 @@ function setupPendingView() {
     render();
   });
   form.addEventListener("input", clearResult);
-  element("pending-example").addEventListener("click", async () => {
+  async function loadExample(event) {
     clearResult();
     const controller = new AbortController();
     active = controller;
     try {
-      const response = await fetch("/examples/pending-returns.json", { signal: controller.signal });
+      const response = await fetch("/examples/pending-" + event.currentTarget.dataset.pendingExample + ".json", { signal: controller.signal });
       if (!response.ok) throw new Error("The example could not load.");
       const example = await response.text();
       if (controller.signal.aborted) return;
@@ -35,7 +35,8 @@ function setupPendingView() {
     } catch (error) {
       if (!controller.signal.aborted) status.textContent = error.message;
     }
-  });
+  }
+  for (const button of form.querySelectorAll("[data-pending-example]")) button.addEventListener("click", loadExample);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     clearResult();
@@ -43,7 +44,8 @@ function setupPendingView() {
     active = controller;
     status.textContent = "Inspecting request…";
     try {
-      const fields = ['"request":' + pendingJson(input.value, "Pending request")];
+      const request = pendingJson(input.value, "Pending request");
+      const fields = ['"request":' + request];
       for (const name of ["screening", "candidate", "shadow"]) {
         const file = element("pending-" + name).files[0];
         if (!file) continue;
@@ -59,7 +61,7 @@ function setupPendingView() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
       if (controller.signal.aborted) return;
-      renderPendingEvidence(output, result);
+      renderPendingEvidence(output, result, request);
       output.hidden = false;
       status.textContent = "Inspected " + countLabel(result.context.length, "captured input") + ".";
     } catch (error) {
@@ -78,12 +80,21 @@ function pendingJson(text, label) {
   throw new Error(label + " must be a JSON object.");
 }
 
-function renderPendingEvidence(parent, result) {
+function renderPendingEvidence(parent, result, request) {
   parent.append(node("h2", "Request evidence"));
   if (result.model) parent.append(node("p", result.model, "muted"));
   const call = { context: result.context };
-  renderPreflightCheck(parent, { status: "matched", report: result.preflight, scope: result.scope }, call, true);
-  renderContextScreenReport(parent, result.screening, call, true);
+  const requestFields = new Map(result.request_fields?.map(({ context_id, fields }) => [context_id, fields]));
+  function shadowAction(section, ids, label) {
+    if (!requestFields.size || !ids.every((id) => requestFields.has(id))) return;
+    const button = node("button", label);
+    button.type = "button";
+    button.addEventListener("click", () => openShadowPlanner(request, result, ids));
+    section.append(button);
+  }
+  shadowAction(parent, [], "Prepare shadow probe");
+  renderPreflightCheck(parent, { status: "matched", report: result.preflight, scope: result.scope }, call, { open: true, shadowAction });
+  renderContextScreenReport(parent, result.screening, call, { open: true, shadowAction });
   renderCandidateProbes(parent, result.candidate_probes, call, true);
   renderShadowProbes(parent, result.shadow_probes, call, true);
   const downloads = node("div", undefined, "toolbar");
@@ -98,7 +109,6 @@ function renderPendingEvidence(parent, result) {
     downloads.append(button);
   }
   if (downloads.childElementCount) parent.append(downloads);
-  const requestFields = new Map(result.request_fields?.map(({ context_id, fields }) => [context_id, fields]));
   evidenceSection(parent, countLabel(result.context.length, "captured input"), false, (section) => {
     if (!result.request_fields) section.append(node("p", "Supply the original request body to locate editable fields.", "muted"));
     for (const item of result.context) {
@@ -107,6 +117,7 @@ function renderPendingEvidence(parent, result) {
       for (const field of requestFields.get(item.id) || []) {
         detail.append(node("small", "Matching request path " + requestFieldLabel(field.pointer, field.text_range), "anchor"));
       }
+      shadowAction(detail, [item.id], "Prepare shadow edit");
       section.append(detail);
     }
   });
