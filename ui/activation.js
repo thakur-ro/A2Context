@@ -83,6 +83,7 @@ function renderSourceVisibility(panel, report, call) {
   const reasons = {
     text_not_captured: "Text unavailable", no_request_fragment: "Request position unknown",
     unsupported_request_field: "Unsupported request field", rendered_source_unaligned: "Rendered text did not align",
+    request_object_not_found: "No matching request object", request_object_ambiguous: "Multiple matching request objects",
     token_boundary_unaligned: "Token boundaries did not align",
   };
   const names = new Map(call.context.map((item) => [item.id, item.source_id || item.id.replaceAll("-", " ")]));
@@ -125,6 +126,7 @@ function renderSourceVisibility(panel, report, call) {
       const button = sourceButton(source.context_id);
       if (delta !== null) button.dataset.visibilitySource = source.context_id;
       heading.append(button);
+      if (source.request_pointer) heading.append(node("small", source.request_pointer, "anchor"));
       row.append(heading);
       const effect = row.insertCell();
       if (delta === null) effect.textContent = reasons[source.unavailable];

@@ -80,6 +80,11 @@
       "properties": {
         "context_id": { "$ref": "#/$defs/nonempty" },
         "captured_text_sha256": { "$ref": "#/$defs/digest" },
+        "request_pointer": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "JSON Pointer to the exact request object or array captured by this source. Use the context item's request fragment for text spans."
+        },
         "token_range": {
           "description": "Zero-based start and exclusive end in the rendered prompt.",
           "type": "array", "minItems": 2, "maxItems": 2,
@@ -107,7 +112,7 @@
       "properties": {
         "context_id": { "$ref": "#/$defs/nonempty" },
         "unavailable": {
-          "enum": ["text_not_captured", "no_request_fragment", "unsupported_request_field", "rendered_source_unaligned", "token_boundary_unaligned"]
+          "enum": ["text_not_captured", "no_request_fragment", "unsupported_request_field", "request_object_not_found", "request_object_ambiguous", "rendered_source_unaligned", "token_boundary_unaligned"]
         }
       }
     }

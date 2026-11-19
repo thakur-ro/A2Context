@@ -41,6 +41,38 @@ fn visibility_requires_a_reproduced_tool_name_and_arguments() {
 }
 
 #[test]
+fn visibility_requires_an_exact_captured_object_at_the_reported_request_pointer() {
+    let runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/evidence.json"
+    ))
+    .unwrap();
+    let original: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/visibility-routing/report.json"
+    ))
+    .unwrap();
+    let validate = |value: Value| {
+        serde_json::from_value::<Report>(value)
+            .unwrap()
+            .validate(&runs)
+    };
+    validate(original.clone()).unwrap();
+
+    for pointer in [
+        Value::Null,
+        "/tools/1".into(),
+        "/tools/2".into(),
+        "/messages/1/content".into(),
+    ] {
+        let mut invalid = original.clone();
+        invalid["sources"][5]["request_pointer"] = pointer;
+        assert!(validate(invalid).unwrap_err().contains("recorded request"));
+    }
+    let mut invalid = original;
+    invalid["sources"][1]["request_pointer"] = "/tools/0".into();
+    assert!(validate(invalid).unwrap_err().contains("recorded request"));
+}
+
+#[test]
 fn visibility_pairs_require_two_measured_disjoint_sources_and_one_score_per_token() {
     let runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/paired-visibility-evidence.json"

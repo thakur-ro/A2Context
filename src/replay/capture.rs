@@ -117,7 +117,7 @@ pub(crate) fn capture_availability(item: &ContextItem) -> CaptureAvailability {
     }
 }
 
-pub(super) fn captured_container(text: &str) -> Option<Value> {
+pub(crate) fn captured_container(text: &str) -> Option<Value> {
     serde_json::from_str(text)
         .ok()
         .filter(|value: &Value| value.is_object() || value.is_array())

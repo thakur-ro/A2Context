@@ -13,44 +13,77 @@ from activation_timeline import output_fragments
 from probe_transformers_answer_timeline import load_runtime
 
 
-def aligned_range(runtime, prompt, offsets, messages, item, tools):
-    if item["availability"] != "included" or item.get("text") is None:
-        return None, "text_not_captured"
-    anchor = item.get("request_fragment")
-    if anchor is None:
-        return None, "no_request_fragment"
+def mark_text_source(runtime, messages, tools, anchor, text, marker):
     pointer = re.fullmatch(r"/messages/(0|[1-9][0-9]*)/content", anchor["pointer"])
     if pointer is None:
-        return None, "unsupported_request_field"
+        return None
     index = int(pointer[1])
     if index >= len(messages) or not isinstance(messages[index].get("content"), str):
         raise ValueError("A request fragment points outside the recorded text messages.")
     content = messages[index]["content"].encode("utf-8")
     start = anchor["text_range"]["start_byte"]
     end = anchor["text_range"]["end_byte"]
-    text = item["text"]
     if not 0 <= start < end <= len(content) or content[start:end] != text.encode("utf-8"):
         raise ValueError("A captured source differs from its recorded request fragment.")
 
-    # Mark the anchored occurrence before rendering so repeated text maps by location.
+    tagged = list(messages)
+    tagged[index] = {**messages[index], "content": content[:start].decode() + marker + content[end:].decode()}
+    return runtime.render_prompt(tagged, tools)
+
+
+def aligned_source(runtime, prompt, offsets, messages, tools, item):
+    text = item.get("text")
+    if item["availability"] != "included" or text is None:
+        return {"unavailable": "text_not_captured"}
+
+    # Mark the exact occurrence before rendering so repeated text maps by location.
     marker = "NEXUSWEAVE_SOURCE_MARKER"
     while marker in prompt:
         marker += "_"
-    tagged = list(messages)
-    tagged[index] = {**messages[index], "content": content[:start].decode() + marker + content[end:].decode()}
-    rendered = runtime.render_prompt(tagged, tools)
+    source = {}
+    anchor = item.get("request_fragment")
+    if anchor is not None:
+        rendered = mark_text_source(runtime, messages, tools, anchor, text, marker)
+        if rendered is None:
+            return {"unavailable": "unsupported_request_field"}
+    elif item["kind"] == "tool_definition" and tools:
+        try:
+            canonical = json.dumps(json.loads(text), sort_keys=True, allow_nan=False)
+        except ValueError:
+            return {"unavailable": "request_object_not_found"}
+        matches = [
+            i for i, tool in enumerate(tools)
+            if isinstance(tool, dict) and json.dumps(tool, sort_keys=True, allow_nan=False) == canonical
+        ]
+        if not matches:
+            return {"unavailable": "request_object_not_found"}
+        if len(matches) != 1:
+            return {"unavailable": "request_object_ambiguous"}
+        index = matches[0]
+        tagged = list(tools)
+        tagged[index] = {marker: None}
+        marker = json.dumps(tagged[index], ensure_ascii=False)
+        text = json.dumps(tools[index], ensure_ascii=False)
+        rendered = runtime.render_prompt(messages, tagged)
+        source["request_pointer"] = f"/tools/{index}"
+    else:
+        return {"unavailable": "no_request_fragment"}
+
     if rendered.count(marker) != 1 or rendered.replace(marker, text) != prompt:
-        return None, "rendered_source_unaligned"
+        return {"unavailable": "rendered_source_unaligned"}
     left = rendered.index(marker)
     right = left + len(text)
+    # Qwen can merge the last JSON brace and its separator into one token.
+    end_limit = right + int("request_pointer" in source and prompt[right:right + 1] == "\n")
     overlapping = [(i, a, b) for i, (a, b) in enumerate(offsets) if a < right and left < b and a < b]
-    if (not overlapping or any(a < left or b > right for _, a, b in overlapping)
-            or overlapping[0][1] != left or overlapping[-1][2] != right):
-        return None, "token_boundary_unaligned"
+    if (not overlapping or any(a < left or b > end_limit for _, a, b in overlapping)
+            or overlapping[0][1] != left or overlapping[-1][2] < right):
+        return {"unavailable": "token_boundary_unaligned"}
     first, last = overlapping[0][0], overlapping[-1][0] + 1
     if len(overlapping) != last - first or last >= len(offsets):
-        return None, "token_boundary_unaligned"
-    return [first, last], None
+        return {"unavailable": "token_boundary_unaligned"}
+    source["token_range"] = [first, last]
+    return source
 
 
 def masked_scores(runtime, tokens, readouts, ranges=()):
@@ -123,15 +156,11 @@ def measure(runtime, model_path, model_id, revision, location, call, decision, *
         raise ValueError("The all-visible control did not reproduce the unmasked token scores.")
     sources = []
     for item in call["context"]:
-        source = {"context_id": item["id"]}
-        token_range, reason = aligned_range(runtime, prompt, offsets, messages, item, tools)
-        if token_range is None:
-            source["unavailable"] = reason
-        else:
+        source = {"context_id": item["id"], **aligned_source(runtime, prompt, offsets, messages, tools, item)}
+        if "token_range" in source:
             source.update(
-                token_range=token_range,
                 captured_text_sha256=sha256(item["text"].encode()).hexdigest(),
-                masked_log_probs=masked_scores(runtime, clean, readouts, [token_range]),
+                masked_log_probs=masked_scores(runtime, clean, readouts, [source["token_range"]]),
             )
         sources.append(source)
     if not any("masked_log_probs" in source for source in sources):

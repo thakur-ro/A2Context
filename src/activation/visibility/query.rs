@@ -223,6 +223,9 @@ pub fn query(
                 match source {
                     Source::Measured(source) => {
                         row["token_range"] = json!(source.token_range);
+                        if let Some(pointer) = &source.request_pointer {
+                            row["request_pointer"] = json!(pointer);
+                        }
                         row["effect"] = mask_effect(baseline, source.masked_log_probs[output_token]);
                         row["inspector_path"] = source_mask_path(report, output_token, &source.context_id).into();
                     }

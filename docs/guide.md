@@ -783,16 +783,18 @@ cargo run --locked -- serve \
   examples/runtime-comparison/visibility-routing/evidence.json
 ```
 
-In **Conversation** or **Decisions**, open **Activation probe → Context visibility test**. In **Across the tool proposal**, select `stock` to see the effect of masking the request type, or select either digit in `42` and choose **Find routing.product_id** to open Patterns for the full argument. A named target uses the sum of token log probability changes across its span.
+In **Conversation** or **Decisions**, open **Activation probe → Context visibility test**. Choose **Single-source effects** and select `stock` to compare the tool definition and request type. Select either digit in `42` and choose **Find routing.product_id** to open Patterns for the full argument. A named target uses the sum of token log probability changes across its span.
 
-The adapter renders the recorded tool list with the request, then requires the generated tool name and arguments to match the captured decision. It parses the extra outer brace pair emitted by this Qwen2.5 checkpoint and scores the original output tokens. The probe only generates and scores the proposal. Four of seven sources aligned in this fixture. The two tool definitions have no text anchors, and the system instruction crosses a token boundary. The inspector reports those gaps. [Routing experiment](inference-attribution-plan.md#measure-a-proposed-tool-name-and-argument)
+The adapter renders the recorded tool list with the request, then requires the generated tool name and arguments to match the captured decision. It parses the extra outer brace pair emitted by this Qwen2.5 checkpoint and scores the original output tokens. The probe only generates and scores the proposal.
+
+Tool definitions align when the captured JSON matches exactly one object in the recorded tool list. The report includes that object's JSON Pointer. The mask covers the definition and includes its trailing newline when both share a token. Six of seven sources aligned in this fixture. The system instruction still crosses a token boundary, which the inspector marks in the source list. [Routing experiment](inference-attribution-plan.md#measure-a-proposed-tool-name-and-argument)
 
 ```sh
 python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-comparison/visibility-routing/evidence.json \
   --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 \
   --run-id qwen-product-route --call-id model-inference --decision-id product-route \
   --target routing.tool 7 8 --target routing.product_id 17 19 \
-  --pair request-type product-id > routing-visibility.json
+  --pair request-type product-id --pair tool-stock tool-price > routing-visibility.json
 ```
 
 ### Test a pair of sources
@@ -816,7 +818,7 @@ python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-
 
 ### Query masked-source effects from an agent
 
-`get_turn_evidence` and `/api/turn-evidence` list `source_visibility_reports` for the selected decision, including the number of captured sources, measured sources, and measured pairs. Use its location and report ID with [`query_source_visibility`](../schema/source-visibility-query-1.json) or `POST /api/source-visibility`. The default timeline returns the strongest measured source and pair at each recorded output token. The `sources` view ranks by the absolute change in log probability and retains unavailable entries. The `pairs` view ranks by absolute interaction and returns both individual scores and the joint score. Pass `next_offset` as `offset` with the same view to continue.
+`get_turn_evidence` and `/api/turn-evidence` list `source_visibility_reports` for the selected decision, including the number of captured sources, measured sources, and measured pairs. Use its location and report ID with [`query_source_visibility`](../schema/source-visibility-query-1.json) or `POST /api/source-visibility`. The default timeline returns the strongest measured source and pair at each recorded output token. The `sources` view ranks by the absolute change in log probability, includes the request pointer for measured JSON values, and retains unavailable entries. The `pairs` view ranks by absolute interaction and returns both individual scores and the joint score. Pass `next_offset` as `offset` with the same view to continue.
 
 For example, use this request with the saved paired report. API token indices start at zero.
 

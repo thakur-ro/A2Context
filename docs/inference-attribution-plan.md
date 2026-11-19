@@ -157,5 +157,8 @@ We used the same Qwen2.5 checkpoint for a synthetic product lookup with two tool
 | Product ID | −0.00018 | −4.86417 |
 | Store name | −0.00002 | 0 |
 | Request type and product ID | −0.26217 | −4.88383 |
+| Stock definition | −3.42828 | −0.00001 |
+| Price definition | +0.00019 | 0 |
+| Both tool definitions | −0.01579 | −0.00001 |
 
-The table gives masked minus original log probability. The argument column sums the two digit scores, each conditioned on the preceding recorded tokens. The request type had the largest measured effect on the name, and the product ID had the largest measured effect on the argument. The system instruction and rendered tool definitions remain unmeasured in this fixture. These are fixed-prefix effects from one proposal. Whether the model would generate a different tool call under the same masks remains open. [Reproduce the probe](guide.md#test-source-visibility-on-a-tool-proposal)
+The table gives masked minus original log probability. The argument column sums the two digit scores, each conditioned on the preceding recorded tokens. Masking the stock definition alone lowered the recorded name's score more than masking the request type. Masking both definitions brought the score near the baseline, with an interaction of +3.41230 log units. The product ID had the largest measured effect on the argument. The system instruction remains unmeasured because its token boundary also contains template text. These are fixed-prefix effects from one proposal. Whether the model would generate a different tool call under the same masks remains open. [Reproduce the probe](guide.md#test-source-visibility-on-a-tool-proposal)

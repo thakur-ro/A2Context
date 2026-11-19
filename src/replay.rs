@@ -3,7 +3,9 @@
 mod capture;
 mod distribution;
 mod matching;
-pub(crate) use capture::{capture_availability, capture_profiles, has_input_profile};
+pub(crate) use capture::{
+    capture_availability, capture_profiles, captured_container, has_input_profile,
+};
 pub use capture::{
     request_field_matches, CallCapture, CaptureAvailability, ContextFieldMatch, ItemCapture,
     RequestField, RequestFieldKind,
@@ -805,7 +807,7 @@ fn prepare_edit<'a>(
             sha256(text.as_bytes()),
         )
     } else {
-        let before = capture::captured_container(text).ok_or_else(|| {
+        let before = captured_container(text).ok_or_else(|| {
             format!(
                 "context {} has no captured JSON object or array",
                 intervention.context_id

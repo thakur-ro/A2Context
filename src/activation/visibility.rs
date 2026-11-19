@@ -4,7 +4,10 @@ pub mod patterns;
 pub mod query;
 
 use super::{inside, is_digest, ToolProposal};
-use crate::{replay::Location, Availability, Call, Decision};
+use crate::{
+    replay::{captured_container, valid_pointer, Location},
+    Availability, Call, Decision,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -78,6 +81,8 @@ impl Source {
 struct Measurement {
     context_id: String,
     captured_text_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    request_pointer: Option<String>,
     token_range: [usize; 2],
     masked_log_probs: Vec<f64>,
 }
@@ -102,6 +107,8 @@ enum Unavailable {
     TextNotCaptured,
     NoRequestFragment,
     UnsupportedRequestField,
+    RequestObjectNotFound,
+    RequestObjectAmbiguous,
     RenderedSourceUnaligned,
     TokenBoundaryUnaligned,
 }
@@ -188,16 +195,18 @@ impl Report {
                 let text = item
                     .text
                     .as_deref()
-                    .filter(|text| {
-                        item.availability == Availability::Included
-                            && item
-                                .request_fragment
-                                .as_ref()
-                                .and_then(|fragment| fragment.text(&request))
-                                == Some(*text)
+                    .filter(|_| item.availability == Availability::Included)
+                    .filter(|text| match (&item.request_fragment, &source.request_pointer) {
+                        (Some(fragment), None) => fragment.text(&request) == Some(*text),
+                        (None, Some(pointer)) if valid_pointer(pointer) => {
+                            request.pointer(pointer).is_some_and(|value| {
+                                captured_container(text).as_ref() == Some(value)
+                            })
+                        }
+                        _ => false,
                     })
                     .ok_or(
-                        "a measured source needs text aligned to its recorded request fragment",
+                        "a measured source needs text aligned to its recorded request fragment or JSON value",
                     )?;
                 if digest(text) != source.captured_text_sha256
                     || !inside(source.token_range, [0, self.prompt_token_count - 1])
