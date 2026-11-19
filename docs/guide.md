@@ -8,7 +8,7 @@ Traces show what was recorded. Conflict checks use declared rules, and replay ef
 
 | Start with | Follow this path |
 | --- | --- |
-| An assembled request | [Check declared rules](#check-context-before-inference) or [screen captured text](#screen-captured-text-for-overlap) → [Score alternatives](#measure-candidate-preference-before-a-decision) or [compare shadow proposals](#test-context-with-shadow-proposals) |
+| An assembled request | [Inspect its sources and findings](#inspect-an-assembled-request) → [Score alternatives](#measure-candidate-preference-before-a-decision) or [compare shadow proposals](#test-context-with-shadow-proposals) |
 | A recorded answer or action | [Import OTLP](#import-opentelemetry-traces) or [LangSmith](#import-langsmith-traces) → [Inspect a decision](#investigate-an-unfamiliar-decision) → [Replay one source edit](#test-a-context-item-with-a-controlled-replay) |
 | A thread with changing context | [Follow changes across calls](#follow-context-changes-through-a-thread) → [Compare two decisions](#compare-two-recorded-decisions) |
 | A question across sessions | [Group conflicts](#group-recurring-conflicts), [compare screened pairs](#find-recurring-screened-pairs), [compare candidate shifts](#find-recurring-candidate-preference-shifts), or [compare proposal shifts](#find-recurring-shadow-proposal-shifts) → Open a contributing turn |
@@ -16,6 +16,25 @@ Traces show what was recorded. Conflict checks use declared rules, and replay ef
 | A workflow to integrate | [Declare sources](#declare-context-sources-and-decision-scope) → [Send traces](#receive-live-opentelemetry-traces) or [emit evidence directly](#emit-evidence-from-another-workflow) → [Connect an MCP client](#connect-an-mcp-client) |
 
 [How the algorithms work](architecture.md) · [Rust package guide](rust-api.md)
+
+## Inspect an assembled request
+
+```sh
+cargo run --locked -- serve
+```
+
+Open **Before inference** and select **Load returns example**. Expand the conflict to see what each source declares. Under **Captured inputs**, open a source to see its context ID and any matching JSON Pointer or text range. Use those locations when specifying a candidate or shadow edit. [Open the local inspector](http://127.0.0.1:8040)
+
+To inspect your workflow, paste the versioned pending request JSON used by preflight. The inspector checks declared rules and compares captured text for exact reuse. Under **Attach existing model reports**, you can add a saved context screen, candidate probe, or shadow probe. For example, paste the saved Qwen routing request, attach its candidate and shadow reports, and select **Inspect request**. You'll see whether an edit changes preference between two fixed continuations or the rate of a generated proposal. The inspector checks the supplied reports against this request and displays why a stale report failed verification. [Routing request](../examples/runtime-comparison/pending-routing/request.json) · [Candidate report](../examples/runtime-comparison/pending-routing/report.json) · [Shadow report](../examples/runtime-comparison/pending-routing/shadow-report.json)
+
+The same inspection is available through `nexusweave inspect-pending <input.json|->`, `POST /api/pending`, and the Rust function `pending::inspect`. Supply a JSON object with `request` and optional `screening`, `candidate`, and `shadow` report objects. The HTTP request is limited to 1 MiB. The response includes captured context, so send it only where that context can be read. The inspector does its work in memory and invokes no model or tools.
+
+```sh
+jq -n --slurpfile request examples/preflight-returns.json '{request: $request[0]}' \
+  | cargo run --locked -- inspect-pending -
+```
+
+To see the same evidence on a recorded turn, download the preflight receipt or context screen and attach it to the inference span. Candidate and shadow reports can be attached to the same call. [Record preflight evidence](#show-preflight-alongside-the-recorded-answer) · [Record shadow proposals](#show-shadow-proposals-on-the-recorded-turn)
 
 ## Check context before inference
 

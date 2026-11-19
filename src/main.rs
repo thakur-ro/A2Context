@@ -23,6 +23,7 @@ const USAGE: &str = "Usage:
   nexusweave rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>
   nexusweave validate <evidence.json> [...]
   nexusweave preflight <request.json|->
+  nexusweave inspect-pending <input.json|->
   nexusweave screen-context <request.json> <selection.json|-> <report.json> [-- <scorer> [args...]]
   nexusweave screen-recorded-context <evidence.json> <run-id> <call-id> <selection.json|-> <output.json> [-- <scorer> [args...]]
   nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
@@ -34,8 +35,7 @@ const USAGE: &str = "Usage:
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
   nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
-  nexusweave serve [--listen 127.0.0.1:8040] [--replay report.json] [--activation-report report.json] [--otlp-store directory] [evidence.json ...]
-    Supply evidence files, an OTLP store, or both.";
+  nexusweave serve [--listen 127.0.0.1:8040] [--replay report.json] [--activation-report report.json] [--otlp-store directory] [evidence.json ...]";
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -128,6 +128,16 @@ fn run(args: Vec<String>) -> Result<()> {
                 serde_json::from_reader(fs::File::open(path)?)?
             };
             let report = preflight::check(request)?;
+            serde_json::to_writer_pretty(std::io::stdout().lock(), &report)?;
+            println!();
+        }
+        ["inspect-pending", path] => {
+            let input = if *path == "-" {
+                serde_json::from_reader(std::io::stdin().lock())?
+            } else {
+                serde_json::from_reader(fs::File::open(path)?)?
+            };
+            let report = nexusweave::pending::inspect(input)?;
             serde_json::to_writer_pretty(std::io::stdout().lock(), &report)?;
             println!();
         }
@@ -413,7 +423,7 @@ fn inspection_options<'a>(
         }
         options = rest;
     }
-    if (options.is_empty() && otlp_store.is_none())
+    if (options.is_empty() && !allow_listen)
         || options.first().is_some_and(|path| path.starts_with('-'))
     {
         return Err(USAGE.into());
@@ -710,6 +720,7 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 })
                 .or_else(|| context_http::route(&request, runs()))
                 .or_else(|| context_http::preflight(&mut request))
+                .or_else(|| context_http::pending(&mut request))
                 .or_else(|| context_http::conflicts(&mut request, runs()))
                 .or_else(|| evidence_http::route(&mut request, runs(), &replays, &activations))
                 .or_else(|| replay_http::route(&mut request, runs()))
@@ -727,6 +738,16 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 200,
                 "text/javascript; charset=utf-8",
                 include_bytes!("../ui/app.js").as_slice(),
+            ),
+            (true, &Method::Get, "/pending.js") => (
+                200,
+                "text/javascript; charset=utf-8",
+                include_bytes!("../ui/pending.js").as_slice(),
+            ),
+            (true, &Method::Get, "/examples/pending-returns.json") => (
+                200,
+                "application/json",
+                include_bytes!("../examples/preflight-returns.json").as_slice(),
             ),
             (true, &Method::Get, "/replay-planner.js") => (
                 200,

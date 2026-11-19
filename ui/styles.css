@@ -131,6 +131,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.5 ui-monosp
 .context-item { border-top: 1px solid var(--line); padding: .55rem 0; }
 .context-item summary { cursor: pointer; }
 .context-item strong { margin-right: .4rem; }
+.context-item .declared-value { margin-inline-start: .5rem; }
 .prompt-source-layout { margin: .55rem 0 .75rem; }
 .prompt-source-layout > summary { cursor: pointer; font-weight: 650; }
 .prompt-source-field { margin: .55rem 0; padding: .65rem; border: 1px solid var(--line); border-radius: .55rem; }
@@ -392,6 +393,10 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.5 ui-monosp
 .execution-span-body .anchor { margin-bottom: 0; }
 .execution-span-issue { color: var(--warning); }
 .compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+#pending .compare-grid { align-items: start; }
+#pending-request { font-family: ui-monospace, monospace; resize: vertical; width: 100%; }
+#pending-form .toolbar { margin-block: .8rem 0; }
+#pending-status:empty { display: none; }
 #compare-controls { margin-bottom: .75rem; }
 #compare-controls legend { font-weight: 650; padding-inline: .25rem; }
 #compare-controls select { width: 100%; max-width: 100%; min-width: 0; }

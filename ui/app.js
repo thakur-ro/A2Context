@@ -1342,14 +1342,16 @@ function render() {
     button.setAttribute("aria-pressed", String(button.dataset.view === state.view));
     element(button.dataset.view).hidden = button.dataset.view !== state.view;
   }
+  element("copy-view-link").hidden = !data?.runs.length || state.view === "pending";
   if (state.view === "decisions") renderDecision();
   else if (state.view === "conversation") renderConversation();
   else if (state.view === "timeline") renderTimeline();
   else if (state.view === "compare") renderComparison();
-  else renderPatterns();
+  else if (state.view === "patterns") renderPatterns();
 }
 
 async function start() {
+  setupPendingView();
   try {
     const response = await fetch("/api/inspection");
     if (!response.ok) throw new Error("HTTP " + response.status);
@@ -1378,7 +1380,10 @@ async function start() {
     }
     if (!data.runs.length) {
       element("status").textContent = "Waiting for GenAI traces. Refresh after your exporter sends a batch.";
-      document.querySelectorAll("[data-view]").forEach((button) => { button.disabled = true; });
+      element("status").hidden = !data.live_otlp;
+      document.querySelectorAll("[data-view]:not([data-view='pending'])").forEach((button) => { button.disabled = true; });
+      state.view = "pending";
+      render();
       return;
     }
     indexRetrievals(data.runs, data.document_handoffs);
@@ -1426,7 +1431,7 @@ async function start() {
     share.addEventListener("click", () => copyInspectionLink());
     window.addEventListener("hashchange", restoreInspectionLink);
     element("decision-conversation").addEventListener("click", returnToConversation);
-    document.querySelectorAll("[data-view]").forEach((button) => {
+    document.querySelectorAll("[data-view]:not([data-view='pending'])").forEach((button) => {
       button.addEventListener("click", () => {
         if (button.dataset.view === "conversation") {
           returnToConversation();

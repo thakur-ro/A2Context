@@ -97,6 +97,7 @@ Use **Timeline** to follow calls and source versions in a thread. Use **Patterns
 
 | Your integration | Entry point |
 | --- | --- |
+| Inspect an assembled request and optional probe reports | Open **Before inference**, call `pending::inspect` in Rust, or use `POST /api/pending`. [Pending request guide](guide.md#inspect-an-assembled-request) |
 | Call preflight while assembling a request | [`preflight::check`](../src/preflight.rs) in Rust, `nexusweave preflight` from the CLI, or `POST /api/preflight` from another language. [Preflight guide](guide.md#check-context-before-inference) |
 | Inspect traces from an existing workflow | Import OTLP, OpenInference, or LangSmith. Supply stable source IDs and versions, and the organization, user, conversation, and turn identifiers your workflow records. [OpenTelemetry guide](guide.md#import-opentelemetry-traces) · [LangSmith guide](guide.md#import-langsmith-traces) |
 | Emit evidence directly or query an inspector | Use the versioned evidence format, or connect an MCP client to browse turn evidence and query patterns. [Evidence format](../schema/evidence-1.json) · [MCP guide](guide.md#connect-an-mcp-client) |

@@ -30,6 +30,7 @@
   <script src="/conflict-breakdown.js" defer></script>
   <script src="/visibility-patterns.js" defer></script>
   <script src="/assessment-patterns.js" defer></script>
+  <script src="/pending.js" defer></script>
 </head>
 <body>
   <header class="masthead">
@@ -40,6 +41,7 @@
       <button type="button" data-view="timeline" aria-pressed="false">Timeline</button>
       <button type="button" data-view="patterns" aria-pressed="false">Patterns</button>
       <button type="button" data-view="compare" aria-pressed="false">Compare</button>
+      <button type="button" data-view="pending" aria-pressed="false">Before inference</button>
       <button type="button" id="copy-view-link" hidden>Copy view link</button>
       <button type="button" id="refresh-traces" hidden>Refresh traces</button>
     </nav>
@@ -47,6 +49,28 @@
   <main>
     <p id="status" role="status">Loading evidence…</p>
     <p id="link-status" class="link-status" role="status" hidden></p>
+    <section id="pending" hidden aria-labelledby="pending-title">
+      <h1 id="pending-title">Inspect a pending request</h1>
+      <div class="compare-grid">
+        <form id="pending-form" class="panel">
+          <label class="form-field">Pending request JSON
+            <textarea id="pending-request" rows="10" spellcheck="false" required></textarea>
+          </label>
+          <details>
+            <summary>Attach existing model reports</summary>
+            <label class="form-field">Context screen <input id="pending-screening" type="file" accept=".json,application/json"></label>
+            <label class="form-field">Candidate probe <input id="pending-candidate" type="file" accept=".json,application/json"></label>
+            <label class="form-field">Shadow probe <input id="pending-shadow" type="file" accept=".json,application/json"></label>
+          </details>
+          <div class="toolbar">
+            <button type="submit">Inspect request</button>
+            <button type="button" id="pending-example">Load returns example</button>
+          </div>
+          <p id="pending-status" role="status"></p>
+        </form>
+        <section id="pending-result" class="panel" aria-label="Pending request evidence" hidden></section>
+      </div>
+    </section>
     <section id="conversation" hidden aria-label="Conversation inspector">
       <div class="conversation-header">
         <h1 id="conversation-title"></h1>

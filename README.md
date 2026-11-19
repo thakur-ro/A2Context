@@ -18,6 +18,8 @@ Open the inspector and look at the evidence for the second turn. The synthetic c
 
 ## Check a request before inference
 
+Start the inspector with `cargo run --locked -- serve` and open **Before inference** to inspect an assembled request. Load the returns example to see its conflicting rule values and where each source sits in the request. [Inspect an assembled request](docs/guide.md#inspect-an-assembled-request)
+
 ```sh
 cargo run --locked -- preflight examples/preflight-returns.json
 ```

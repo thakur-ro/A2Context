@@ -52,6 +52,7 @@ mod genai;
 pub mod langsmith;
 mod openinference;
 pub mod otlp;
+pub mod pending;
 pub mod preflight;
 pub mod replay;
 pub mod replay_effects;

@@ -29,6 +29,10 @@ function focusScreenPair(anchor) {
 
 function renderContextScreen(parent, run, call, open, decision) {
   const screen = contextScreenForCall(run, call);
+  renderContextScreenReport(parent, screen, call, open, run, decision);
+}
+
+function renderContextScreenReport(parent, screen, call, open, run, decision) {
   if (!screen) return;
   const report = screen.report;
   const flagged = report?.pairs.filter((pair) => pair.suggestion) || [];
@@ -45,7 +49,7 @@ function renderContextScreen(parent, run, call, open, decision) {
     if (report.scorer) {
       section.append(node("small", [report.scorer.model_id, report.scorer.revision, report.scorer.runtime].join(" · "), "anchor"));
     }
-    if (flagged.length) {
+    if (run && flagged.length) {
       const recurring = node("button", "Find recurring pairs");
       recurring.type = "button";
       recurring.addEventListener("click", () => openAssessmentPatterns("screening", run, ""));

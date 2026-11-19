@@ -121,15 +121,19 @@ pub struct Source {
 /// request fragments that do not match the captured body.
 pub fn check(request: Request) -> Result<Report, String> {
     let (call, _, scope) = pending_call(request)?;
-    let mut report = compare(&call, scope.as_ref());
-    if let Some(fingerprint) = fingerprint(&call, scope.as_ref()) {
+    Ok(report_for_pending(&call, scope))
+}
+
+pub(crate) fn report_for_pending(call: &Call, scope: Option<DecisionScope>) -> Report {
+    let mut report = compare(call, scope.as_ref());
+    if let Some(fingerprint) = fingerprint(call, scope.as_ref()) {
         report.receipt = Some(Receipt {
             version: VERSION,
             scope,
             fingerprint,
         });
     }
-    Ok(report)
+    report
 }
 
 pub(crate) fn pending_call(

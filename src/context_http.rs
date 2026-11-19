@@ -26,6 +26,23 @@ pub fn preflight(request: &mut Request) -> Option<(u16, Vec<u8>)> {
     })
 }
 
+pub fn pending(request: &mut Request) -> Option<(u16, Vec<u8>)> {
+    if request.method() != &Method::Post || request.url() != "/api/pending" {
+        return None;
+    }
+    Some(
+        match crate::replay_http::read_json(request, 1024 * 1024)
+            .and_then(|input| nexusweave::pending::inspect(input).map_err(|error| (400, error)))
+        {
+            Ok(report) => (200, report.to_string().into_bytes()),
+            Err((status, message)) => (
+                status,
+                json!({ "message": message }).to_string().into_bytes(),
+            ),
+        },
+    )
+}
+
 pub fn conflicts<'a>(
     request: &mut Request,
     runs: impl Iterator<Item = &'a Run>,

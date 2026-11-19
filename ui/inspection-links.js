@@ -292,6 +292,10 @@ function restoreInspectionLink() {
   }
   conversationReturn = undefined;
   switch (params.get("view")) {
+    case "pending":
+      state.view = "pending";
+      render();
+      return true;
     case "conversation": {
       const position = readLocation(params);
       if (!position) {

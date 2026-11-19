@@ -286,6 +286,10 @@ function evidenceSection(parent, label, open, populate) {
 
 function renderRecordedPreflight(parent, run, call, open) {
   const check = preflightChecksByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
+  renderPreflightCheck(parent, check, call, open, run);
+}
+
+function renderPreflightCheck(parent, check, call, open, run) {
   if (!check) return;
   const findings = check.report?.findings || [];
   const label = check.status === "matched"
@@ -295,7 +299,7 @@ function renderRecordedPreflight(parent, run, call, open) {
     if (check.issue) {
       section.append(node("p", check.issue));
     } else {
-      section.append(node("p", "The workflow reported this check before inference. Its request and rule sources match the recorded call.", "muted"));
+      if (run) section.append(node("p", "The workflow reported this check before inference. Its request and rule sources match the recorded call.", "muted"));
       if (check.scope) section.append(node("small", check.scope.key + " · " + check.scope.scope, "anchor"));
       if (!findings.length) {
         section.append(node("p", countLabel(check.report.scoped_rule_items, "declared rule") + " checked."));
@@ -307,10 +311,10 @@ function renderRecordedPreflight(parent, run, call, open) {
         for (const source of finding.sources) {
           const detail = contextDetails(inputs.get(source.context_id), false);
           if (finding.kind === "conflict") detail.dataset.preflightSource = source.context_id;
-          detail.querySelector("summary").append(node("span", source.value === null ? "Value unavailable" : readable(source.value), "muted"));
+          detail.querySelector("summary").append(node("span", source.value === null ? "Value unavailable" : readable(source.value), "declared-value muted"));
           card.append(detail);
         }
-        if (finding.kind === "conflict") {
+        if (run && finding.kind === "conflict") {
           const recurring = node("button", "Find recurring preflight conflicts");
           recurring.addEventListener("click", () => openConflictBreakdown(run, finding.key, "preflight"));
           card.append(recurring);
@@ -318,12 +322,16 @@ function renderRecordedPreflight(parent, run, call, open) {
         section.append(card);
       }
     }
-    section.append(evidence(check.evidence));
+    if (check.evidence) section.append(evidence(check.evidence));
   });
 }
 
 function renderRecordedCandidateProbes(parent, run, call, open) {
   const probes = candidateProbesByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
+  renderCandidateProbes(parent, probes, call, open, run);
+}
+
+function renderCandidateProbes(parent, probes, call, open, run) {
   if (!probes?.length) return;
   evidenceSection(parent, "Candidate probes · " + countLabel(probes.length, "report"), open, (section) => {
     const context = new Map(call.context.map((item) => [item.id, item]));
@@ -351,7 +359,7 @@ function renderRecordedCandidateProbes(parent, run, call, open) {
           source.append(node("small", "Edited request path " + requestFieldLabel(effect.pointer, effect.text_range), "anchor"),
             node("p", effect.operation.replaceAll("_", " ")),
             node("pre", effect.replacement || "Empty replacement"));
-          if (effect.source_id?.trim()) {
+          if (run && effect.source_id?.trim()) {
             const recurring = node("button", "Find recurring shifts");
             recurring.addEventListener("click", () => openAssessmentPatterns("candidates", run, effect.source_id));
             source.append(recurring);
@@ -409,6 +417,10 @@ function shadowContrast(value, interval) {
 
 function renderRecordedShadowProbes(parent, run, call, open) {
   const probes = shadowProbesByCall.get(contextCallKey({ run_id: run.id, call_id: call.id }));
+  renderShadowProbes(parent, probes, call, open, run);
+}
+
+function renderShadowProbes(parent, probes, call, open, run) {
   if (!probes?.length) return;
   evidenceSection(parent, "Shadow probes · " + countLabel(probes.length, "report"), open, (section) => {
     const context = new Map(call.context.map((item) => [item.id, item]));
@@ -436,7 +448,7 @@ function renderRecordedShadowProbes(parent, run, call, open) {
           source.append(node("small", "Edited request path " + requestFieldLabel(pointer, range), "anchor"),
             node("p", operation.replaceAll("_", " ")));
           if (operation !== "remove_json") source.append(node("pre", replacement || "Empty replacement"));
-          if (effect.source_id?.trim()) {
+          if (run && effect.source_id?.trim()) {
             const recurring = node("button", "Find recurring proposal shifts");
             recurring.addEventListener("click", () => openAssessmentPatterns("shadow", run, effect.source_id));
             source.append(recurring);
