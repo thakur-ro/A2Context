@@ -2,6 +2,26 @@ function activationFragmentLabel(text) {
   return text ? text.replaceAll(" ", "␠").replaceAll("\n", "↵").replaceAll("\t", "⇥") : "Partial character";
 }
 
+function activationTokenTable(fragments, indices, selected, title, selectToken) {
+  const table = node("table", undefined, "activation-matrix");
+  const head = table.createTHead().insertRow();
+  const label = node("th", title);
+  label.scope = "col";
+  head.append(label);
+  for (const index of indices) {
+    const header = node("th");
+    header.scope = "col";
+    const button = node("button", activationFragmentLabel(fragments[index]));
+    button.type = "button";
+    button.setAttribute("aria-label", "Token " + (index + 1) + " " + button.textContent);
+    button.setAttribute("aria-pressed", String(index === selected));
+    button.addEventListener("click", () => selectToken(index));
+    header.append(button);
+    head.append(header);
+  }
+  return table;
+}
+
 function renderActivationOutput(report, call, blockPicker) {
   const scores = report.output_scores;
   const count = scores.fragments.length;
@@ -34,26 +54,11 @@ function renderActivationOutput(report, call, blockPicker) {
     drawnToken = selected;
     const start = Math.floor(selected / pageSize) * pageSize;
     const indices = Array.from({ length: Math.min(pageSize, count - start) }, (_, index) => start + index);
-    const table = node("table", undefined, "activation-matrix");
-    const head = table.createTHead().insertRow();
-    const title = node("th", "Source swaps at block " + block);
-    title.scope = "col";
-    head.append(title);
-    for (const index of indices) {
-      const header = node("th");
-      header.scope = "col";
-      const button = node("button", activationFragmentLabel(scores.fragments[index]));
-      button.type = "button";
-      button.setAttribute("aria-label", "Token " + (index + 1) + " " + button.textContent);
-      button.setAttribute("aria-pressed", String(index === selected));
-      button.addEventListener("click", () => {
-        select.value = String(index);
-        draw();
-        select.focus();
-      });
-      header.append(button);
-      head.append(header);
-    }
+    const table = activationTokenTable(scores.fragments, indices, selected, "Source swaps at block " + block, (index) => {
+      select.value = String(index);
+      draw();
+      select.focus();
+    });
     const body = table.createTBody();
     const scale = report.sources.reduce((maximum, source) => {
       const logProbs = scores.sources[source.context_id].block_log_probs[block];
@@ -94,4 +99,108 @@ function renderActivationOutput(report, call, blockPicker) {
     draw();
   }
   return details;
+}
+
+function renderVisibilityTokenMatrix(report, token, sourceButton, scale, paired, format) {
+  const section = node("section", undefined, "visibility-token-matrix");
+  section.append(node("h4", "Across the answer"));
+  const mode = node("select");
+  mode.dataset.visibilityMatrixMode = "";
+  mode.append(new Option("Single-source effects", "sources"), new Option("Pair interactions", "pairs"));
+  const label = node("label", undefined, "activation-picker");
+  label.append(node("span", "Measure"), mode);
+  mode.value = paired ? "pairs" : "sources";
+  if (paired) section.append(label);
+  const metric = node("p", undefined, "muted");
+  const scroller = node("div", undefined, "activation-scroll");
+  scroller.tabIndex = 0;
+  scroller.setAttribute("role", "region");
+  scroller.setAttribute("aria-label", "Measured effects across output tokens");
+  const page = node("div", undefined, "visibility-token-page");
+  const previous = node("button", "Previous tokens");
+  const next = node("button", "Next tokens");
+  const range = node("span", undefined, "muted");
+  range.setAttribute("role", "status");
+  previous.type = next.type = "button";
+  page.append(previous, range, next);
+  const size = 8;
+  const count = report.fragments.length;
+  page.hidden = count <= size;
+  section.append(metric, scroller, page);
+
+  const sources = report.sources.filter(({ masked_log_probs }) => masked_log_probs);
+  function selectOutput(index) {
+    token.value = String(index);
+    token.dispatchEvent(new Event("change"));
+  }
+
+  function draw() {
+    const showPairs = mode.value === "pairs";
+    const selected = Number(token.value);
+    const start = selected - selected % size;
+    const stop = Math.min(start + size, count);
+    const indices = Array.from({ length: stop - start }, (_, index) => start + index);
+    metric.textContent = showPairs
+      ? "Joint change minus the two individual changes, in log probability units."
+      : "Change in the recorded token’s log probability when each source is masked.";
+    range.textContent = "Tokens " + (start + 1) + "–" + stop + " of " + count;
+    previous.disabled = start === 0;
+    next.disabled = stop === count;
+    previous.onclick = () => selectPage(start - size, previous);
+    next.onclick = () => selectPage(stop, next);
+    const table = activationTokenTable(report.fragments, indices, selected, showPairs ? "Source pair" : "Source", (index) => {
+      selectOutput(index);
+      scroller.querySelector('[aria-pressed="true"]').focus({ preventScroll: true });
+    });
+    const body = table.createTBody();
+    const rows = showPairs ? report.pairs : sources;
+    rows.forEach((item, rowIndex) => {
+      const row = body.insertRow();
+      const heading = node("th");
+      heading.scope = "row";
+      if (showPairs) {
+        const pair = node("button", paired.select.options[rowIndex].textContent);
+        pair.type = "button";
+        pair.setAttribute("aria-pressed", String(rowIndex === Number(paired.select.value)));
+        pair.addEventListener("click", () => {
+          paired.select.value = String(rowIndex);
+          paired.select.dispatchEvent(new Event("change"));
+          paired.select.focus();
+        });
+        heading.append(pair);
+      } else {
+        heading.append(sourceButton(item.context_id));
+      }
+      row.append(heading);
+      for (const index of indices) {
+        const cell = row.insertCell();
+        const delta = showPairs ? paired.effects(item, index)[3] : item.masked_log_probs[index] - report.baseline_log_probs[index];
+        paintActivationDelta(cell, delta, showPairs ? paired.scale : scale, format);
+        cell.classList.toggle("activation-selected", index === selected);
+      }
+    });
+    const scroll = scroller.scrollLeft;
+    scroller.replaceChildren(table);
+    scroller.scrollLeft = scroll;
+    requestAnimationFrame(() => {
+      if (!table.isConnected || !scroller.clientWidth) return;
+      const header = table.tHead.rows[0];
+      const selectedBounds = header.cells[selected - start + 1].getBoundingClientRect();
+      const left = header.cells[0].getBoundingClientRect().right;
+      const right = scroller.getBoundingClientRect().right;
+      if (selectedBounds.right > right) scroller.scrollLeft += selectedBounds.right - right + 3;
+      else if (selectedBounds.left < left) scroller.scrollLeft -= left - selectedBounds.left + 3;
+    });
+  }
+
+  function selectPage(index, button) {
+    selectOutput(index);
+    if (button.disabled) scroller.querySelector('thead [aria-pressed="true"]').focus();
+  }
+
+  mode.addEventListener("change", draw);
+  token.addEventListener("change", draw);
+  paired?.select.addEventListener("change", draw);
+  draw();
+  return { section, mode };
 }

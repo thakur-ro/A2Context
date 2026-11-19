@@ -729,7 +729,7 @@ MCP clients can use [`get_generation_branches`](../schema/generation-branches-re
 
 ### Test source visibility on a recorded answer
 
-Open the saved Qwen measurement in **Conversation** or **Decisions**, then choose **Activation probe → Context visibility test**. Select an output token to rank the sources by how much masking each one changed the token's log probability. Open a source to see its recorded prompt fragment. Unavailable measurements show the reason in the same list.
+Open the saved Qwen measurement in **Conversation** or **Decisions**, then choose **Activation probe → Context visibility test**. **Across the answer** shows where each source changed recorded token scores. Select a token column to rank sources at that position, or use **Previous tokens** and **Next tokens** for longer answers. Open a source to see its recorded prompt fragment. The selected-token list shows why any source could not be measured.
 
 ```sh
 cargo run --locked -- serve \
@@ -758,7 +758,7 @@ cargo run --locked -- serve \
   examples/runtime-comparison/paired-visibility-evidence.json
 ```
 
-Open **Activation probe → Context visibility test → Paired masks**. At output token 14, the joint mask on both refund-policy copies sharply lowers the probability of the recorded `4`. Select the refund policy and store name to see the control at the same token. The source buttons open their exact request fragments. [Paired experiment and measurements](inference-attribution-plan.md#test-whether-two-sources-back-each-other-up)
+Open **Activation probe → Context visibility test** and choose **Pair interactions**. The matrix shows where the effect of masking both sources differs from the sum of the individual effects. At token 14, both refund-policy copies together sharply lower the probability of the recorded `4`. Select the refund policy and store name to see the control at the same token. Switch the measure to see which sources matter individually. **Find recurring effects** carries the selected measure and token into Patterns. [Paired experiment and measurements](inference-attribution-plan.md#test-whether-two-sources-back-each-other-up)
 
 ```sh
 python3 scripts/probe_source_visibility.py /path/to/local-qwen examples/runtime-comparison/paired-visibility-evidence.json \

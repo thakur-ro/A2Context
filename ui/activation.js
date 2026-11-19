@@ -54,7 +54,7 @@ function renderActivationReports(parent, reports, call) {
 function renderSourceVisibility(panel, report, call) {
   const precision = new Intl.NumberFormat(undefined, { maximumFractionDigits: 5, signDisplay: "exceptZero" });
   panel.append(node("h3", "Context visibility test"));
-  panel.append(node("p", "The probe masks each source in turn and scores the recorded token with its earlier answer tokens fixed. Negative values mean the token became less likely.", "muted"));
+  panel.append(node("p", "Earlier answer tokens stay fixed. A negative source effect means the recorded token became less likely.", "muted"));
   const label = node("label", undefined, "activation-picker");
   const select = node("select");
   select.dataset.visibilityToken = "";
@@ -88,8 +88,17 @@ function renderSourceVisibility(panel, report, call) {
   const names = new Map(call.context.map((item) => [item.id, item.source_id || item.id.replaceAll("-", " ")]));
   const sourceButton = (id) => occurrenceButton(report.location, names.get(id), { context_item_id: id });
   const reference = { activation_id: report.id };
-  const paired = report.pairs?.length ? sourceVisibilityPairs(report, names, sourceButton, precision, reference) : null;
+  const paired = report.pairs?.length ? sourceVisibilityPairs(report, names, sourceButton, precision) : null;
   select.value = String(paired?.startToken ?? strongest);
+  const measured = report.sources.filter((source) => source.masked_log_probs).length;
+  const matrix = measured ? renderVisibilityTokenMatrix(report, select, sourceButton, scale, paired, precision) : null;
+  function selectMeasure() {
+    if (!paired) return;
+    paired.panel.hidden = matrix.mode.value !== "pairs";
+    reference.visibility_pair = paired.panel.hidden ? undefined : Number(paired.select.value);
+  }
+  matrix?.mode.addEventListener("change", selectMeasure);
+  paired?.select.addEventListener("change", selectMeasure);
   function draw() {
     const index = Number(select.value);
     reference.visibility_token = index;
@@ -110,15 +119,18 @@ function renderSourceVisibility(panel, report, call) {
       else paintActivationDelta(effect, delta, scale, precision);
     }
     paired?.draw(index);
+    selectMeasure();
   }
   select.addEventListener("change", draw);
   draw();
   const compare = node("button", "Find recurring effects");
   compare.type = "button";
-  compare.addEventListener("click", () => openVisibilityPatterns(report, Number(select.value)));
+  compare.addEventListener("click", () => openVisibilityPatterns(report, Number(select.value),
+    reference.visibility_pair === undefined ? "source" : "pair"));
   const provenance = activationProvenance(report);
-  provenance.append(node("p", countLabel(report.sources.filter((source) => source.masked_log_probs).length, "measured source")
+  provenance.append(node("p", countLabel(measured, "measured source")
     + " of " + report.sources.length + ". The all-visible control reproduced the original scores within 0.00001 log units.", "muted"));
+  if (matrix) panel.append(matrix.section);
   panel.append(label);
   if (paired) panel.append(paired.panel);
   const actions = node("div", undefined, "decision-actions");
@@ -126,7 +138,7 @@ function renderSourceVisibility(panel, report, call) {
   panel.append(table, actions, provenance);
 }
 
-function sourceVisibilityPairs(report, names, sourceButton, precision, reference) {
+function sourceVisibilityPairs(report, names, sourceButton, precision) {
   const panel = node("section", undefined, "activation-visibility-pairs");
   const picker = node("label", undefined, "activation-picker");
   const select = node("select");
@@ -159,8 +171,7 @@ function sourceVisibilityPairs(report, names, sourceButton, precision, reference
   let outputToken = startToken;
   function draw(index) {
     outputToken = index;
-    reference.visibility_pair = Number(select.value);
-    const pair = report.pairs[reference.visibility_pair];
+    const pair = report.pairs[Number(select.value)];
     const [first, second] = pair.context_ids;
     const values = effects(pair, index);
     const labels = ["Only " + names.get(first), "Only " + names.get(second), "Both masked", "Interaction"];
@@ -172,10 +183,10 @@ function sourceVisibilityPairs(report, names, sourceButton, precision, reference
     });
     const links = node("div", undefined, "activation-visibility-pair-links");
     links.append(sourceButton(first), sourceButton(second));
-    detail.replaceChildren(metrics, node("p", "Scores are in log probability units. Interaction is the joint change minus the two individual changes.", "muted"), links);
+    detail.replaceChildren(metrics, links);
   }
   select.addEventListener("change", () => draw(outputToken));
-  return { panel, draw, startToken };
+  return { panel, select, draw, startToken, effects, scale: strongest };
 }
 
 function openActivationCheckpoint(reference) {
@@ -188,6 +199,8 @@ function openActivationCheckpoint(reference) {
       || (reference.visibility_pair !== undefined && !pair?.options[reference.visibility_pair])) return;
     token.value = String(reference.visibility_token);
     if (reference.visibility_pair !== undefined) pair.value = String(reference.visibility_pair);
+    const mode = panel.querySelector("[data-visibility-matrix-mode]");
+    if (mode) mode.value = reference.visibility_pair === undefined ? "sources" : "pairs";
     token.dispatchEvent(new Event("change"));
     return reference.visibility_pair === undefined ? token : pair;
   }

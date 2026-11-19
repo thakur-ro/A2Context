@@ -67,15 +67,17 @@ function selectConversationAnswer() {
   if (answer) selectConversationStep(answer);
 }
 
-function conversationSignal(turn) {
+function conversationSignal(turn, measuredSourceCalls) {
   const links = new Set();
   let conflicts = 0;
   let changed = false;
+  let visibility = false;
   for (const { run, call } of turn.calls) {
     const key = contextCallKey({ run_id: run.id, call_id: call.id });
     for (const { item } of contextPatternsByCall.get(key) || []) links.add(JSON.stringify([key, item.context_id]));
     conflicts += callFindings(run.id, call.id).filter(({ kind }) => kind === "conflict").length;
     changed ||= Boolean(transitionsByCall.get(key)?.changes.length);
+    visibility ||= measuredSourceCalls.has(key);
   }
   const measured = turn.calls.some(({ call, run }) =>
     data.replays.some(({ location, variants, pair }) => location.run_id === run.id && location.call_id === call.id
@@ -83,7 +85,7 @@ function conversationSignal(turn) {
   );
   return [
     conflicts && countLabel(conflicts, "conflict"), links.size && countLabel(links.size, "linked input"),
-    measured && "Measured replay", changed && "Context changed",
+    visibility && "Measured source effects", measured && "Measured replay", changed && "Context changed",
   ].filter(Boolean).join(" · ");
 }
 
@@ -115,6 +117,9 @@ function renderConversation() {
     if (panel.parentNode !== rail) rail.append(panel);
     const list = element("conversation-turns");
     list.replaceChildren();
+    const measuredSourceCalls = new Set((data.activation_reports || [])
+      .filter(({ kind, sources }) => kind === "source_visibility" && sources.some(({ masked_log_probs }) => masked_log_probs))
+      .map(({ location }) => contextCallKey(location)));
     let known = 0;
     conversationRows = conversationTurns(thread.calls).map((turn, position) => {
       const steps = recordedTurnSteps(turn);
@@ -144,7 +149,7 @@ function renderConversation() {
       } else if (other.length) {
         item.append(node("p", countLabel(other.length, "recorded step"), "muted"));
       }
-      const signal = conversationSignal(turn);
+      const signal = conversationSignal(turn, measuredSourceCalls);
       const button = node("button", signal || "Turn evidence", "conversation-turn-button");
       button.type = "button";
       button.setAttribute("aria-controls", "conversation-evidence");

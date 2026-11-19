@@ -18,7 +18,7 @@ function setupVisibilityPatterns() {
   }
 }
 
-function openVisibilityPatterns(report, token) {
+function openVisibilityPatterns(report, token, kind) {
   const run = data.runs.find((item) => item.id === report.location.run_id);
   state.view = "patterns";
   state.patternScope = JSON.stringify([run.organization_id, run.user_id]);
@@ -27,7 +27,7 @@ function openVisibilityPatterns(report, token) {
   patternComparison.thread = "";
   visibilityPatternGroup = null;
   element("pattern-type").value = "visibility";
-  visibilityField("kind").value = report.pairs?.length ? "pair" : "source";
+  visibilityField("kind").value = kind;
   visibilityField("token").value = String(token + 1);
   visibilityField("source").value = "";
   visibilityField("repeat").checked = false;
