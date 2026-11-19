@@ -409,6 +409,10 @@ Groups keep the decision kind, label, trace source, and relationship basis. Exac
 
 **Patterns → Capture coverage** lists the context entries recorded on each call and whether the original request was captured. Filter by thread, user, or organization to find unavailable requests, redacted or referenced entries, or entries with zero or multiple exact field matches. Named sources with the same gap on multiple calls link to the affected entries. **Decisions**, the chronological **Timeline**, and **Compare** show the same inventory for a call.
 
+Open **Investigate context** on a turn in **Conversation** or **Decisions** to see recorded links, rule findings, and measurements beside each input. When a source mask report is loaded, **Measured inputs** includes the inputs measured by that probe. Each mask or pair button opens the token with the largest absolute effect for that input in its report. The single-source and paired effects stay labeled separately from replay results.
+
+**Patterns → Context sources** shows how many recorded occurrences have a measured replay or a source mask in the selected workspace, organization, user, or thread. Open a source's occurrences to see which calls have each kind of measurement and jump to those results. A single occurrence can count in both methods.
+
 An exact match is a request string, JSON container, or declared text fragment that equals the captured entry. Open **Test this context** on a matched entry to plan an edit. Multiple matches require choosing the field to change. The inventory is scoped to entries present in the trace. The inspection JSON exposes these records under `capture_profiles`. `matching_fields` is omitted when the original request or entry value is unavailable. The browser's inspection response includes the request's evidence anchor. The replay planner loads the original request when you select **Use captured request**.
 
 ## Follow a context source across sessions

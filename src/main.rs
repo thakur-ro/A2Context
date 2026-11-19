@@ -629,6 +629,11 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 "text/javascript; charset=utf-8",
                 include_bytes!("../ui/activation.js").as_slice(),
             ),
+            (true, &Method::Get, "/source-masks.js") => (
+                200,
+                "text/javascript; charset=utf-8",
+                include_bytes!("../ui/source-masks.js").as_slice(),
+            ),
             (true, &Method::Get, "/activation-output.js") => (
                 200,
                 "text/javascript; charset=utf-8",

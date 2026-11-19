@@ -4,6 +4,7 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 
 const script = readFileSync(new URL("../ui/decision-investigation.js", import.meta.url), "utf8");
+const maskScript = readFileSync(new URL("../ui/source-masks.js", import.meta.url), "utf8");
 const collect = runInNewContext(script + "\ninvestigationInputs;");
 const noReplay = { status: "untested", effects: [] };
 
@@ -57,4 +58,30 @@ test("distinguishes capture gaps, multiple exact fields, and replay eligibility"
     .every((row) => row.request === "outcome_unavailable"));
   assert.ok(collect(call, { ...decision, kind: "tool_execution" }, capture, [], [], () => noReplay)
     .every((row) => row.request === "tool_execution"));
+});
+
+test("keeps zero mask effects, pair interactions, and unmeasured inputs distinct", () => {
+  const masks = runInNewContext(maskScript + "\nsourceMaskMeasurements;");
+  const report = {
+    id: "probe", location: { run_id: "run", call_id: "call", decision_id: "selected" },
+    baseline_log_probs: [-1, -1, -1],
+    sources: [
+      { context_id: "policy", masked_log_probs: [-1, -1, -1] },
+      { context_id: "copy", masked_log_probs: [-1, -2, -1] },
+      { context_id: "missing", unavailable: "text_not_captured" },
+    ],
+    pairs: [{ context_ids: ["policy", "copy"], masked_log_probs: [-1, -2, -4] }],
+  };
+  const measured = masks(report);
+  assert.equal(measured.length, 2);
+  assert.deepEqual({ ...measured[0].mask }, { token: 0, effect: 0 });
+  assert.deepEqual({ ...measured[1].mask }, { token: 1, effect: -1 });
+  assert.deepEqual({ ...measured[0].interaction }, { token: 2, effect: -3, pair: 0 });
+  assert.deepEqual({ ...measured[1].interaction }, { token: 2, effect: -3, pair: 0 });
+  const sources = ["policy", "copy", "missing"].map((id) => input(id));
+  const rows = collect({ context: sources, relationships: [] }, { id: "selected", kind: "model_output", outcome: "4" },
+    undefined, [], [], () => noReplay, (id) => measured.filter(({ context_id }) => context_id === id));
+  assert.equal(rows[0].masks.length, 1);
+  assert.equal(rows[0].replay.status, "untested");
+  assert.equal(rows[2].masks.length, 0);
 });

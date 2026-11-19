@@ -139,6 +139,7 @@ pub fn query(
                     row["strongest_source"] =
                         json!(strongest_source.map(|(source, change)| json!({
                             "context_id": source.context_id, "change_in_log_probability": change,
+                            "inspector_path": source_mask_path(report, index, &source.context_id),
                             "source_inspector_path": source_path(report, &source.context_id),
                         })));
                     row["strongest_pair"] = json!(strongest_pair.map(|(id, pair, scores)| json!({
@@ -173,6 +174,7 @@ pub fn query(
                     Source::Measured(source) => {
                         row["token_range"] = json!(source.token_range);
                         row["effect"] = mask_effect(baseline, source.masked_log_probs[output_token]);
+                        row["inspector_path"] = source_mask_path(report, output_token, &source.context_id).into();
                     }
                     Source::Skipped(source) => row["unavailable"] = json!(source.unavailable),
                 }
@@ -291,4 +293,10 @@ pub(super) fn source_path(report: &Report, context: &str) -> String {
     let path = activation::decision_path(&report.location);
     let id = utf8_percent_encode(context, NON_ALPHANUMERIC);
     format!("{path}&context={id}")
+}
+
+pub(super) fn source_mask_path(report: &Report, token: usize, context: &str) -> String {
+    let path = visibility_path(report, token, None);
+    let id = utf8_percent_encode(context, NON_ALPHANUMERIC);
+    format!("{path}&mask={id}")
 }

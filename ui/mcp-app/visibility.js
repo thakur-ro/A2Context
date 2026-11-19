@@ -208,12 +208,15 @@ function renderMeasurement(parent, page, requestPage, drill) {
       row.append(element("h2", value.context_id), element("p", value.effect
         ? format.format(value.effect.change_in_log_probability) + " change in log probability"
         : value.unavailable.replaceAll("_", " ")));
+      if (value.inspector_path) paths.append(element("p", value.inspector_path, "inspector-path"));
       paths.append(element("p", value.source_inspector_path, "inspector-path"));
     }
     parent.append(row);
   }
   if (!data.rows.length) parent.append(element("p", "No measurements match this selection.", "muted"));
-  if (data.kind === "visibility_sources") paths.append(element("p", data.token.inspector_path, "inspector-path"));
+  if (data.kind === "visibility_sources" && !data.rows.some(({ inspector_path }) => inspector_path)) {
+    paths.append(element("p", data.token.inspector_path, "inspector-path"));
+  }
   const actions = element("div", undefined, "actions");
   actions.append(button("Open turn evidence", () => requestPage("get_turn_evidence", data.location, "Turn evidence", drill)));
   parent.append(paths, actions);

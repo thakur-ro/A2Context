@@ -52,7 +52,7 @@ function renderActivationReports(parent, reports, call) {
 }
 
 function renderSourceVisibility(panel, report, call) {
-  const precision = new Intl.NumberFormat(undefined, { maximumFractionDigits: 5, signDisplay: "exceptZero" });
+  const precision = visibilityEffectFormat;
   panel.append(node("h3", "Context visibility test"));
   panel.append(node("p", "Earlier answer tokens stay fixed. A negative source effect means the recorded token became less likely.", "muted"));
   const label = node("label", undefined, "activation-picker");
@@ -122,7 +122,9 @@ function renderSourceVisibility(panel, report, call) {
       const row = body.insertRow();
       const heading = node("th");
       heading.scope = "row";
-      heading.append(sourceButton(source.context_id));
+      const button = sourceButton(source.context_id);
+      if (delta !== null) button.dataset.visibilitySource = source.context_id;
+      heading.append(button);
       row.append(heading);
       const effect = row.insertCell();
       if (delta === null) effect.textContent = reasons[source.unavailable];
@@ -161,7 +163,7 @@ function sourceVisibilityPairs(report, names, sourceButton, precision) {
     const [first, second] = pair.context_ids.map((id) => scores.get(id)[index]);
     const baseline = report.baseline_log_probs[index];
     const joint = pair.masked_log_probs[index];
-    return [first - baseline, second - baseline, joint - baseline, (joint - first) - (second - baseline)];
+    return [first - baseline, second - baseline, joint - baseline, visibilityInteraction(baseline, first, second, joint)];
   }
   report.pairs.forEach((pair, pairIndex) => {
     select.append(new Option(pair.context_ids.map((id) => names.get(id)).join(" + "), pairIndex));
@@ -212,6 +214,12 @@ function openActivationCheckpoint(reference) {
     const mode = panel.querySelector("[data-visibility-matrix-mode]");
     if (mode) mode.value = reference.visibility_pair === undefined ? "sources" : "pairs";
     token.dispatchEvent(new Event("change"));
+    if (reference.visibility_source !== undefined) {
+      const source = [...panel.querySelectorAll("[data-visibility-source]")]
+        .find((button) => button.dataset.visibilitySource === reference.visibility_source);
+      source?.closest("tr").cells[1].classList.add("activation-selected");
+      return source;
+    }
     return reference.visibility_pair === undefined ? token : pair;
   }
   const picker = panel?.querySelector(".activation-picker select");

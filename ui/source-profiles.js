@@ -47,9 +47,11 @@ function sourceProfileCard({ source_id, occurrences, calls }) {
   const counts = [countLabel(calls, "call")];
   if (knownThreads.size) counts.push(countLabel(knownThreads.size, "known thread"));
   counts.push(countLabel(decisions.size, "linked decision"));
-  const measured = occurrences.filter((item) => measuredSourceItems.has(sourceItemKey(item))).length;
-  counts.push(measured + " of " + occurrences.length + " context items measured");
   card.append(node("h2", source_id), node("p", counts.join(" · "), "count"));
+  const replays = occurrences.filter((item) => measuredSourceItems.has(sourceItemKey(item))).length;
+  const masks = occurrences.filter((item) => masksBySourceItem.has(sourceItemKey(item))).length;
+  card.append(node("p", countLabel(occurrences.length, "recorded occurrence") + " · "
+    + replays + " with a measured replay · " + masks + " with a source mask", "muted"));
 
   const versionList = node("ul", undefined, "source-version-list");
   for (const [version, summary] of versions) {
@@ -108,6 +110,7 @@ function renderSourceOccurrences(history, occurrences) {
       if (measured) {
         evidence.append(occurrenceButton(measured.location, "Open replay · " + effectText(measured.difference_pp), measured));
       }
+      appendSourceMaskEvidence(evidence, masksBySourceItem.get(sourceItemKey(item)) || []);
     }
     offset = rows.rows.length;
     more.disabled = offset >= occurrences.length;

@@ -6,9 +6,6 @@ let visibilityPatternPeriod = "";
 const visibilityTimeUnits = new Map([["", "All occurrences"], ["day", "Day"], ["week", "Week"], ["month", "Month"]]);
 const visibilityPatternDateFields = ["after", "before"];
 const visibilityComparisonDateFields = ["after_b", "before_b"];
-const visibilityEffectFormat = new Intl.NumberFormat(undefined, {
-  maximumFractionDigits: 5, signDisplay: "exceptZero",
-});
 const visibilityField = (part) => element("visibility-pattern-" + part);
 
 function setupVisibilityPatterns() {

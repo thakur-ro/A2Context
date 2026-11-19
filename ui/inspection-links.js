@@ -72,6 +72,7 @@ function writeReference(params, reference, position) {
     if (reference.visibility_token !== undefined) {
       params.set("visibility", reference.visibility_token);
       if (reference.visibility_pair !== undefined) params.set("pair", reference.visibility_pair);
+      if (reference.visibility_source !== undefined) params.set("mask", reference.visibility_source);
       return;
     }
     if (reference.output_token !== undefined) params.set("token", reference.output_token);
@@ -93,13 +94,15 @@ function readReference(params, position) {
     if (!/^\d+$/.test(index || "")) return null;
     if (key === "visibility") {
       const pair = params.get("pair");
-      if (params.has("block") || (pair !== null && !/^\d+$/.test(pair))) return null;
+      const source = params.get("mask");
+      if (params.has("block") || (pair !== null && (!/^\d+$/.test(pair) || source !== null)) || source === "") return null;
       return {
         activation_id: params.get("activation"), visibility_token: Number(index),
         visibility_pair: pair === null ? undefined : Number(pair),
+        visibility_source: source ?? undefined,
       };
     }
-    if (params.has("pair") || !/^\d+$/.test(params.get("block") || "")) return null;
+    if (params.has("pair") || params.has("mask") || !/^\d+$/.test(params.get("block") || "")) return null;
     const fields = { token: "output_token", branch: "branch_index", checkpoint: "checkpoint_index" };
     return {
       activation_id: params.get("activation"),

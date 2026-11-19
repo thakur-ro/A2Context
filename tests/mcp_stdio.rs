@@ -478,6 +478,12 @@ fn source_visibility_queries_follow_the_turn_to_ranked_sources_and_pairs() {
         exact_source["structuredContent"]["rows"][0]["context_id"],
         "refund-policy-copy"
     );
+    assert!(
+        exact_source["structuredContent"]["rows"][0]["inspector_path"]
+            .as_str()
+            .unwrap()
+            .ends_with("&visibility=13&mask=refund%2Dpolicy%2Dcopy")
+    );
 
     request["view"] = json!({"kind":"pairs","output_token":13});
     let paired = client.call(name, request.clone());

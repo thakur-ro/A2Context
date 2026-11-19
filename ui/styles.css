@@ -67,7 +67,7 @@ button:disabled { color: var(--muted); cursor: default; }
 :is(button, select, input, textarea, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .outcome, .panel { background: var(--surface); border: 1px solid var(--line); border-radius: .85rem; padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
 .outcome button { margin-top: .65rem; }
-.decision-investigation { margin-block: .65rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: .55rem; }
+.decision-investigation { container-type: inline-size; margin-block: .65rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: .55rem; }
 .decision-investigation > summary { cursor: pointer; font-weight: 650; }
 .decision-investigation[open] > summary { margin-bottom: .6rem; }
 .investigation-tools { display: flex; flex-wrap: wrap; gap: .55rem; margin-block: .55rem; }
@@ -75,6 +75,14 @@ button:disabled { color: var(--muted); cursor: default; }
 .investigation-table button { margin: 0 .3rem .25rem 0; text-align: start; overflow-wrap: anywhere; }
 .effects-table.investigation-table td { white-space: normal; }
 .investigation-table tbody th { text-align: start; }
+@container (max-width: 37rem) {
+  .investigation-table, .investigation-table tbody, .investigation-table tbody tr, .investigation-table tbody :is(th, td) { display: block; }
+  .investigation-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .investigation-table tbody tr { padding: .55rem 0; border-top: 1px solid var(--line); }
+  .investigation-table tbody :is(th, td) { padding: .15rem 0; border: 0; }
+  .investigation-table :is(input, select, button) { max-width: 100%; white-space: normal; }
+  .investigation-table .anchor { margin-bottom: 0; }
+}
 .decision-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; gap: .9rem; }
 .decision-evidence { display: grid; gap: .9rem; min-width: 0; }
 .decision-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .65rem; }
@@ -244,6 +252,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.5 ui-monosp
 .effects-table { width: 100%; border-collapse: collapse; }
 .effects-table :is(th, td) { text-align: left; vertical-align: top; padding: .42rem; border-bottom: 1px solid var(--line); }
 .effects-table td:not(:first-child) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.source-history .effects-table thead th { white-space: nowrap; }
 .replay-breakdown { margin: .65rem 0; }
 .replay-breakdown-bar { display: flex; gap: 2px; height: .45rem; max-width: 28rem; border-radius: .5rem; overflow: hidden; }
 .replay-breakdown-bar span { flex-basis: 0; background: var(--effect-color); }

@@ -592,12 +592,16 @@ fn group_counts(group: &Group<'_>) -> Value {
 
 fn evidence(item: &Occurrence<'_>) -> Value {
     let [start, end] = item.output;
+    let inspector_path = match item.pair {
+        Some(pair) => query::visibility_path(item.report, start, Some(pair)),
+        None => query::source_mask_path(item.report, start, item.context_ids[0]),
+    };
     let mut row = json!({
         "location": item.report.location, "report_id": item.report.id, "context_ids": item.context_ids,
         "trace_source": item.run.source, "organization_id": item.run.organization_id,
         "user_id": item.run.user_id, "conversation_id": item.run.conversation_id,
         "turn_id": item.call.turn_id, "started_at": item.call.started_at, "output_token": start,
-        "effect": item.effect, "inspector_path": query::visibility_path(item.report, start, item.pair),
+        "effect": item.effect, "inspector_path": inspector_path,
         "source_inspector_paths": item.context_ids.iter().map(|id| query::source_path(item.report, id)).collect::<Vec<_>>(),
     });
     if let Some(prefix) = &item.target_prefix {

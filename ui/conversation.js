@@ -292,6 +292,10 @@ function renderConversationEvidence() {
       }
     });
   }
+  if (decision) {
+    renderDecisionInvestigation(details, run, call, decision, captureOnCall(run.id, call.id),
+      exactDecisionLinks(run, call, decision));
+  }
   const count = call.context.length;
   evidenceSection(details, "Present · " + count + (count === 1 ? " context entry" : " context entries"),
     !findings.length && !links.length && (!decision || decision.kind === "model_output"), (section) => {

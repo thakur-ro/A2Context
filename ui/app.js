@@ -355,13 +355,8 @@ function renderDecision() {
       outcome.append(node("pre", readable(decision.outcome)));
     }
     outcome.append(evidence(decision.evidence));
-    const exactLinks = data.context_links.flatMap((link, index) =>
-      link.run_id === run.id && link.call_id === call.id && link.decision_id === decision.id ? [{ link, index }] : []
-    );
-    renderDecisionInvestigation(outcome, run, call, decision, capture, exactLinks, {
-      inspect: (reference) => openDecision(state.run, state.call, state.decision, reference),
-      plan: (id) => openReplayPlanner(run, call, decision, [id]),
-    });
+    const exactLinks = exactDecisionLinks(run, call, decision);
+    renderDecisionInvestigation(outcome, run, call, decision, capture, exactLinks);
     const link = data.tool_links.find((item) =>
       item.run_id === run.id && item.call_id === call.id && item.decision_id === decision.id
     );
@@ -1351,6 +1346,7 @@ async function start() {
     indexReplayOutcomes();
     indexCaptureProfiles();
     indexContextHistory();
+    indexSourceMasks(data.activation_reports || []);
     for (const item of data.context_replays) {
       const effects = item.effects.map(({ group_index, occurrence_index }) => {
         const group = data.replay_effects[group_index];
