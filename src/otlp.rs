@@ -281,7 +281,7 @@ fn prepare(
                     record.attrs = attrs;
                     if policy.is_some() && updates.len() >= 64 && !updates.contains_key(&trace_id) {
                         return Err(
-                            "sidecar export exceeds 64 trace IDs; send smaller batches".into()
+                            "sidecar export exceeds 64 trace IDs. Send smaller batches.".into()
                         );
                     }
                     let spans = match updates.entry(trace_id.clone()) {

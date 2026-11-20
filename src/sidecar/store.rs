@@ -59,7 +59,7 @@ impl Store {
                 .query_row("SELECT value FROM policy WHERE id=1", [], |row| row.get(0))?;
         if previous != policy {
             return Err(
-                "capture settings differ from the existing database; use a new database".into(),
+                "capture settings differ from the existing database. Use a new database.".into(),
             );
         }
         Ok(())
@@ -95,7 +95,7 @@ impl Store {
             loaded_bytes += saved.as_ref().map_or(0, String::len);
             if loaded_bytes > MAX_LOAD_BYTES {
                 return Err(
-                    "existing trace snapshots exceed 16 MiB per export; send smaller batches"
+                    "existing trace snapshots exceed 16 MiB per export. Send smaller batches."
                         .into(),
                 );
             }
@@ -238,7 +238,7 @@ impl Store {
             bytes += row.get::<_, usize>(1)?;
             if bytes > 8 * 1024 * 1024 || runs.len() == 8 {
                 return Err(
-                    "this scope is too large for a legacy view; open it in Findings, Traces, or Threads".into(),
+                    "this scope is too large for a legacy view. Open it in Findings, Traces, or Threads.".into(),
                 );
             }
             runs.push(serde_json::from_str(&row.get::<_, String>(0)?)?);
@@ -300,8 +300,10 @@ impl Store {
                  )
                  SELECT json_object('id',g.group_id,'kind',g.kind,'occurrences',g.hits,'traces',g.traces,
                      'threads',g.threads,'latest',g.latest,'priority',g.priority,
-                     'evidence',json((SELECT json_object('trace_id',e.trace_id,'call_id',e.call_id,'detail',json(e.detail))
-                       FROM events e WHERE e.group_id=g.group_id ORDER BY observed DESC,trace_id,call_id,n LIMIT 1)),
+                     'evidence',json((SELECT json_object('trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail))
+                       FROM events e WHERE e.group_id=g.group_id
+                       ORDER BY CASE WHEN e.kind='replay' AND abs(json_extract(e.detail,'$.effect_pp'))>0 THEN 0 ELSE 1 END,
+                                e.observed DESC,e.trace_id,e.call_id,e.n LIMIT 1)),
                      'trend',json((SELECT json_group_array(json_object('day',day,'count',hits)) FROM
                        (SELECT date(observed,'unixepoch') AS day,count(*) AS hits FROM events e
                         WHERE e.group_id=g.group_id AND observed IS NOT NULL GROUP BY day ORDER BY day DESC LIMIT 14))))

@@ -80,11 +80,12 @@ function visual(kind, detail, rows = []) {
 function findingTitle(kind, detail) {
   if (kind === "conflict") return "Conflicting values for " + detail.rule.replaceAll("_", " ");
   if (kind === "duplicate") return "The same input appears " + detail.copies + " times";
-  const amount = Math.abs(Number(detail.effect_pp.toFixed(2)));
-  const points = plural(amount, "percentage point");
+  const amount = Math.abs(detail.effect_pp);
+  const points = amount < 0.01 ? "less than 0.01 percentage points" :
+    plural(Number(amount.toFixed(2)), "percentage point");
   if (detail.effect_pp === 0) return "Measured match rates were equal";
   if (detail.edit === "control") return "Target and control differed by " + points;
-  return "Match rate " + (detail.effect_pp > 0 ? "rose " : "fell ") + points;
+  return "Match rate " + (detail.effect_pp > 0 ? "rose by " : "fell by ") + points;
 }
 
 function findingDetail(kind, detail) {
@@ -107,7 +108,7 @@ function findingCard(card) {
     element("p", { text: findingDetail(kind, detail) }),
     element("p", { text: [plural(card.occurrences, "observation"), plural(card.traces, "trace"),
       card.threads ? plural(card.threads, "identified thread") : "Thread IDs unavailable"].join(" · ") }),
-    card.latest == null ? null : element("p", { className: "label", text: "Last seen " + fullDate(card.latest) }),
+    evidence.observed == null ? null : element("p", { className: "label", text: "Evidence from " + fullDate(evidence.observed) }),
     link("Open evidence", href, "action")), visual(kind, detail, card.trend));
 }
 
@@ -166,13 +167,18 @@ function compareForm(group) {
     element("button", { type: "submit", text: "Compare" }));
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const otherUser = user.value.trim();
+    if (!otherUser) {
+      result.textContent = "Enter a user ID.";
+      return;
+    }
     result.textContent = "Loading comparison…";
     try {
       const [current, other] = await Promise.all([api("findings", { ...scope, group }),
-        api("findings", { ...scope, user: user.value.trim(), group })]);
+        api("findings", { ...scope, user: otherUser, group })]);
       const describe = (rows) => rows.length ? plural(rows[0].traces, "trace") + " · " + plural(rows[0].threads, "identified thread") : "No captured matches";
       result.replaceChildren(element("div", { className: "comparison" }, ...[
-        [scope.user || "Current scope", current.rows], [user.value.trim(), other.rows],
+        [scope.user || "Current scope", current.rows], [otherUser, other.rows],
       ].map(([label, rows]) => element("div", {}, element("strong", { text: label }),
         element("p", { text: describe(rows) }), rows.length ? trend(rows[0].trend) : null))));
     } catch (error) {

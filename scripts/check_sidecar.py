@@ -201,6 +201,30 @@ def check_replay(base, send_trace=send_traces):
     return len(measured)
 
 
+def check_replay_representative(base):
+    sys.path.insert(0, str(ROOT / "examples"))
+    from send_otlp_replay import prepare as prepare_replay
+
+    changed_trace, changed_report = prepare_replay("older-measured-change")
+    equal_trace, equal_report = prepare_replay("newer-measured-equality")
+    equal_span = equal_trace["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
+    for field in ["startTimeUnixNano", "endTimeUnixNano"]:
+        equal_span[field] = str(int(equal_span[field]) + 2 * 10**9)
+    equal_report.pop("pair", None)
+    equal_arm = equal_report["variants"][1]
+    equal_arm["trials"] = deepcopy(equal_report["baseline"])
+    equal_arm["summary"] = deepcopy(equal_report["baseline_summary"])
+    equal_arm["difference_pp"] = 0.0
+    for trace, report in [(changed_trace, changed_report), (equal_trace, equal_report)]:
+        send_traces(base, trace)
+        send(base, "/api/replay-reports", report, expected=201)
+    rows = get(base, "findings", kind="replay")["rows"]
+    card = next(card for card in rows if card["evidence"]["detail"]["edit"] == "individual" and card["priority"] == 1)
+    assert card["traces"] == 2 and card["latest"] > card["evidence"]["observed"]
+    assert card["evidence"]["trace_id"] == changed_report["location"]["run_id"]
+    assert card["evidence"]["detail"]["effect_pp"] == -100.0
+
+
 def check_activation(base, producer_python):
     output = subprocess.check_output([producer_python, str(ROOT / "examples/send_otlp_activation.py"), "--url", base], text=True)
     linked = parse_qs(urlsplit(output.strip()).fragment)
@@ -362,6 +386,8 @@ def main():
                 check_activation(base, args.sdk_python)
         with server(args.binary, captured, "--capture-content") as base:
             assert any(card["kind"] == "replay" for card in get(base, "findings")["rows"])
+        with server(args.binary, folder / "representative.sqlite", "--capture-content") as base:
+            check_replay_representative(base)
         if args.sdk_python:
             # Repeat the live card, recurrence, and replay journeys using the
             # SDK's actual encoder, processor, and exporter.

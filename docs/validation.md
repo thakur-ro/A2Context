@@ -4,6 +4,8 @@ The evaluation uses synthetic trace labels and saved local-model trials. The lab
 
 ## Reproduce the checks
 
+Use stable Rust and Python 3.10 or newer.
+
 ```sh
 cargo build --release --locked
 python3 -m venv /tmp/nexusweave-otel
