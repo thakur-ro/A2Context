@@ -238,7 +238,7 @@ pub fn preview(
         pending::recommendation_measurements(input).map_err(|message| (400, message))?;
     let mut history = match history_scope {
         Ok(history_scope) => history_scope
-            .lookup(store, &call)
+            .lookup(store, &call, scope.as_ref())
             .map_err(|e| (503, e.to_string()))?,
         Err(status) => json!({"status":status,"edits":[]}),
     };

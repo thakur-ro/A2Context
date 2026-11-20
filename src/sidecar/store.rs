@@ -48,6 +48,8 @@ impl Store {
              CREATE INDEX IF NOT EXISTS observations_factor ON observations(json_extract(detail,'$.factor'),observed);
              CREATE INDEX IF NOT EXISTS observations_prior ON observations(json_extract(detail,'$.prior.partition'),
                 observed DESC,trace_id,n) WHERE json_extract(detail,'$.prior.partition') IS NOT NULL;
+             CREATE INDEX IF NOT EXISTS observations_prior_dispatch ON observations(json_extract(detail,'$.dispatch_history.partition'),
+                observed DESC,trace_id,n) WHERE json_extract(detail,'$.dispatch_history.partition') IS NOT NULL;
              CREATE TABLE IF NOT EXISTS position_results (
                  pair TEXT NOT NULL, id TEXT NOT NULL, first_trace TEXT NOT NULL REFERENCES traces(id) ON DELETE CASCADE,
                  second_trace TEXT NOT NULL REFERENCES traces(id) ON DELETE CASCADE, body TEXT NOT NULL, summary TEXT NOT NULL,
@@ -247,10 +249,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 32 {
+        if version == 33 {
             return Ok(());
         }
-        if !(0..32).contains(&version) {
+        if !(0..33).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -325,7 +327,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 32)?;
+        self.0.pragma_update(None, "user_version", 33)?;
         Ok(())
     }
 
@@ -618,6 +620,25 @@ impl Store {
         let data: String = self.0.query_row(
             super::history::PRIOR_EDITS,
             rusqlite::params![partition, current],
+            |row| row.get(0),
+        )?;
+        Ok(serde_json::from_str(&data)?)
+    }
+
+    pub fn prior_dispatch(
+        &self,
+        partition: &str,
+        current: &str,
+        scope: Option<&nexusweave::DecisionScope>,
+    ) -> Result<Value> {
+        let data: String = self.0.query_row(
+            super::history::PRIOR_DISPATCH,
+            params![
+                partition,
+                current,
+                scope.map(|s| &s.key),
+                scope.map(|s| &s.scope)
+            ],
             |row| row.get(0),
         )?;
         Ok(serde_json::from_str(&data)?)
@@ -1568,9 +1589,31 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     let reports = load_reports(tx, &run.id)?;
     let activations = load_reports(tx, &run.id)?;
     let observations = findings::derive(run, &reports, &activations)?;
+    let workflow: Option<String> = if run.organization_id.is_some()
+        && observations
+            .iter()
+            .any(|observation| observation.detail["sandbox_dispatch"].is_object())
+    {
+        tx.query_row("SELECT workflow FROM traces WHERE id=?", [&run.id], |row| {
+            row.get(0)
+        })?
+    } else {
+        None
+    };
     let mut insert = tx.prepare("INSERT INTO observations VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
     for (index, mut observation) in observations.into_iter().enumerate() {
         observation.detail["factor"] = findings::factor_id(run, &observation).into();
+        if observation.detail["sandbox_dispatch"].is_object() {
+            if let Some(history) = workflow.as_deref().and_then(|workflow| {
+                let call = run
+                    .calls
+                    .iter()
+                    .find(|call| call.id == observation.call_id)?;
+                super::history::dispatch_observation(run, call, workflow, &observation.detail)
+            }) {
+                observation.detail["dispatch_history"] = history;
+            }
+        }
         let edits = super::outcomes::changed_edits(run, &observation);
         if !edits.is_empty() {
             observation.detail["changed_edits"] = edits.into();

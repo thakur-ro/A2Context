@@ -66,10 +66,12 @@ jobs:
         run: |
           for source in ui/*.js; do node --check "$source" || exit 1; done
           node --test tests/*.test.mjs
-      - name: Check the bundled MCP view
+      - name: Check bundled views
         run: |
           npm ci --prefix ui/mcp-app --no-audit --no-fund
           npm run check --prefix ui/mcp-app
+          npm ci --prefix ui/a2ui --no-audit --no-fund
+          npm run check --prefix ui/a2ui
 
   shipping-image:
     runs-on: ubuntu-24.04

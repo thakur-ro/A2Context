@@ -323,7 +323,7 @@ const outcomeLevels = [
   {key:"proposal", title:"Generated proposal changed", description:"Every listed conversation has a source edit that changed a complete replayed answer or tool proposal."},
   {key:"rate", title:"Replay match rate changed", description:"A change in the fraction of proposals meeting a scoring rule is the strongest recorded result here."},
   {key:"score", title:"Model score shifted", description:"A first-token, candidate or output-token score moved. These conversations have no verified proposal change or match-rate shift in this scope."},
-  {key:"tested", title:"Tested without a measured shift", description:"A verified comparison had equal scores or match rates. A matched rate alone can conceal differences in the generated text."},
+  {key:"tested", title:"No change in measured model results", description:"A verified comparison had equal scores or match rates. A matched rate alone can conceal differences in the generated text."},
   {key:"inputs", title:"Captured inputs only", description:"Declared rules conflict or input text repeats. These conversations have no measured comparison among their findings in this scope."},
 ];
 const outcomeLevel = Number(query.get("level"));
@@ -336,8 +336,8 @@ const cohortMode = editedSources ? {by:"edit"} : {};
 function impactPanel(impact) {
   return element("section", { className: "impact", "aria-label": "Conversation impact" },
     element("div", {}, element("h2", { text: "Conversations with findings" }),
-      element("strong", { className: "impact-number", text: impact.conversations }),
-      element("p", {className:"impact-total", text:"of " + plural(impact.captured_conversations, "captured conversation")}),
+      element("p", {className:"impact-total"}, element("strong", { className: "impact-number", text: impact.conversations }),
+        " ", element("span", {text:"of " + plural(impact.captured_conversations, "captured conversation")})),
       impact.without_findings ? link(plural(impact.without_findings, "conversation") + " without a finding" +
         (impact.without_findings_with_screen_suggestion ? " · " + impact.without_findings_with_screen_suggestion + " with a flagged source pair" : ""),
         url({coverage:"without-findings"}), "coverage-link") : null,
@@ -454,6 +454,17 @@ function positionReadout(result) {
   return "Changed proposals · source present " + present.changed + "/2 · source replaced " + replaced.changed + "/2";
 }
 
+function featuredLink(href, { title, label, description, detail, action = "Open evidence →" }, className = "featured") {
+  return element("a", {className, href},
+    NexusWeaveA2UI.recommendation("recommended-investigation", {title, heading:"h2", label, description, detail}),
+    element("span", {className:"investigation-link", text:action}));
+}
+
+function investigation(href, title, description, detail) {
+  return element("section", {"aria-label":"Recommended investigation"},
+    featuredLink(href, {title, description, detail}));
+}
+
 function factorRow(factor, featured = false) {
   const signals = { routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
     token: "Token score shifted", source_mask: "Source masks tested", sandbox_dispatch: "Sandbox state preserved",
@@ -486,11 +497,9 @@ function factorRow(factor, featured = false) {
     const description = disputed ? "The runs repeated " + (disputed.source ? "the edit to " + disputed.source : "one source edit") +
       " on the same input with the same instruction and tools." +
       (disputed.missing ? " " + plural(disputed.missing, "additional run") + " incomplete." : "") : null;
-    return element("a", {className:"factor-row featured", href},
-      element("div", {}, element("span", {className:"first-step", text:signal}),
-        element("h3", {text:title}), description && element("p", {text:description}),
-        element("span", {className:"row-extra", text:[name, factor.org, plural(factor.conversations, "identified conversation")].filter(Boolean).join(" · ")})),
-      element("span", {className:"investigation-link", text:disputed ? "Compare runs →" : "Open evidence →"}));
+    return featuredLink(href, {title, label:signal, description,
+      detail:[name, factor.org, plural(factor.conversations, "identified conversation")].filter(Boolean).join(" · "),
+      action:disputed ? "Compare runs →" : undefined}, "factor-row featured");
   }
   return element("a", {className:"factor-row", href}, element("div", {},
     element("strong", {text:name}), element("span", {className:"row-extra", text:counts})),
@@ -1144,12 +1153,11 @@ async function conflictExamplesView() {
 
 function conflictPatternCard(pattern) {
   const [left, right] = pattern.sources.map(sourceName);
-  return element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}),
-    element("a", {className:"featured", href:url({recommendation:pattern.group, factor:pattern.factor, conflict_design:pattern.design})},
-      element("div", {}, element("h3", {text:"Compare questions where different source edits changed the proposal"}),
-        element("p", {text:"Only the " + left + " edit changed the proposal on " + plural(pattern.left_count,"request") +
-          ". Only the " + right + " edit changed it on " + plural(pattern.right_count,"request") + ". " +
-          plural(pattern.inputs,"distinct request") + " tested."}))));
+  return investigation(url({recommendation:pattern.group, factor:pattern.factor, conflict_design:pattern.design}),
+    "Compare questions where different source edits changed the proposal",
+    "Only the " + left + " edit changed the proposal on " + plural(pattern.left_count,"request") +
+    ". Only the " + right + " edit changed it on " + plural(pattern.right_count,"request") + ". " +
+    plural(pattern.inputs,"distinct request") + " tested.");
 }
 
 async function conflictCoverageView() {
@@ -1324,11 +1332,36 @@ function findingReview(card, occurrences, dispatchSummary) {
         link("Open span " + row.call, url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))))));
 }
 
+function priorDispatch(history) {
+  const rows = history?.dispatch?.rows;
+  if (!rows?.length) return null;
+  const [first] = rows;
+  const heading = first.regressed || first.mixed ? "Review earlier dispatch results before using the check" :
+    first.helped ? "Test the dispatch check on this request" : "Compare earlier dispatch outcomes";
+  const evidence = row => {
+    const e = row.example;
+    return url({recommendation:e.group,factor:e.factor,trace:e.trace,call:e.call,report:e.report});
+  };
+  const countText = row => [[row.helped,"only with check"],[row.regressed,"only without check"],
+    [row.both,"both matched"],[row.neither,"neither matched"],[row.mixed,"mixed"]]
+    .filter(([count]) => count > 0).map(([count,label]) => count + " " + label).join(" · ");
+  return element("section", {className:"panel", "aria-label":"Earlier dispatch replays"},
+    NexusWeaveA2UI.recommendation("earlier-dispatch", {
+      title:heading, heading:"h2", label:"Evidence from earlier requests",
+      description:"Earlier requests shared the workflow, model, request layout and declared rule values. Run a fresh sandbox test to check what happens on this request.",
+      detail:history.dispatch.truncated ? "The lookup used the latest 128 matching observations." : null,
+      evidence:rows.map(row => ({title:"Open earlier sandbox comparison",
+        summary:plural(row.inputs,"distinct earlier input") + " · " + countText(row) +
+          " · " + row.example.guard + " · " + row.example.runner, href:evidence(row)})),
+    }));
+}
+
 function priorEdits(history, hasCurrentScores) {
   if (history?.status !== "checked") return null;
   const [top] = history.edits;
   const limit = history.truncated ? " The lookup used the latest 512 matching observations." : "";
-  if (!top) return element("p", { className: "label", text: "No comparable source edit on two distinct earlier inputs in this scope." + limit });
+  if (!top) return history.dispatch?.rows?.length ? null :
+    element("p", { className: "label", text: "No comparable source edit on two distinct earlier inputs in this scope." + limit });
   function trial(edit) {
     const e = edit.example;
     return url({recommendation:e.group, factor:e.factor, trace:e.trace, call:e.call,
@@ -1927,6 +1960,7 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
+        priorDispatch(report.history),
         ...prefixReviews.flatMap((r,i) => [prefixReview(r,report.example_question,i === 0 ? followUp : null),
           blockInvestigation([{review:r,index:r.reversals[0] || 1}])]),
         opening && openingComparison(report.prefill, report.example_question),
@@ -1976,11 +2010,17 @@ function pendingPreview() {
       link("See the tested edit on this request", url({view:"preview",scenario:"checked-history"})), scores));
   });
   const scenario = query.get("scenario");
+  const exchange = scope.workflow === "exchange-agent" &&
+    link("Check the next exchange",url({view:"preview",scenario:"exchange-approval"}),"action");
   const windowQuestions = [["window-earlier", "First question"], ["window-followup", "Follow-up"], ["window-unopened", "Unopened journal"], ["window-fresh", "Fresh question"]];
   const questions = element("nav", {className:"actions", "aria-label":"Journal questions"},
     ...windowQuestions.map(([key, label]) => key === scenario ? element("strong", {text:label, "aria-current":"page"}) :
       link(label, url({view:"preview", scenario:key}))));
-  if (scenario === "prefix-before" || scenario === "prefix-checked") {
+  if (scenario === "exchange-approval") {
+    show(() => api("preview-example",{scenario}));
+    return element("div", {className:"feed"}, output,
+      link("Check another request", url({view:"preview"})));
+  } else if (scenario === "prefix-before" || scenario === "prefix-checked") {
     const before = scenario === "prefix-before";
     show(() => api("preview-example", {scenario}), link(before ? "Compare with freely generated answers" : "See the scores before generation",
       url({view:"preview",scenario:before ? "prefix-checked" : "prefix-before"}),"action"));
@@ -2003,7 +2043,7 @@ function pendingPreview() {
   }
   return element("div", { className: "feed" }, panel("Review an assembled request",
     element("label", { text: "Load a preflight request or a request bundled with probe results" }, input),
-    element("div", { className: "actions" }, history, routing, policy)), output);
+    element("div", { className: "actions" }, ...(exchange ? [exchange] : [history, routing, policy]))), output);
 }
 
 function traceDetail({ trace, findings, activation_reports, prefill_issues = {}, target_checks = {}, prefix_reviews = {} }) {
@@ -2255,26 +2295,23 @@ async function render(refresh = false) {
         !losses && !opening && !lower && !pattern && !gap;
       const featured = !prefixLead && !losses && !opening && !lower && !pattern && !gap && !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
-      body = element("div", {className:"overview"}, impactPanel(impact),
-        losses ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}),
-          element("a", {className:"featured", href:url({ranking:"all",quality:"ranked_lost"})}, element("div", {},
-            element("h3", {text:"Inspect " + plural(losses,"call") + " where the ranked edit lost a reference match"}),
-            element("p", {text:"Compare each original answer with the answer after the source edit."})))) :
-        opening ? element("section",{className:"investigation"},element("h2",{text:"Recommended investigation"}),
-          element("a",{className:"featured",href:url({opening:1,recommendation:opening.group,factor:opening.factor})},element("div",{},
-            element("h3",{text:"Review " + plural(opening.affected,"conversation") + " where the top opening token held and the proposal changed"}),
-            element("p",{text:opening.tested + " of " + plural(opening.scored,"scored conversation") + " had a completed proposal comparison for an edit that kept the opening token on top."})))) :
-        lower ? element("section", {className:"investigation"}, element("h2",{text:"Recommended investigation"}),
-          element("a",{className:"featured",href:url({ranking:"all",review:"lower_changed"})},element("div",{},
-            element("h3",{text:"Inspect " + plural(lower,"call") + " where a lower-ranked edit changed the proposal"}),
-            element("p",{text:plural(impact.lower_edit_conversations,"linked conversation") + ". The edit with the largest first-token shift kept the original proposal."})))) :
+      body = element("div", {className:"overview"},
+        losses ? investigation(url({ranking:"all",quality:"ranked_lost"}),
+          "Inspect " + plural(losses,"call") + " where the ranked edit lost a reference match",
+          "Compare each original answer with the answer after the source edit.") :
+        opening ? investigation(url({opening:1,recommendation:opening.group,factor:opening.factor}),
+          "Review " + plural(opening.affected,"conversation") + " where the top opening token held and the proposal changed",
+          opening.tested + " of " + plural(opening.scored,"scored conversation") + " had a completed proposal comparison for an edit that kept the opening token on top.") :
+        lower ? investigation(url({ranking:"all",review:"lower_changed"}),
+          "Inspect " + plural(lower,"call") + " where a lower-ranked edit changed the proposal",
+          plural(impact.lower_edit_conversations,"linked conversation") + ". The edit with the largest first-token shift kept the original proposal.") :
         pattern ? conflictPatternCard(pattern) :
-        gap ? element("section",{className:"investigation"},element("h2",{text:"Recommended investigation"}),
-          element("a",{className:"featured",href:url({recommendation:gap.group,factor:gap.factor,conflict_coverage:gap.untested ? "untested" : "partial"})},
-            element("div",{},element("h3",{text:"Compare the conflicting sources in " + plural(gap.untested+gap.partial,"conversation")}),
-              element("p",{text:factorName(gap.conflict.sources) + " · " + gap.complete + " of " + plural(gap.conversations,"conversation") + " with both source edits compared at every conflicting call."})))) :
+        gap ? investigation(url({recommendation:gap.group,factor:gap.factor,conflict_coverage:gap.untested ? "untested" : "partial"}),
+          "Compare the conflicting sources in " + plural(gap.untested+gap.partial,"conversation"),
+          factorName(gap.conflict.sources) + " · " + gap.complete + " of " + plural(gap.conversations,"conversation") + " with both source edits compared at every conflicting call.") :
         prefixLead ? prefixInvestigation(cohort,comparison) :
-        featured ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}), factorRow(featured, true)) : null,
+        featured ? element("section", {"aria-label":"Recommended investigation"}, factorRow(featured, true)) : null,
+        impactPanel(impact),
         cohort && !prefixLead ? element("details", {className:"panel"},element("summary",{text:"Source edits at supplied prefixes"}),
           listing([cohort],prefixGroupRow),link("All scored prefixes",url({prefixes:1}))) : null,
         targets.rows.length ? element("section", {className:"factors"}, element("h2", {text:"Recurring target misses"}),

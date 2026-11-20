@@ -234,11 +234,9 @@ function prefixInvestigation(group, comparison) {
     detail = pending ? plural(group.experiments,"distinct edit test") + " across " + plural(group.conversations,"scored conversation") + ". Check whether the score change predicts a change in the generated answer." :
       "Compare the suggested edit with what the runner generated after " + JSON.stringify(group.prefix) + ".";
   }
-  return element("section",{className:"investigation"},element("h2",{text:"Recommended investigation"}),
-    element("a",{className:"featured",href:url({prefixes:1,design:group.design,...filter})},element("div",{},
-      element("h3",{text:headline}),element("p",{text:detail}),
-      comparison && element("small",{text:plural(group.referenced,"labeled conversation") + " · Suggested edits restored " +
-        "matches in " + plural(group.restored,"conversation") + " and lost them in " + group.lost + "."}))));
+  return investigation(url({prefixes:1,design:group.design,...filter}), headline, detail,
+    comparison && plural(group.referenced,"labeled conversation") + " · Suggested edits restored matches in " +
+    plural(group.restored,"conversation") + " and lost them in " + group.lost + ".");
 }
 
 function prefixExperiment(params) {

@@ -1,6 +1,6 @@
 //! Find earlier source edits on requests with the same assembly and decoding settings.
 
-use nexusweave::{replay, Availability, Call, ContextItem, Run};
+use nexusweave::{replay, Availability, Call, ContextItem, DecisionScope, Run};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -43,6 +43,42 @@ pub(super) const PRIOR_EDITS: &str = "WITH recent AS MATERIALIZED (
         'proposals',json_object('changed',changed,'held',held,'mixed',disputed,'unresolved',unresolved),
         'example',json(example)))) FROM ranked";
 
+// Prior dispatch receipts are comparable only within one layout, rule inventory and owner.
+pub(super) const PRIOR_DISPATCH: &str = "WITH recent AS MATERIALIZED (
+    SELECT detail,trace_id,call_id,group_id,observed,n FROM observations
+    WHERE json_extract(detail,'$.dispatch_history.partition')=?1
+        AND json_extract(detail,'$.dispatch_history.body')!=?2
+        AND (?3 IS NULL OR (json_extract(detail,'$.dispatch_history.rule')=?3
+             AND json_extract(detail,'$.dispatch_history.scope')=?4))
+    ORDER BY observed DESC,trace_id,n LIMIT 129
+), trials AS (
+    SELECT json_extract(detail,'$.sandbox_dispatch.design') AS design,
+        json_extract(detail,'$.dispatch_history.body') AS body,
+        json_extract(detail,'$.sandbox_dispatch.outcome') AS outcome,
+        json_object('trace',trace_id,'call',call_id,'group',group_id,'factor',json_extract(detail,'$.factor'),
+            'report',json_extract(detail,'$.report_id'),'guard',json_extract(detail,'$.sandbox_dispatch.guard'),
+            'runner',json_extract(detail,'$.sandbox_dispatch.runner'),'rule',json_extract(detail,'$.dispatch_history.rule'),
+            'scope',json_extract(detail,'$.dispatch_history.scope'),
+            'source',json_extract(detail,'$.sources[0].source')) AS example
+    FROM recent ORDER BY observed DESC,trace_id,n LIMIT 128
+), by_body AS (
+    SELECT design,body,CASE WHEN min(outcome)=max(outcome) THEN min(outcome) ELSE 'mixed' END AS outcome,
+        coalesce(min(example) FILTER (WHERE outcome='matched_without_check'),min(example)) AS example
+    FROM trials GROUP BY design,body
+), groups AS (
+    SELECT design,count(*) AS inputs,sum(outcome='matched_with_check') AS helped,
+        sum(outcome='matched_without_check') AS regressed,sum(outcome='matched_both') AS both,
+        sum(outcome='missed_both') AS neither,sum(outcome='mixed') AS mixed,
+        coalesce(min(example) FILTER (WHERE outcome='matched_without_check'),
+            min(example) FILTER (WHERE outcome='mixed'),min(example) FILTER (WHERE outcome='matched_with_check'),
+            min(example)) AS example
+    FROM by_body GROUP BY design HAVING count(*)>=2
+    ORDER BY regressed DESC,mixed DESC,helped DESC,inputs DESC,design LIMIT 5
+)
+SELECT json_object('truncated',(SELECT count(*)>128 FROM recent),
+    'rows',json_group_array(json_object('inputs',inputs,'helped',helped,'regressed',regressed,
+        'both',both,'neither',neither,'mixed',mixed,'example',json(example)))) FROM groups";
+
 fn digest(value: &Value) -> String {
     format!("{:x}", Sha256::digest(value.to_string()))
 }
@@ -51,6 +87,7 @@ pub(super) struct Scope {
     org: String,
     user: Option<String>,
     producer: String,
+    workflow: Option<String>,
 }
 
 impl Scope {
@@ -77,15 +114,28 @@ impl Scope {
             org,
             user,
             producer: identity("nexusweave.history.source")?.unwrap_or_else(|| "otlp".into()),
+            workflow: identity("service.name").ok().flatten(),
         })
     }
 
-    pub fn lookup(&self, store: &super::store::Store, call: &Call) -> crate::Result<Value> {
+    pub fn lookup(
+        &self,
+        store: &super::store::Store,
+        call: &Call,
+        scope: Option<&DecisionScope>,
+    ) -> crate::Result<Value> {
         let Some(layout) = Layout::new(call) else {
             return Ok(json!({"status":"no_layout","edits":[]}));
         };
         let partition = layout.partition(&self.producer, &self.org, self.user.as_deref());
         let mut history = store.prior_edits(&partition, &layout.body)?;
+        if let Some(key) = self
+            .workflow
+            .as_deref()
+            .and_then(|workflow| layout.dispatch_partition(call, workflow, &partition))
+        {
+            history["dispatch"] = store.prior_dispatch(&key, &layout.body, scope)?;
+        }
         let top = history["edits"]
             .as_array()
             .and_then(|rows| rows.first())
@@ -236,6 +286,30 @@ impl Layout {
         digest(&json!([self.shape, source, org, user]))
     }
 
+    fn dispatch_partition(&self, call: &Call, workflow: &str, partition: &str) -> Option<String> {
+        let mut rules = BTreeMap::new();
+        for item in &call.context {
+            let Some(rule) = item
+                .rule
+                .as_ref()
+                .filter(|_| item.availability == Availability::Included)
+            else {
+                continue;
+            };
+            let slot = self.slots.get(&item.id)?;
+            let mut value = json!([rule.key, rule.scope, rule.value.as_ref()?, item.authority]);
+            value.sort_all_objects();
+            rules.insert(slot, value);
+        }
+        (!rules.is_empty()).then(|| {
+            digest(&json!([
+                partition,
+                workflow,
+                rules.into_iter().collect::<Vec<_>>()
+            ]))
+        })
+    }
+
     pub fn observation(&self, run: &Run, report: &replay::Replay, id: &str) -> Option<Value> {
         let variant = report
             .variants
@@ -303,4 +377,36 @@ impl Layout {
             json!({"status":"ready","interventions":[edit],"baseline_request_sha256":original,"edited_request_sha256":edited}),
         )
     }
+}
+
+/// Index a dispatch test only when its edited source disagrees with another captured declaration.
+pub(super) fn dispatch_observation(
+    run: &Run,
+    call: &Call,
+    workflow: &str,
+    detail: &Value,
+) -> Option<Value> {
+    let id = detail["sources"][0]["id"].as_str()?;
+    let edited = call.context.iter().find(|item| item.id == id)?;
+    let rule = edited.rule.as_ref()?;
+    let value = rule.value.as_ref()?;
+    let conflict = call.context.iter().any(|item| {
+        item.availability == Availability::Included
+            && item.rule.as_ref().is_some_and(|other| {
+                other.key == rule.key
+                    && other.scope == rule.scope
+                    && other.value.as_ref().is_some_and(|other| other != value)
+            })
+    });
+    if !conflict {
+        return None;
+    }
+    let layout = Layout::new(call)?;
+    let partition = layout.partition(
+        &run.source,
+        run.organization_id.as_deref()?,
+        run.user_id.as_deref(),
+    );
+    let key = layout.dispatch_partition(call, workflow, &partition)?;
+    Some(json!({"partition":key,"body":layout.body,"rule":rule.key,"scope":rule.scope}))
 }

@@ -24,6 +24,8 @@ The first command checks formatting, lints, Rust tests, JavaScript and end-to-en
 
 After editing `ui/mcp-app/view.js` or `ui/mcp-app/view.html`, run `npm ci --prefix ui/mcp-app` and `npm run build --prefix ui/mcp-app`. The build refreshes the HTML embedded in the Rust binary and its bundled dependency licenses. Run `npm run check --prefix ui/mcp-app` to verify both generated files before submitting changes.
 
+The dashboard uses A2UI 1.0 for recommendation surfaces. Its official Lit renderer and Basic Catalog are bundled into the Rust binary. After editing `ui/a2ui/surface.js`, run `npm ci --prefix ui/a2ui` and `npm run build --prefix ui/a2ui`. Run `npm run check --prefix ui/a2ui` to verify the bundle and dependency licenses. [A2UI client integration](https://a2ui.org/guides/client-integration/)
+
 ## Send a change
 
 Describe the workflow you were inspecting and the expected result. For an importer, include a minimal synthetic input and show which recorded fields it maps to. For a UI change, include the view and a way to reproduce it with a fixture. For a replay change, include the intervention and the outcome the runner scored.

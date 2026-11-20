@@ -12,7 +12,7 @@
   --effect-lower: light-dark(#a94727, #ef9a7c);
   --effect-higher: light-dark(#275999, #a6cbff);
   --effect-mixed: light-dark(#6749a8, #baa2f6);
-  font: 15px/1.5 "Instrument Sans", system-ui, sans-serif;
+  font: 15px/1.5 system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }

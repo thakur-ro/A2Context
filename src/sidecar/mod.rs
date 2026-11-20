@@ -551,6 +551,9 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             "candidate": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/report.json"))?,
                             "shadow": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/shadow-report.json"))?,
                         }),
+                        Some("exchange-approval") => json!({
+                            "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/exchange-approval/pending.json"))?,
+                        }),
                         _ => json!({
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/preflight-returns.json"))?,
                         }),
@@ -620,6 +623,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
             "/sidecar.js" => Some((
                 "text/javascript; charset=utf-8",
                 include_bytes!("../../ui/sidecar.js"),
+            )),
+            "/sidecar-a2ui.js" => Some((
+                "text/javascript; charset=utf-8",
+                include_bytes!("../../ui/sidecar-a2ui.js"),
             )),
             "/sidecar.css" => Some((
                 "text/css; charset=utf-8",

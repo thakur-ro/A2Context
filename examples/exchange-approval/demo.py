@@ -66,6 +66,8 @@ def pending(case):
     body = {"model":MODEL,"temperature":0,"max_tokens":128,"tools":TOOLS,"messages":messages}
     return {"version":1,"attributes":{
         "gen_ai.request.model":MODEL,
+        "nexusweave.organization.id":"exchange-demo",
+        "service.name":"exchange-agent",
         "nexusweave.request.body":json.dumps(body,separators=(",", ":")),
         "nexusweave.context.semantics":{"version":1,"request_sources":declarations},
     }}

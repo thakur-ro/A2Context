@@ -24,8 +24,8 @@ try {
   assert.ok(await page.locator(".brand img").evaluate(img => img.complete && img.naturalWidth > 0));
   assert.equal(await page.locator("#navigation a").count(), 2);
   await factor(page, "Choice flipped").waitFor();
-  await page.locator(".featured h3").filter({hasText:"The proposed tool changed in 2 of 4 completed runs"}).waitFor();
-  assert.match(await page.locator(".featured p").innerText(), /edit to request-type/);
+  await page.locator(".featured").getByRole("heading", { name:"The proposed tool changed in 2 of 4 completed runs" }).waitFor();
+  await page.locator(".featured").getByText(/edit to request-type/).waitFor();
   if (process.env.FINDINGS_SCREENSHOT) await page.screenshot({ path: process.env.FINDINGS_SCREENSHOT });
   const proposals = page.locator(".proposal-coverage");
   await proposals.locator(":scope > summary").click();

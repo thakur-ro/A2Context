@@ -1,0 +1,16 @@
+{
+  "name": "nexusweave-a2ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check"
+  },
+  "dependencies": {
+    "@a2ui/lit": "0.15.0",
+    "@a2ui/web_core": "0.15.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.3"
+  }
+}

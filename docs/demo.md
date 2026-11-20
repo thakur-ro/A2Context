@@ -1,6 +1,6 @@
 # When the customer stops the second exchange
 
-https://github.com/user-attachments/assets/4d9e0a55-55ef-4680-b0e1-c5b41073c425
+https://github.com/user-attachments/assets/5553d284-dadc-41a9-9c4f-712b637319ed
 
 A support agent verifies the customer, looks up two orders and a replacement product, and requests the first exchange. Before the second write, the customer asks it to leave the puzzle order alone. The agent receives both that message and a cached confirmation that still authorizes both exchanges.
 
@@ -36,6 +36,12 @@ The example attaches a `sandbox_dispatch` receipt to the shadow report. The side
 
 The outcome list counts each identified conversation once within the selected source recommendation and scope. Comparisons share a guard ID, sandbox runner ID, tool, target field and projected state fields. The expected value belongs to each comparison, so a hold and an authorized write can be judged under the same design. Reports that disagree within one conversation open under **Mixed results in one conversation**, with a link for each observed outcome. A conversation without an applicable receipt remains visible as **No comparison with these settings**.
 
+## Check the next exchange before inference
+
+With the demo running, select **Before inference**, then **Check the next exchange**. This request has the same disagreement about the puzzle order and a new customer message asking to pause it. The preview shows the conflict in the current inputs and two distinct earlier requests where the authorization check preserved sandbox state. Open the result to inspect the earlier proposal and the state comparison. Running the preview makes zero model calls. [Pending request](../examples/exchange-approval/pending.json)
+
+To use this lookup in a workflow, provide `service.name` and `nexusweave.organization.id` alongside the pending request. The lookup matches the producer, exact user scope, model, request layout, source revisions, and declared rule values. It excludes the current request body, counts a repeated body once per comparison design, and surfaces disagreements as mixed. The bounded lookup uses at most 128 matching observations. Use a fresh replay to verify the pending request and its outcome.
+
 For a fresh measurement, install Transformers 4.57.6 and PyTorch 2.11.0 and supply the pinned Qwen2.5-0.5B-Instruct checkpoint. The run uses CPU float32 and greedy decoding. [Checkpoint](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/tree/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2)
 
 ```sh
@@ -45,4 +51,4 @@ cmp examples/exchange-approval/results.json /tmp/exchange-replay.json
 python3 tests/check_exchange_demo.py target/debug/nexusweave
 ```
 
-To record the running dashboard again, use `node scripts/record_demo.mjs SIDECAR_URL /tmp/exchange-approval.mp4`. The recorder uses Playwright Chromium and FFmpeg. Set `PLAYWRIGHT_MODULE`, `CHROME_BINARY`, or `FFMPEG` if you installed those tools outside their usual locations.
+To record the running dashboard again, use `node scripts/record_demo.mjs SIDECAR_URL /tmp/exchange-approval.mp4`. The recorder follows the live UI in Chromium, marks the pointer and clicks, and encodes a 1920 × 1080 H.264 MP4 with FFmpeg. Set `PLAYWRIGHT_MODULE`, `CHROME_BINARY`, or `FFMPEG` if you installed those tools outside their usual locations.

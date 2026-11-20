@@ -1,5 +1,6 @@
 """Check the recorded model comparisons and order-state transitions in the demo."""
 
+from copy import deepcopy
 import importlib.util
 import json
 from pathlib import Path
@@ -9,12 +10,13 @@ from tempfile import TemporaryDirectory
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "examples/exchange-approval"
 sys.path.insert(0,str(EXAMPLE.parents[1] / "scripts"))
-from check_sidecar import get, send_traces, server
+from check_sidecar import get, send, send_traces, server
 spec = importlib.util.spec_from_file_location("exchange_demo", EXAMPLE / "demo.py")
 demo = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(demo)
 
 saved = json.loads((EXAMPLE / "results.json").read_text())
+pending = json.loads((EXAMPLE / "pending.json").read_text())
 for case in demo.SCENARIO["cases"]:
     result = saved[case["id"]]
     for arm, choice in result["trials"].items():
@@ -66,6 +68,37 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     linked, = (result for call in calls for result in call["tool_results"]
                if result["tool_call_id"] == decision["tool_call_id"])
     assert json.loads(linked["outcome"])["orders"][demo.PUZZLE["order_id"]] == "exchange_requested"
+
+    def preview(request):
+        result = send(base,"/api/sidecar/preview",{"request":request})[1]
+        return result, result["history"].get("dispatch",{}).get("rows",[])
+
+    current, history = preview(pending)
+    assert [r["kind"] for r in current["recommendations"]] == ["conflict"]
+    earlier, = history
+    assert earlier["inputs"] == earlier["helped"] == 2
+    witness = earlier["example"]
+    match, = get(base,"findings",**{k:witness[k] for k in ("group","factor","trace","call","report")})["rows"]
+    assert match["evidence"]["detail"]["sandbox_dispatch"]["protected"]
+    assert get(base,"impact",**scope) == impact
+
+    # Historical evidence must match both ownership and the declared inputs.
+    for key, value in [("service.name","another-workflow"),("nexusweave.organization.id","another-org"),
+                       ("nexusweave.user.id","another-user"),("nexusweave.history.source","langsmith")]:
+        changed = deepcopy(pending)
+        changed["attributes"][key] = value
+        assert preview(changed)[1] == []
+    wrong_scope = dict(pending,scope={"key":"exchange_authorization","scope":"first order"})
+    assert preview(wrong_scope)[1] == []
+    changed = deepcopy(pending)
+    declarations = changed["attributes"]["nexusweave.context.semantics"]["request_sources"]
+    declarations[1]["rule"]["value"] = "approved"
+    assert preview(changed)[1] == []
+    declarations[1]["rule"]["value"] = "hold"
+    declarations[1]["source_version"] = "v2"
+    assert preview(changed)[1] == []
+    existing = demo.SCENARIO["cases"][0]
+    assert preview(demo.pending(existing))[1] == []
 
 def different_proposal(receipt):
     receipt["proposal"]["outcome"]["order_id"] = "#other-order"
@@ -162,11 +195,15 @@ with TemporaryDirectory() as tmp:
             assert witness["evidence"]["detail"]["sandbox_dispatch"]["outcome"] == example["outcome"]
         assert get(base,"impact")["sandbox_regression_conversations"] == 1
         assert get(base,"factors")["rows"][0]["signal"] == "sandbox_regression"
+        history = send(base,"/api/sidecar/preview",{"request":pending})[1]["history"]
+        earlier, = history["dispatch"]["rows"]
+        assert earlier["inputs"] == 2 and earlier["mixed"] == earlier["helped"] == 1
 
     with sqlite3.connect(database) as db:
-        db.execute("UPDATE observations SET detail=json_remove(detail,'$.sandbox_dispatch.design','$.sandbox_dispatch.outcome')")
-        db.execute("PRAGMA user_version=31")
+        db.execute("UPDATE observations SET detail=json_remove(detail,'$.dispatch_history')")
+        db.execute("PRAGMA user_version=32")
     with server(binary,database,"--capture-content") as base:
         assert summary_for(base,settings) == expected
+        assert send(base,"/api/sidecar/preview",{"request":pending})[1]["history"] == history
 
 print("Verified scoped dispatch outcomes, mixed witnesses, and database upgrade.")

@@ -43,4 +43,6 @@ The local stdio adapter uses the official Rust SDK for Model Context Protocol. [
 
 The embedded conflict view uses the official MCP Apps browser SDK. Its dependency licenses are included with the bundled view. [MCP Apps SDK](https://github.com/modelcontextprotocol/ext-apps), [Bundled JavaScript licenses](LICENSES/MCP-App-JavaScript.txt)
 
+The dashboard uses the official Lit renderer and Basic Catalog for A2UI recommendation cards. [A2UI project](https://github.com/a2ui-project/a2ui) · [Bundled JavaScript licenses](LICENSES/A2UI-JavaScript.txt)
+
 The importers follow trace and attribute formats published by OpenTelemetry, OpenInference, and LangSmith. [OTLP specification](https://opentelemetry.io/docs/specs/otlp/), [OpenInference semantic conventions](https://arize-ai.github.io/openinference/spec/attributes/semantic-conventions.html), [LangSmith run format](https://docs.langchain.com/langsmith/run-data-format)
