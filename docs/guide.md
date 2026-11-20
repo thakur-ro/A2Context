@@ -390,6 +390,10 @@ Read `baseline_log_odds` and each edit's `log_odds` and `change_log_odds`. The r
 | `stock` over `price` | +8.27 | Change the requested operation to price | −8.96 |
 | `stock` over `price` | +8.27 | Rename the store | +8.18 |
 
+### Score an LFM2 request on Apple Silicon
+
+Pass `python3 scripts/score_mlx_candidates.py MODEL_DIR --model-id MODEL_ID --revision REVISION` after the same `probe-candidates … --` command. Supply a local LFM2 MLX checkpoint and the message and tool representation your service actually renders. The optional `--token-steps` returns the candidate and top-token scores at each position. The travel example reconstructs a captured tool response, changes only its wording and loads the verified scores into **Before inference**. [Runnable MLX example](../examples/bfcl-transfer/mlx/feedback/README.md#open-the-measured-request-in-nexusweave)
+
 ### Connect another scoring runtime
 
 The CLI sends one JSON `ScoringRequest` on stdin. It contains `version: 1`, `assistant_prefix`, the two `candidates`, and `conditions`. Each condition contains an `id` and a `request`. The original request comes first as `baseline`. NexusWeave verifies all source edits before calling the scorer.

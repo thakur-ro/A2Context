@@ -13,6 +13,8 @@ LiquidAI’s 8-bit LFM2.5-1.2B-Instruct completed four of the six first turns wi
 
 All nine reference callbacks ran through the MLX parser and shared argument validator. All six positive controls passed. No-call controls missed the reference actions and results on every task. The two unchanged runs matched on prompts, generated text, callback dispositions, returns and state. Each process used 15 generations, 68,313 input tokens and 838 output tokens. Generation took 22.29 seconds in the first process and 21.38 in the second on this host. [Independent repeat](verification.json)
 
+The first fare error on task 150 became a separate intervention study. We measured the next inference and the simulator outcome under three error wordings. [Follow that call](feedback/README.md)
+
 ## Reproduce
 
 Use the upstream checkout described in the original study and the same Qwen-Agent argument-validator environment. On Apple Silicon add `mlx==0.32.4`, `mlx-lm==0.32.2` and the Transformers version used by this MLX environment, `5.23.0`. Download the MLX checkpoint at revision `ce5150fd0de58d2bba8d88cc87f13e4fbda5977a` separately. The runner verifies the eight local file digests before loading weights. All tools run against a fresh in-memory simulator. [Model checkpoint](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-MLX-8bit/tree/ce5150fd0de58d2bba8d88cc87f13e4fbda5977a) · [Upstream data and validator setup](../README.md#reproduce)

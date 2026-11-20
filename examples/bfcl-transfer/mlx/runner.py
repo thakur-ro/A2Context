@@ -9,7 +9,7 @@ from time import perf_counter
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-from inputs import digest, new_sim
+from inputs import digest, new_sim, public_state
 from staging import MARKER, SYSTEM, TravelTool, text_hash, workflow_score
 from mlx_activation import prompt_input
 from activation_timeline import tool_payload
@@ -48,7 +48,7 @@ def proposals(tokenizer, raw, schemas):
     return parsed if isinstance(parsed, list) else [parsed]
 
 
-def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None):
+def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None, audit=None, first_feedback=None, before_second=None):
     from mlx_lm import stream_generate
     from mlx_lm.sample_utils import make_sampler
 
@@ -59,6 +59,10 @@ def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None):
     stop = "completion_bound"
     for index in range(3):
         prompt, ids, _, _ = prompt_input(tokenizer, messages, tools)
+        if audit is not None:
+            audit.append({"prompt":prompt,"tokens":ids,"messages":list(messages),"callbacks":[]})
+        if index == 1 and before_second is not None:
+            before_second(prompt, ids)
         if scripted is None:
             start = perf_counter()
             output = list(stream_generate(model, tokenizer, ids, max_tokens=128, sampler=make_sampler(temp=0)))
@@ -88,8 +92,13 @@ def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None):
             name, args = call["name"], call["arguments"]
             event = {"name":name,"native_arguments_sha256":digest(args),"status":"unknown_tool"}
             events.append(event)
+            if audit is not None:
+                before = digest(public_state(sim))
             result = registry[name].call(json.dumps(args)) if name in registry else "Unknown travel tool."
-            results.append(result)
+            if audit is not None:
+                audit[-1]["callbacks"].append({"name":name,"arguments":args,"returned":result,
+                                              "before":before,"after":digest(public_state(sim))})
+            results.append(first_feedback if len(events) == 1 and first_feedback is not None else result)
         messages.extend([{"role":"assistant", "content":raw},
                          {"role":"tool", "content":json.dumps(results, ensure_ascii=False)}])
     return {**workflow_score(pkt, cls, sim, events, stop), "generations":receipts,
