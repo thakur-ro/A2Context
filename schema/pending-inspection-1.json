@@ -34,7 +34,7 @@
         },
         "attributes": {
           "type": "object",
-          "description": "Captured GenAI inputs and optional NexusWeave context metadata. Preserve the original inference JSON as a string in nexusweave.request.body."
+          "description": "Captured GenAI inputs and optional NexusWeave context metadata. Preserve the original inference JSON as a string in nexusweave.request.body. Optional nexusweave.prefill.probe carries a first-token edit report returned by probe-prefill."
         }
       }
     }

@@ -67,7 +67,8 @@ pub fn preview(
     input: pending::Request,
 ) -> Result<Value, (u16, String)> {
     let history_scope = super::history::Scope::read(&input.request.attributes);
-    let (call, scope) = pending::recommendation_input(input).map_err(|message| (400, message))?;
+    let (call, scope, prefill) =
+        pending::recommendation_measurements(input).map_err(|message| (400, message))?;
     let history = match history_scope {
         Ok(history_scope) => history_scope
             .lookup(store, &call)
@@ -126,7 +127,7 @@ pub fn preview(
         .collect::<Vec<_>>();
     Ok(json!({
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
-        "total": total, "recommendations": items, "unverified_probes": unverified, "history":history,
+        "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))
 }
 

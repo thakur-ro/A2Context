@@ -29,6 +29,7 @@ const USAGE: &str = "Usage:
   nexusweave inspect-pending <input.json|->
   nexusweave screen-context <request.json> <selection.json|-> <report.json> [-- <scorer> [args...]]
   nexusweave screen-recorded-context <evidence.json> <run-id> <call-id> <selection.json|-> <output.json> [-- <scorer> [args...]]
+  nexusweave probe-prefill <request.json> <edits.json> <preview.json> -- <scorer> [args...]
   nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
   nexusweave shadow <request.json> <case.json> <report.json> -- <runner> [args...]
   nexusweave query-conflicts <view.json> <evidence.json> [...]
@@ -215,6 +216,18 @@ fn run(args: Vec<String>) -> Result<()> {
             println!(
                 "Screened {screened} of {total} context pairs and saved evidence to {output}."
             );
+        }
+        ["probe-prefill", request, edits, output, "--", program, args @ ..] => {
+            if Path::new(output).exists() {
+                return Err(format!("first-token output already exists: {output}").into());
+            }
+            let input = serde_json::from_reader(fs::File::open(request)?)?;
+            let edits = serde_json::from_reader(fs::File::open(edits)?)?;
+            let preview = replay::prefill::measure(input, edits, |batch| {
+                run_json(program, args, batch, Stdio::inherit()).map_err(|error| error.to_string())
+            })?;
+            write_new(output, &serde_json::to_vec_pretty(&preview)?)?;
+            println!("Saved the measured pending request to {output}.");
         }
         ["probe-candidates", request, specification, output, "--", program, scorer_args @ ..] => {
             if Path::new(output).exists() {

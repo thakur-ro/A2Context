@@ -173,6 +173,19 @@ try {
   await mobile.getByText("59.7% probability outside this pair", { exact: true }).waitFor();
   await mobile.getByRole("heading", { name: "Check which other answers are plausible" }).waitFor();
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
+  for (const device of [page, mobile]) {
+    await device.goto(base + "/?view=preview&scenario=prefill");
+    await device.getByRole("heading", { name: "Test the edit to request-type" }).waitFor();
+    await device.getByText("Request type: price.", { exact: true }).waitFor();
+    await device.getByText("Compare source edits", { exact: true }).click();
+    assert.deepEqual(await device.locator("#content tbody tr td:last-child").allTextContents(), ["0.000169 bits", "0.00000469 bits"]);
+    assert.equal(await device.evaluate(() => document.body.scrollWidth <= innerWidth), true);
+    if (device === page && process.env.PREFILL_SCREENSHOT) {
+      await device.locator(".panel").filter({hasText:"Before the first output token"}).screenshot({path:process.env.PREFILL_SCREENSHOT});
+    }
+    await device.getByRole("link", {name:"Compare the measured tool proposals"}).click();
+    await device.getByRole("link", {name:"Check the same edits before the first token"}).waitFor();
+  }
   assert.deepEqual(errors, []);
   console.log("Verified recommendations, before-inference preview, measured choices and tokens, legacy links, and desktop and mobile layouts.");
 } finally {

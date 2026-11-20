@@ -72,3 +72,110 @@ fn verifies_an_external_screen_against_the_pending_text() {
     assert_eq!(stale["screening"]["status"], "unverified");
     assert!(stale["screening"]["report"].is_null());
 }
+
+#[test]
+fn binds_first_token_ranking_to_the_same_edits_as_the_tool_proposals() {
+    let request: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/prefill-preview.json"
+    ))
+    .unwrap();
+    let shadow: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/shadow-report.json"
+    ))
+    .unwrap();
+    let attr = nexusweave::replay::prefill::ATTRIBUTE;
+    let envelope = json!({"request":request});
+    let view = inspection(envelope.clone());
+    let ranked = view["prefill"]["ranked"].as_array().unwrap();
+    assert_eq!(ranked.len(), 2);
+    assert!(ranked[0]["js_bits"].as_f64().unwrap() > ranked[1]["js_bits"].as_f64().unwrap());
+    for (row, effect) in ranked.iter().zip(shadow["effects"].as_array().unwrap()) {
+        assert_eq!(row["context_id"], effect["intervention"]["context_id"]);
+        assert_eq!(row["request_sha256"], effect["request_sha256"]);
+    }
+    let evidence = pending::evidence(
+        serde_json::from_value(json!({"input":envelope})).unwrap(),
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        evidence["prefill"]["ranked"][0]["js_bits"],
+        ranked[0]["js_bits"]
+    );
+    assert!(evidence["prefill"]["ranked"][0]
+        .get("replacement")
+        .is_none());
+    assert_eq!(ranked[0]["replacement"], "Request type: price.");
+    assert!(!evidence["prefill"]
+        .to_string()
+        .contains("Request type: price."));
+
+    for (field, value) in [
+        ("js_bits", json!(-0.1)),
+        ("js_bits", json!(1.1)),
+        ("request_sha256", json!("wrong")),
+        ("context_id", json!("other")),
+        ("source_version", json!("other")),
+    ] {
+        let mut input = envelope.clone();
+        input["request"]["attributes"][attr]["scores"]["effects"][0][field] = value;
+        assert!(pending::inspect(serde_json::from_value(input).unwrap()).is_err());
+    }
+    let mut swapped = envelope.clone();
+    swapped["request"]["attributes"][attr]["interventions"]
+        .as_array_mut()
+        .unwrap()
+        .swap(0, 1);
+    assert!(pending::inspect(serde_json::from_value(swapped).unwrap()).is_err());
+    let mut raw = envelope;
+    let attributes = &mut raw["request"]["attributes"];
+    let mut body: Value =
+        serde_json::from_str(attributes["nexusweave.request.body"].as_str().unwrap()).unwrap();
+    body["temperature"] = json!(0.8);
+    attributes["nexusweave.request.body"] = json!(body.to_string());
+    assert!(pending::inspect(serde_json::from_value(raw).unwrap()).is_err());
+}
+
+#[test]
+fn prefill_validates_all_edits_before_calling_the_adapter() {
+    use nexusweave::replay::prefill;
+    let raw: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/prefill-preview.json"
+    ))
+    .unwrap();
+    let probe = &raw["attributes"][prefill::ATTRIBUTE];
+    let input = || serde_json::from_value(raw.clone()).unwrap();
+    let edits = &probe["interventions"];
+    let result = prefill::measure(
+        input(),
+        serde_json::from_value(edits.clone()).unwrap(),
+        |batch| {
+            assert_eq!(
+                batch["baseline_request_sha256"],
+                probe["scores"]["baseline_request_sha256"]
+            );
+            for (edit, effect) in batch["edits"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .zip(probe["scores"]["effects"].as_array().unwrap())
+            {
+                assert_eq!(edit["request_sha256"], effect["request_sha256"]);
+                assert_eq!(edit["source_id"], effect["source_id"]);
+            }
+            Ok(serde_json::from_value(probe["scores"].clone()).unwrap())
+        },
+    )
+    .unwrap();
+    assert_eq!(result.attributes[prefill::ATTRIBUTE], *probe);
+    let mut invalid = edits.clone();
+    invalid[1]["pointer"] = json!("/messages/0/content");
+    for cases in [json!([]), json!([edits[0], edits[0]]), invalid] {
+        assert!(
+            prefill::measure(input(), serde_json::from_value(cases).unwrap(), |_| panic!(
+                "invalid plan invoked scorer"
+            ))
+            .is_err()
+        );
+    }
+}

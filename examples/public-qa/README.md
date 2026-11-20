@@ -2,6 +2,8 @@
 
 A retrieval workflow sent ten passages to a small language model. Before the model answered, we replaced each passage in turn and measured the shift in its next-token probabilities. We ranked those edits, then let the model answer all eleven requests. This checks whether a large early shift identifies a source worth testing when the workflow has no candidate answers.
 
+The [fresh-question evaluation](holdout.md) tests the same ranking on 20 additional questions with its primary comparison fixed in advance.
+
 ## What changed in the answers?
 
 In the first order, editing the passage ranked first by the model changed the generated text on **8 of 10 questions**. Testing the first passage in the prompt gave the same count for a fraction of the work. The model selected the annotated answer passage once. On one question, its largest shift was on a passage about the film *Terminator Genisys* when the question asked about the original film. Removing that passage changed the answer from “Jason Clarke” to “Michael Edwards,” which matched a dataset alias.

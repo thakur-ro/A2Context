@@ -643,6 +643,30 @@ function priorEdits(history, hasCurrentScores) {
       element("p", { className: "label", text: "Each count is a distinct earlier input. Mixed means repeat tests on that input disagreed about whether the match rate fell." })));
 }
 
+function firstTokenPreview(probe) {
+  const [top] = probe.ranked;
+  const tied = probe.ranked.filter((row) => row.js_bits === top.js_bits).length;
+  const name = (row) => row.source || row.context_id;
+  const bits = (value) => Number(value.toPrecision(3)).toString() + " bits";
+  const rows = probe.ranked.map((row) => element("tr", {},
+    element("th", { scope: "row", text: name(row), title: row.version || row.context_id }),
+    element("td", {}, element("meter", { min: 0, max: top.js_bits || 1, value: row.js_bits, "aria-label": name(row) + " divergence" })),
+    element("td", { text: bits(row.js_bits) })));
+  return element("section", { className: "panel replacement" },
+    element("span", { className: "label", text: "Before the first output token" }),
+    element("h2", { text: top.js_bits === 0 ? "The tested edits left the first-token distribution unchanged" :
+      tied === 1 ? "Test the edit to " + name(top) : plural(tied, "source edit") + " tied for the largest shift" }),
+    element("p", { text: "Largest shift across " + plural(rows.length, "tested edit") + " · " + bits(top.js_bits) +
+      " of Jensen–Shannon divergence. Replay the original and edited requests to see whether the answer or tool call changes." }),
+    tied === 1 && top.before !== undefined ? element("div", { className: "comparison" },
+      element("div", {}, element("strong", { text: "Original" }), element("code", { text: top.before })),
+      element("div", {}, element("strong", { text: "Edited" }), element("code", { text: top.operation === "remove_json" ? "(Removed)" : top.replacement }))) : null,
+    element("details", {}, element("summary", { text: "Compare source edits" }),
+      element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Relative to largest shift", "Divergence"].map(
+        (text) => element("th", { scope: "col", text })))), element("tbody", {}, ...rows)),
+      element("p", { className: "label", text: probe.model_id + " · " + probe.model_revision + " · " + probe.runtime })));
+}
+
 function pendingPreview() {
   const output = element("section", { className: "feed", "aria-live": "polite" });
   const input = element("input", { type: "file", accept: "application/json,.json" });
@@ -670,11 +694,12 @@ function pendingPreview() {
       }
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
-          " · " + plural(report.total, "current-request finding") }),
+          " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
         ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
-        ...current, priorEdits(report.history, current.length > 0), followUp, ...findings,
-        report.total ? element("p", { className: "label", text: report.total > 15 ? "Showing the first 15 recommendations." : "" }) :
-          element("p", { className: "empty", text: "No supported issues or measured shifts in this request." })].filter(Boolean));
+        report.prefill ? firstTokenPreview(report.prefill) : null,
+        ...current, priorEdits(report.history, current.length > 0 || Boolean(report.prefill)), followUp, ...findings,
+        report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
+        !report.total && !report.prefill ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
       if (currentLoad === sequence) output.textContent = error.message;
     }
@@ -696,7 +721,8 @@ function pendingPreview() {
   const policy = element("button", { type: "button", text: "Try a policy conflict" });
   policy.addEventListener("click", () => show(() => api("preview-example", { scenario: "policy" })));
   const routing = element("button", { type: "button", text: "Try a measured tool choice" });
-  routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" })));
+  const prefillLink = link("Check the same edits before the first token", url({ view: "preview", scenario: "prefill" }), "action");
+  routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" }), prefillLink));
   const history = element("button", { type: "button", text: "Check a new request against earlier edits" });
   history.addEventListener("click", () => {
     const scores = element("button", { type: "button", text: "Compare with model scores for this request" });
@@ -704,8 +730,10 @@ function pendingPreview() {
     show(() => api("preview-example", { scenario: "prior-only" }), scores);
   });
   const scenario = query.get("scenario");
-  if (["scored-history", "warranty", "routing", "policy", "history"].includes(scenario)) {
-    show(() => api("preview-example", { scenario }));
+  if (["scored-history", "warranty", "routing", "policy", "history", "prefill"].includes(scenario)) {
+    const next = scenario === "prefill" ? link("Compare the measured tool proposals", url({ view: "preview", scenario: "routing" }), "action") :
+      scenario === "routing" ? prefillLink : null;
+    show(() => api("preview-example", { scenario }), next);
   }
   return element("div", { className: "feed" }, panel("Review an assembled request",
     element("label", { text: "Load a preflight request or a request bundled with probe results" }, input),

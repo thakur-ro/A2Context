@@ -60,13 +60,14 @@ pub fn inspect(input: Request) -> Result<Value, String> {
         request,
         scope,
         preflight,
-    } = prepare(input)?;
+        prefill,
+    } = prepare(input, true)?;
     let fields = request
         .as_ref()
         .map(|body| replay::request_field_matches(&call, body))
         .transpose()?;
     Ok(json!({
-        "version": 1,
+        "version": 1, "prefill":prefill,
         "model": call.model,
         "context": call.context,
         "request_fields": fields,
@@ -92,7 +93,8 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
         request,
         scope,
         preflight,
-    } = prepare(query.input)?;
+        prefill,
+    } = prepare(query.input, query.include_excerpts)?;
     let excerpts = query.include_excerpts;
     let fields: BTreeMap<_, _> = match request.as_ref() {
         Some(body) => replay::request_field_matches(&call, body)?
@@ -136,7 +138,7 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
     let next = (rows.len() > query.limit).then(|| query.offset.saturating_add(query.limit));
     rows.truncate(query.limit);
     Ok(json!({
-        "kind": "pending_evidence", "version": 1, "model": call.model,
+        "kind": "pending_evidence", "version": 1, "prefill":prefill, "model": call.model,
         "captured_inputs": call.context.len(), "original_request_captured": request.is_some(),
         "captured_excerpts_enabled": allow_excerpts,
         "preflight": {"scope": scope, "finding_count": preflight.findings.len(),
@@ -151,18 +153,33 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
 /// Normalize a pending request and its supplied probes for recommendation logic.
 /// The call retains captured input and must be treated as sensitive.
 pub fn recommendation_input(input: Request) -> Result<(Call, Option<DecisionScope>), String> {
-    let Inspected { call, scope, .. } = prepare(input)?;
+    let (call, scope, _) = recommendation_measurements(input)?;
     Ok((call, scope))
 }
 
+/// Return verified first-token edit measurements alongside the pending call.
+pub fn recommendation_measurements(
+    input: Request,
+) -> Result<(Call, Option<DecisionScope>, Option<Value>), String> {
+    let Inspected {
+        call,
+        scope,
+        prefill,
+        ..
+    } = prepare(input, true)?;
+    Ok((call, scope, prefill))
+}
+
 struct Inspected {
+    prefill: Option<Value>,
     call: Call,
     request: Option<Value>,
     scope: Option<DecisionScope>,
     preflight: preflight::Report,
 }
 
-fn prepare(input: Request) -> Result<Inspected, String> {
+fn prepare(mut input: Request, excerpts: bool) -> Result<Inspected, String> {
+    let raw = input.request.attributes.remove(replay::prefill::ATTRIBUTE);
     let (mut call, request, scope) = preflight::pending_call(input.request)?;
     let preflight = preflight::report_for_pending(&call, scope.clone());
     if let Some(report) = input.screening {
@@ -192,7 +209,9 @@ fn prepare(input: Request) -> Result<Inspected, String> {
             reports: Some(vec![report]),
         });
     }
+    let prefill = replay::prefill::read(raw, &call, request.as_ref(), excerpts)?;
     Ok(Inspected {
+        prefill,
         call,
         request,
         scope,

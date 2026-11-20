@@ -371,6 +371,9 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             }
                             fixture
                         }
+                        Some("prefill") => json!({
+                            "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/prefill-preview.json"))?,
+                        }),
                         Some("routing") => json!({
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/request.json"))?,
                             "candidate": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/report.json"))?,

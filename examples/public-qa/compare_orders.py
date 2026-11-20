@@ -11,6 +11,20 @@ from urllib.request import urlopen
 from check_passage_edits import summarize
 
 
+def check_study(study):
+    for case in study["cases"]:
+        edits = case["edits"]
+        if [e["position"] for e in edits] != list(range(1, 11)):
+            raise ValueError("Expected ten numbered passage edits.")
+        if any(not math.isfinite(e["js_bits"]) or not 0 <= e["js_bits"] <= 1 for e in edits):
+            raise ValueError("Expected finite Jensen–Shannon divergences between zero and one bit.")
+        for ranking, score in (("top_js", "js_bits"), ("top_bm25", "bm25")):
+            if max(edits, key=lambda e: e[score])["position"] != case[ranking]:
+                raise ValueError(f"Saved {ranking} differs from its passage scores.")
+    if summarize(study["cases"]) != study["summary"]:
+        raise ValueError("Saved summary differs from the individual trials.")
+
+
 def compare(first, second):
     for key in ("dataset_sha256", "model", "revision", "runtime", "tokenizer_sha256"):
         if first[key] != second[key]:
@@ -18,17 +32,7 @@ def compare(first, second):
     if (second["rotation"] - first["rotation"]) % 10 != 5:
         raise ValueError("Expected passage positions to differ by five slots.")
     for study in (first, second):
-        for case in study["cases"]:
-            edits = case["edits"]
-            if [e["position"] for e in edits] != list(range(1, 11)):
-                raise ValueError("Expected ten numbered passage edits.")
-            if any(not math.isfinite(e["js_bits"]) or not 0 <= e["js_bits"] <= 1 for e in edits):
-                raise ValueError("Expected finite Jensen–Shannon divergences between zero and one bit.")
-            for ranking, score in (("top_js", "js_bits"), ("top_bm25", "bm25")):
-                if max(edits, key=lambda e: e[score])["position"] != case[ranking]:
-                    raise ValueError(f"Saved {ranking} differs from its passage scores.")
-        if summarize(study["cases"]) != study["summary"]:
-            raise ValueError("Saved summary differs from the individual trials.")
+        check_study(study)
 
     selected_source = selected_position = changed_baseline = 0
     for before, after in zip(first["cases"], second["cases"], strict=True):

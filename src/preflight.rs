@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 const VERSION: u32 = 1;
 
 /// The context about to be sent for one inference request.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Request {
     /// Preflight format version. The current version is `1`.

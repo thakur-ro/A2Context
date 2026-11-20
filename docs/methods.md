@@ -127,7 +127,9 @@ python3 examples/redundant-routing/check_prior_edits.py --url http://127.0.0.1:8
 
 ### Which source would you test without candidate answers?
 
-An optional Qwen experiment ranks named passages before generating the first answer token. It measures the change in the full next-token distribution under each individual passage edit. A second pass decodes every condition so an engineer can check whether the suggested edit changed the answer. Each verified replay can be opened in the sidecar. [Public QA experiment, baselines and limits](../examples/public-qa/README.md)
+For the baseline and each named edit, the instrumented runner reads the full next-token distribution at the empty assistant prefix, before sampling. For distributions `P` and `Q`, it computes `M = (P + Q) / 2` and reports `(KL(P || M) + KL(Q || M)) / 2` in bits. Zero means identical distributions. One bit is the upper bound. The score measures sensitivity to this edit. A decoder can still choose the same answer, and a later token can change after a small initial shift.
+
+The Rust sidecar ranks the tested edits by the adapter's reported divergence and retains their exact request digests. A separate replay can establish whether the generated answer or tool call changed. The public QA study compares this ranking with position and retrieval baselines, including a fixed fresh-question cohort. [Run the prefill probe](sidecar.md#measure-an-edit-before-the-first-output-token) · [Pilot](../examples/public-qa/README.md) · [Fresh-question protocol and results](../examples/public-qa/holdout.md)
 
 ## Reproduction
 

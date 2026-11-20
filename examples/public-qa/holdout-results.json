@@ -1,0 +1,2304 @@
+{
+  "cohort": "holdout",
+  "scoring_seconds": [
+    9.500444749952294,
+    10.477958583040163,
+    10.920905250008218,
+    14.931083375005983,
+    9.58684975001961,
+    11.983432332985103,
+    10.083424916956574,
+    10.794115457916632,
+    12.195966791943647,
+    10.965540541918017,
+    11.621267208014615,
+    12.912369124940597,
+    11.80744754197076,
+    11.0382878750097,
+    10.319375458988361,
+    9.791800374980085,
+    10.121919750003144,
+    13.147941250004806,
+    16.133772125001997,
+    15.027447624946944
+  ],
+  "finished_unix_ns": 1795151576372869000,
+  "rotation": 0,
+  "dataset_sha256": "f8425253dafc19cd9de31c06ab6c8b57d4da2bf48b8ea2d0790b805fb3aa1968",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+  "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+  "cases": [
+    {
+      "row": 1000,
+      "question_sha256": "2b00c535f9d286903f6933654114f2cba529d2790512e35632fdb74a73959abf",
+      "prompt_tokens": 1313,
+      "top_js": 1,
+      "top_bm25": 1,
+      "baseline": null,
+      "baseline_alias_match": null,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "4384790a218bd98035260d2af8c3df29f100d23ef64efbee5e2ab5424a474e64",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.09190553494794003,
+          "bm25": 3.058214410151083,
+          "answer": "The Saskatchewan River starts in the Canadian Rockies and ends in the Hudson Bay.",
+          "alias_match": true
+        },
+        {
+          "position": 2,
+          "passage_sha256": "18b672e0d353acbb6bcb99ef8a6dcf75d546c1c9fdf427ba51ea1305af5733f9",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.06229046715668022,
+          "bm25": 0.512101957659069,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 3,
+          "passage_sha256": "789dc8633b222190818f6c803c45de1dbd61b0f1842a86cc71eaf341ba24316d",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.02329193665724072,
+          "bm25": 0.4899232620569552,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 4,
+          "passage_sha256": "adc841cc456db517c98d7d7ea666d85d274a3241e8a893908c6d4e10e9ad8d60",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.017740703941814793,
+          "bm25": 0.4879346199497427,
+          "answer": "The Saskatchewan River starts at the confluence of the Bow and Oldman Rivers near Grassy Lake, Alberta. It then flows east into central Saskatchewan, joining the South Saskatchewan River at Saskatchewan River Forks.",
+          "alias_match": true
+        },
+        {
+          "position": 5,
+          "passage_sha256": "9e9a08b252e5ca320520c781527f739eb7e0d8fc6cf5119a507f49e472867c79",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.014175105861079984,
+          "bm25": 1.4104185330945704,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 6,
+          "passage_sha256": "b50f80fd06f2f5648d49d5291b030ba174dd70665884c722c75f861ad4b6ce93",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.009504827762591657,
+          "bm25": 0.4814996655232665,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 7,
+          "passage_sha256": "31c296754ac30b82ea70b1aa3e2844d2f06891bd43d9fbf5511294028417cf56",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.006525706272636,
+          "bm25": 2.7033357804169844,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 8,
+          "passage_sha256": "3c349e374c6ac50fc7878334904c1604dfe74cfc54c0d152eb9e6d2c2d6e83db",
+          "is_gold": false,
+          "retrieval_index": 10,
+          "js_bits": 0.008152098877699718,
+          "bm25": 1.6908239442737305,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 9,
+          "passage_sha256": "cfa0fa0a3ecfb9c343b2c531b820fb18f8ad494a42d7323976ecb907599c3d92",
+          "is_gold": false,
+          "retrieval_index": 11,
+          "js_bits": 0.02524090640546616,
+          "bm25": 0.4833411924210026,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 10,
+          "passage_sha256": "55001283bee561a6b074aef40f55c87c5b74c27ac54e738ceae15bed4183995b",
+          "is_gold": false,
+          "retrieval_index": 12,
+          "js_bits": 0.038652233647310505,
+          "bm25": 0.46293344495116245,
+          "answer": null,
+          "alias_match": null
+        }
+      ]
+    },
+    {
+      "row": 1050,
+      "question_sha256": "cefc5bbeda05a04247eff45ccc668850fef9335541f7620757ee68a4f7cf1dd5",
+      "prompt_tokens": 1460,
+      "top_js": 2,
+      "top_bm25": 5,
+      "baseline": "Library Literature and Information Science",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "018601ac2eb41f8e84e8f61bcbfa0517283709a5c714fad1c7f0cc75050366dd",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.026291081220245503,
+          "bm25": 2.7096266666416993,
+          "answer": "Library Literature and Information Science",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "84321119eb20a135d49698bdf90447261281d3263edd6f58c2858c70acc29d6d",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.7647152369372829,
+          "bm25": 2.4346928901547478,
+          "answer": "SQLite database",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "f83ddce0e1be1d1e7749831097d5504d308da0572082c3972e93c4b83ad79348",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.27697130614524756,
+          "bm25": 3.0102929533382783,
+          "answer": "Library Literature and Information Science",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "2a46bf98a8c232434b97cdef27b8adf0b131fe9683df820b4a274b99f33b28f8",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.01774288968744175,
+          "bm25": 1.58480105196993,
+          "answer": "Library Literature and Information Science",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "b63fbe72ca1cfcc950ad54c7b16155b6bd2ae3161709765117e7e0ee669471fc",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.187398445122437,
+          "bm25": 3.2014589963446998,
+          "answer": "Social Sciences Citation Index",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "96993558565e6842c49b26dba73b459f2ac389004da56334b0bcb32a38c1915e",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.036933989160358706,
+          "bm25": 2.112214160624798,
+          "answer": "Library and Information Science Abstracts",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "f57a9fad7607a020d0c2a65f8411f94fcb8782b3bf63d6418691eb0dc3969328",
+          "is_gold": false,
+          "retrieval_index": 11,
+          "js_bits": 0.01680760367563652,
+          "bm25": 2.955105948868853,
+          "answer": "Library Literature and Information Science",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "a650c1891485d1b0f065e5febf356390f22a32a5f7760122bd95a6b1ab97e1b0",
+          "is_gold": false,
+          "retrieval_index": 14,
+          "js_bits": 0.034111863453901,
+          "bm25": 1.1536059313943945,
+          "answer": "Library and Information Science Abstracts",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "3ba93f833bb16de831528b794e67ef85ac1fba20bf7a99275b6d4c04b4637e89",
+          "is_gold": false,
+          "retrieval_index": 15,
+          "js_bits": 0.06315226817736826,
+          "bm25": 2.0525381272030905,
+          "answer": "Library Literature and Information Science",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "8ad18a708e76fcae37f505e46d3e9b1cae9b229304ec54e0997ea292f8407aa0",
+          "is_gold": false,
+          "retrieval_index": 17,
+          "js_bits": 0.054637247418716985,
+          "bm25": 2.4179240289112522,
+          "answer": "Library and Information Science Abstracts",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1100,
+      "question_sha256": "6f8849190708917416484521ea73312e96cd429200f3714346a90db816d2f869",
+      "prompt_tokens": 1509,
+      "top_js": 10,
+      "top_bm25": 1,
+      "baseline": "Vespucci",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "6b1abeb49763c98dffb59587ddfeff798d5bce8389cca596b85733ac3c435e49",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.1066255667732318,
+          "bm25": 4.324779121854582,
+          "answer": "Vespucci",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "7a0b40eb19c72ea4cc1766ef7bbb9e79a0bd672e7165f658c3af1728825418f1",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.00801328642848803,
+          "bm25": 1.9271160798939007,
+          "answer": "Vespucci",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "d09cee001354ab9af24e85b7b2240408896dd1bfbfae144a178abcee97fa1ca6",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.02758044258306013,
+          "bm25": 3.0974547370792855,
+          "answer": "Vespucci",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "9fb37327b9b3689b20261b80fc8e9069fe8ac0f9b184bdf72265da443c3138bc",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.025766587279406276,
+          "bm25": 0.5424703839361799,
+          "answer": "Vespucci",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "a9595bed61644257500251150ed95cef15f14426fceb89583ed978787f9c87a1",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.0520974274929863,
+          "bm25": 2.155638427872515,
+          "answer": "Vespucci",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "648cdeea8fc5bb63120cf9ad88d58150046859c5e5d004532ecc5c286712a965",
+          "is_gold": false,
+          "retrieval_index": 10,
+          "js_bits": 0.07715267897970618,
+          "bm25": 2.579861123440996,
+          "answer": "Vespucci",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "455cca5653cc02584314e6ba82a2faa0818b8d5235be62e222b187615d60c3cc",
+          "is_gold": false,
+          "retrieval_index": 11,
+          "js_bits": 0.07589084051353065,
+          "bm25": 3.6251012849041038,
+          "answer": "North America",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "fbdd0aefc8ece4694f2240bd5727fe148af98580783d02e63fe0cdc2f3ab07cb",
+          "is_gold": false,
+          "retrieval_index": 12,
+          "js_bits": 0.07727538666514339,
+          "bm25": 1.0590473688902797,
+          "answer": "Vespucci",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "5e5b9ef5b5a217f30acfb98e0257bd4e3ea8289f410e76c20df5cb3c47456021",
+          "is_gold": false,
+          "retrieval_index": 13,
+          "js_bits": 0.041375578811136,
+          "bm25": 0.5442169019297066,
+          "answer": "Vespucci",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "8945b6bd66a6564f778339ad6191f7ec76b336188a39531c0883b1d14b68486e",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.14046720569100557,
+          "bm25": 3.1519060908761967,
+          "answer": "Vespucci",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1150,
+      "question_sha256": "bba0db6bfecbdf9ab1f5d0819935f142a9eb756178b0d34c6fed6f71d601b0e2",
+      "prompt_tokens": 1918,
+      "top_js": 4,
+      "top_bm25": 5,
+      "baseline": "There are 9 seasons of \"Rugrats\".",
+      "baseline_alias_match": true,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "cc54fcba1a524484a26f087dc451f12e175aa972b125e4cc1e4ed4a42567edfc",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.08140452296503446,
+          "bm25": 0.2114541560248498,
+          "answer": "9 seasons",
+          "alias_match": true
+        },
+        {
+          "position": 2,
+          "passage_sha256": "fb33de7c41122c88ef8d39018b945334d1d525325c2714a725e0780ffaf97fc2",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.08637352926014617,
+          "bm25": 1.2217794161934923,
+          "answer": "9 seasons",
+          "alias_match": true
+        },
+        {
+          "position": 3,
+          "passage_sha256": "b033233ea3a505997f7f68e0e1d88b1e01417cc443aa464beb9000fae6b4b196",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.07158243688884545,
+          "bm25": 1.335721591363236,
+          "answer": "13",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "21d0672dde198b41977596a18bf165131d607f75c48b8f7acd3a2ea41e4e5f69",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.1753556460046939,
+          "bm25": 0.7772289266019848,
+          "answer": "3",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "6a12ad41971140a80f086b71163b4c4843af26391650c6c41af33412489556bb",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.09488835503359398,
+          "bm25": 3.0155767580673576,
+          "answer": "9 seasons",
+          "alias_match": true
+        },
+        {
+          "position": 6,
+          "passage_sha256": "2bcfca095258d5e5c73011c922a288cfb38af8d8a422b69c5453a5d309c9750b",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.04483574143526514,
+          "bm25": 0.25396728693893483,
+          "answer": "13",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "b0d36319661463b7d90e91817bf2e79649938435bcc9f2b5eec36df7f6a77950",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.019210879311735526,
+          "bm25": 0.21528635232458543,
+          "answer": "The Rugrats has 9 seasons.",
+          "alias_match": true
+        },
+        {
+          "position": 8,
+          "passage_sha256": "052b63f8f90de401d339209cb3cadf8aaf5bea4b5e9680a54807e1b5dc8abd81",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.061676068443410004,
+          "bm25": 0.209031899356471,
+          "answer": "9 seasons",
+          "alias_match": true
+        },
+        {
+          "position": 9,
+          "passage_sha256": "da0359395f10fb747a7989c94092c0f5dd122b67c038990783ac2dcccf621fca",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.0176532109257788,
+          "bm25": 0.21473756734258814,
+          "answer": "The Rugrats has 9 seasons.",
+          "alias_match": true
+        },
+        {
+          "position": 10,
+          "passage_sha256": "e1e3421c597c9fe63a9915d0864a1f3e66c4b2c8942bdb510e40a9da6fdc186d",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.04209267267572035,
+          "bm25": 0.9654667278465998,
+          "answer": "There are 12 seasons of \"Rugrats\".",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1200,
+      "question_sha256": "0fde57b1dcb455366608e7ce028c8bc21c0e1e8ce4083bcaf3e85aaccd64fea1",
+      "prompt_tokens": 1366,
+      "top_js": 9,
+      "top_bm25": 9,
+      "baseline": "17th",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "328d110a34876db11b829e65ccdddb7779ea52875a6eef569a772c07e0447305",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.12777841709893195,
+          "bm25": 0.5545784707923477,
+          "answer": "17",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "6592e66716a5f572b16a8e26c8af9b488c3d2b137f2252263650f0091b039e7c",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.07759475963991062,
+          "bm25": 0.28838234281941044,
+          "answer": "17th",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "065a056661fad6567d73b95cdc49c6008f66edfe97e629d95ff1a390ba5445fe",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.1630547247323816,
+          "bm25": 2.3962967366425545,
+          "answer": "17th",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "78a1b2633fec65b86ac910bdceaec9267ac5631467849c75cff36c9c2cfbadc4",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.05793108686017394,
+          "bm25": 0.5537961385405784,
+          "answer": "17th",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "173a9d5835c802353bd3a4f18b286ddd8d7765b1ac658ae8a27f1752743ba309",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.05453684285317825,
+          "bm25": 0.6088079673499516,
+          "answer": "17th",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "c70899d60def7417955469a1b32ef384d4f07e3e040ace82766882d2405eb84c",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.053619204931024005,
+          "bm25": 0.5458239528637927,
+          "answer": "17th",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "cc1949263a0761a63f36d7feb6c32ed8786579e3e93bb6658b268d92fe5af19d",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.10117261353234973,
+          "bm25": 0.5070396012097975,
+          "answer": "17th",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "e92c7f8c09551e6238a86167c709baed74c62f9d1ef6db35057b98c3eb52a3a5",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.1985577840350917,
+          "bm25": 0.6112577287209496,
+          "answer": "17th",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "39140d755026a0178508f6cdae055862ebd5bf27415f89ef328bdfeffb3eb8d5",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.20864114771915646,
+          "bm25": 2.6883705301405683,
+          "answer": "17th",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "eb0fbbc9f824fcea2b8cacca0ee1a1d1fe0b57ce0f9ebcfe6e1cf9534deefcf9",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.15607944331357002,
+          "bm25": 1.9406807738125171,
+          "answer": "17th",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1250,
+      "question_sha256": "b0d7a5e5bd485a0a3359b3b5230122b3d708aa99a3a3e9410c6e1637e45762fe",
+      "prompt_tokens": 1631,
+      "top_js": 2,
+      "top_bm25": 1,
+      "baseline": "September 9, 1974",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "f9721c44225fadfedfc698f16e776a01dab2d3076de61d4559cc9c38bb80d1f5",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.48159691411515454,
+          "bm25": 3.1503755273038605,
+          "answer": "November 2, 2005",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "ad42b8f9d9c87fac3ba006085ee1dee194b7f719074cc02c877de1d9d3832a4b",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.5251621215637382,
+          "bm25": 1.188921086862304,
+          "answer": "November 2, 2005",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "87d345d15a01a879cdf09f112ed9098d4bbb903c0c1d638dbc22cbb7da733197",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.023712969352297115,
+          "bm25": 1.2523217072747153,
+          "answer": "September 9, 1974",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "84cf3cbdc02294949385fb8338f344fab8bcc15d44da940048f6fb69f02900e3",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.06443700554351127,
+          "bm25": 1.5387267245705147,
+          "answer": "September 9, 1974",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "bdc0448c93e3c787727d91b533ae33954664a5a86443862f59081c1015218753",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.16526441812991213,
+          "bm25": 1.2690010217081216,
+          "answer": "September 9, 1974",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "cba9597b24ef176b551576e8bde8c078b4406c023c97311a1721ed162bd4ce08",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.1962565050956032,
+          "bm25": 2.641796668432002,
+          "answer": "September 8, 2004",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "638c01f9725127cb6bb2ad6e92d52f2e058b77f678b783ee667d3f77b1fdd4ee",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.05183955580669784,
+          "bm25": 1.466738562115744,
+          "answer": "September 9, 1974",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "447188bc704c274241b165edbfda8b49aa06fd311de7f44787f4912271766692",
+          "is_gold": false,
+          "retrieval_index": 10,
+          "js_bits": 0.07074081063622556,
+          "bm25": 0.9677352989342476,
+          "answer": "September 9, 1974",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "d3426138c60933ea579c89f58f5079c302f4f12018a16c921867df81640e0658",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.038013910281695325,
+          "bm25": 2.3455038483824113,
+          "answer": "September 9, 1974",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "4fa9c4543728aae7d92721da9f220f647e7b453086dd95379af5d52587c11c9d",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.029353967518038333,
+          "bm25": 1.188921086862304,
+          "answer": "September 9, 1974",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1300,
+      "question_sha256": "4f0f64a96bd8f0c9bd8fd31057b3c3e8c470b93f7fc53887463b018af45d793b",
+      "prompt_tokens": 1414,
+      "top_js": 3,
+      "top_bm25": 5,
+      "baseline": "Morocco, Algeria, or Western Sahara",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "d2bf69b0cf7ec535f98faea2adc6257c59f64816a454eac86b3294d5ae2317e0",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.14033886547136745,
+          "bm25": 3.7720304064765315,
+          "answer": "The story takes place in a limited area somewhere other than the Western Hemisphere.",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "935de08531d438f0348aabb914c720ff2b6da1f2f9c2f829b0ab5715475c9db7",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.19034450512692064,
+          "bm25": 1.1353456730198777,
+          "answer": "Caucasus",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "6ff738770372ad388090c6c33d81d89736a6d6a35d0b2eb9fdcff2cd64452f74",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.22611193414889494,
+          "bm25": 3.5653009706259846,
+          "answer": "Caucasus",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "89fb82ee5248d5e18e00e25eba0d648e4c1720ff8fa8e2b4a5c2ef2bfb204ad8",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.06894691273440867,
+          "bm25": 1.9146108775058914,
+          "answer": "Morocco, Algeria, or Western Sahara",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "a3daa98ccd0de5782848f805c1e9d7f98914ae00600857e4301249814572f6db",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.021113848994901967,
+          "bm25": 4.164160830457303,
+          "answer": "The events in the story take place in a remote, mountainous region.",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "c2796f90b0983a9107be36f2fdfd4593e677b647b802d522bd18bf74b0064b9f",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.04192821833613785,
+          "bm25": 1.6540926932288469,
+          "answer": "Caucasus",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "39a2a6ea812a7212a212c7782fc2a8869665274c0d8f826af3a89a303a41590d",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.0314180868074913,
+          "bm25": 2.472473311519378,
+          "answer": "Caucasus",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "df1a224119678b8e3068520e6eb7552c96de0afedb6cdf2e0466af9b590806a7",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.04382814432839382,
+          "bm25": 3.2383663142629198,
+          "answer": "Caucasus",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "188f68da6f2222439ac9c0c9ebb57dbff073edb39a8c67e8d6dc1dffe9cba254",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.021217110111192046,
+          "bm25": 0.6780732198980681,
+          "answer": "Morocco, Algeria, or Western Sahara",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "0c9341ff25127f4508edb05a809b3d70570f73fc87f737be576e542c2e045f2a",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.035822921663293164,
+          "bm25": 0.8540153439715704,
+          "answer": "The events in the story take place in a remote, mountainous region of the Caucasus.",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1350,
+      "question_sha256": "029089624b899255e9be68bbad8b867228c846d04a51cc39f1c897b23dd3e8d5",
+      "prompt_tokens": 1494,
+      "top_js": 2,
+      "top_bm25": 4,
+      "baseline": "Ringo Starr sings \"Good Night\" on the Beatles' 1968 album \"The Beatles (also known as the White Album)\".",
+      "baseline_alias_match": true,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "b8e65dabd100a0d32062f11d07443f62d1ee25e08fe6bc1a52dc7aa3d5888912",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.026399342681191523,
+          "bm25": 1.212101849443907,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        },
+        {
+          "position": 2,
+          "passage_sha256": "bc4fdbc3273c21a17ad52fe52b73f7b2d28e30990966ed61dc1d2a99188139f1",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.6573016138924747,
+          "bm25": 3.362710648833417,
+          "answer": "Linda McCartney sings \"Good Night\" on the Beatles' White Album.",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "2afd167fbe6245abe2523764270d46ae96835e1f953d0322e44fd72dd44e6eaf",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.011090716816834987,
+          "bm25": 2.4837953326237265,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        },
+        {
+          "position": 4,
+          "passage_sha256": "3570a1f1b97e44e6c6782d4dc0262a54957d5cc34ab7a684a48fa6613fba60ba",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.015640835781771893,
+          "bm25": 3.3791874690947887,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        },
+        {
+          "position": 5,
+          "passage_sha256": "54aa1db46fc982d04b12cce16e3349d598f7f9f8d34a2f44577e537ee776b9c1",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.008196080949348839,
+          "bm25": 1.1466004531064062,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        },
+        {
+          "position": 6,
+          "passage_sha256": "783697ad3ae6fc3c89c2c26ef1102fc05fcc956ae8657eefca00324561396eaa",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.002165222775399372,
+          "bm25": 0.6526701730180821,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        },
+        {
+          "position": 7,
+          "passage_sha256": "b5c5795e34335512c9b415f1c8e7fc62cd4611ac774be37c251e8ac5fc8e074c",
+          "is_gold": false,
+          "retrieval_index": 10,
+          "js_bits": 0.011727070065808917,
+          "bm25": 0.7620424934998485,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        },
+        {
+          "position": 8,
+          "passage_sha256": "fc952f163d18153c9ab836442720e56b70dd0a7920dec00f7d3d9d86111a8550",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.0059825453038071085,
+          "bm25": 3.180676321604106,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        },
+        {
+          "position": 9,
+          "passage_sha256": "0e22ed6ab1b62632f4ba52d49c34e0ecda34eaa2d805acde24d41ae495dfd411",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.008977431871203014,
+          "bm25": 1.1978971975281012,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        },
+        {
+          "position": 10,
+          "passage_sha256": "fbd93e5e056c90e718fa21382fceaa97dc5e48c11a87c3c89f5065e4d0b99be3",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.011915546569114824,
+          "bm25": 1.1637272655660453,
+          "answer": "Ringo Starr",
+          "alias_match": true
+        }
+      ]
+    },
+    {
+      "row": 1400,
+      "question_sha256": "4e819a239eb1d22cf368a86672d9dbd56bd5ec56e743c91d0d609081a3632af7",
+      "prompt_tokens": 1441,
+      "top_js": 1,
+      "top_bm25": 7,
+      "baseline": "The plague that struck Athens was devastating because it ravaged the densely packed city, killed over 30, 000 citizens, and caused a significant loss of manpower.",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "e0e97a987422255b8c7c915d68a21a8a1d2c6d93f1e8489fc41602d69f8bbb9a",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.11075671189323866,
+          "bm25": 0.48098203055706445,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 2,
+          "passage_sha256": "8ea87ca6aa4458878915cda6b7d31044511ac59e53213b394f6358692e8b4099",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.037313113344144014,
+          "bm25": 0.7405363036048409,
+          "answer": "The plague that struck Athens was devastating because it killed an estimated 25% of the population, caused the death of many citizens, and led to overcrowded conditions.",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "f063e1dbb688b4457c88c394e357c496bbb9772c7c6363986b84aab1d420098f",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.036987320396268605,
+          "bm25": 0.6082327638734591,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 4,
+          "passage_sha256": "8384e048b3627e2b4cc15a5748542af73d7d942b584e69f535ae651d038d940d",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.02608421031999378,
+          "bm25": 1.091214877807598,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 5,
+          "passage_sha256": "c99bbfb5c2ef3da1989ec4a22740e74748c4ca13f26b95139ce7cfd009e2e660",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.01696829778341428,
+          "bm25": 0.49106149464553966,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 6,
+          "passage_sha256": "f8437a7150da5caa2ea1141849d5edcb0a61dfdd160d8e028484917feef28b9e",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.023962697096299633,
+          "bm25": 0.9601508288347365,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 7,
+          "passage_sha256": "8caa691407166e241d694b90abcf188d02fb42522df28592e7b2257981864c0a",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.04398001713606219,
+          "bm25": 2.84966821474608,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 8,
+          "passage_sha256": "8928b2d52dda645e10c4595c3ab3355d195d9531f7472d55405840af54121851",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.013353165110525408,
+          "bm25": 0.885741421240027,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 9,
+          "passage_sha256": "b042adccc507a011fbdacfe52c64a0b2fd19d3967a691d4fc467ae6cf46368b5",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.023934275413509353,
+          "bm25": 0.894742168599064,
+          "answer": "The plague that struck Athens was devastating because it caused over 30, 000 citizens, sailors, and soldiers to die, including Pericles and his sons.",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "90beefb6e93d06d66bdf208a71290ce0ac5c7c9ed85deb8be927c8c535ccfb49",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.048067598279758615,
+          "bm25": 2.469467626963105,
+          "answer": null,
+          "alias_match": null
+        }
+      ]
+    },
+    {
+      "row": 1450,
+      "question_sha256": "6b89232c72a0870d61f9b9cec080f689a8fbe8d387247948ad93475e6fdc8e4f",
+      "prompt_tokens": 1510,
+      "top_js": 4,
+      "top_bm25": 3,
+      "baseline": "vesicle",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "aad900d0487b2e3544bd730dbd0d4ff8592cdaec57ffcc37152d6be38e34a4db",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.10766378106203055,
+          "bm25": 0.6168654786821854,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "9d94ce1a334c1286967d70b51966dbcc60ab2cc851bb0416ca40353dd106e046",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.04984298000001019,
+          "bm25": 1.221567490069273,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "d5985ba43d3b058af154f52116d26418e0a1f9b1e711cd00018c8ea49f61f285",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.13755448058563818,
+          "bm25": 4.209743346490585,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "360b717aea58fc7e0515a57398daf74dfe1d821893d51d77ef807cbf984723c8",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.2605325083333555,
+          "bm25": 3.532701481080707,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "9284b5dedf4613d090fbf3a710ff4fa2103be997116ffad8f74a09782f744c15",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.027583809775536497,
+          "bm25": 1.1459850961028797,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "d39b712b2822b7d4db3e0d2a4685608a6737c15ac4332cbb62e91bc384cd6410",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.018771966632577713,
+          "bm25": 0.892056612978844,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "892411083c38b8b093295bfc3faf5357c5b9edcdca7852208a073cca2a0056ce",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.023288172779080917,
+          "bm25": 2.170028217265384,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "293a35a25f38f11b2a36411fa5ab307f51254917c18506b336253e007d32ca26",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.045649241486247695,
+          "bm25": 2.9261331720530994,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "bf1972f075b944b73c8e0cae251f136c87e291379abd2d7d23e6970db4cf3133",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.024216528964894287,
+          "bm25": 1.226013517572433,
+          "answer": "vesicle",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "8626ba4dd83f888fe43a3d766f45b8e06c64a1b0989db1e056b9c61a6dfab853",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.04026737353118459,
+          "bm25": 2.2233776316548104,
+          "answer": "vesicle",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1500,
+      "question_sha256": "2c5b7264b2067076f973b71417f639989064e5fa2666306b78f7cfa4a672bb40",
+      "prompt_tokens": 1578,
+      "top_js": 10,
+      "top_bm25": 4,
+      "baseline": "2003",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "0eb5f074762ae5112d02e9b9c77ffabe18cdb8219037e2ba24fde2a0c7fec073",
+          "is_gold": false,
+          "retrieval_index": 11,
+          "js_bits": 0.019568375844600243,
+          "bm25": 1.0669153854299938,
+          "answer": "2003",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "b63e2a443521615da632b6e554eeca27812c4b18bd32646a23691bb82a81716c",
+          "is_gold": false,
+          "retrieval_index": 12,
+          "js_bits": 0.05045992142302059,
+          "bm25": 2.606844428246403,
+          "answer": "2003",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "f6015cbb55ddaf4d539d45d5fc450e49848d0fa27c6e6cbb32b6b47697effbce",
+          "is_gold": false,
+          "retrieval_index": 14,
+          "js_bits": 0.014348039877511617,
+          "bm25": 0.801597009754659,
+          "answer": "2003",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "4d3b856a3e833c862dc31c96d1bfd48c183acc81fb9876917d5922a08171e26d",
+          "is_gold": false,
+          "retrieval_index": 15,
+          "js_bits": 0.018622011858029332,
+          "bm25": 2.671393883817598,
+          "answer": "2003",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "a661a95f2121d70a1d9a2023af2a94af1cd78dbe40dd5a5ac777618f7f95c572",
+          "is_gold": false,
+          "retrieval_index": 16,
+          "js_bits": 0.03735891981767629,
+          "bm25": 0.6689309685049575,
+          "answer": "2003",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "6c57aa9c61e3bd2a907e98358c28a98b9d81fccf1719eecdb8b7344b8218b900",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.023487883653578158,
+          "bm25": 2.340157532132756,
+          "answer": "2003",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "84194b1c2b093587b11af0f00322a44c9522681634dd4bf83056ced98642e8f2",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.03337575531866493,
+          "bm25": 0.6655787431805582,
+          "answer": "2003",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "8dae934c64de7486cbb9e8657302118c663dd2f8c8c6edbc6f05f49bdf5a061d",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.019694746568435464,
+          "bm25": 0.8101108040300182,
+          "answer": "2003",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "5ce36e6b5332ff8926946a4b9e935ac456fe606c73191fe0b6d651036c1ff412",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.019887577148683,
+          "bm25": 1.0674069484336937,
+          "answer": "2002-03",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "745bd76e3edf0e5ffeb0e8a5e884ecc7b5dc388d5cfa8ee9dbcb8dcb1e5021d3",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.21574809553928415,
+          "bm25": 1.3590920055432458,
+          "answer": "1993-94",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1550,
+      "question_sha256": "8f438720a2f0f0a289c66db9736c63ef103045afdd897ad65422b53b8b3e2e94",
+      "prompt_tokens": 1674,
+      "top_js": 3,
+      "top_bm25": 2,
+      "baseline": "Erasure",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "2b90fadd0722d28ef29d7e4b516452a5c0e9ccc63344a1af8b476a9ab9a80f6e",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.21583289682323512,
+          "bm25": 4.2802453925475685,
+          "answer": "Erasure",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "86196ec87711de9475138234887641b396172218100291932e41b1193c34fc48",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.11013350239352768,
+          "bm25": 6.754781010769725,
+          "answer": "Erasure",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "8162eaada8d7f30c4223b6ff8b4ecd17a8d9a96bb5ce8956c07bc870c405f514",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.24357940951252047,
+          "bm25": 2.4332909354117658,
+          "answer": "Hank Williams",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "87733c75462a2ff68ee2d423a1822dba19c7a53b1aac6efcbfe4846169816e05",
+          "is_gold": false,
+          "retrieval_index": 10,
+          "js_bits": 0.07224126630265945,
+          "bm25": 4.213155151347503,
+          "answer": "Erasure",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "8d28819a13396292aa2e6667c4ba59a64b9e7a51e1a65337a2b4eee0f0a36b7f",
+          "is_gold": false,
+          "retrieval_index": 11,
+          "js_bits": 0.029929811279374306,
+          "bm25": 2.4410139033937206,
+          "answer": "Erasure",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "0f4e1218a2cdaace04ea38acef01e973103fece0ddc020c98bec5aca98e5f3d8",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.05508858098896782,
+          "bm25": 2.760575106376322,
+          "answer": "Erasure",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "5a68f4bdb76db8ab60be9ab4ccdb386bbf73d774cd8d9755fc0aba20e757e3bf",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.042129055981952164,
+          "bm25": 2.7706490935390766,
+          "answer": "Erasure",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "1d6d64c8699c73472bab2c56aaaeb99c7ba9d7755a3ffa234ce87313c904a4fe",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.03524485960544503,
+          "bm25": 1.7454526054632842,
+          "answer": "Erasure",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "cac1974b951b3a4b19b5175370608242d7ea30dd102671287c0d2e46282fd455",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.05109400589376123,
+          "bm25": 4.1552537437659,
+          "answer": "Erasure",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "fe60af03933726173fb169703a576513284c9f786ca15e05b32ae65dbab21ef3",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.11346153470943796,
+          "bm25": 4.2950352298229495,
+          "answer": "Jerry Rivers",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1600,
+      "question_sha256": "3a9cdeee5434d6d01890283285f94f0dd100df0d3c5da55cc10a0d7c10381a87",
+      "prompt_tokens": 1599,
+      "top_js": 1,
+      "top_bm25": 2,
+      "baseline": null,
+      "baseline_alias_match": null,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "0b19218a347907bda47fa763678e750ad543c7709f794eae243a318a37fbabad",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.47091605330358954,
+          "bm25": 0.578458206022086,
+          "answer": "Natalie Casey",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "741b6011d3c07f7cbbcd141b4f8bf9bbe0c5aab4de0144b89d203f55acd95d42",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.04063741927743177,
+          "bm25": 2.495893719157982,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 3,
+          "passage_sha256": "ecfb6d1749f7e508c2e98c102f6e9249f3fc6156bf10854494e45db4c3de025b",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.011993383362467256,
+          "bm25": 0.45737197469787144,
+          "answer": "Two Pints of Lager and a Packet of Crisps",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "dfa0b7d51145044736d1b7c674a46e86ab9d94c68d0adfd9a07c4114b4779cc7",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.016223641073752806,
+          "bm25": 0.5700298893869352,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 5,
+          "passage_sha256": "64d869e8b3c2e1c4e0ef910e4763caf9eba7212d7c3cb6b0b6ba1a957bb68b1e",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.022910906931950414,
+          "bm25": 0.6246515250655904,
+          "answer": "Two Pints of Lager and a Packet of Crisps",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "3ff1b18e0d46f02956f1f41f23dff6f8efcd8f1a7c742858f9b43900a901f1ff",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.06802412446997569,
+          "bm25": 0.5687600973972025,
+          "answer": "Wesley",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "23132505de67378c7cc120506a1bd74d4ba3b02b4498f450f005910f4d86c247",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.010259834824547513,
+          "bm25": 0.4761368391599941,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 8,
+          "passage_sha256": "a2c5a958a708c92196211488d08ef438554b077e9aee74d7537d2bba0b618892",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.022227458075113345,
+          "bm25": 0.6374070801686852,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 9,
+          "passage_sha256": "148251e2c9fc460afce9914b1f840c7d5cd4138f3e689864d41bf3453a41b8cd",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.014566828868767537,
+          "bm25": 0.5600373930249134,
+          "answer": "Two Pints of Lager and a Packet of Crisps",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "ab0e1305fc4128b048b629231f92ffd35abff504ff679407a1e233ee1a2dffd7",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.06235356570321333,
+          "bm25": 0.44483530697908497,
+          "answer": "Thomas Nelstrop",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1650,
+      "question_sha256": "5e8304ada199431e212c6f2063bb356ee7611231c486349abd6980c207230e8d",
+      "prompt_tokens": 1519,
+      "top_js": 9,
+      "top_bm25": 6,
+      "baseline": "The members of the Traveling Wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+      "baseline_alias_match": true,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "2723f721d6d7ee2bf3f3f07f2a7fe5108ea6fa7e92f916b8849fed4d418f1432",
+          "is_gold": false,
+          "retrieval_index": 12,
+          "js_bits": 0.02099624944783139,
+          "bm25": 0.27737898885460194,
+          "answer": "The members of the traveling wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+          "alias_match": true
+        },
+        {
+          "position": 2,
+          "passage_sha256": "e07f6280a6070f414c6b724f077fc4ee0446dbfe26fc8c852b3db790aa68cf4e",
+          "is_gold": false,
+          "retrieval_index": 13,
+          "js_bits": 0.04635119972362288,
+          "bm25": 0.8992492810518099,
+          "answer": "Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty",
+          "alias_match": true
+        },
+        {
+          "position": 3,
+          "passage_sha256": "2beac5d3fec40dff670421a362fa1bd6d16f333749308b5f956a6c1b7599c5f3",
+          "is_gold": false,
+          "retrieval_index": 18,
+          "js_bits": 0.01923562548169002,
+          "bm25": 2.181903910173762,
+          "answer": "The members of the Traveling Wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+          "alias_match": true
+        },
+        {
+          "position": 4,
+          "passage_sha256": "1230f4217513f925e30fad8630e6d0748ef2911296f718b65b2d4580ea369861",
+          "is_gold": false,
+          "retrieval_index": 19,
+          "js_bits": 0.009548211599593603,
+          "bm25": 0.30883191865514914,
+          "answer": "The members of the Traveling Wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+          "alias_match": true
+        },
+        {
+          "position": 5,
+          "passage_sha256": "6bbe0624ef5e97cb007f1870ae435ae07eb8723346ade9c0479ed22b9441ecdf",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.017166463482128903,
+          "bm25": 0.30662360256007787,
+          "answer": "The members of the Traveling Wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+          "alias_match": true
+        },
+        {
+          "position": 6,
+          "passage_sha256": "886c16975e6cb12aa6419c4d2c0b66f1367ecb8be8cccbe8b18a82cbe535c978",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.016095783329569676,
+          "bm25": 3.27892621344311,
+          "answer": "The members of the Traveling Wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+          "alias_match": true
+        },
+        {
+          "position": 7,
+          "passage_sha256": "9b971782f6d2e893d86c34ef1ee6f06c7d68bfb26ad735666661ed6414f3c89f",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.013976780878024729,
+          "bm25": 1.1616446221330043,
+          "answer": "The members of the Traveling Wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+          "alias_match": true
+        },
+        {
+          "position": 8,
+          "passage_sha256": "1bab41b8f77333b50a605c7ae9e8f69b48f081d61c75edf16dcc17d70a37e5cd",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.020201425686680066,
+          "bm25": 3.182864911769731,
+          "answer": "The members of the Traveling Wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+          "alias_match": true
+        },
+        {
+          "position": 9,
+          "passage_sha256": "1c5f6f8ba7fb79377e5be193229ac84bb3b9c26317c22307026e3226a4a1790d",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.36996159423330466,
+          "bm25": 1.1779467801534627,
+          "answer": "The members of the Traveling Wilburys group were:\n1. Wilbur Dylan\n2. Wilbur Lynne\n3. Wilbur Orson\n4. Wilbur Orbison\n5. Wilbur Petty",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "1946fba086ae4f402c5cde9758c1f862aa0ee437f394021966d60d0fdc451c8b",
+          "is_gold": false,
+          "retrieval_index": 11,
+          "js_bits": 0.023058513238756927,
+          "bm25": 2.9261608955252667,
+          "answer": "The members of the Traveling Wilburys group were Bob Dylan, George Harrison, Jeff Lynne, Roy Orbison, and Tom Petty.",
+          "alias_match": true
+        }
+      ]
+    },
+    {
+      "row": 1700,
+      "question_sha256": "e62d610e43b88367a66581281c0467884f11b0c52ea0efd254563eeb2f1a4876",
+      "prompt_tokens": 1443,
+      "top_js": 2,
+      "top_bm25": 10,
+      "baseline": "Conservative",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "0fc1753d667ef00ba9df381b4ef9cff6673e75ea46bb65bc7d1863b38aee4ef3",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.07795212835218812,
+          "bm25": 1.3473943011784897,
+          "answer": "Consensus government",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "2acc39df12676a88921b8983089456634f6ac75aa1351d2f8ff89c99bf431b7c",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.30820605620476665,
+          "bm25": 3.1667673627915636,
+          "answer": "Northern America refers to the northern-most countries and territories of North America: the United States, Bermuda, St. Pierre and Miquelon, Canada and Greenland.",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "7f5773cadd96b243898f83bef89a468987c15437c146ea3463fbef9dfcbe674d",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.038578958751579046,
+          "bm25": 2.3071953144716586,
+          "answer": "consensus government",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "20b7fe94600b6429e51d91e78249879d216637c9f32fe1428407592967c97b7f",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.008364480651933428,
+          "bm25": 1.3419420502011017,
+          "answer": "Conservative",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "f7455d60c0ab2aff15aaaf1b27664b378314920d094972f715e0b9f8a06d85ed",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.012260906968747256,
+          "bm25": 1.3556003194417463,
+          "answer": "Consensus government",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "7594c79f84be0b6a2f081e733ee47e46a71d715cdf7813ca33ee947c6c87201b",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.0018405862321200378,
+          "bm25": 1.207231081904315,
+          "answer": "Conservative",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "0acf5c7ea314053197e8f0ad5d40fc9b22139b03f9660e5d79e55f639e2c0d02",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.0034773631281478133,
+          "bm25": 2.1638782131187813,
+          "answer": "Conservative",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "e77a5e18f1513692b8c165df7c0612e9f862cf4ab8ca50999691f117d8c2a811",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.004324345118398156,
+          "bm25": 2.502634013486485,
+          "answer": "Conservative",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "14d5719d91e9e5f24cafba562080f8217edfd2d35bdadc753d1461c2ba05f6db",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.007662485089410062,
+          "bm25": 1.644458604574513,
+          "answer": "Conservative",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "e8b90173c0fea5df435479b1256306b2a26a93f3db7cdf19f7ded671a8263f20",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.02045544319554302,
+          "bm25": 4.026185156894928,
+          "answer": "Conservative",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1750,
+      "question_sha256": "d57ba76aa1b4bd5a70636b679b414396febcaf7a3efb218f993e41e86264b36d",
+      "prompt_tokens": 1384,
+      "top_js": 6,
+      "top_bm25": 7,
+      "baseline": "dry line",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "c2010d59598109d5ea57fc38d02d1dedb9304073951bb3f738ab84a9c3ff0c6b",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.05294020825138687,
+          "bm25": 2.4754982166475354,
+          "answer": "dry line",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "f83546cda1007c97d73ef15ceb42da18a836bb519d1263d0a82ea767c59710ef",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.26334535389139074,
+          "bm25": 2.4226948914486206,
+          "answer": "Winter Monsoon",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "03d6dece65d31f0a348ce377eaf48497ea69e827317e279bb1f58be21bec636a",
+          "is_gold": false,
+          "retrieval_index": 10,
+          "js_bits": 0.21634865335648168,
+          "bm25": 5.035697527623794,
+          "answer": "Winter Monsoon",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "0b4ec10169b6fa117c01db8b85f34fc00f7dfbb66e06bf05bf6a901366bcc31e",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.1848279121533989,
+          "bm25": 5.217695682699764,
+          "answer": "Dry line",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "359565b5cc93e36806cd5977076e3dedb16b07c3526194bafbf72806fe324e51",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.1569050060134106,
+          "bm25": 4.687266653014801,
+          "answer": "Dry line",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "aa843f04aa054eecff3d74693b0c905048e6930904044bebf14bee216b9f9511",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.3475726641257094,
+          "bm25": 2.677471261885884,
+          "answer": "Northeast Monsoon",
+          "alias_match": true
+        },
+        {
+          "position": 7,
+          "passage_sha256": "fb0d49d2a4129ddbfd2fee88620fafc380073313fb0c3ea7dfca78c10bad94b3",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.1284766508837663,
+          "bm25": 7.455035566635967,
+          "answer": "Northeast Monsoon",
+          "alias_match": true
+        },
+        {
+          "position": 8,
+          "passage_sha256": "f240448068fa0af873fc1293f4462836cceacd438940a6a2dd75b1a5153b97e7",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.2029992591039292,
+          "bm25": 4.189394581302056,
+          "answer": "monsoon winds",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "f754bc471367740ed3a7a0678d91c745bc79b4856975773e01db171f691ecc92",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.04994174772207512,
+          "bm25": 5.201768401091048,
+          "answer": "dry line",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "7c50243509e06acbf5d2814cac5da5a146f8318890a095006e62b7bb00beda4d",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.016882214981189008,
+          "bm25": 4.145109875749445,
+          "answer": "dry line",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1800,
+      "question_sha256": "2d9c16c855716a502a61d19df56eadacda4b2f7b40185d9b012afca0ff3de487",
+      "prompt_tokens": 1369,
+      "top_js": 9,
+      "top_bm25": 9,
+      "baseline": "emergency chest X-ray",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "5ab9c7c7a2f6befd387cdd2783bc06c0023c602ae9ed34402f3f0d64a780bef1",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.046884921565526164,
+          "bm25": 0.8017381170997985,
+          "answer": "chest X-ray",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "a525253be3dad10c133dbb681c715d09f211053a5eb678dd78e1ebf38538b070",
+          "is_gold": false,
+          "retrieval_index": 10,
+          "js_bits": 0.026471042150944698,
+          "bm25": 2.372325200398433,
+          "answer": "chest X-ray",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "9095dafc76326d4864a7826a54590e104655b5e9251a3bf23695bad874b6f5a3",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.036301528803785295,
+          "bm25": 1.3619310907647333,
+          "answer": "chest X-ray",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "36d59b3197ace87fe92437fd8bbcfdb6a361c04e7aa299a4377a41f46b73ff0a",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.06708145072877059,
+          "bm25": 1.6146822525412237,
+          "answer": "[8]",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "468b643c37da9709c159eb06ca5a5ebd0e6bbf3871c3ae8475a5320944c8b349",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.07373127412042856,
+          "bm25": 0.764790691495402,
+          "answer": "entirely non-invasive tests",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "92f7f949dc8466cceb610eeeb8888497cc1b4d1bd1a0f7107f2a461131d4eefd",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.16977388322375297,
+          "bm25": 0.8252466532854195,
+          "answer": "chest X-ray",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "77836ff46638302feeb4f0cb941ffb2c5eaf8d1b38551f8555d7f822a2771e47",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.27660995105230346,
+          "bm25": 1.3497327780934876,
+          "answer": "chest X-ray",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "5ef91e6d51f86b461ef459658fdcdd0df843d64f4cc6bd356d11280ee97e29bd",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.38579214873228956,
+          "bm25": 2.207136068752591,
+          "answer": "chest X-ray",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "d20a76dcf479ba936936c8bf99374fabe87da14df998003ceaedef2937015d50",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.4090545520647445,
+          "bm25": 2.774851178600378,
+          "answer": "[10]",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "bce1397e2bc5841b1118e294254d61a11dddfba80ce1d0b9acb8469e56eb7bc5",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.3623440995068626,
+          "bm25": 1.3905581019130229,
+          "answer": "chest X-ray",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1850,
+      "question_sha256": "c1d42cb7e0b1423097f36c8eeb51493c484f48f1728d48033359e3b54cb1d78a",
+      "prompt_tokens": 1585,
+      "top_js": 10,
+      "top_bm25": 7,
+      "baseline": "The name for the ch3coo- ion is methoxide.",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "9980cc18c2aef0b3b3cdecd447270ccf0d9a5553dea26cbabe36a7a1629d80f6",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.17819662327940902,
+          "bm25": 0.17433832092536067,
+          "answer": "CH3COO-",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "580f3ae530f7153130ca693cefd7dba53edb4cc2e521ae7eeb5094300988bdbf",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.08442529212028288,
+          "bm25": 1.4123146116533534,
+          "answer": "CH3COO-",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "ae4ac4659736b6689960a47cb256df8bc2b466c78b102cb213d07f4b713cb733",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.05451502815757482,
+          "bm25": 1.2395625280962512,
+          "answer": "Chloroformic acid",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "3cf021c72f60ea02463fbfa8cfcd4ab5045c6cc4f033eddd889d6523aed4a3a8",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.04396447612123054,
+          "bm25": 1.2433508584095587,
+          "answer": "CH3COO-",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "9d87e1dd7a71db643023a68043102dde59aa1f3e195641414151f0730d204296",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.17318876332123495,
+          "bm25": 2.903908534515611,
+          "answer": "CH3COO-",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "005fc74a95d4be9d5baa9b082066dc6b529ef6aa1d26227caaf5dd156fd1d375",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.07141007213099707,
+          "bm25": 0.16503362646191097,
+          "answer": "CH3COO-",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "e3f6cdce6c8eceb8773743d6618d9d2923988aea795b42ef1b7d2c829325e225",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.12491433602682132,
+          "bm25": 3.6733906169218153,
+          "answer": "Chloroformic acid",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "4686af9e399117cf057fd3c4a29a3ea6eb9265e772a5c300ee822f9cb1dec54c",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.08896418573395146,
+          "bm25": 1.3945772992899643,
+          "answer": "Chromium trioxide",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "487e87d047470c009fcbdb9b51a911e79eff88c54d4e753a03da8ccd0955499d",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.19603449209633264,
+          "bm25": 1.2408028760198464,
+          "answer": "CH3COO-",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "f618bbd85d57e56e165477ee7f8264f7759c6c4e7516254b7f24cdc315f838bb",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.19720641308929848,
+          "bm25": 1.779989279830252,
+          "answer": "CH3COO-",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1900,
+      "question_sha256": "f69d082e2c92a8e78d30b70a934564cfbf2ea443fccad5c6d2ebeb69e836e21b",
+      "prompt_tokens": 1661,
+      "top_js": 4,
+      "top_bm25": 7,
+      "baseline": "Anjelica Huston",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "8082c8c29759ec245912870081806d116eb761755e8cbcc71f5c4be0415ee565",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.05855279776226161,
+          "bm25": 0.3875441302972969,
+          "answer": "Carolyn Jones",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "87cd174e3d264fb3b764abf39cfa5de55d3167e404c83c32fd2628cc6c5783fd",
+          "is_gold": false,
+          "retrieval_index": 0,
+          "js_bits": 0.10744410691968193,
+          "bm25": 1.102296562857887,
+          "answer": "Carolyn Jones",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "9aa82fca06b64e525853b86055a48d72e599c86dde0cbf8fa65bf4ba1a109c31",
+          "is_gold": false,
+          "retrieval_index": 1,
+          "js_bits": 0.0907103312318424,
+          "bm25": 0.5713183633502087,
+          "answer": "Carolyn Jones",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "b858c8881e6afd4b75bf15df3c67b5e183cbdec4cb220a487488b20555312628",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.4614106211235938,
+          "bm25": 3.085383926617191,
+          "answer": "Natasha Fatale",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "1c181509f1555c0c4c529027d92434344ce268db4c34e7bbef7a8fa0208a0653",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.008715747084450453,
+          "bm25": 0.5571575671604048,
+          "answer": "Carolyn Jones",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "e65a07bf84ca949e13bf103f46d023b2328976ad97a343ee027f7231388a3d07",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.004120524853736492,
+          "bm25": 0.2560105897850913,
+          "answer": "Anjelica Huston",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "d3fbba318167e4613dc2f900afa752f42c29610e8cbfe73fb487fa066b187303",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.017371343941520092,
+          "bm25": 5.52497655034592,
+          "answer": "Carolyn Jones",
+          "alias_match": false
+        },
+        {
+          "position": 8,
+          "passage_sha256": "2f64e0bb435d32cfc563be2c8f2cb8a8b36076683d90bbf626d1578eec966531",
+          "is_gold": false,
+          "retrieval_index": 5,
+          "js_bits": 0.00883215637666039,
+          "bm25": 1.2438482622674258,
+          "answer": "Anjelica Huston",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "248a797fe615b994cc1514010f91f427f70d77122b40d20026e6895dec03db6a",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.020304175350144563,
+          "bm25": 2.5076445550181203,
+          "answer": "Carolyn Jones",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "ef3041f83f7f43d07d5b5344c5017fea61bbb8909b4703e8594bf51e97f3b8d9",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.005700114086261002,
+          "bm25": 2.9769578821612477,
+          "answer": "Anjelica Huston",
+          "alias_match": false
+        }
+      ]
+    },
+    {
+      "row": 1950,
+      "question_sha256": "d7bf66b40c034d8160bb31b144434ff66a31c434e030882314d06fa17fd85da1",
+      "prompt_tokens": 1416,
+      "top_js": 1,
+      "top_bm25": 8,
+      "baseline": "The two causes of the Dust Bowl were poor farming techniques and a failure to implement dryland farming methods to prevent wind erosion.",
+      "baseline_alias_match": false,
+      "edits": [
+        {
+          "position": 1,
+          "passage_sha256": "d62dc0c20a7920ee77ca90f74bfc758dbf526225cb0e747d7dd86f0008c5a915",
+          "is_gold": false,
+          "retrieval_index": 12,
+          "js_bits": 0.08501692964664813,
+          "bm25": 0.30299427814455626,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a plow-up of the native grasses that held the fine soil in place.",
+          "alias_match": false
+        },
+        {
+          "position": 2,
+          "passage_sha256": "df49971bd37a04843a8a4cf8ba3b6fac5bb5a977a8f5721f5ceb2cf72d502fef",
+          "is_gold": false,
+          "retrieval_index": 2,
+          "js_bits": 0.01598919443033519,
+          "bm25": 1.017341851579313,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a plow-up of the native grasses that held the fine soil in place.",
+          "alias_match": false
+        },
+        {
+          "position": 3,
+          "passage_sha256": "733b1519006e5c8142d82403861a8b71a3d85f6fa58717f3bcf2ba9167560542",
+          "is_gold": false,
+          "retrieval_index": 3,
+          "js_bits": 0.017801823405935238,
+          "bm25": 0.3008919471050657,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a failure to apply dryland farming methods to prevent wind erosion.",
+          "alias_match": false
+        },
+        {
+          "position": 4,
+          "passage_sha256": "cad429d910a6fa713b4a565638f2a6d37718fc207d656a6747b5f7a56f532373",
+          "is_gold": false,
+          "retrieval_index": 4,
+          "js_bits": 0.056240785709828614,
+          "bm25": 0.9922338133610248,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a plow-up of the native grasses that held the fine soil in place.",
+          "alias_match": false
+        },
+        {
+          "position": 5,
+          "passage_sha256": "df39336682dd7f620ff7e5b74c2266bf77c83821b3cfcf68e67fb19dacb03a87",
+          "is_gold": false,
+          "retrieval_index": 6,
+          "js_bits": 0.008319999262033374,
+          "bm25": 1.2284702496499431,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a plow-up of the native grasses that held the fine soil in place.",
+          "alias_match": false
+        },
+        {
+          "position": 6,
+          "passage_sha256": "9f89b6290bffdf0771b3727fb43abb2eba2e70e54f0de410b413c63e18051810",
+          "is_gold": true,
+          "retrieval_index": null,
+          "js_bits": 0.024878722267819543,
+          "bm25": 0.3181300045989374,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a plow-up of the native grasses that held the fine soil in place.",
+          "alias_match": false
+        },
+        {
+          "position": 7,
+          "passage_sha256": "5eb232f74cf331de13720ca01256f0e26bc265e2aa4d693b4d51072a6760117a",
+          "is_gold": false,
+          "retrieval_index": 7,
+          "js_bits": 0.04064303428928273,
+          "bm25": 1.0158880725055819,
+          "answer": null,
+          "alias_match": null
+        },
+        {
+          "position": 8,
+          "passage_sha256": "74fe01e51a69096dd85c25307fcf67d204f8cba085197592a286042d322ddbc0",
+          "is_gold": false,
+          "retrieval_index": 8,
+          "js_bits": 0.012959799985388076,
+          "bm25": 1.2487284090900088,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a plow-up of the native grasses that held the fine soil in place.",
+          "alias_match": false
+        },
+        {
+          "position": 9,
+          "passage_sha256": "6f1599a195c3e294879ec097c5c9a2e17f66b489252070b777273cdeef26c0ab",
+          "is_gold": false,
+          "retrieval_index": 9,
+          "js_bits": 0.02380837272675023,
+          "bm25": 0.29650027654935723,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a plow-up of the native grasses that held the fine soil in place.",
+          "alias_match": false
+        },
+        {
+          "position": 10,
+          "passage_sha256": "b04fe47825513f7b6cc9a41f2648f7e26bc3a5f50c81a0b88da5bfb0f26d833f",
+          "is_gold": false,
+          "retrieval_index": 10,
+          "js_bits": 0.026706147176299534,
+          "bm25": 0.2867353958476098,
+          "answer": "The two causes of the Dust Bowl were poor farming techniques and a plow-up of the native grasses that held the fine soil in place.",
+          "alias_match": false
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "top_js": {
+      "tests": 20,
+      "gold": 5,
+      "scored": 17,
+      "changed_text": 14,
+      "baseline_alias_matches": 3,
+      "lost_alias_match": 3
+    },
+    "top_bm25": {
+      "tests": 20,
+      "gold": 2,
+      "scored": 17,
+      "changed_text": 10,
+      "baseline_alias_matches": 3,
+      "lost_alias_match": 0
+    },
+    "first_position": {
+      "tests": 20,
+      "gold": 2,
+      "scored": 17,
+      "changed_text": 11,
+      "baseline_alias_matches": 3,
+      "lost_alias_match": 0
+    },
+    "last_position": {
+      "tests": 20,
+      "gold": 2,
+      "scored": 17,
+      "changed_text": 9,
+      "baseline_alias_matches": 3,
+      "lost_alias_match": 1
+    },
+    "first_retrieved": {
+      "tests": 20,
+      "gold": 0,
+      "scored": 17,
+      "changed_text": 8,
+      "baseline_alias_matches": 3,
+      "lost_alias_match": 1
+    },
+    "all_edits": {
+      "tests": 200,
+      "gold": 20,
+      "scored": 171,
+      "changed_text": 94,
+      "baseline_alias_matches": 30,
+      "lost_alias_match": 6
+    }
+  }
+}

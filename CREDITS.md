@@ -23,6 +23,8 @@ The [scoping review](docs/research-review.md) compares the sidecar workflow with
 
 The public passage-edit experiment uses the multi-document QA data released by Liu et al. and adapts the distribution-based source ranking studied by Li et al. The checkpoint, dataset and method retain their respective attribution. [Lost in the Middle data](https://github.com/nelson-liu/lost-in-the-middle/tree/29b8a6d042ce29abccee3db1a73171a107d7e6af) · [ARC-JSD](https://arxiv.org/abs/2505.16415)
 
+The review also compares this work with PECoRe by Gabriele Sarti and colleagues and MIRAGE by Jirui Qi and colleagues. Both use changes in token predictions to study context reliance. [PECoRe](https://gsarti.com/publication/pecore/) · [MIRAGE](https://aclanthology.org/2024.emnlp-main.347/)
+
 ## Interoperability
 
 The local stdio adapter uses the official Rust SDK for Model Context Protocol. [Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)

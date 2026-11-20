@@ -12,6 +12,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from probe_transformers_answer_timeline import load_runtime
+from score_qwen_prefill import first_step, js_bits
 
 DATA_SHA = "f8425253dafc19cd9de31c06ab6c8b57d4da2bf48b8ea2d0790b805fb3aa1968"
 COHORTS = {"pilot": range(0, 1000, 100), "holdout": range(1000, 2000, 50)}
@@ -42,16 +43,6 @@ def request(question, passages, removed):
         for i, text in enumerate(passages)
     )
     return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": inventory + "\n\nQuestion: " + question}]
-
-
-def first_step(runtime, ids):
-    logits = runtime.model(input_ids=runtime.torch.tensor([ids]), use_cache=False, logits_to_keep=1).logits[0, -1]
-    return logits.double().log_softmax(dim=0)
-
-
-def js_bits(torch, p, q):
-    log_mean = torch.logaddexp(p, q) - math.log(2)
-    return ((p.exp() * (p - log_mean)).sum() + (q.exp() * (q - log_mean)).sum()).item() / (2 * math.log(2))
 
 
 def contains_reference(answer, aliases):

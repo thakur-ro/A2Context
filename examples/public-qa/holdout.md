@@ -1,5 +1,23 @@
 # Does a pre-inference passage ranking transfer to fresh questions?
 
+## Results
+
+On the 17 questions with complete baseline and paired edited answers, the model-ranked edit changed **14 answers**. Editing the first passage changed **11**. Both changed the answer on ten questions, only the ranked edit did on four, only the first edit did on one, and neither did on two. The paired difference was +17.6 percentage points. With five discordant pairs the two-sided exact test gives *p* = 0.375. That small comparison leaves the advantage over first position uncertain. The two selectors chose the same passage on four of the 20 questions. [Raw measurements](holdout-results.json) · [Protocol commit](https://github.com/thakur-ro/NexusWeave/commit/ff32861)
+
+| Edit selector | Exact answer changed / scorable | Annotated passage selected / questions |
+| --- | ---: | ---: |
+| Largest first-token distribution shift | 14/17 | 5/20 |
+| First passage in prompt | 11/17 | 2/20 |
+| Highest BM25 score | 10/17 | 2/20 |
+| Last passage in prompt | 9/17 | 2/20 |
+| Best available retrieval rank among distractors | 8/17 | 0/20 |
+
+Across all 200 passage edits, 94 of 171 scorable edits changed the answer. Two baseline generations and 21 edited generations reached the 48-token limit. This made the primary comparison unavailable on three questions. Among the three scorable baseline answers that matched a reference alias for the ranked edit, all three lost the match after that edit. The first-position edit preserved all three. Reference alias checks capture only one aspect of answer quality.
+
+Ranking all ten passages took a median of 11.00 seconds for eleven forward passes on this CPU. That timing excludes tokenization and answer generation and includes other work running on the same host. First position needs no scoring pass. We keep model scoring explicit and show the actual edited outcome separately. This run supplies no cross-model or cross-domain estimate.
+
+For row 1000, the baseline answer reached the generation limit. We supplied the assembled request and ten edits to `probe-prefill`, excluding the output-message attribute. The CLI rerun selected the same top passage and reproduced all ten saved scores to within 2 × 10⁻¹⁷ bits. The sidecar displayed the ranking before receiving an answer. The effect on the completed answer remains unknown on that row. [Pre-inference workflow](../../docs/sidecar.md#measure-an-edit-before-the-first-output-token)
+
 ## Protocol
 
 We will test the passage selector from the ten-question pilot on 20 further questions from the same pinned public QA file. This protocol fixes the inputs, method and comparisons before generating the new answers.
@@ -19,4 +37,10 @@ Use the pinned dataset, model snapshot and Python environment from the [public Q
 python3 examples/public-qa/check_passage_edits.py /tmp/nexus-qa.jsonl.gz /path/to/qwen/snapshot \
   --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 \
   --cohort holdout --rotation 0 --output /tmp/nexus-qa-holdout.json
+```
+
+Check the saved results without a model. Supplying the dataset also checks each question and passage against the pinned bytes and recomputes the alias labels.
+
+```sh
+python3 examples/public-qa/check_holdout.py --dataset /tmp/nexus-qa.jsonl.gz
 ```

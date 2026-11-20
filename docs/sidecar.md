@@ -32,6 +32,26 @@ Expand **Scored replays** on the overview or a source factor to see how many con
 
 For named fragments in a string field, the sidecar checks the captured UTF-8 bytes and excludes overlapping or ambiguous inventories from the order comparison. It fingerprints the surrounding request, the gaps between fragments, and a sorted inventory of each eligible field's source identities, versions and contents. A matching fingerprint and different positions of the edited source establish that the displayed requests differ only in fragment order. Several sources can move together. Sampling can also affect replay results. Each example links to its own trial. With more than two eligible inputs, the view uses a deterministic example from each group. [Public QA comparison](../examples/public-qa/README.md#compare-an-edit-across-inputs)
 
+### Measure an edit before the first output token
+
+Open **Before inference** and choose **Try a measured tool choice**, then **Check the same edits before the first token**. In the saved Qwen example the request-type edit moved the first-token distribution by 0.000169 bits. The store-name edit moved it by 0.00000469 bits. Follow **Compare the measured tool proposals** to inspect the separate greedy replays. The request-type edit switched the proposed tool from `stock` to `price`. The store-name edit kept `stock`. Both used product ID 42. [Saved prefill measurement](../examples/runtime-comparison/pending-routing/prefill-preview.json) · [Saved proposals](../examples/runtime-comparison/pending-routing/shadow-report.json)
+
+![The measured tool-routing edit and the relative first-token shifts for both sources.](media/prefill-ranking.png)
+
+To run the same probe with local Qwen weights, supply the existing named edits and an explicit scorer. Each tested edit requires one model forward pass in addition to the shared baseline. The scorer reads pre-sampling logits and generates zero tokens. The output file includes the captured request.
+
+```sh
+routing=examples/runtime-comparison/pending-routing
+jq '.interventions' "$routing/case.json" > /tmp/routing-edits.json
+nexusweave probe-prefill "$routing/request.json" /tmp/routing-edits.json /tmp/routing-preview.json -- \
+  python3 scripts/score_qwen_prefill.py /path/to/qwen/snapshot --model-id Qwen/Qwen2.5-0.5B-Instruct \
+  --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2
+```
+
+Load the output file in **Before inference**, or pass `{"request": <file contents>}` to `POST /api/sidecar/preview` or `inspect-pending`. MCP clients can pass the same envelope as the `input` to the pending evidence query. The returned `prefill.ranked` entries carry a source identifier, version, request pointer, edited request digest and divergence in bits. The sidecar verifies those bindings without calling the model. Verification relies on the adapter for its reported logits-derived measurements and checkpoint identity.
+
+Other model adapters can implement the same batch interface. On stdin, version 1 supplies `baseline`, its `baseline_request_sha256`, and 1–32 single `edits` with exact request bodies, source IDs, versions and digests. The adapter returns version 1, model ID and revision, runtime, tokenizer hash, baseline digest and one effect per edit in input order. Each effect echoes the context ID, source ID, version and request digest, and adds `js_bits` in [0, 1]. Declare byte ranges when equal text occurs in multiple fields. Full-vocabulary access is required by this metric. [Reference adapter](../scripts/score_qwen_prefill.py) · [Algorithm and interpretation](methods.md#which-source-would-you-test-without-candidate-answers)
+
 ### Run the position test on a matched comparison
 
 **Download position test** prepares eight conditions. On each of the two captured backgrounds, it keeps the other named fragments in their relative order, puts the selected source at each tested position, and applies the original replacement at each slot. The download contains the full request bodies. Preparation makes zero model calls. **Attach completed trials** binds each returned proposal to its background, replay, source, slot, replacement state and request digest.
