@@ -17,7 +17,9 @@ def main():
     parser.add_argument("--binary", type=Path, default=Path("target/debug/nexusweave"))
     parser.add_argument("--results", type=Path, default=Path(__file__).with_name("holdout-results.json"))
     parser.add_argument("--url", default="http://127.0.0.1:8040")
+    parser.add_argument("--references", action="store_true", help="Attach the dataset aliases as evaluation metadata.")
     args = parser.parse_args()
+
     study = json.loads(args.results.read_text())
     if study["dataset_sha256"] != DATA_SHA:
         raise ValueError("Study uses a different dataset.")
@@ -28,7 +30,7 @@ def main():
     for (row, record), case in zip(dataset_records(args.dataset, study.get("cohort", "pilot")), study["cases"], strict=True):
         if row != case["row"]:
             raise ValueError("Dataset row differs from the measured input.")
-        trace, replay, outcomes = prepare(record, case, study, rankings=True)
+        trace, replay, outcomes = prepare(record, case, study, rankings=True, references=args.references)
         location = replay["location"]
         report = None
         if case["baseline"] is not None:
@@ -46,15 +48,21 @@ def main():
         detail = card["detail"]
         if detail["ranked"][0]["context_id"] != context:
             raise ValueError("The sidecar selected a different passage.")
-        seen = {c["context_id"]: c["changed"] for c in detail["proposal_checks"]
-                if c["report"] == replay["id"] and c.get("decision") == location["decision_id"]}
+        checks = [c for c in detail["proposal_checks"]
+                  if c["report"] == replay["id"] and c.get("decision") == location["decision_id"]]
+        seen = {c["context_id"]: c["changed"] for c in checks}
         expected = {ids[0]: answer != case["baseline"] for ids, (_, answer) in outcomes.items()
                     if ids and answer is not None and case["baseline"] is not None}
         if seen != expected:
             raise ValueError("The comparisons verified by the sidecar differ from the saved generations.")
+        if args.references:
+            for check in checks:
+                position = int(check["context_id"].rsplit("-", 1)[1])
+                if check["reference_match"] != [case["baseline_alias_match"], case["edits"][position-1]["alias_match"]]:
+                    raise ValueError("A reference match differs from the independently evaluated full answer.")
         print(f"Row {row}, first test: passage {top}, {case['edits'][top-1]['js_bits']:.4f} bits")
         selected = {"org": "public-qa", "recommendation": card["group"], "trace": location["run_id"],
-                    "call": location["call_id"], "workflow":workflow_name(study), "ranking":"all"}
+                    "call": location["call_id"], "workflow":workflow_name(study, args.references), "ranking":"all"}
         print(f"{base}/?{urlencode(selected)}")
         if report:
             arm = urlencode({"v": 1, "view": "decisions", "run": location["run_id"], "call": location["call_id"],
@@ -63,7 +71,7 @@ def main():
         else:
             print("The original answer reached the generation limit. Only the ranking is available.")
         uploaded += 1
-    review = urlencode({"org":"public-qa", "workflow":workflow_name(study), "ranking":"all"})
+    review = urlencode({"org":"public-qa", "workflow":workflow_name(study, args.references), "ranking":"all"})
     print(f"Loaded {uploaded} measured rankings and {completed} completed baseline answers. Open {base}/?{review}")
 
 

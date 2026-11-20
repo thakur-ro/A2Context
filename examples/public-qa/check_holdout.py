@@ -41,9 +41,9 @@ def paired_result(case):
     return "ranked_only" if ranked != baseline else "first_only"
 
 
-def verify_sidecar(study, base):
+def verify_sidecar(study, base, references=False):
     from view_passage_edits import workflow_name
-    scope = {"org":"public-qa", "workflow":workflow_name(study)}
+    scope = {"org":"public-qa", "workflow":workflow_name(study, references)}
     expected = {c["question_sha256"]: paired_result(c) for c in study["cases"]}
     def get(route, **params):
         query = urlencode({**scope, **params})
@@ -52,6 +52,13 @@ def verify_sidecar(study, base):
     summary = get("ranking-results")["rows"]
     if {r["result"]:r["calls"] for r in summary} != dict(Counter(expected.values())):
         raise ValueError("Dashboard counts differ from the held-out trials.")
+    grades = {}
+    for case in study["cases"]:
+        original = case["baseline_alias_match"]
+        ranked = case["edits"][case["top_js"]-1]["alias_match"]
+        first = case["edits"][0]["alias_match"]
+        grades[case["question_sha256"]] = ({"status":"missing"} if None in (original, ranked, first) else
+                                           {"status":"scored","original":original,"ranked":ranked,"first":first})
     seen = {}
     offset = 0
     while offset is not None:
@@ -61,10 +68,33 @@ def verify_sidecar(study, base):
             key = sha256(question.encode()).hexdigest()
             if not sep or key in seen:
                 raise ValueError("Missing or repeated held-out question in the dashboard.")
+            if row["reference"] != (grades[key] if references else None):
+                raise ValueError("Reference results differ from the saved answers for " + question)
             seen[key] = row["result"]
         offset = page["next_offset"]
     if seen != expected:
         raise ValueError("A question has missing or different paired evidence in the dashboard.")
+
+    counts = {tuple(sorted(row["reference"].items())):row["calls"] for row in get("ranking-reference")["rows"]}
+    if counts != (Counter(tuple(sorted(g.items())) for g in grades.values()) if references else {}):
+        raise ValueError("Dashboard reference totals differ from the independent answer labels.")
+    if references:
+        for selector in ("ranked", "first"):
+            for change in ("lost", "gained"):
+                lost = change == "lost"
+                wanted = {key for key, g in grades.items() if g["status"] == "scored"
+                          and g["original"] == lost and g[selector] != lost}
+                witnesses = []
+                offset = 0
+                while offset is not None:
+                    page = get("ranking-examples", quality=f"{selector}_{change}", offset=offset)
+                    for row in page["rows"]:
+                        witnesses.append(sha256(row["thread"].split(" · ", 1)[1].encode()).hexdigest())
+                    offset = page["next_offset"]
+                if set(witnesses) != wanted or len(witnesses) != len(wanted):
+                    raise ValueError(f"Incorrect questions in the {selector} {change} recommendation.")
+                if selector == "ranked" and lost and get("impact")["ranked_reference_losses"] != len(wanted):
+                    raise ValueError("The recommendation count differs from its underlying evidence.")
 
 
 def compare(held, pilot):
@@ -101,11 +131,12 @@ if __name__ == "__main__":
     parser.add_argument("results", type=Path, nargs="?", default=folder / "holdout-results.json")
     parser.add_argument("--dataset", type=Path, help="Also verify passage identity, order and alias matching.")
     parser.add_argument("--sidecar", help="Verify the live ranking counts and each question across result pages.")
+    parser.add_argument("--references", action="store_true", help="Verify the workflow imported with answer references.")
     args = parser.parse_args()
     held = json.loads(args.results.read_text())
     result = compare(held, json.loads((folder / "results.json").read_text()))
     if args.dataset:
         verify_dataset(held, args.dataset)
     if args.sidecar:
-        verify_sidecar(held, args.sidecar)
+        verify_sidecar(held, args.sidecar, args.references)
     print(json.dumps(result, indent=2))

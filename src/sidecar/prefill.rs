@@ -2,6 +2,8 @@
 use super::findings;
 use nexusweave::{replay, Call, Run};
 use serde_json::{json, Value};
+mod reference;
+use reference::Reference;
 
 pub(super) fn observation(
     run: &Run,
@@ -11,6 +13,15 @@ pub(super) fn observation(
 ) -> Option<findings::Observation> {
     let mut measured = replay::prefill::recorded(call, true)?.ok()?;
     let probe = call.prefill_probe.as_ref()?.report.as_ref()?;
+    let reference = probe
+        .answer_reference
+        .as_ref()
+        .map(Reference::parse)
+        .transpose();
+    if let Err(issue) = &reference {
+        measured["reference_issue"] = json!(issue);
+    }
+    let reference = reference.ok().flatten();
     let mut design = Vec::new();
     let mut sources = Vec::new();
     for edit in &probe.interventions {
@@ -66,7 +77,7 @@ pub(super) fn observation(
         json!({"status":"unique","source":top["source"].as_str().or(top["context_id"].as_str()),
                "version":top["version"],"pointer":top["pointer"],"text_range":top["text_range"]})
     };
-    let mut checks = proposal_checks(shadow, call, ranked);
+    let mut checks = proposal_checks(shadow, call, ranked, reference.as_ref());
     for report in replays.iter().filter(|r| {
         r.location.run_id == run.id
             && r.location.call_id == call.id
@@ -82,17 +93,24 @@ pub(super) fn observation(
                 continue;
             };
             if probe.interventions.contains(&variant.intervention) {
-                checks.push(json!({"context_id":variant.intervention.context_id,"report":report.id,
+                let mut check = json!({"context_id":variant.intervention.context_id,"report":report.id,
                     "runner":report.runner_id,"decision":report.location.decision_id,"changed":original!=edited,
-                    "original":super::outcomes::preview(original),"edited":super::outcomes::preview(edited)}));
+                    "original":super::outcomes::preview(original),"edited":super::outcomes::preview(edited)});
+                score_reference(&mut check, reference.as_ref(), original, edited);
+                checks.push(check);
             }
         }
     }
     if probe.interventions.len() >= 2 {
         let first = &probe.interventions[0].context_id;
         let top_id = top["context_id"].as_str()?;
-        measured["selector_check"] = json!({"first":first, "same_edit":first==top_id,
-            "result":paired_result(&checks, first, top_id)});
+        let (behavior, grades) = paired_result(&checks, first, top_id);
+        let mut comparison = json!({"first":first, "same_edit":first==top_id,"result":behavior});
+        if reference.is_some() {
+            comparison["reference"] = grades;
+            measured["answer_reference"] = json!(probe.answer_reference);
+        }
+        measured["selector_check"] = comparison;
     }
     measured["sources"] = json!(sources);
     measured["leader"] = json!(leader);
@@ -101,7 +119,20 @@ pub(super) fn observation(
     Some(findings::occurrence("prefill", key, call, measured))
 }
 
-fn paired_result(checks: &[Value], first: &str, top: &str) -> &'static str {
+fn score_reference(
+    check: &mut Value,
+    reference: Option<&Reference>,
+    original: &replay::Choice,
+    edited: &replay::Choice,
+) {
+    if let Some(r) = reference {
+        if let Some(pair) = r.score(original).zip(r.score(edited)) {
+            check["reference_match"] = json!(pair);
+        }
+    }
+}
+
+fn paired_result(checks: &[Value], first: &str, top: &str) -> (&'static str, Value) {
     fn report_key(check: &Value) -> (Option<&str>, Option<&str>, Option<&str>) {
         (
             check["runner"].as_str(),
@@ -112,25 +143,44 @@ fn paired_result(checks: &[Value], first: &str, top: &str) -> &'static str {
     let first_by_report: std::collections::BTreeMap<_, _> = checks
         .iter()
         .filter(|c| c["context_id"] == first)
-        .map(|c| (report_key(c), c["changed"] == true))
+        .map(|c| (report_key(c), c))
         .collect();
     let mut result = "missing";
+    let mut grades = std::collections::BTreeSet::new();
     for ranked in checks.iter().filter(|c| c["context_id"] == top) {
-        let Some(&other_changed) = first_by_report.get(&report_key(ranked)) else {
+        let Some(first) = first_by_report.get(&report_key(ranked)) else {
             continue;
         };
-        let pair = match (ranked["changed"] == true, other_changed) {
+        let a = &ranked["reference_match"];
+        let b = &first["reference_match"];
+        if let (Some(original), Some(top), Some(first)) =
+            (a[0].as_bool(), a[1].as_bool(), b[1].as_bool())
+        {
+            if b[0].as_bool() == Some(original) {
+                grades.insert((original, top, first));
+            }
+        }
+        let pair = match (ranked["changed"] == true, first["changed"] == true) {
             (true, true) => "both",
             (true, false) => "ranked_only",
             (false, true) => "first_only",
             (false, false) => "neither",
         };
         if result != "missing" && result != pair {
-            return "mixed";
+            result = "mixed";
+        } else {
+            result = pair;
         }
-        result = pair;
     }
-    result
+    let reference = match grades.len() {
+        0 => json!({"status":"missing"}),
+        1 => {
+            let (original, ranked, first) = grades.into_iter().next().unwrap();
+            json!({"status":"scored","original":original,"ranked":ranked,"first":first})
+        }
+        _ => json!({"status":"mixed"}),
+    };
+    (result, reference)
 }
 
 // Keep system instructions, tool inventories, message positions and request settings fixed.
@@ -163,6 +213,7 @@ fn proposal_checks(
     shadow: &[replay::shadow::RecordedProbe],
     call: &Call,
     ranked: &[Value],
+    reference: Option<&Reference>,
 ) -> Vec<Value> {
     let mut checks = Vec::new();
     let Some(reports) = call.shadow_probes.as_ref().and_then(|c| c.reports.as_ref()) else {
@@ -184,8 +235,10 @@ fn proposal_checks(
                 row["request_sha256"] == effect.request_sha256
                     && row["context_id"] == resolved.context_id
             }) {
-                checks.push(json!({"context_id":resolved.context_id,"report":report.id,"runner":report.runner_id,
-                    "changed":original!=edited,"original":super::outcomes::preview(original), "edited":super::outcomes::preview(edited)}));
+                let mut check = json!({"context_id":resolved.context_id,"report":report.id,"runner":report.runner_id,
+                    "changed":original!=edited,"original":super::outcomes::preview(original), "edited":super::outcomes::preview(edited)});
+                score_reference(&mut check, reference, original, edited);
+                checks.push(check);
             }
         }
     }
@@ -281,7 +334,7 @@ mod ranking_tests {
             let mut unrelated = top.clone();
             unrelated[key] = "different".into();
             assert_eq!(
-                paired_result(&[first.clone(), unrelated], "first", "top"),
+                paired_result(&[first.clone(), unrelated], "first", "top").0,
                 "missing"
             );
         }
@@ -291,7 +344,7 @@ mod ranking_tests {
         next_top["report"] = "second".into();
         next_top["changed"] = false.into();
         assert_eq!(
-            paired_result(&[first, top, next_first, next_top], "first", "top"),
+            paired_result(&[first, top, next_first, next_top], "first", "top").0,
             "mixed"
         );
     }

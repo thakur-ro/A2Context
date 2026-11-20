@@ -527,6 +527,33 @@ try {
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
   }
+  if (process.env.REFERENCE_QA_URL) {
+    for (const device of [page, mobile]) {
+      await device.goto(process.env.REFERENCE_QA_URL + "/?org=public-qa&workflow=public-qa-holdout-order-0-references");
+      await device.getByRole("link", {name:/Inspect 3 calls where the ranked edit lost a reference match/}).click();
+      const calls = device.locator("section").filter({has:device.getByRole("heading",{name:"Matches lost after the ranked edit",exact:true})});
+      await calls.getByRole("link", {name:/QA 1150/}).waitFor();
+      assert.deepEqual((await calls.getByRole("link",{name:/QA [0-9]+/}).allTextContents()).map(s => s.match(/QA (\d+)/)[1]).sort(),
+        ["1150","1350","1650"]);
+      await calls.getByRole("link", {name:/QA 1150/}).click();
+      const detail = device.getByRole("region", {name:"Reference answer check"});
+      await detail.getByRole("heading", {name:"Reference answer check"}).waitFor();
+      const ranked = detail.getByRole("row").filter({has:device.getByRole("rowheader",{name:/Ranked/})});
+      assert.match(await ranked.innerText(), /9 seasons of "Rugrats"/);
+      assert.match(await ranked.locator("td").last().innerText(), /3\s*Missed/);
+      const first = detail.getByRole("row").filter({has:device.getByRole("rowheader",{name:/First listed/})});
+      assert.match(await first.locator("td").last().innerText(), /9 seasons\s*Matched/);
+      if (device === page && process.env.REFERENCE_SCREENSHOT) await detail.screenshot({path:process.env.REFERENCE_SCREENSHOT});
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await device.getByRole("link",{name:"Back to edit rankings"}).click();
+      assert.equal(new URL(device.url()).searchParams.get("quality"), "ranked_lost");
+      await device.getByRole("link", {name:"Matches gained after the ranked edit: 1 of 14"}).click();
+      await device.getByRole("link", {name:/QA 1750/}).click();
+      const gained = device.getByRole("region",{name:"Reference answer check"});
+      await gained.getByText("Northeast Monsoon", {exact:true}).waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+  }
   assert.deepEqual(errors, []);
   console.log("Verified recommendations, before-inference preview, measured choices and tokens, legacy links, and desktop and mobile layouts.");
 } finally {

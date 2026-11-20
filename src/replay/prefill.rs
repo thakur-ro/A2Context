@@ -39,6 +39,9 @@ pub struct Effect {
 pub struct Probe {
     pub interventions: Vec<Intervention>,
     scores: Scores,
+    /// Optional evaluation metadata. It is never sent to the scoring adapter.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub answer_reference: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     routing_test: Option<Value>,
 }
@@ -184,6 +187,7 @@ pub fn measure(
     let probe = Probe {
         interventions,
         scores,
+        answer_reference: None,
         routing_test: None,
     };
     probe.checked(&call, &body, false)?;

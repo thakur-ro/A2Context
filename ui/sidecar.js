@@ -14,6 +14,7 @@ const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
 const targetPatterns = query.get("targets") === "1";
 const ranking = query.get("ranking");
+const quality = query.get("quality");
 const targetDesign = query.get("design");
 const missSignal = query.get("miss_signal");
 const targetSelection = targetPatterns ? {targets:1, design:targetDesign, miss_signal:missSignal} : {};
@@ -942,7 +943,7 @@ function review(card, occurrences) {
     byId("title").textContent = oneRepeated ? "Repeat trials on one input" : repeated ? "Routing results across requests" : titles[detail.routing_test?.pattern] || "First-token sensitivity";
     byId("summary").textContent = repeated ? routingCoverage(card) : prefillSummary(card.prefill_counts);
     return element("div", { className: "feed" },
-      ranking ? link("Back to edit rankings",url({ranking})) : link("Back to source factor", url({ factor: factorId || detail.factor })),
+      ranking ? link("Back to edit rankings",url({ranking,quality})) : link("Back to source factor", url({ factor: factorId || detail.factor })),
       !ranking && detail.selector_check ? link("Compare ranked edits across calls",url({ranking:"all"})) : null,
       panel(headline, repeated ? null : prefillFollowup(card), element("p", {text:contrast ?
         "Open a changed and an unchanged run below. Check the original and edited proposals before deciding whether to change the source." : card.action.next})),
@@ -1123,6 +1124,8 @@ function firstTokenPreview(probe, recorded = false, tested = false) {
     recorded && probe.tool_count !== undefined ? element("p", { className: "label",
       text: "Original request · " + plural(probe.tool_count, "available tool") +
         (probe.tool_names.length ? " · " + probe.tool_names.join(", ") : "") }) : null,
+    recorded && probe.reference_issue && element("p",{text:probe.reference_issue}),
+    recorded && probe.answer_reference ? referenceDetail(probe) : null,
     recorded ? proposalComparisons(probe) : null,
     element("details", {}, element("summary", { text: "Compare source edits" }),
       element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Relative to largest shift", "Divergence", ...(recorded ? ["Completed proposal"] : [])].map(
@@ -1141,19 +1144,78 @@ function targetCriterion(expected, rule) {
 const rankingLabels = {ranked_only:"Only the ranked edit changed the proposal", first_only:"Only the first listed edit changed it",
   both:"Both edits changed it", neither:"Neither edit changed it", missing:"Missing a completed pair", mixed:"Completed pairs disagreed"};
 
+const qualityLabels = {ranked_lost:"Matches lost after the ranked edit",ranked_gained:"Matches gained after the ranked edit",
+  first_lost:"Matches lost after the first listed edit",first_gained:"Matches gained after the first listed edit"};
+
+function referenceDetail(probe) {
+  const first = probe.selector_check.first;
+  const top = probe.ranked[0].context_id;
+  const checks = probe.proposal_checks.filter(c => c.reference_match && (c.context_id === first || c.context_id === top));
+  const rows = checks.map(check => {
+    const selector = check.context_id === top ? (first === top ? "Ranked and first" : "Ranked") : "First listed";
+    const source = probe.ranked.find(r => r.context_id === check.context_id).source;
+    const answers = [check.original, check.edited].map((out, i) => element("td", {},
+      element("code", {text:out.outcome_preview}), element("small", {text:check.reference_match[i] ? "Matched" : "Missed"})));
+    return element("tr", {}, element("th", {scope:"row", text:selector}, element("small", {text:source})), ...answers);
+  });
+  return element("section", {className:"reference-detail target-check", "aria-label":"Reference answer check"},
+    element("h3", {text:"Reference answer check"}),
+    element("p", {text:"Accepted word sequences: " + probe.answer_reference.aliases.join(" · ")}),
+    rows.length ? referenceTable(["Edit","Original answer","Edited answer"], rows) :
+      element("p", {text:"No completed text comparison for these selectors."}),
+    element("small", {text:"The check uses the full answer. A matching word sequence can occur in a factually incorrect answer."}));
+}
+
+function referenceTable(headers, rows) {
+  return element("table", {}, element("thead", {}, element("tr", {}, ...headers.map(text => element("th", {scope:"col", text})))),
+    element("tbody", {}, ...rows));
+}
+
+function referencePanel(rows, total) {
+  if (!rows.length) return null;
+  const sum = predicate => rows.reduce((n, row) => n + (predicate(row.reference) ? row.calls : 0), 0);
+  const scored = sum(r => r.status === "scored");
+  const original = sum(r => r.status === "scored" && r.original);
+  const mixed = sum(r => r.status === "mixed");
+  const selectors = ["ranked","first"].map(selector => {
+    const cells = ["lost","gained"].map(change => {
+      const lost = change === "lost";
+      const eligible = lost ? original : scored - original;
+      const count = sum(r => r.status === "scored" && r.original === lost && r[selector] !== r.original);
+      const key = selector + "_" + change;
+      const label = count + " of " + eligible;
+      const value = count ? element("a", {href:url({ranking:"all",quality:key}), text:label, "aria-label":qualityLabels[key] + ": " + label}) :
+        eligible ? label : "No eligible calls";
+      return element("td", {}, value);
+    });
+    return element("tr", {}, element("th", {scope:"row", text:selector === "ranked" ? "Ranked edit" : "First listed edit"}), ...cells);
+  });
+  return element("section", {className:"panel target-check", "aria-label":"Reference matches across calls"},
+    element("h2", {text:"Did edits preserve reference answers?"}),
+    element("p", {text:scored + " of " + plural(total,"call") + " had a scored reference comparison. " + plural(original,"original answer") + " matched."}),
+    mixed ? element("p", {text:"Completed reference checks disagreed in " + plural(mixed,"call") + "."}) : null,
+    referenceTable(["Selector","Lost a match","Gained a match"], selectors));
+}
+
 async function rankingView() {
   const filtered = ranking !== "all";
-  const [summary, examples] = await Promise.all([api("ranking-results",scope),
-    api("ranking-examples",{...scope, ...(filtered && {result:ranking}), offset:pageOffset})]);
+  const [summary, reference, examples] = await Promise.all([api("ranking-results",scope),api("ranking-reference",scope),
+    api("ranking-examples",{...scope, ...(filtered && {result:ranking}), ...(quality && {quality}), offset:pageOffset})]);
   const counts = Object.fromEntries(summary.rows.map(row => [row.result,row.calls]));
   const total = summary.rows.reduce((n,row) => n + row.calls, 0);
   const same = summary.rows.reduce((n,row) => n + row.same_edit, 0);
   const scored = total - (counts.missing || 0) - (counts.mixed || 0);
   byId("title").textContent = "Which edit changed the proposal?";
   byId("summary").textContent = "Compare the edit with the largest first-token shift against the first edit on the workflow’s list.";
-  pagination(examples.next_offset,{ranking});
+  pagination(examples.next_offset,{ranking,quality});
   if (!total) return panel("No rankings in this scope",element("p",{text:"This comparison needs a verified first-token report with at least two edits."}));
+  const calls = element("section",{}, element("h2",{text:quality ? qualityLabels[quality] : filtered ? rankingLabels[ranking] : "Measured calls"}),
+      (quality || filtered) && link("Show all calls",url({ranking:"all"})),
+      listing(examples.rows,row => rowLink(row.thread || row.call,[row.source,rankingLabels[row.result]].filter(Boolean).join(" · "),
+        url({ranking,quality,recommendation:row.group,trace:row.trace,call:row.call}))));
   return element("div",{className:"feed"},link("Back to recommendations",url({})),
+    quality && calls,
+    referencePanel(reference.rows,total),
     panel(scored + " of " + plural(total,"call") + " had a scored pair",
       scored > 0 && element("p",{text:"The ranked edit changed the proposal in " + ((counts.ranked_only || 0) + (counts.both || 0)) +
         " of " + scored + " scored calls. The first listed edit changed it in " + ((counts.first_only || 0) + (counts.both || 0)) + "."}),
@@ -1161,10 +1223,7 @@ async function rankingView() {
         rowLink(label,plural(counts[key],"call"),url({ranking:key}),key === ranking)),
       element("p",{className:"label",text:"Both selectors chose the same edit in " + plural(same,"call") +
         ". A pair uses completed single trials from the same report. Counts describe the selected calls, including repeated inputs."})),
-    element("section",{}, element("h2",{text:filtered ? rankingLabels[ranking] : "Measured calls"}),
-      filtered && link("Show all calls",url({ranking:"all"})),
-      listing(examples.rows,row => rowLink(row.thread || row.call,[row.source,rankingLabels[row.result]].filter(Boolean).join(" · "),
-        url({ranking,recommendation:row.group,trace:row.trace,call:row.call})))));
+    !quality && calls);
 }
 
 function targetTokenScores(path, paired = true) {
@@ -1665,9 +1724,14 @@ async function render(refresh = false) {
       const signature = JSON.stringify([impact, factors, screens, targets]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
-      const featured = !pageOffset && factors.rows[0];
+      const losses = !pageOffset && impact.ranked_reference_losses;
+      const featured = !losses && !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
       body = element("div", {className:"overview"}, impactPanel(impact),
+        losses ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}),
+          element("a", {className:"featured", href:url({ranking:"all",quality:"ranked_lost"})}, element("div", {},
+            element("h3", {text:"Inspect " + plural(losses,"call") + " where the ranked edit lost a reference match"}),
+            element("p", {text:"Compare each original answer with the answer after the source edit."})))) :
         featured ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}), factorRow(featured, true)) : null,
         targets.rows.length ? element("section", {className:"factors"}, element("h2", {text:"Recurring target misses"}),
           listing(targets.rows.slice(0,1), targetPatternRow), targets.rows.length > 1 ? link("Review all recurring misses",url({targets:1})) : null) : null,
@@ -1741,7 +1805,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      ranking, pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
+      ranking, quality, pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

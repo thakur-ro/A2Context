@@ -150,6 +150,20 @@ Agents can query `findings?kind=prefill` with the usual organization, workflow, 
 
 Each group holds the tested source identities, versions, original values, edit operations, replacements, locations, model revision, tokenizer, runtime and non-user request settings fixed. Plain user text may vary in `messages` and `input`; tool inventories and system instructions stay in the comparison key. Unnamed sources stay within their run. A retained raw span can recover a report omitted by an older importer during the archive upgrade. Unverifiable reports leave a reason on the span and produce no ranked finding. The MCP `get_turn_evidence` tool returns the verified ranking for the selected call. Source text and replacement excerpts require both host permission and an explicit request. [Measured examples and reproduction](methods.md#did-the-leading-edit-change-the-tool-call)
 
+### Check whether an edit preserves a reference answer
+
+Inside the captured `nexusweave.prefill.probe` object, set the optional `answer_reference` field when your workflow has known reference answers.
+
+```json
+{"kind":"word_sequence_v1","aliases":["9 seasons","9"]}
+```
+
+The sidecar checks the full text from each completed single-trial replay or shadow comparison. It lowercases Unicode text, splits on characters other than letters, numbers and underscores, and checks for a contiguous sequence of whole tokens matching any alias. Supply 1 to 64 aliases, each up to 1,024 bytes and containing at least one token. A malformed rule produces a diagnostic alongside the first-token scores. The reference stays in evaluation metadata and scoring makes zero model calls.
+
+With two or more edits, the dashboard compares the highest-ranked edit with the first listed edit. Both must have a completed comparison in the same runner, report and decision. Nontext or absent outcomes leave the reference check unscored. Disagreement across scored repeats appears separately. An alias match can occur in a wrong answer. The affected-call card opens the original and edited outputs for review.
+
+`GET /api/sidecar/ranking-reference` groups calls by the original and two edited match results in the selected scope. On `/api/sidecar/ranking-examples`, use `quality=ranked_lost`, `ranked_gained`, `first_lost` or `first_gained` for the corresponding calls. [Reproduce the public QA comparison](../examples/public-qa/holdout.md#which-edits-lost-a-reference-answer)
+
 ### Test instruction text and tool definitions
 
 The routing comparison tests whether changing an instruction or tool inventory changes a user-source edit’s effect. Open the saved example from **Before inference → Try a measured tool choice → Test instruction text and available tools**. A live recommendation surfaces the same table when the captured span carries the experiment.

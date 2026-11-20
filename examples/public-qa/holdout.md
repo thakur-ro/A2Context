@@ -31,6 +31,23 @@ Open **Only the first listed edit changed it**. For the question about the Unive
 
 ![On 17 paired calls, only the ranked edit changed four answers, only the first edit changed one, both changed ten, and neither changed two. Three calls lacked a pair.](../../docs/media/public-qa-ranking.png)
 
+## Which edits lost a reference answer?
+
+Of the 17 questions with completed comparisons, three original answers contained an accepted word sequence. Removing the passage with the largest first-token shift lost the match on all three. Removing the first listed passage kept all three. Among the 14 original misses, the ranked edit gained one match and the first edit gained zero. Three further questions had an incomplete comparison.
+
+For the *Rugrats* question, the original answer said nine seasons. Removing the ranked passage produced `3`. Removing the first passage produced `9 seasons`, which still matched. Each edit used the same original request. This is evidence about a specific omission and checkpoint. An alias can also appear in a wrong or negated answer.
+
+![The original Rugrats answer and both edited answers with their reference checks](../../docs/media/public-qa-reference.png)
+
+Add the public aliases as evaluation metadata to see the recommendation. The importer uses a separate workflow so you can still inspect the original study. The two workflows contain the same questions. Select one when comparing counts.
+
+```sh
+python3 examples/public-qa/view_rankings.py /tmp/nexus-qa.jsonl.gz --references
+python3 examples/public-qa/check_holdout.py --dataset /tmp/nexus-qa.jsonl.gz --references --sidecar http://127.0.0.1:8040
+```
+
+Open the recommended investigation, then pick a question to see the original and edited text. The checker verifies the reference counts and exact questions for gains and losses under both selectors. The sidecar lowercases Unicode text, while the independent study checker uses Unicode case folding. Both produced the same labels on the saved completed answers checked here. [Open the reference study](http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0-references)
+
 ## Protocol
 
 We will test the passage selector from the ten-question pilot on 20 further questions from the same pinned public QA file. This protocol fixes the inputs, method and comparisons before generating the new answers.

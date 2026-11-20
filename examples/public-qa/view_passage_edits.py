@@ -16,11 +16,11 @@ def body_digest(body):
     return sha256(json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
 
 
-def workflow_name(study):
-    return f"public-qa-{study.get('cohort', 'pilot')}-order-{study['rotation']}"
+def workflow_name(study, references=False):
+    return f"public-qa-{study.get('cohort', 'pilot')}-order-{study['rotation']}" + ("-references" if references else "")
 
 
-def prepare(record, case, study, *, rankings=False):
+def prepare(record, case, study, *, rankings=False, references=False):
     documents = ordered_documents(case["row"], record, study["rotation"])
     question = record["question"]
     passages = [doc["title"] + "\n" + doc["text"] for doc in documents]
@@ -57,7 +57,7 @@ def prepare(record, case, study, *, rankings=False):
     identity = [DATA_SHA, str(case["row"]), str(study["rotation"]), str(study["finished_unix_ns"]),
                 study["model"], study["revision"], study["runtime"], study["tokenizer_sha256"]]
     if rankings:
-        identity.append("prefill-ranking-v1")
+        identity.append("prefill-ranking-references-v1" if references else "prefill-ranking-v1")
     trace_id = uuid5(NAMESPACE_URL, "/".join(identity)).hex
     span_id = trace_id[:16]
     attributes = {
@@ -82,14 +82,17 @@ def prepare(record, case, study, *, rankings=False):
                                      "source_version": source["source_version"],
                                      "request_sha256": body_digest(outcomes[(key,)][0]),
                                      "js_bits": measured["js_bits"]})
-        attributes["nexusweave.prefill.probe"] = json.dumps({"interventions": edits, "scores": scores})
+        probe = {"interventions": edits, "scores": scores}
+        if references:
+            probe["answer_reference"] = {"kind":"word_sequence_v1", "aliases":record["answers"]}
+        attributes["nexusweave.prefill.probe"] = json.dumps(probe)
     timestamp = study["finished_unix_ns"]
     span = {"traceId": trace_id, "spanId": span_id, "name": "Public QA study replay",
             "startTimeUnixNano": str(timestamp), "endTimeUnixNano": str(timestamp),
             "attributes": [{"key": key, "value": {"stringValue": value}} for key, value in attributes.items()]}
     resource_spans = {"scopeSpans": [{"spans": [span]}]}
     if rankings:
-        resource_spans["resource"] = {"attributes": [{"key": "service.name", "value": {"stringValue": workflow_name(study)}}]}
+        resource_spans["resource"] = {"attributes": [{"key": "service.name", "value": {"stringValue": workflow_name(study, references)}}]}
     trace = {"resourceSpans": [resource_spans]}
     replay = {"version": 1, "id": "public-qa-" + trace_id, "samples": 1,
               "runner_id": " / ".join(study[key] for key in ("model", "revision", "runtime", "tokenizer_sha256")),

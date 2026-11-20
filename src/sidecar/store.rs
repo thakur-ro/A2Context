@@ -760,11 +760,15 @@ impl Store {
             append_window(&mut sql, &mut args, "c.started", filters)?;
             sql.push_str(super::target_patterns::CONVERSATIONS);
         }
-        if matches!(view, "ranking-results" | "ranking-examples") {
+        if matches!(
+            view,
+            "ranking-results" | "ranking-examples" | "ranking-reference"
+        ) {
             sql.push_str(
                 ", rankings AS (SELECT o.trace_id,o.call_id,o.group_id,o.observed,t.thread,
                 json_extract(o.detail,'$.selector_check.result') AS result,
                 json_extract(o.detail,'$.selector_check.same_edit') AS same_edit,
+                json_extract(o.detail,'$.selector_check.reference') AS reference,
                 json_extract(o.detail,'$.ranked[0].source') AS source
                 FROM observations o JOIN selected t ON t.id=o.trace_id
                 WHERE o.kind='prefill' AND json_type(o.detail,'$.selector_check')='object'",
@@ -798,9 +802,20 @@ impl Store {
         match view {
             "ranking-results" => sql.push_str(" SELECT json_object('result',result,'calls',count(*),
                 'same_edit',sum(same_edit)) FROM rankings GROUP BY result ORDER BY result LIMIT ? OFFSET ?"),
+            "ranking-reference" => sql.push_str(" SELECT json_object('reference',json(reference),'calls',count(*))
+                FROM rankings WHERE reference IS NOT NULL GROUP BY reference ORDER BY reference LIMIT ? OFFSET ?"),
             "ranking-examples" => {
                 sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'group',group_id,'thread',thread,
-                    'source',source,'result',result,'same_edit',same_edit) FROM rankings WHERE 1");
+                    'source',source,'result',result,'same_edit',same_edit,'reference',json(reference)) FROM rankings WHERE 1");
+                if let Some(filter) = filters.get("quality") {
+                    let (selector,baseline) = match filter.as_str() {
+                        "ranked_lost" => ("ranked",1), "ranked_gained" => ("ranked",0),
+                        "first_lost" => ("first",1), "first_gained" => ("first",0),
+                        _ => return Err("unknown reference comparison".into()),
+                    };
+                    sql.push_str(&format!(" AND json_extract(reference,'$.original')={baseline}
+                        AND json_extract(reference,'$.{selector}')!={baseline}"));
+                }
                 if let Some(value) = filters.get("result") {
                     if !matches!(value.as_str(),"both"|"ranked_only"|"first_only"|"neither"|"missing"|"mixed") {
                         return Err("unknown ranking comparison result".into());
@@ -881,6 +896,8 @@ impl Store {
             "impact" => {
                 sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
                     'ranked_calls',count(*) FILTER (WHERE kind='prefill' AND json_type(detail,'$.selector_check')='object'),
+                    'ranked_reference_losses',count(*) FILTER (WHERE kind='prefill'
+                        AND json_extract(detail,'$.selector_check.reference.original')=1 AND json_extract(detail,'$.selector_check.reference.ranked')=0),
                     'captured_conversations',(SELECT count(*) FROM captured_threads),
                     'without_findings',(SELECT count(*) FROM without_findings),
                     'without_findings_with_screen_suggestion',(SELECT count(*) FROM without_findings WHERE flagged),

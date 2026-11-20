@@ -27,7 +27,7 @@ cargo run --locked -- sidecar --demo
 
 [Compare four fresh routing requests](http://127.0.0.1:8040/?org=retail-south&factor=5c8549a0e4d873d64b7ffaad88d52f1b33a55c1c3f566abdb43a637e9d906c93&recommendation=fa537f0fdb14f11a458787b85cf6d007e5a02fa1add79ee079258bf3f2578cd9). Two reproduced the earlier edit’s effect on the full response. Only one reproduced its effect on tool selection. Open an example to see the user messages and the trials behind that difference.
 
-The demo uses saved measurements on synthetic inputs and makes zero model calls. To try public data, load 20 held-out QA questions and compare the model-ranked edit with editing the first passage. The dashboard shows the completed answers and the calls missing a comparison. [Public QA walkthrough](examples/public-qa/holdout.md#inspect-the-measured-calls)
+The demo uses saved measurements on synthetic inputs and makes zero model calls. To try public data, load 20 held-out QA questions and compare the model-ranked edit with editing the first passage. With reference answers attached, the dashboard flags three questions where the ranked edit lost a match. Open one to compare the answers. [Public QA walkthrough](examples/public-qa/holdout.md#inspect-the-measured-calls)
 
 ## Connect a workflow
 
