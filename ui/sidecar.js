@@ -16,6 +16,7 @@ const conflictDesign = query.get("conflict_design");
 const conflictCoverage = query.get("conflict_coverage");
 const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
+const prefixCohorts = query.get("prefixes") === "1";
 const targetPatterns = query.get("targets") === "1";
 const ranking = query.get("ranking");
 const quality = query.get("quality");
@@ -1952,7 +1953,9 @@ async function render(refresh = false) {
   } else if (view === "threads" && threadId) {
     body = await conversationView();
   } else if (view === "findings") {
-    if (openingStudy && recommendationId && factorId && !traceId) {
+    if (prefixCohorts) {
+      body = await prefixCohort();
+    } else if (openingStudy && recommendationId && factorId && !traceId) {
       body = await openingCoverageView();
     } else if (conflictDesign && recommendationId && factorId) {
       body = await conflictExamplesView();
@@ -2104,10 +2107,11 @@ async function render(refresh = false) {
         ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
       pagination(data.next_offset, { factor: factorId });
     } else {
-      const [impact, factors, screens, targets] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset }),
+      const [impact, factors, screens, targets, prefixes] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset }),
         pageOffset ? Promise.resolve({rows:[]}) : api("screened-pairs", scope),
-        pageOffset ? Promise.resolve({rows:[]}) : api("target-patterns", scope)]);
-      const signature = JSON.stringify([impact, factors, screens, targets]);
+        pageOffset ? Promise.resolve({rows:[]}) : api("target-patterns", scope),
+        pageOffset ? Promise.resolve({rows:[]}) : api("prefix-groups",scope)]);
+      const signature = JSON.stringify([impact, factors, screens, targets, prefixes]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
       const losses = !pageOffset && impact.ranked_reference_losses;
@@ -2115,7 +2119,10 @@ async function render(refresh = false) {
       const lower = !pageOffset && impact.lower_edit_changes;
       const pattern = !pageOffset && impact.conflict_pattern;
       const gap = !pageOffset && impact.conflict_gap;
-      const featured = !losses && !opening && !lower && !pattern && !gap && !pageOffset && factors.rows[0];
+      const cohort = prefixes.rows[0];
+      const prefixLead = cohort && cohort.conversations > 1 && (cohort.exceptions || cohort.confirmed) &&
+        !losses && !opening && !lower && !pattern && !gap;
+      const featured = !prefixLead && !losses && !opening && !lower && !pattern && !gap && !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
       body = element("div", {className:"overview"}, impactPanel(impact),
         losses ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}),
@@ -2135,14 +2142,17 @@ async function render(refresh = false) {
           element("a",{className:"featured",href:url({recommendation:gap.group,factor:gap.factor,conflict_coverage:gap.untested ? "untested" : "partial"})},
             element("div",{},element("h3",{text:"Compare the conflicting sources in " + plural(gap.untested+gap.partial,"conversation")}),
               element("p",{text:factorName(gap.conflict.sources) + " · " + gap.complete + " of " + plural(gap.conversations,"conversation") + " with both source edits compared at every conflicting call."})))) :
+        prefixLead ? prefixInvestigation(cohort) :
         featured ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}), factorRow(featured, true)) : null,
+        cohort && !prefixLead ? element("details", {className:"panel"},element("summary",{text:"Source edits at supplied prefixes"}),
+          listing([cohort],prefixGroupRow),link("All scored prefixes",url({prefixes:1}))) : null,
         targets.rows.length ? element("section", {className:"factors"}, element("h2", {text:"Recurring target misses"}),
           listing(targets.rows.slice(0,1), targetPatternRow), targets.rows.length > 1 ? link("Review all recurring misses",url({targets:1})) : null) : null,
         screens.rows.length ? element("section", {className:"factors"}, element("h2", {text:"Flagged source pairs"}),
           listing(screens.rows.slice(0,1), screenedRow), screens.rows.length > 1 ? link("Review all flagged pairs", url({screens:1})) : null) : null,
         remaining.length ? element("section", {className:"factors"}, element("h2", {text:featured ? "Other source factors" : "Source factors"}),
           listing(remaining, factor => factorRow(factor))) : null,
-        !factors.rows.length && !screens.rows.length && !targets.rows.length ? element("p", {className:"empty", text:"No recommendations in this scope."}) : null);
+        !factors.rows.length && !screens.rows.length && !targets.rows.length && !cohort ? element("p", {className:"empty", text:"No recommendations in this scope."}) : null);
       pagination(factors.next_offset);
     }
   } else {
@@ -2209,6 +2219,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
+      ...(prefixCohorts ? {prefixes:1,design:query.get("design"),verdict:query.get("verdict"),source:query.get("source"),unnamed:query.get("unnamed"),report:query.get("report")} : {}),
       opening:openingStudy ? 1 : null,slot:openingSlot,opening_context:query.get("opening_context"),ranking, quality, review, conflict_design:conflictDesign, conflict_coverage:conflictCoverage,from_coverage:query.get("from_coverage"),pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();
@@ -2256,7 +2267,7 @@ async function main() {
       row.focus();
     }
   }
-  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !targetPatterns && !ranking && !outcomeCategory && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !prefixCohorts && !targetPatterns && !ranking && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
     }

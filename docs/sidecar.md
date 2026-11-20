@@ -238,6 +238,28 @@ For your own workflow, set `assistant_prefix` and both literal continuations in 
 
 With content capture enabled, the selected candidate recommendation and the corresponding call also show this comparison for instrumented OTLP traffic. The report must match the exact captured request. Joining shadow trials additionally checks the model ID, source ID and version, intervention and edited request digest. A missing arm appears as untested. Multiple reports retain their runner identities. [Eight-question study and baselines](methods.md#can-a-supplied-answer-prefix-identify-a-source-worth-testing)
 
+### Compare two questions with the same sources
+
+In one booking conversation, replacing the Atlas calendar entry changed the answer from 60 minutes to 30. In its matched conversation, the user asked about Birch instead. Replacing Birch changed the answer from 30 to 60. Load the eight saved conversations into a sidecar with content capture enabled. Leave the sidecar running and run the sender in a second terminal.
+
+```sh
+cargo run --locked -- sidecar --db /tmp/calendar-study.sqlite --capture-content
+```
+
+```sh
+python3 examples/view_calendar_prefixes.py --url http://127.0.0.1:8040
+```
+
+Open **Inspect 8 conversations with verified source edits**. Pick a pair, then **Inspect this edit** to see the user question, captured source, replacement, score and generated answer. A source row filters the list to conversations with that source and result. **Read this conversation** opens the selected call in its thread. [Open the loaded study](http://127.0.0.1:8040/?org=calendar-prefix-study) · [Study design and baselines](methods.md#does-the-suggested-edit-follow-the-question-when-source-order-changes)
+
+![Two questions name different calendars. Each card shows the question, the source edited and the resulting change in minutes.](media/calendar-prefix-sources.png)
+
+The group counts distinct conversations and original request digests for a given scorer, model revision, tokenizer, runtime, prefix and pair of alternatives within a producing source and organization. Each source/result row counts a conversation once. A conversation can appear in several rows. A verified switch requires every attempted original and edited trial in the matching report to follow the prefix and the predicted literal. Missing trials, unresolved outputs and disagreeing reports have separate labels.
+
+The paired view further matches the request except for its final plain-text user question, both edits including their original source digests and versions, and the declared runner, sampling design and trial counts. It shows two representative questions with different verified source edits per setup. For comparison across users or workflows, apply the dashboard filters. The read endpoints are `prefix-groups`, `prefix-sources`, `prefix-contrasts`, `prefix-cases` and `prefix-check` under `/api/sidecar/`. They read captured measurements and make zero model calls.
+
+On 128 synthetic conversations repeating the eight inputs, warm loopback reads had p95 latencies of 0.33 ms for the group, 0.30 ms for the source breakdown, 0.93 ms for the matched pairs and 0.42 ms for a source-filtered conversation page (30 requests each). The Linux release-build test used one CPU and peaked at 50.8 MiB for the container including the Python driver, with a 512 MiB limit. These measurements cover indexing saved reports and serving the dashboard. Online scorer cost and inference latency require separate measurements. [Benchmark driver](../tests/sidecar_prefix_cohort.py)
+
 ### Find answers that changed after the same opening
 
 Open **Recommendations** and select **Review 3 conversations where the top opening token held and the proposal changed**. Choose `journal-policy`, then the sentence-completion question. The original and edited answers agree for seven tokens. At token eight the policy edit changes the first digit of the return window. **See this call in its conversation** brings up the surrounding dialogue.

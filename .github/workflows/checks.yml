@@ -39,6 +39,7 @@ jobs:
           python3 scripts/check_sidecar.py --binary target/debug/nexusweave --sdk-python "$RUNNER_TEMP/nexusweave-otel/bin/python"
           python3 tests/sidecar_targets.py target/debug/nexusweave --sdk-python "$RUNNER_TEMP/nexusweave-otel/bin/python"
           python3 tests/sidecar_conflict_coverage.py target/debug/nexusweave
+          python3 tests/sidecar_prefix_cohort.py target/debug/nexusweave --sdk-python "$RUNNER_TEMP/nexusweave-otel/bin/python"
           python3 tests/sidecar_opening_study.py target/debug/nexusweave
           python3 tests/sidecar_position.py target/debug/nexusweave
           python3 tests/sidecar_prefill.py target/debug/nexusweave --sdk-python "$RUNNER_TEMP/nexusweave-otel/bin/python"
@@ -48,6 +49,7 @@ jobs:
           python3 examples/public-qa/compare_orders.py
           python3 examples/public-qa/check_holdout.py
           python3 examples/context-screening/replay/prefix-study/study.py
+          python3 examples/context-screening/replay/prefix-transfer/study.py
       - name: Verify the installable crate
         if: runner.os == 'Linux'
         run: cargo +stable package --locked

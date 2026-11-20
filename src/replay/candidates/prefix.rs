@@ -36,7 +36,9 @@ pub fn prefix_reviews(
                 reversals.push(index);
             }
             conditions.push(json!({
-                "label": name, "edit": index.checked_sub(1).map(|i| &report.effects[i].intervention),
+                "label": name, "source":edit.and_then(|e|e.source_id),
+                "original":edit.and_then(|e| e.context.text.as_deref()).map(excerpt), "edit": index.checked_sub(1).map(|i| &report.effects[i].intervention),
+                "original_sha256":edit.map(|e| &e.captured_context_sha256),
                 "version": edit.and_then(|e| e.source_version), "change_log_odds":margin - baseline_margin,
                 "probabilities": row.log_probs.map(f64::exp), "outside": row.outside_pair_probability(),
                 "preferred": if margin > 0.0 { Some(0) } else if margin < 0.0 { Some(1) } else { None }
@@ -55,13 +57,68 @@ pub fn prefix_reviews(
                 trial_run(measurement, trials)
             })
             .collect();
+        let verdict = verdict(&conditions, &reversals, &runs);
         reviews.push(json!({"report":report.id, "prefix":measurement.assistant_prefix,
+            "verdict":verdict, "scorer":measurement.scorer_id, "tokenizer_sha256":measurement.tokenizer_sha256,
             "labels":measurement.candidates.each_ref().map(|c| &c.id),
             "alternatives":measurement.candidates.each_ref().map(|c| &c.continuation), "model":measurement.model_id,
             "revision":measurement.model_revision, "runtime":measurement.runtime, "conditions":conditions,
             "reversals":reversals, "runs":runs}));
     }
     reviews
+}
+
+// A direction is resolved only if every attempted trial in the arm began with
+// the supplied prefix followed by the same unambiguous literal continuation.
+fn unanimous_start(row: &Value) -> Option<usize> {
+    let attempted = row["attempted"].as_u64().filter(|n| *n > 0)?;
+    row["starts"]
+        .as_array()?
+        .iter()
+        .position(|n| n.as_u64() == Some(attempted))
+}
+
+fn verdict(conditions: &[Value], reversals: &[usize], runs: &[Value]) -> &'static str {
+    let [selected] = reversals else {
+        let switched = runs.iter().any(|run| {
+            let Some(rows) = run["rows"].as_array() else {
+                return false;
+            };
+            let Some(original) = rows.first().and_then(unanimous_start) else {
+                return false;
+            };
+            rows.iter()
+                .skip(1)
+                .filter_map(unanimous_start)
+                .any(|s| s != original)
+        });
+        return if switched {
+            "unselected_change"
+        } else {
+            "no_selection"
+        };
+    };
+    let mut result = None;
+    for run in runs {
+        let rows = &run["rows"];
+        if rows[*selected].is_null() {
+            continue;
+        }
+        let status = match unanimous_start(&rows[0]).zip(unanimous_start(&rows[*selected])) {
+            Some((a, b))
+                if conditions[0]["preferred"] == a && conditions[*selected]["preferred"] == b =>
+            {
+                "confirmed"
+            }
+            Some(_) => "disagreed",
+            None => "unresolved",
+        };
+        if result.is_some_and(|old| old != status) {
+            return "mixed";
+        }
+        result = Some(status);
+    }
+    result.unwrap_or("untested")
 }
 
 fn trial_run(candidate: &Measurement, trials: &shadow::Measurement) -> Option<Value> {
@@ -86,7 +143,16 @@ fn trial_run(candidate: &Measurement, trials: &shadow::Measurement) -> Option<Va
     rows[1..]
         .iter()
         .any(Option::is_some)
-        .then(|| json!({"report":report.id,"runner":report.runner_id,"rows":rows}))
+        .then(|| json!({"report":report.id,"runner":report.runner_id,"sampling":report.sampling_design,"rows":rows}))
+}
+
+fn excerpt(text: &str) -> String {
+    let mut chars = text.chars();
+    let mut first: String = chars.by_ref().take(160).collect();
+    if chars.next().is_some() {
+        first.push('…');
+    }
+    first
 }
 
 // The token sequences are disjoint, but decoded strings can overlap. Only count a
@@ -122,14 +188,7 @@ fn count_starts(trials: &[Trial], prefix: &str, alternatives: &[Candidate; 2]) -
     }
     let example = match trials {
         [Trial::Completed { choice }] if choice.kind == "model_output" => {
-            choice.outcome.as_str().map(|s| {
-                let mut chars = s.chars();
-                let mut preview: String = chars.by_ref().take(160).collect();
-                if chars.next().is_some() {
-                    preview.push('…');
-                }
-                preview
-            })
+            choice.outcome.as_str().map(excerpt)
         }
         _ => None,
     };
@@ -141,6 +200,38 @@ fn count_starts(trials: &[Trial], prefix: &str, alternatives: &[Candidate; 2]) -
 mod tests {
     use super::*;
     use crate::replay::Choice;
+
+    #[test]
+    fn distinguishes_untested_incomplete_and_contradictory_trials() {
+        let conditions = [json!({"preferred":0}), json!({"preferred":1})];
+        let trials = |starts| json!({"attempted":2,"starts":starts});
+        let run = |edited| json!({"rows":[trials([2,0]),edited]});
+        let confirmed = run(trials([0, 2]));
+        let held = run(trials([2, 0]));
+        assert_eq!(verdict(&conditions, &[1], &[run(Value::Null)]), "untested");
+        assert_eq!(
+            verdict(&conditions, &[1], &[run(trials([0, 1]))]),
+            "unresolved"
+        );
+        assert_eq!(
+            verdict(&conditions, &[1], &[run(trials([1, 1]))]),
+            "unresolved"
+        );
+        assert_eq!(
+            verdict(&conditions, &[1], std::slice::from_ref(&held)),
+            "disagreed"
+        );
+        assert_eq!(
+            verdict(&conditions, &[1], std::slice::from_ref(&confirmed)),
+            "confirmed"
+        );
+        assert_eq!(
+            verdict(&conditions, &[], std::slice::from_ref(&confirmed)),
+            "unselected_change"
+        );
+        assert_eq!(verdict(&conditions, &[], &[]), "no_selection");
+        assert_eq!(verdict(&conditions, &[1], &[confirmed, held]), "mixed");
+    }
 
     #[test]
     fn separates_literal_starts_from_other_text_tool_calls_and_failed_trials() {

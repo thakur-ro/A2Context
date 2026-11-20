@@ -179,6 +179,7 @@ pub(super) fn replace(tx: &Transaction<'_>, id: &str, run: Option<&Run>) -> rusq
                     .map(|s| s.to_string())
             ])?;
             super::target_patterns::index(tx, id, call)?;
+            super::prefix_patterns::index(tx, run, call)?;
             if let Some(report) = report {
                 index_pairs(tx, id, call, report)?;
             }

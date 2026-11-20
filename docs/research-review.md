@@ -53,6 +53,8 @@ Rabinovich and Anaby-Tavor studied how function selection responds to query vari
 
 Yeats et al. trained linear probes on model hidden states to detect incorrect tool calls across 18 models. This approach needs instrumented states and labels for errors. It addresses whether a call is likely incorrect. A controlled replay asks whether the proposed call changes under a specific input intervention. [Yeats et al., 2026, v1](https://arxiv.org/abs/2608.27750v1)
 
+The calendar experiment uses source order as a control and compares its pre-generation forecast with a direct rule that chooses the source named by the user. The two rules tied across the four matched question pairs. [Experiment and saved evidence](methods.md#does-the-suggested-edit-follow-the-question-when-source-order-changes)
+
 ## Repeatability and outcome choice
 
 A follow-up search on 20 November 2026 used `LLM evaluation prompt sensitivity decoding randomness repeated sampling`. Hua et al. found that the apparent sensitivity of performance to prompt templates depended on how answers were scored. This bears on our choice to report a change in the complete proposal and a change in the selected tool separately. Both outcomes describe captured behavior. Correctness and downstream task success require their own criteria. [Hua et al., EMNLP 2025](https://aclanthology.org/2025.emnlp-main.1006/)

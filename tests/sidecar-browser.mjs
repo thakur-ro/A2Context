@@ -757,6 +757,43 @@ try {
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
   }
+  if (process.env.CALENDAR_PREFIX_URL) {
+    for (const device of [page, mobile]) {
+      await device.goto(process.env.CALENDAR_PREFIX_URL + "/?org=calendar-prefix-study");
+      await device.getByRole("link",{name:/Inspect 8 conversations with verified source edits/}).click();
+      await device.getByRole("heading",{name:"Which source suggestions held up?"}).waitFor();
+      const pair = device.locator(".prefix-contrast");
+      await pair.getByRole("heading",{name:"Two questions pointed to different verified edits"}).waitFor();
+      const pick = pair.getByRole("combobox",{name:"Matched questions"});
+      assert.equal(await pick.locator("option").count(),4);
+      await pick.selectOption("2");
+      const side = pair.locator("article").first();
+      const thread = await side.locator("small").innerText();
+      assert.equal(await side.locator("strong").innerText(),"atlas-calendar");
+      assert.match(await side.locator("p").innerText(),/"(30|60)" → "(30|60)"/);
+      if (device === page && process.env.CALENDAR_SCREENSHOT) await pair.screenshot({path:process.env.CALENDAR_SCREENSHOT});
+      await side.getByRole("link",{name:"Inspect this edit"}).click();
+      await device.getByRole("heading",{name:thread,exact:true}).waitFor();
+      const review = device.getByRole("region",{name:"Source edits at a supplied prefix"});
+      await review.getByText("atlas-calendar",{exact:true}).first().click();
+      await review.getByText(/Captured: "Atlas calendar:/).waitFor();
+      assert.match(await device.getByRole("link",{name:"Read this conversation"}).getAttribute("href"),/focus_call=/);
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      await device.getByRole("link",{name:"Back to source results"}).click();
+      await pick.waitFor();
+      assert.equal(await pick.inputValue(),"2");
+      const source = device.getByRole("row").filter({has:device.getByRole("rowheader",{name:"birch-calendar"})});
+      await source.getByRole("link").click();
+      await device.getByRole("link",{name:"Show all results"}).waitFor();
+      assert.equal(new URL(device.url()).searchParams.get("source"),"birch-calendar");
+      assert.equal(new URL(device.url()).searchParams.get("org"),"calendar-prefix-study");
+      assert.equal(await device.getByRole("link",{name:/According to the Birch calendar/}).count(),4);
+      await device.getByRole("link",{name:/According to the Birch calendar/}).first().click();
+      await device.getByRole("link",{name:"Read this conversation"}).click();
+      await device.locator("#selected-call:focus").waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+    }
+  }
   assert.deepEqual(errors, []);
   console.log("Verified recommendations, before-inference preview, measured choices and tokens, legacy links, and desktop and mobile layouts.");
 } finally {

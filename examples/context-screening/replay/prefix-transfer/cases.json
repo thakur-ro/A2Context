@@ -1,0 +1,2322 @@
+[
+  {
+    "id": "atlas-calendar-30-atlas-calendar",
+    "order": [
+      "atlas-calendar",
+      "birch-calendar"
+    ],
+    "requested": "atlas-calendar",
+    "minutes": {
+      "atlas-calendar": 30,
+      "birch-calendar": 60
+    },
+    "protocol_sha256": "c4d2b5ba5fb17302b2494884de3a0fd0550e1d173f74ed497163a2fbfd781161",
+    "empty_log_probs": {
+      "baseline": [
+        -13.868470191955566,
+        -16.405508041381836
+      ],
+      "atlas-calendar": [
+        -15.165169715881348,
+        -17.26578140258789
+      ],
+      "birch-calendar": [
+        -13.565008163452148,
+        -16.649477005004883
+      ]
+    },
+    "envelope": {
+      "request": {
+        "version": 1,
+        "attributes": {
+          "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the requested calendar entry to answer questions about room bookings.\\nAtlas calendar: the Cedar room's weekly meeting lasts 30 minutes.\\nBirch calendar: the Cedar room's weekly meeting lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"I am booking the Cedar room's weekly meeting. According to the Atlas calendar, how long does it last? Start your answer with 'Meeting length: ' and then give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "nexusweave.context.semantics": {
+            "version": 1,
+            "request_sources": [
+              {
+                "id": "atlas-calendar",
+                "source_id": "atlas-calendar",
+                "source_version": "30m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 74,
+                    "end_byte": 139
+                  }
+                }
+              },
+              {
+                "id": "birch-calendar",
+                "source_id": "birch-calendar",
+                "source_version": "60m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 140,
+                    "end_byte": 205
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "candidate": {
+        "version": 1,
+        "id": "room-duration",
+        "scorer_id": "qwen2-transformers-continuation-v1",
+        "captured_request_sha256": "f82660fbf0db3ad5272de8ea47ca421567fb5a6e571fcafb98392951d2016fd5",
+        "assistant_prefix": "Meeting length: ",
+        "candidates": [
+          {
+            "id": "30",
+            "continuation": "30"
+          },
+          {
+            "id": "60",
+            "continuation": "60"
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "assistant_prefix_token_ids": [
+            64576,
+            3084,
+            25,
+            220
+          ],
+          "candidate_token_ids": [
+            [
+              18,
+              15
+            ],
+            [
+              21,
+              15
+            ]
+          ],
+          "conditions": [
+            {
+              "id": "baseline",
+              "rendered_prefix_sha256": "764ab55e4cd554549f739e0395dc629178f7722efcf5e799ead1b40ab5165336",
+              "log_probs": [
+                -2.6702880859375e-05,
+                -12.323379516601562
+              ]
+            },
+            {
+              "id": "edit:request-source:atlas-calendar",
+              "rendered_prefix_sha256": "d4cb89e0d356b5f5f55122de1f7ff5a7a648625df845033cb368537956a4f3cc",
+              "log_probs": [
+                -7.290145874023437,
+                -0.0028972625732421875
+              ]
+            },
+            {
+              "id": "edit:request-source:birch-calendar",
+              "rendered_prefix_sha256": "3093f073ab6985e6b9b99148d9001516d4ec9482dc7a6aff07617273f82c4dd8",
+              "log_probs": [
+                -5.53131103515625e-05,
+                -13.849197387695312
+              ]
+            }
+          ]
+        },
+        "baseline_log_odds": 12.323352813720703,
+        "effects": [
+          {
+            "condition_id": "edit:request-source:atlas-calendar",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "atlas-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "0e79e39be316402cb8d40f0000d1d88c8bce98e7a20cdc56beaf875306310751",
+            "log_odds": -7.287248611450194,
+            "change_log_odds": -19.6106014251709
+          },
+          {
+            "condition_id": "edit:request-source:birch-calendar",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "birch-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "8ec8e46aebec5835b9203ca2928c087a2b8d73c1739337c505dfb5a842e1d44a",
+            "log_odds": 13.849142074584961,
+            "change_log_odds": 1.5257892608642578
+          }
+        ]
+      },
+      "shadow": {
+        "version": 1,
+        "id": "room-answer",
+        "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+        "expected": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Meeting length: 30 minutes"
+        },
+        "match_rule": {
+          "kind": "exact"
+        },
+        "sampling_design": "unspecified",
+        "captured_request_sha256": "f82660fbf0db3ad5272de8ea47ca421567fb5a6e571fcafb98392951d2016fd5",
+        "baseline": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Meeting length: 30"
+            }
+          }
+        ],
+        "baseline_summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "effects": [
+          {
+            "source_id": "atlas-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "0e79e39be316402cb8d40f0000d1d88c8bce98e7a20cdc56beaf875306310751",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "1e5f82691923ca1bd7c9e1a60b5a6c8031d134d6288108e9ded6ff345c41f2cb",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 60"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          },
+          {
+            "source_id": "birch-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "8ec8e46aebec5835b9203ca2928c087a2b8d73c1739337c505dfb5a842e1d44a",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "fe90538165534a5597f4b62760d5faa9768b085a9cb00b2e7fa04d75e742ecd5",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 30"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "atlas-calendar-30-birch-calendar",
+    "order": [
+      "atlas-calendar",
+      "birch-calendar"
+    ],
+    "requested": "birch-calendar",
+    "minutes": {
+      "atlas-calendar": 30,
+      "birch-calendar": 60
+    },
+    "protocol_sha256": "c4d2b5ba5fb17302b2494884de3a0fd0550e1d173f74ed497163a2fbfd781161",
+    "empty_log_probs": {
+      "baseline": [
+        -14.09925937652588,
+        -15.906291961669922
+      ],
+      "atlas-calendar": [
+        -15.044060707092283,
+        -16.768198013305664
+      ],
+      "birch-calendar": [
+        -14.451567649841309,
+        -16.923175811767578
+      ]
+    },
+    "envelope": {
+      "request": {
+        "version": 1,
+        "attributes": {
+          "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the requested calendar entry to answer questions about room bookings.\\nAtlas calendar: the Cedar room's weekly meeting lasts 30 minutes.\\nBirch calendar: the Cedar room's weekly meeting lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"I am booking the Cedar room's weekly meeting. According to the Birch calendar, how long does it last? Start your answer with 'Meeting length: ' and then give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "nexusweave.context.semantics": {
+            "version": 1,
+            "request_sources": [
+              {
+                "id": "atlas-calendar",
+                "source_id": "atlas-calendar",
+                "source_version": "30m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 74,
+                    "end_byte": 139
+                  }
+                }
+              },
+              {
+                "id": "birch-calendar",
+                "source_id": "birch-calendar",
+                "source_version": "60m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 140,
+                    "end_byte": 205
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "candidate": {
+        "version": 1,
+        "id": "room-duration",
+        "scorer_id": "qwen2-transformers-continuation-v1",
+        "captured_request_sha256": "6f4d97d9a4e2fd3bbfea719444ef97ce134a9a929756686c6f8800578e704f19",
+        "assistant_prefix": "Meeting length: ",
+        "candidates": [
+          {
+            "id": "30",
+            "continuation": "30"
+          },
+          {
+            "id": "60",
+            "continuation": "60"
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "assistant_prefix_token_ids": [
+            64576,
+            3084,
+            25,
+            220
+          ],
+          "candidate_token_ids": [
+            [
+              18,
+              15
+            ],
+            [
+              21,
+              15
+            ]
+          ],
+          "conditions": [
+            {
+              "id": "baseline",
+              "rendered_prefix_sha256": "43e5a788ef572934ff8246e047b58e424f7472fea8ca2231008d0c9d9c433cc3",
+              "log_probs": [
+                -8.663995742797852,
+                -0.0002536773681640625
+              ]
+            },
+            {
+              "id": "edit:request-source:atlas-calendar",
+              "rendered_prefix_sha256": "2b605c5d27d114b1f29246f435b2e7b42fa39bb374f90738cb07495daa6bfd79",
+              "log_probs": [
+                -9.751791000366213,
+                -0.00020599365234375
+              ]
+            },
+            {
+              "id": "edit:request-source:birch-calendar",
+              "rendered_prefix_sha256": "8876d93da0281d1d3225a477d3052d12fe571e8eefb985ad5bbe53ba64a2a9fb",
+              "log_probs": [
+                -0.13683700561523438,
+                -5.204931259155273
+              ]
+            }
+          ]
+        },
+        "baseline_log_odds": -8.663742065429688,
+        "effects": [
+          {
+            "condition_id": "edit:request-source:atlas-calendar",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "atlas-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "7ea1038ec50de83f959eb2755b3d9583066652b09e3e5c6ded51a6dc6f6552b8",
+            "log_odds": -9.751585006713869,
+            "change_log_odds": -1.0878429412841815
+          },
+          {
+            "condition_id": "edit:request-source:birch-calendar",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "birch-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "f7ed006360578d38200254c9da83f35b212595f8f0a92135c5fdc0f2a238d1c4",
+            "log_odds": 5.068094253540039,
+            "change_log_odds": 13.731836318969727
+          }
+        ]
+      },
+      "shadow": {
+        "version": 1,
+        "id": "room-answer",
+        "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+        "expected": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Meeting length: 60 minutes"
+        },
+        "match_rule": {
+          "kind": "exact"
+        },
+        "sampling_design": "unspecified",
+        "captured_request_sha256": "6f4d97d9a4e2fd3bbfea719444ef97ce134a9a929756686c6f8800578e704f19",
+        "baseline": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Meeting length: 60"
+            }
+          }
+        ],
+        "baseline_summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "effects": [
+          {
+            "source_id": "atlas-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "7ea1038ec50de83f959eb2755b3d9583066652b09e3e5c6ded51a6dc6f6552b8",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "1e5f82691923ca1bd7c9e1a60b5a6c8031d134d6288108e9ded6ff345c41f2cb",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 60"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          },
+          {
+            "source_id": "birch-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "f7ed006360578d38200254c9da83f35b212595f8f0a92135c5fdc0f2a238d1c4",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "fe90538165534a5597f4b62760d5faa9768b085a9cb00b2e7fa04d75e742ecd5",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 30"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "atlas-calendar-60-atlas-calendar",
+    "order": [
+      "atlas-calendar",
+      "birch-calendar"
+    ],
+    "requested": "atlas-calendar",
+    "minutes": {
+      "atlas-calendar": 60,
+      "birch-calendar": 30
+    },
+    "protocol_sha256": "c4d2b5ba5fb17302b2494884de3a0fd0550e1d173f74ed497163a2fbfd781161",
+    "empty_log_probs": {
+      "baseline": [
+        -13.868107795715332,
+        -16.086193084716797
+      ],
+      "atlas-calendar": [
+        -14.811500549316406,
+        -17.48839569091797
+      ],
+      "birch-calendar": [
+        -14.169495582580566,
+        -16.029556274414062
+      ]
+    },
+    "envelope": {
+      "request": {
+        "version": 1,
+        "attributes": {
+          "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the requested calendar entry to answer questions about room bookings.\\nAtlas calendar: the Cedar room's weekly meeting lasts 60 minutes.\\nBirch calendar: the Cedar room's weekly meeting lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"I am booking the Cedar room's weekly meeting. According to the Atlas calendar, how long does it last? Start your answer with 'Meeting length: ' and then give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "nexusweave.context.semantics": {
+            "version": 1,
+            "request_sources": [
+              {
+                "id": "atlas-calendar",
+                "source_id": "atlas-calendar",
+                "source_version": "60m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 74,
+                    "end_byte": 139
+                  }
+                }
+              },
+              {
+                "id": "birch-calendar",
+                "source_id": "birch-calendar",
+                "source_version": "30m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 140,
+                    "end_byte": 205
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "candidate": {
+        "version": 1,
+        "id": "room-duration",
+        "scorer_id": "qwen2-transformers-continuation-v1",
+        "captured_request_sha256": "504409199f1926b740c4622e636ce9e6b6c64d96ad8c1b1effcfff819d1d780a",
+        "assistant_prefix": "Meeting length: ",
+        "candidates": [
+          {
+            "id": "30",
+            "continuation": "30"
+          },
+          {
+            "id": "60",
+            "continuation": "60"
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "assistant_prefix_token_ids": [
+            64576,
+            3084,
+            25,
+            220
+          ],
+          "candidate_token_ids": [
+            [
+              18,
+              15
+            ],
+            [
+              21,
+              15
+            ]
+          ],
+          "conditions": [
+            {
+              "id": "baseline",
+              "rendered_prefix_sha256": "96c74ac28098ffc7926ebf451d5a091ee07db551afb770c0b442bab05b8c3630",
+              "log_probs": [
+                -10.70901870727539,
+                -4.76837158203125e-05
+              ]
+            },
+            {
+              "id": "edit:request-source:atlas-calendar",
+              "rendered_prefix_sha256": "bf5380b7062b998beb8e2e8c786565eeed7759d60bb6adb71e0abd3a09f373a4",
+              "log_probs": [
+                -0.012495040893554688,
+                -5.818603515625
+              ]
+            },
+            {
+              "id": "edit:request-source:birch-calendar",
+              "rendered_prefix_sha256": "ecfccf521a18ca65059b27d049671d5ada6367601952e21b0683753e0037ed75",
+              "log_probs": [
+                -11.601348876953123,
+                -4.1961669921875e-05
+              ]
+            }
+          ]
+        },
+        "baseline_log_odds": -10.70897102355957,
+        "effects": [
+          {
+            "condition_id": "edit:request-source:atlas-calendar",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "atlas-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "82c94a3924497f157abd09c6cbe9bdfc8eeaf08031a7fbece0a2f36b1a80a53d",
+            "log_odds": 5.806108474731445,
+            "change_log_odds": 16.515079498291016
+          },
+          {
+            "condition_id": "edit:request-source:birch-calendar",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "birch-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "d85586b26187db9286d630cea281290b980097a5de23658e40eb44a77214fb32",
+            "log_odds": -11.601306915283201,
+            "change_log_odds": -0.892335891723631
+          }
+        ]
+      },
+      "shadow": {
+        "version": 1,
+        "id": "room-answer",
+        "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+        "expected": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Meeting length: 60 minutes"
+        },
+        "match_rule": {
+          "kind": "exact"
+        },
+        "sampling_design": "unspecified",
+        "captured_request_sha256": "504409199f1926b740c4622e636ce9e6b6c64d96ad8c1b1effcfff819d1d780a",
+        "baseline": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Meeting length: 60"
+            }
+          }
+        ],
+        "baseline_summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "effects": [
+          {
+            "source_id": "atlas-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "82c94a3924497f157abd09c6cbe9bdfc8eeaf08031a7fbece0a2f36b1a80a53d",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "1c7ae9fa2169518c2ca143c67c1a09ac1c952b5927301579d16ef1bafde696ed",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 30"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          },
+          {
+            "source_id": "birch-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "d85586b26187db9286d630cea281290b980097a5de23658e40eb44a77214fb32",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "153dc7d6a6aec553a02052dc3ca8ba7559093cc3b6a8241bac00b21e6e4669d4",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 60"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "atlas-calendar-60-birch-calendar",
+    "order": [
+      "atlas-calendar",
+      "birch-calendar"
+    ],
+    "requested": "birch-calendar",
+    "minutes": {
+      "atlas-calendar": 60,
+      "birch-calendar": 30
+    },
+    "protocol_sha256": "c4d2b5ba5fb17302b2494884de3a0fd0550e1d173f74ed497163a2fbfd781161",
+    "empty_log_probs": {
+      "baseline": [
+        -13.631471633911133,
+        -15.958672523498535
+      ],
+      "atlas-calendar": [
+        -14.615790367126465,
+        -17.109230041503906
+      ],
+      "birch-calendar": [
+        -14.719926834106444,
+        -16.5886173248291
+      ]
+    },
+    "envelope": {
+      "request": {
+        "version": 1,
+        "attributes": {
+          "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the requested calendar entry to answer questions about room bookings.\\nAtlas calendar: the Cedar room's weekly meeting lasts 60 minutes.\\nBirch calendar: the Cedar room's weekly meeting lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"I am booking the Cedar room's weekly meeting. According to the Birch calendar, how long does it last? Start your answer with 'Meeting length: ' and then give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "nexusweave.context.semantics": {
+            "version": 1,
+            "request_sources": [
+              {
+                "id": "atlas-calendar",
+                "source_id": "atlas-calendar",
+                "source_version": "60m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 74,
+                    "end_byte": 139
+                  }
+                }
+              },
+              {
+                "id": "birch-calendar",
+                "source_id": "birch-calendar",
+                "source_version": "30m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 140,
+                    "end_byte": 205
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "candidate": {
+        "version": 1,
+        "id": "room-duration",
+        "scorer_id": "qwen2-transformers-continuation-v1",
+        "captured_request_sha256": "8ac5c4e8202b5c8499f4ed007cdf2815e06dc6fb83f73246a6a8c31c2f278c89",
+        "assistant_prefix": "Meeting length: ",
+        "candidates": [
+          {
+            "id": "30",
+            "continuation": "30"
+          },
+          {
+            "id": "60",
+            "continuation": "60"
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "assistant_prefix_token_ids": [
+            64576,
+            3084,
+            25,
+            220
+          ],
+          "candidate_token_ids": [
+            [
+              18,
+              15
+            ],
+            [
+              21,
+              15
+            ]
+          ],
+          "conditions": [
+            {
+              "id": "baseline",
+              "rendered_prefix_sha256": "ef667336d141f6d4e11c9eb60a4b6d525351108f03e789d4e2dd2b900aad9aa8",
+              "log_probs": [
+                -0.0003185272216796875,
+                -8.329702377319336
+              ]
+            },
+            {
+              "id": "edit:request-source:atlas-calendar",
+              "rendered_prefix_sha256": "9839d7d56d1f5d6f684f20675a5262f532d80d7cdc27266ae2e07d3ef015d1ad",
+              "log_probs": [
+                -0.0001544952392578125,
+                -11.734291076660156
+              ]
+            },
+            {
+              "id": "edit:request-source:birch-calendar",
+              "rendered_prefix_sha256": "65c870df1b618f16554bf4acb1a8ffbd9f5cf76adfecacbeeaa9d3625c5f56da",
+              "log_probs": [
+                -3.420866012573242,
+                -0.13706398010253906
+              ]
+            }
+          ]
+        },
+        "baseline_log_odds": 8.329383850097656,
+        "effects": [
+          {
+            "condition_id": "edit:request-source:atlas-calendar",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "atlas-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "a90dd8f9599dd773d57de54e042c8682a7748b8cd84846b46731c15099880cda",
+            "log_odds": 11.734136581420898,
+            "change_log_odds": 3.404752731323242
+          },
+          {
+            "condition_id": "edit:request-source:birch-calendar",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "birch-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "c1ba2f955aa7781d6510a7cf2dde11ba4a607a700fdd5101936af66585c5d11d",
+            "log_odds": -3.283802032470703,
+            "change_log_odds": -11.61318588256836
+          }
+        ]
+      },
+      "shadow": {
+        "version": 1,
+        "id": "room-answer",
+        "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+        "expected": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Meeting length: 30 minutes"
+        },
+        "match_rule": {
+          "kind": "exact"
+        },
+        "sampling_design": "unspecified",
+        "captured_request_sha256": "8ac5c4e8202b5c8499f4ed007cdf2815e06dc6fb83f73246a6a8c31c2f278c89",
+        "baseline": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Meeting length: 30"
+            }
+          }
+        ],
+        "baseline_summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "effects": [
+          {
+            "source_id": "atlas-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "a90dd8f9599dd773d57de54e042c8682a7748b8cd84846b46731c15099880cda",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "1c7ae9fa2169518c2ca143c67c1a09ac1c952b5927301579d16ef1bafde696ed",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 30"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          },
+          {
+            "source_id": "birch-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "c1ba2f955aa7781d6510a7cf2dde11ba4a607a700fdd5101936af66585c5d11d",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "153dc7d6a6aec553a02052dc3ca8ba7559093cc3b6a8241bac00b21e6e4669d4",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 60"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "birch-calendar-30-atlas-calendar",
+    "order": [
+      "birch-calendar",
+      "atlas-calendar"
+    ],
+    "requested": "atlas-calendar",
+    "minutes": {
+      "atlas-calendar": 30,
+      "birch-calendar": 60
+    },
+    "protocol_sha256": "c4d2b5ba5fb17302b2494884de3a0fd0550e1d173f74ed497163a2fbfd781161",
+    "empty_log_probs": {
+      "baseline": [
+        -13.515677452087402,
+        -15.794336318969728
+      ],
+      "birch-calendar": [
+        -14.122901916503906,
+        -16.65131950378418
+      ],
+      "atlas-calendar": [
+        -14.412830352783203,
+        -16.14470863342285
+      ]
+    },
+    "envelope": {
+      "request": {
+        "version": 1,
+        "attributes": {
+          "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the requested calendar entry to answer questions about room bookings.\\nBirch calendar: the Cedar room's weekly meeting lasts 60 minutes.\\nAtlas calendar: the Cedar room's weekly meeting lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"I am booking the Cedar room's weekly meeting. According to the Atlas calendar, how long does it last? Start your answer with 'Meeting length: ' and then give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "nexusweave.context.semantics": {
+            "version": 1,
+            "request_sources": [
+              {
+                "id": "birch-calendar",
+                "source_id": "birch-calendar",
+                "source_version": "60m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 74,
+                    "end_byte": 139
+                  }
+                }
+              },
+              {
+                "id": "atlas-calendar",
+                "source_id": "atlas-calendar",
+                "source_version": "30m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 140,
+                    "end_byte": 205
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "candidate": {
+        "version": 1,
+        "id": "room-duration",
+        "scorer_id": "qwen2-transformers-continuation-v1",
+        "captured_request_sha256": "e7d96b8dc6a128ee17b8739b619b50b42e3546fae955350140f14e9a9e5fc2dc",
+        "assistant_prefix": "Meeting length: ",
+        "candidates": [
+          {
+            "id": "30",
+            "continuation": "30"
+          },
+          {
+            "id": "60",
+            "continuation": "60"
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "assistant_prefix_token_ids": [
+            64576,
+            3084,
+            25,
+            220
+          ],
+          "candidate_token_ids": [
+            [
+              18,
+              15
+            ],
+            [
+              21,
+              15
+            ]
+          ],
+          "conditions": [
+            {
+              "id": "baseline",
+              "rendered_prefix_sha256": "8ffeca67bf238fda5f787beea4d502b51738463cf4b6b9d5672c24eba9af2a8e",
+              "log_probs": [
+                -0.001209259033203125,
+                -6.812524795532227
+              ]
+            },
+            {
+              "id": "edit:request-source:birch-calendar",
+              "rendered_prefix_sha256": "ee192a1977ce5fe7f72a0a775ef4c09921d29b184e31a28a8b9d35a5b1b0f67f",
+              "log_probs": [
+                -0.00019073486328125,
+                -10.899503707885742
+              ]
+            },
+            {
+              "id": "edit:request-source:atlas-calendar",
+              "rendered_prefix_sha256": "ae40c6f359be1e5a5ef7feaa6932d77a2697f22950b1401b915188564ab9a39c",
+              "log_probs": [
+                -3.733013153076172,
+                -0.07624244689941406
+              ]
+            }
+          ]
+        },
+        "baseline_log_odds": 6.811315536499023,
+        "effects": [
+          {
+            "condition_id": "edit:request-source:birch-calendar",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "birch-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "b73bb31e5ace40613b025e50d47359e6217dbfee4357c06936a419720e72287d",
+            "log_odds": 10.899312973022461,
+            "change_log_odds": 4.0879974365234375
+          },
+          {
+            "condition_id": "edit:request-source:atlas-calendar",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "atlas-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "1b056e55e459005be1026beed99e0ac36151683c26fc2386f0658ced4118497e",
+            "log_odds": -3.656770706176758,
+            "change_log_odds": -10.468086242675781
+          }
+        ]
+      },
+      "shadow": {
+        "version": 1,
+        "id": "room-answer",
+        "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+        "expected": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Meeting length: 30 minutes"
+        },
+        "match_rule": {
+          "kind": "exact"
+        },
+        "sampling_design": "unspecified",
+        "captured_request_sha256": "e7d96b8dc6a128ee17b8739b619b50b42e3546fae955350140f14e9a9e5fc2dc",
+        "baseline": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Meeting length: 30"
+            }
+          }
+        ],
+        "baseline_summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "effects": [
+          {
+            "source_id": "birch-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "b73bb31e5ace40613b025e50d47359e6217dbfee4357c06936a419720e72287d",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "fe90538165534a5597f4b62760d5faa9768b085a9cb00b2e7fa04d75e742ecd5",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 30"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          },
+          {
+            "source_id": "atlas-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "1b056e55e459005be1026beed99e0ac36151683c26fc2386f0658ced4118497e",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "1e5f82691923ca1bd7c9e1a60b5a6c8031d134d6288108e9ded6ff345c41f2cb",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 60"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "birch-calendar-30-birch-calendar",
+    "order": [
+      "birch-calendar",
+      "atlas-calendar"
+    ],
+    "requested": "birch-calendar",
+    "minutes": {
+      "atlas-calendar": 30,
+      "birch-calendar": 60
+    },
+    "protocol_sha256": "c4d2b5ba5fb17302b2494884de3a0fd0550e1d173f74ed497163a2fbfd781161",
+    "empty_log_probs": {
+      "baseline": [
+        -14.799762725830078,
+        -16.971237182617188
+      ],
+      "birch-calendar": [
+        -15.215154647827148,
+        -17.816843032836914
+      ],
+      "atlas-calendar": [
+        -15.031904220581056,
+        -16.90176773071289
+      ]
+    },
+    "envelope": {
+      "request": {
+        "version": 1,
+        "attributes": {
+          "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the requested calendar entry to answer questions about room bookings.\\nBirch calendar: the Cedar room's weekly meeting lasts 60 minutes.\\nAtlas calendar: the Cedar room's weekly meeting lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"I am booking the Cedar room's weekly meeting. According to the Birch calendar, how long does it last? Start your answer with 'Meeting length: ' and then give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "nexusweave.context.semantics": {
+            "version": 1,
+            "request_sources": [
+              {
+                "id": "birch-calendar",
+                "source_id": "birch-calendar",
+                "source_version": "60m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 74,
+                    "end_byte": 139
+                  }
+                }
+              },
+              {
+                "id": "atlas-calendar",
+                "source_id": "atlas-calendar",
+                "source_version": "30m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 140,
+                    "end_byte": 205
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "candidate": {
+        "version": 1,
+        "id": "room-duration",
+        "scorer_id": "qwen2-transformers-continuation-v1",
+        "captured_request_sha256": "f41c7574e032192b257126f96dda36fc42a864950cbf6495d3693e0835b66899",
+        "assistant_prefix": "Meeting length: ",
+        "candidates": [
+          {
+            "id": "30",
+            "continuation": "30"
+          },
+          {
+            "id": "60",
+            "continuation": "60"
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "assistant_prefix_token_ids": [
+            64576,
+            3084,
+            25,
+            220
+          ],
+          "candidate_token_ids": [
+            [
+              18,
+              15
+            ],
+            [
+              21,
+              15
+            ]
+          ],
+          "conditions": [
+            {
+              "id": "baseline",
+              "rendered_prefix_sha256": "82bfe0bc6d2a0482251b49d4eff928dc133a6fafecac3ec88609df3851667903",
+              "log_probs": [
+                -10.272212982177734,
+                -6.866455078125e-05
+              ]
+            },
+            {
+              "id": "edit:request-source:birch-calendar",
+              "rendered_prefix_sha256": "22ae8a45cb6a9c8a056921d9fa1054140372f9917a846d9068c787f3a253d981",
+              "log_probs": [
+                -0.03343963623046875,
+                -6.280313491821289
+              ]
+            },
+            {
+              "id": "edit:request-source:atlas-calendar",
+              "rendered_prefix_sha256": "2a87c79e14a9debbd367acd5f6704ca763966765dfd5e7c3d40b401065435e67",
+              "log_probs": [
+                -11.365423202514648,
+                -5.14984130859375e-05
+              ]
+            }
+          ]
+        },
+        "baseline_log_odds": -10.272144317626953,
+        "effects": [
+          {
+            "condition_id": "edit:request-source:birch-calendar",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "birch-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "829d4dd2af3647851695891be1badcbecf2da823f0ce7828261710b0f782b360",
+            "log_odds": 6.24687385559082,
+            "change_log_odds": 16.519018173217773
+          },
+          {
+            "condition_id": "edit:request-source:atlas-calendar",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "atlas-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "79d3712e113c254bc0443c1670d9f752f46e20f6c4240de6e06161dcb7276d6b",
+            "log_odds": -11.365371704101562,
+            "change_log_odds": -1.0932273864746094
+          }
+        ]
+      },
+      "shadow": {
+        "version": 1,
+        "id": "room-answer",
+        "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+        "expected": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Meeting length: 60 minutes"
+        },
+        "match_rule": {
+          "kind": "exact"
+        },
+        "sampling_design": "unspecified",
+        "captured_request_sha256": "f41c7574e032192b257126f96dda36fc42a864950cbf6495d3693e0835b66899",
+        "baseline": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Meeting length: 60"
+            }
+          }
+        ],
+        "baseline_summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "effects": [
+          {
+            "source_id": "birch-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "829d4dd2af3647851695891be1badcbecf2da823f0ce7828261710b0f782b360",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "fe90538165534a5597f4b62760d5faa9768b085a9cb00b2e7fa04d75e742ecd5",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 30"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          },
+          {
+            "source_id": "atlas-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "79d3712e113c254bc0443c1670d9f752f46e20f6c4240de6e06161dcb7276d6b",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "1e5f82691923ca1bd7c9e1a60b5a6c8031d134d6288108e9ded6ff345c41f2cb",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 60"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "birch-calendar-60-atlas-calendar",
+    "order": [
+      "birch-calendar",
+      "atlas-calendar"
+    ],
+    "requested": "atlas-calendar",
+    "minutes": {
+      "atlas-calendar": 60,
+      "birch-calendar": 30
+    },
+    "protocol_sha256": "c4d2b5ba5fb17302b2494884de3a0fd0550e1d173f74ed497163a2fbfd781161",
+    "empty_log_probs": {
+      "baseline": [
+        -13.91556167602539,
+        -15.703787803649902
+      ],
+      "birch-calendar": [
+        -14.62905979156494,
+        -16.28699493408203
+      ],
+      "atlas-calendar": [
+        -14.08314037322998,
+        -16.412967681884766
+      ]
+    },
+    "envelope": {
+      "request": {
+        "version": 1,
+        "attributes": {
+          "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the requested calendar entry to answer questions about room bookings.\\nBirch calendar: the Cedar room's weekly meeting lasts 30 minutes.\\nAtlas calendar: the Cedar room's weekly meeting lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"I am booking the Cedar room's weekly meeting. According to the Atlas calendar, how long does it last? Start your answer with 'Meeting length: ' and then give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "nexusweave.context.semantics": {
+            "version": 1,
+            "request_sources": [
+              {
+                "id": "birch-calendar",
+                "source_id": "birch-calendar",
+                "source_version": "30m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 74,
+                    "end_byte": 139
+                  }
+                }
+              },
+              {
+                "id": "atlas-calendar",
+                "source_id": "atlas-calendar",
+                "source_version": "60m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 140,
+                    "end_byte": 205
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "candidate": {
+        "version": 1,
+        "id": "room-duration",
+        "scorer_id": "qwen2-transformers-continuation-v1",
+        "captured_request_sha256": "0e84731724a918d248d9d0aaff54c301e90ed607510392e2595ba2bb19fba13b",
+        "assistant_prefix": "Meeting length: ",
+        "candidates": [
+          {
+            "id": "30",
+            "continuation": "30"
+          },
+          {
+            "id": "60",
+            "continuation": "60"
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "assistant_prefix_token_ids": [
+            64576,
+            3084,
+            25,
+            220
+          ],
+          "candidate_token_ids": [
+            [
+              18,
+              15
+            ],
+            [
+              21,
+              15
+            ]
+          ],
+          "conditions": [
+            {
+              "id": "baseline",
+              "rendered_prefix_sha256": "2ded54af149f4c64fa4b74673cf9e2987ac2205de869ce85b973348542d00d0a",
+              "log_probs": [
+                -8.055656433105469,
+                -0.000392913818359375
+              ]
+            },
+            {
+              "id": "edit:request-source:birch-calendar",
+              "rendered_prefix_sha256": "c474803e7e72432ff06f4a10aa21ed9e4cc93491abe6633de7a65bbacbe43051",
+              "log_probs": [
+                -9.672195434570312,
+                -0.0001811981201171875
+              ]
+            },
+            {
+              "id": "edit:request-source:atlas-calendar",
+              "rendered_prefix_sha256": "d567bd8408e1478da2c76340c83898653e533424e1f7e5dfe6550102ffeb716b",
+              "log_probs": [
+                -0.0749664306640625,
+                -5.802742004394531
+              ]
+            }
+          ]
+        },
+        "baseline_log_odds": -8.05526351928711,
+        "effects": [
+          {
+            "condition_id": "edit:request-source:birch-calendar",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "birch-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "1f18ff99863f9c6fb1381d16638c7a62b3d1b925b02acd2d42622af55df7c572",
+            "log_odds": -9.672014236450195,
+            "change_log_odds": -1.616750717163086
+          },
+          {
+            "condition_id": "edit:request-source:atlas-calendar",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "atlas-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "2248bd1eb08e95f0f5b177e5f81c926397ed1f1e7d7a3d877ca8fdf5a1ce2043",
+            "log_odds": 5.727775573730469,
+            "change_log_odds": 13.783039093017578
+          }
+        ]
+      },
+      "shadow": {
+        "version": 1,
+        "id": "room-answer",
+        "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+        "expected": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Meeting length: 60 minutes"
+        },
+        "match_rule": {
+          "kind": "exact"
+        },
+        "sampling_design": "unspecified",
+        "captured_request_sha256": "0e84731724a918d248d9d0aaff54c301e90ed607510392e2595ba2bb19fba13b",
+        "baseline": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Meeting length: 60"
+            }
+          }
+        ],
+        "baseline_summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "effects": [
+          {
+            "source_id": "birch-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "1f18ff99863f9c6fb1381d16638c7a62b3d1b925b02acd2d42622af55df7c572",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "153dc7d6a6aec553a02052dc3ca8ba7559093cc3b6a8241bac00b21e6e4669d4",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 60"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          },
+          {
+            "source_id": "atlas-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "2248bd1eb08e95f0f5b177e5f81c926397ed1f1e7d7a3d877ca8fdf5a1ce2043",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "1c7ae9fa2169518c2ca143c67c1a09ac1c952b5927301579d16ef1bafde696ed",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 30"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "birch-calendar-60-birch-calendar",
+    "order": [
+      "birch-calendar",
+      "atlas-calendar"
+    ],
+    "requested": "birch-calendar",
+    "minutes": {
+      "atlas-calendar": 60,
+      "birch-calendar": 30
+    },
+    "protocol_sha256": "c4d2b5ba5fb17302b2494884de3a0fd0550e1d173f74ed497163a2fbfd781161",
+    "empty_log_probs": {
+      "baseline": [
+        -14.76303482055664,
+        -17.229766845703125
+      ],
+      "birch-calendar": [
+        -15.804255485534668,
+        -17.584001541137695
+      ],
+      "atlas-calendar": [
+        -14.491531372070312,
+        -17.353771209716797
+      ]
+    },
+    "envelope": {
+      "request": {
+        "version": 1,
+        "attributes": {
+          "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the requested calendar entry to answer questions about room bookings.\\nBirch calendar: the Cedar room's weekly meeting lasts 30 minutes.\\nAtlas calendar: the Cedar room's weekly meeting lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"I am booking the Cedar room's weekly meeting. According to the Birch calendar, how long does it last? Start your answer with 'Meeting length: ' and then give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "nexusweave.context.semantics": {
+            "version": 1,
+            "request_sources": [
+              {
+                "id": "birch-calendar",
+                "source_id": "birch-calendar",
+                "source_version": "30m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 74,
+                    "end_byte": 139
+                  }
+                }
+              },
+              {
+                "id": "atlas-calendar",
+                "source_id": "atlas-calendar",
+                "source_version": "60m",
+                "request_fragment": {
+                  "pointer": "/messages/0/content",
+                  "text_range": {
+                    "start_byte": 140,
+                    "end_byte": 205
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "candidate": {
+        "version": 1,
+        "id": "room-duration",
+        "scorer_id": "qwen2-transformers-continuation-v1",
+        "captured_request_sha256": "fcab4b9d4d3ccc9608b989fadedfc3df43b8ad6cd891a1941bd61d20997babbe",
+        "assistant_prefix": "Meeting length: ",
+        "candidates": [
+          {
+            "id": "30",
+            "continuation": "30"
+          },
+          {
+            "id": "60",
+            "continuation": "60"
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "assistant_prefix_token_ids": [
+            64576,
+            3084,
+            25,
+            220
+          ],
+          "candidate_token_ids": [
+            [
+              18,
+              15
+            ],
+            [
+              21,
+              15
+            ]
+          ],
+          "conditions": [
+            {
+              "id": "baseline",
+              "rendered_prefix_sha256": "00e22ec46b5edab080727b3f5dd74866288a35a05dad9ae15324ed0cd2380eee",
+              "log_probs": [
+                -3.0517578125e-05,
+                -12.626388549804688
+              ]
+            },
+            {
+              "id": "edit:request-source:birch-calendar",
+              "rendered_prefix_sha256": "e7834cd3ddeb68e28ba6f1f4f35b44fe3cda1d695c4a42ca8d516c0d40af31dd",
+              "log_probs": [
+                -5.921039581298828,
+                -0.015453338623046877
+              ]
+            },
+            {
+              "id": "edit:request-source:atlas-calendar",
+              "rendered_prefix_sha256": "e607c8b5be432351c9302fed524715a326f46137a6d10c242f278e3e6336b115",
+              "log_probs": [
+                -7.43865966796875e-05,
+                -13.826322555541992
+              ]
+            }
+          ]
+        },
+        "baseline_log_odds": 12.626358032226562,
+        "effects": [
+          {
+            "condition_id": "edit:request-source:birch-calendar",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "birch-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "df850a6ba5b7a6614a52bcad26d1759a348e567c3a6e64455201a4fefd56a6d2",
+            "log_odds": -5.905586242675781,
+            "change_log_odds": -18.531944274902344
+          },
+          {
+            "condition_id": "edit:request-source:atlas-calendar",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "source_id": "atlas-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "2a952b3e1f03d1aa96eaa8764e8e69a95473f2482607c3bddb0ffcfe0d2428a7",
+            "log_odds": 13.826248168945312,
+            "change_log_odds": 1.19989013671875
+          }
+        ]
+      },
+      "shadow": {
+        "version": 1,
+        "id": "room-answer",
+        "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+        "expected": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Meeting length: 30 minutes"
+        },
+        "match_rule": {
+          "kind": "exact"
+        },
+        "sampling_design": "unspecified",
+        "captured_request_sha256": "fcab4b9d4d3ccc9608b989fadedfc3df43b8ad6cd891a1941bd61d20997babbe",
+        "baseline": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Meeting length: 30"
+            }
+          }
+        ],
+        "baseline_summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "effects": [
+          {
+            "source_id": "birch-calendar",
+            "source_version": "30m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "df850a6ba5b7a6614a52bcad26d1759a348e567c3a6e64455201a4fefd56a6d2",
+            "intervention": {
+              "context_id": "request-source:birch-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 74,
+                "end_byte": 139
+              },
+              "replacement": "Birch calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "153dc7d6a6aec553a02052dc3ca8ba7559093cc3b6a8241bac00b21e6e4669d4",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 60"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          },
+          {
+            "source_id": "atlas-calendar",
+            "source_version": "60m",
+            "evidence": {
+              "span_id": null,
+              "field": "nexusweave.request.body",
+              "message_index": null,
+              "part_index": null
+            },
+            "request_sha256": "2a952b3e1f03d1aa96eaa8764e8e69a95473f2482607c3bddb0ffcfe0d2428a7",
+            "intervention": {
+              "context_id": "request-source:atlas-calendar",
+              "pointer": "/messages/0/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 140,
+                "end_byte": 205
+              },
+              "replacement": "Atlas calendar: the duration of the Cedar room's weekly meeting is unavailable."
+            },
+            "captured_context_sha256": "1c7ae9fa2169518c2ca143c67c1a09ac1c952b5927301579d16ef1bafde696ed",
+            "trials": [
+              {
+                "status": "completed",
+                "choice": {
+                  "kind": "model_output",
+                  "label": "Model answer",
+                  "outcome": "Meeting length: 30"
+                }
+              }
+            ],
+            "summary": {
+              "attempted": 1,
+              "completed": 1,
+              "matched": 0
+            },
+            "difference_pp": 0.0
+          }
+        ]
+      }
+    }
+  }
+]

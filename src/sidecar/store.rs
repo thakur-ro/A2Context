@@ -61,6 +61,7 @@ impl Store {
         db.execute_batch(super::capture::SCHEMA)?;
         db.execute_batch(super::conversation::SCHEMA)?;
         db.execute_batch(super::target_patterns::SCHEMA)?;
+        db.execute_batch(super::prefix_patterns::SCHEMA)?;
         db.execute_batch(super::screened::INDEX)?;
         Ok(Self(db))
     }
@@ -244,10 +245,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 26 {
+        if version == 27 {
             return Ok(());
         }
-        if !(0..26).contains(&version) {
+        if !(0..27).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -262,8 +263,9 @@ impl Store {
             ) AS has_ranking, EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='conflict')
                AND EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='replay') AS has_conflict_trials,
                 EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='prefill'
-                    AND json_type(o.detail,'$.ranked[0].opening_changed') IN ('true','false')) AS has_opening
-            FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR (?2<25 AND has_conflict_trials) OR has_opening)
+                    AND json_type(o.detail,'$.ranked[0].opening_changed') IN ('true','false')) AS has_opening,
+                instr(t.run,'\"candidate_probes\"')>0 AS has_candidates
+            FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR (?2<25 AND has_conflict_trials) OR (?2<26 AND has_opening) OR has_candidates)
             ORDER BY t.id LIMIT 16",
             )?;
             let ids = stmt
@@ -273,12 +275,13 @@ impl Store {
                         r.get::<_, bool>(1)?,
                         r.get::<_, bool>(2)?,
                         r.get::<_, bool>(3)?,
+                        r.get::<_, bool>(4)?,
                     ))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
             drop(stmt);
             let Some(last) = ids.last() else { break };
-            for (id, has_ranking, has_conflict_trials, has_opening) in &ids {
+            for (id, has_ranking, has_conflict_trials, has_opening, has_candidates) in &ids {
                 let run = load_run(&tx, id)?;
                 if let Some(run) = run {
                     if version < 20 {
@@ -286,7 +289,16 @@ impl Store {
                     } else if version < 23 {
                         super::conversation::index(&tx, &run)?;
                     }
-                    if (version < 22 && *has_ranking) || *has_conflict_trials || *has_opening {
+                    if version >= 20 && *has_candidates {
+                        tx.execute("DELETE FROM prefix_checks WHERE trace_id=?", [id])?;
+                        for call in &run.calls {
+                            super::prefix_patterns::index(&tx, &run, call)?;
+                        }
+                    }
+                    if (version < 22 && *has_ranking)
+                        || (version < 25 && *has_conflict_trials)
+                        || (version < 26 && *has_opening)
+                    {
                         refresh_findings(&tx, &run)?;
                     }
                 }
@@ -294,7 +306,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 26)?;
+        self.0.pragma_update(None, "user_version", 27)?;
         Ok(())
     }
 
@@ -629,21 +641,31 @@ impl Store {
             })))
     }
 
-    fn prefix_review(&self, evidence: &Value) -> Result<Option<Value>> {
-        let id = evidence["trace_id"]
-            .as_str()
-            .ok_or("missing evidence trace")?;
+    pub fn prefix_check(&self, fields: &BTreeMap<String, String>) -> Result<Option<Value>> {
+        let trace = super::required(fields, "trace")?;
+        let call = super::required(fields, "call")?;
+        let report = super::required(fields, "report")?;
+        let _snapshot = self.0.unchecked_transaction()?;
+        let page = self.list("prefix-cases", fields)?;
+        let Some(example) = page["rows"].get(0) else {
+            return Ok(None);
+        };
+        Ok(self
+            .prefix_review(trace, call, report)?
+            .map(|review| json!({"example":example,"review":review})))
+    }
+
+    fn prefix_review(&self, id: &str, call_id: &str, report_id: &str) -> Result<Option<Value>> {
         let Some(run) = self.trace(id)? else {
             return Ok(None);
         };
-        let Some(call) = run.calls.iter().find(|c| c.id == evidence["call_id"]) else {
+        let Some(call) = run.calls.iter().find(|c| c.id == call_id) else {
             return Ok(None);
         };
-        let detail = &evidence["detail"];
         let candidates = replay::candidates::recorded(id, call);
         let reports: Vec<_> = candidates
             .into_iter()
-            .filter(|p| p.report_id == detail["report_id"].as_str())
+            .filter(|p| p.report_id == Some(report_id))
             .collect();
         if reports.len() != 1 {
             return Ok(None);
@@ -811,6 +833,35 @@ impl Store {
                 ")"
             });
         }
+        if matches!(
+            view,
+            "prefix-groups" | "prefix-sources" | "prefix-cases" | "prefix-contrasts"
+        ) {
+            sql.push_str(super::prefix_patterns::SCOPED);
+            if view != "prefix-groups" || filters.contains_key("design") {
+                sql.push_str(" AND p.design=?");
+                args.push(super::required(filters, "design")?.to_owned());
+            }
+            if view == "prefix-cases" {
+                for (key, column) in [
+                    ("verdict", "p.verdict"),
+                    ("source", "p.source"),
+                    ("trace", "p.trace_id"),
+                    ("call", "p.call_id"),
+                    ("report", "p.report"),
+                ] {
+                    if let Some(value) = filters.get(key) {
+                        sql.push_str(&format!(" AND {column}=?"));
+                        args.push(value.clone());
+                    }
+                }
+                if filters.get("unnamed").is_some_and(|v| v == "1") {
+                    sql.push_str(" AND p.source IS NULL");
+                }
+            }
+            append_window(&mut sql, &mut args, "c.started", filters)?;
+            sql.push(')');
+        }
         if matches!(view, "target-patterns" | "target-examples") {
             sql.push_str(super::target_patterns::SCOPED);
             if view == "target-examples" || filters.contains_key("design") {
@@ -895,6 +946,10 @@ impl Store {
                 }
                 sql.push_str(" ORDER BY observed DESC,trace_id,call_id LIMIT ? OFFSET ?");
             }
+            "prefix-groups" => sql.push_str(super::prefix_patterns::GROUPS),
+            "prefix-sources" => sql.push_str(super::prefix_patterns::BREAKDOWN),
+            "prefix-cases" => sql.push_str(super::prefix_patterns::CASES),
+            "prefix-contrasts" => sql.push_str(super::prefix_patterns::CONTRASTS),
             "target-patterns" => {
                 args.push(if filters.contains_key("design") {"0"} else {"2"}.into());
                 sql.push_str(super::target_patterns::GROUPS);
@@ -1213,7 +1268,15 @@ impl Store {
                             .as_str()
                             .is_some_and(|s| !s.is_empty())
                     {
-                        row["prefix_review"] = json!(self.prefix_review(&row["evidence"])?);
+                        row["prefix_review"] = json!(self.prefix_review(
+                            row["evidence"]["trace_id"]
+                                .as_str()
+                                .ok_or("missing trace")?,
+                            row["evidence"]["call_id"].as_str().ok_or("missing call")?,
+                            row["evidence"]["detail"]["report_id"]
+                                .as_str()
+                                .ok_or("missing report")?
+                        )?);
                     }
                 }
                 let kind = row["kind"].as_str().ok_or("finding kind missing")?;

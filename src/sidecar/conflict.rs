@@ -17,7 +17,7 @@ fn eligible(decision: &Decision, detail: &Value) -> bool {
 
 // Only the last plain user message may vary. Keep all earlier dialogue, model
 // settings and tool definitions byte-for-byte equivalent after JSON normalization.
-fn question_setup(call: &Call) -> Option<String> {
+pub(super) fn question_setup(call: &Call) -> Option<String> {
     let mut body: Value = serde_json::from_str(&call.recorded_request.as_ref()?.body).ok()?;
     let last = body["messages"].as_array_mut()?.last_mut()?;
     let user = super::capture::last_user_message(call)?;

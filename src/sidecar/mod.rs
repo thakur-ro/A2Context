@@ -8,6 +8,7 @@ mod order;
 mod outcomes;
 mod position_plan;
 mod prefill;
+mod prefix_patterns;
 mod recommendations;
 mod replacement;
 mod screened;
@@ -338,6 +339,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/conflict-coverage"
                 | "/api/sidecar/conflict-conversations"
                 | "/api/sidecar/conversations-without-findings"
+                | "/api/sidecar/prefix-contrasts"
+                | "/api/sidecar/prefix-groups"
+                | "/api/sidecar/prefix-sources"
+                | "/api/sidecar/prefix-cases"
                 | "/api/sidecar/target-patterns"
                 | "/api/sidecar/target-examples"
                 | "/api/sidecar/ranking-results"
@@ -360,6 +365,12 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 }
                 "/api/sidecar/token-path" if options.content || options.demo => {
                     store.token_path(&fields)?
+                }
+                "/api/sidecar/prefix-check" => {
+                    let Some(check) = store.prefix_check(&fields)? else {
+                        return Ok(None);
+                    };
+                    check
                 }
                 "/api/sidecar/target-check" => {
                     let Some(check) = store.target_check(&fields)? else {

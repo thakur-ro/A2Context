@@ -247,6 +247,35 @@ python3 "$study/study.py" --model "$qwen_dir" --example /tmp/prefix-example.json
 cmp "$study/example.json" /tmp/prefix-example.json
 ```
 
+### Does the suggested edit follow the question when source order changes?
+
+Atlas and Birch calendars gave different durations for the same meeting. We varied which calendar appeared first, which one said 30 minutes, and which one the question named. Both entries occupied the same system message. This gave four matched pairs of questions on one Qwen2.5-0.5B-Instruct checkpoint. Within a pair, only the calendar named in the final question changed. We froze all eight conditions and the selectors before scoring. Position was an explicit control because Liu et al. found position effects on retrieval and multi-document QA tasks with longer inputs. [Frozen protocol](https://github.com/thakur-ro/NexusWeave/blob/acbdff958c30703842c0d7081a63806b64d70197/examples/context-screening/replay/prefix-transfer/protocol.json) · [Liu et al., TACL 2024](https://aclanthology.org/2024.tacl-1.9/)
+
+We scored `30` and `60` on the original request and after replacing each calendar entry with a statement that its duration was unavailable. The forecast selected an edit only if it alone switched the preferred number. A separate greedy generation started from the answer boundary for every condition. We extracted the meeting length from that text.
+
+| Rule for choosing a calendar entry | Questions with one selection | Selections that changed the generated number |
+| --- | ---: | ---: |
+| Score after the requested opening `"Meeting length: "` | 8/8 | 8/8 |
+| Score at the answer boundary | 0/8 | No selections |
+| Always choose Atlas or always choose Birch | 8/8 for each rule | 4/8 for each |
+| Always choose first or always choose last | 8/8 for each rule | 4/8 for each |
+| Choose the calendar named in the question | 8/8 | 8/8 |
+
+The suggested source and the measured effect both switched in all four pairs. Across the 16 individual edits, the supplied-prefix rule identified all eight changed numbers and flagged none of the eight preserved ones. Scoring at the answer boundary missed all eight changes. The direct name-matching rule equaled the model-based selector on this task. These paired examples give no estimate of an advantage on implicit references or production traffic.
+
+All 24 generations used the requested opening. The original answers gave the requested calendar's duration in 8/8 cases. After replacing that entry, 0/8 retained its original value. Replacing the other entry preserved it in 8/8. The recommendation identifies a source worth testing. Deploying the diagnostic edit here would remove the information the user requested.
+
+Two complete CPU measurement runs produced byte-identical case files. From the checkout, verify the saved study without loading a model or reproduce the measurements using the pinned checkpoint. [Saved scores and generations](../examples/context-screening/replay/prefix-transfer/cases.json) · [Dashboard walkthrough](sidecar.md#compare-two-questions-with-the-same-sources)
+
+```sh
+cargo build --locked
+study=examples/context-screening/replay/prefix-transfer
+python3 "$study/study.py"
+# With the checkpoint and scoring dependencies installed
+python3 "$study/study.py" --model "$qwen_dir" --cases /tmp/new-calendar-cases.json
+cmp "$study/cases.json" /tmp/new-calendar-cases.json
+```
+
 ### What do model scores add before generation?
 
 We gave the local Qwen scorer the pending dispatch request, two source edits and two continuations taken from the task: the specified bay code and `UNKNOWN`. At the empty assistant prefix it summed the conditional log probabilities of the tokens in each continuation. Subtracting the second sum from the first gives the preference margin. The sidecar checks the request and edit bindings. Within one probe, it lists edits that reverse the preference first, then orders by absolute change in margin. A tied margin supplies no reversal.
