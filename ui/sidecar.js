@@ -10,8 +10,10 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
+const dispatchOverview = query.get("dispatches") === "1";
 const dispatchSelection = query.has("dispatch_design") && query.has("dispatch_outcome") ? {
-  dispatch_design:query.get("dispatch_design"), dispatch_outcome:query.get("dispatch_outcome")
+  dispatch_design:query.get("dispatch_design"), dispatch_outcome:query.get("dispatch_outcome"),
+  ...(dispatchOverview && {dispatches:1}),
 } : null;
 const openingStudy = query.get("opening") === "1";
 const openingSlot = query.get("slot");
@@ -343,17 +345,16 @@ function impactPanel(impact) {
         url({coverage:"without-findings"}), "coverage-link") : null,
       element("p", { text: plural(impact.factors, "source factor") + (impact.unlinked_requests ? " · " + plural(impact.unlinked_requests, "additional request") + " without a conversation ID" : "") })),
     element("div", { className: "impact-breakdown" },
-      element("p", {text:"Strongest evidence per conversation"}),
+      element("p", {text:"Strongest model or input evidence per conversation"}),
       ...outcomeLevels.flatMap(({key, title}, index) => impact.evidence_counts[key] ? [
         element("a", {className:"impact-outcome", href:url({level:index + 1, by:index === 0 ? "edit" : "source"})},
           element("strong", {text:impact.evidence_counts[key]}), element("span", {text:title}),
           element("span", {"aria-hidden":"true",text:"→"}))] : []),
-      impact.sandbox_dispatch_conversations > 0 && element("p", {className:"row-extra",
-        text:"A dispatch check preserved sandbox state in " + plural(impact.sandbox_dispatch_conversations,"conversation") + "."}),
-      impact.sandbox_regression_conversations > 0 && element("p", {className:"uncertainty",
-        text:"The expected sandbox state was reached only without the check in " +
-          plural(impact.sandbox_regression_conversations,"conversation") + "."}),
-      proposalCoverage(impact)));
+      proposalCoverage(impact)),
+    impact.sandbox_tested_conversations > 0 && element("a", {className:"impact-outcome dispatch-impact", href:url({dispatches:1})},
+      element("strong", {text:impact.sandbox_tested_conversations}),
+      element("span", {text:"Conversations with a sandbox dispatch comparison"}),
+      element("span", {"aria-hidden":"true",text:"→"})));
 }
 
 function positionLink(factor, test) {
@@ -987,17 +988,35 @@ const dispatchOutcomes = {
   unmeasured:"No comparison with these settings",
 };
 
+function dispatchOutcomeLinks(counts, selection) {
+  return listing(Object.entries(dispatchOutcomes).filter(([name]) => counts[name] > 0), ([name,label]) =>
+    rowLink(label, plural(counts[name],"conversation"),url({...selection,dispatch_outcome:name})));
+}
+
+async function dispatchDesigns() {
+  const data = await api("dispatch-designs", {...scope,offset:pageOffset});
+  byId("title").textContent = "Sandbox dispatch comparisons";
+  byId("summary").textContent = "See which runs reached the expected state. Each pair starts from the same state and runs the same proposal with and without the check.";
+  pagination(data.next_offset,{dispatches:1});
+  return element("div", {className:"feed"}, link("Back to recommendations",url({})),
+    data.rows.length ? element("p", {className:"row-extra",text:"A conversation counts once per setup and may appear under more than one setup."}) :
+      element("p", {className:"empty",text:"No sandbox dispatch comparisons in this scope."}),
+    ...data.rows.map(row => panel(factorName(row.setup.sources),
+      element("p", {text:plural(row.tested,"conversation") + " tested"}),
+      dispatchOutcomeLinks(row.outcomes, {dispatches:1,recommendation:row.group,factor:row.factor,dispatch_design:row.design}),
+      element("details", {}, element("summary", {text:"Test settings"}),
+        element("p", {className:"row-extra",text:[row.setup.guard,row.setup.runner,row.setup.tool,"Target " + row.setup.target].join(" · ")})))));
+}
+
 function dispatchCoverage(card, rows) {
   const dispatch = card.evidence.detail.sandbox_dispatch;
   if (!dispatch || !rows?.length) return null;
   const total = rows.reduce((sum,row) => sum + row.conversations,0);
-  const counts = new Map(rows.map(row => [row.outcome,row.conversations]));
+  const counts = Object.fromEntries(rows.map(row => [row.outcome,row.conversations]));
   return element("section", {className:"panel dispatch-coverage","aria-label":"Dispatch outcomes across conversations"},
     element("h2", {text:"Which runs reached the expected state?"}),
     element("p", {text:plural(total,"identified conversation") + " · " + dispatch.guard + " · " + dispatch.runner}),
-    listing(Object.entries(dispatchOutcomes).filter(([name]) => counts.has(name)), ([name,label]) =>
-      rowLink(label,plural(counts.get(name),"conversation"),url({recommendation:card.id,factor:card.evidence.detail.factor,
-        dispatch_design:dispatch.design,dispatch_outcome:name}))));
+    dispatchOutcomeLinks(counts, {recommendation:card.id,factor:card.evidence.detail.factor,dispatch_design:dispatch.design}));
 }
 
 async function dispatchConversations() {
@@ -1008,7 +1027,9 @@ async function dispatchConversations() {
   byId("title").textContent = dispatchOutcomes[outcome];
   byId("summary").textContent = "Open a reported comparison to see the proposal and state on that call.";
   pagination(data.next_offset,selection);
-  return element("div",{className:"feed"},link("Back to recommendation",url({recommendation:recommendationId,factor:factorId})),
+  const back = dispatchOverview ? link("Back to dispatch comparisons",url({dispatches:1})) :
+    link("Back to recommendation",url({recommendation:recommendationId,factor:factorId}));
+  return element("div",{className:"feed"},back,
     ...data.rows.map(row => panel(row.thread,element("p",{className:"label",text:fullDate(row.observed)}),
       element("div",{className:"actions"},...row.examples.map(example => link(
         example.outcome ? dispatchOutcomes[example.outcome] : "Open proposal comparison",
@@ -2180,6 +2201,8 @@ async function render(refresh = false) {
         detail ? element("div", {className:"feed"}, ...data.rows.map(pairExample)) : listing(data.rows, screenedRow),
         data.rows.length ? null : element("p", {className:"empty",text:"No flagged source pairs in this scope."}));
       pagination(data.next_offset, screenSelection);
+    } else if (dispatchOverview) {
+      body = await dispatchDesigns();
     } else if (withoutFindings) {
       byId("title").textContent = "Conversations without a finding";
       byId("summary").textContent = "These conversations have captured calls. When a text classifier flags a source pair, you can inspect the texts and prepare an experiment here.";
@@ -2387,6 +2410,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
+      dispatches:dispatchOverview ? 1 : null,
       ...dispatchSelection,
       ...(prefixCohorts && {prefixes:1,...Object.fromEntries(["design","compare_refs","matched","pair_setup","ref_edit",
         "edit_index","edit_outcome","reference","ref_set","ref_outcome","ref_prediction","needs_trial","verdict","source","unnamed","report"]

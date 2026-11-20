@@ -48,6 +48,7 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     impact = get(base,"impact",**scope)
     assert (impact["conversations"],impact["captured_conversations"],impact["evidence_counts"]["tested"]) == (2,3,2)
     assert impact["sandbox_dispatch_conversations"] == 2
+    assert impact["sandbox_tested_conversations"] == 2
     factor = get(base,"factors",**scope)["rows"][0]
     assert factor["signal"] == "sandbox_dispatch" and factor["sandbox_conversations"] == 2
     cards = {card["kind"]:card for card in get(base,"findings",**scope)["rows"]}
@@ -57,6 +58,11 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     assert pair["changed"] is False and pair["original"]["label"] == demo.WRITE
     dispatch = evidence["detail"]["sandbox_dispatch"]
     assert dispatch["protected"] and dispatch["target"] == demo.PUZZLE["order_id"]
+    design, = get(base,"dispatch-designs",**scope)["rows"]
+    assert design["design"] == dispatch["design"] and design["tested"] == 2
+    assert design["outcomes"]["matched_with_check"] == 2
+    assert design["setup"]["tool"] == demo.WRITE
+    assert get(base,"dispatch-designs",workflow="unrelated")["rows"] == []
     assert (dispatch["without_guard"],dispatch["with_guard"]) == ("applied","blocked")
     assert [row for row in dispatch["states"] if row["before"] != row["without_guard"]] == [{
         "key":demo.PUZZLE["order_id"],"before":"delivered","without_guard":"exchange_requested","with_guard":"delivered",
@@ -186,6 +192,14 @@ with TemporaryDirectory() as tmp:
                     "missed_both":1,"mixed":1,"unmeasured":2}
         assert summary_for(base,settings) == expected
         assert summary_for(base,dict(settings,org="unrelated")) == {}
+        designs = get(base,"dispatch-designs")["rows"]
+        assert len(designs) == 2
+        first, second = designs
+        assert first["design"] == settings["design"] and first["tested"] == 5
+        assert first["outcomes"] == {name:count for name,count in expected.items() if name != "unmeasured"}
+        assert second["setup"]["guard"] == "another-dispatch-check" and second["tested"] == 1
+        assert get(base,"impact")["sandbox_tested_conversations"] == 6
+        assert get(base,"dispatch-designs",org="unrelated")["rows"] == []
         row, = get(base,"dispatch-conversations",**settings,outcome="mixed")["rows"]
         assert row["thread"] == "Hold the puzzle"
         assert {example["outcome"] for example in row["examples"]} == {"matched_with_check","missed_both"}
@@ -204,6 +218,7 @@ with TemporaryDirectory() as tmp:
         db.execute("PRAGMA user_version=32")
     with server(binary,database,"--capture-content") as base:
         assert summary_for(base,settings) == expected
+        assert get(base,"dispatch-designs")["rows"] == designs
         assert send(base,"/api/sidecar/preview",{"request":pending})[1]["history"] == history
 
 print("Verified scoped dispatch outcomes, mixed witnesses, and database upgrade.")

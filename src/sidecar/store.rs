@@ -714,6 +714,7 @@ impl Store {
                 | "conflict-coverage"
                 | "dispatch-summary"
                 | "dispatch-conversations"
+                | "dispatch-designs"
                 | "outcome-factors"
                 | "conversation-outcomes"
                 | "proposal-conversations"
@@ -1105,6 +1106,7 @@ impl Store {
                 args.push(filters["design"].clone());
                 sql.push_str(super::conflict::EXAMPLES);
             }
+            "dispatch-designs" => sql.push_str(super::dispatch::DESIGNS),
             "dispatch-summary" | "dispatch-conversations" => {
                 for key in ["group","factor","design"] {
                     if super::required(filters,key)?.is_empty() { return Err(format!("missing {key}").into()); }
@@ -1160,6 +1162,8 @@ impl Store {
                         FILTER (WHERE json_extract(detail,'$.sandbox_dispatch.protected')=1),
                     'sandbox_regression_conversations',count(DISTINCT thread_key)
                         FILTER (WHERE json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check'),
+                    'sandbox_tested_conversations',count(DISTINCT thread_key)
+                        FILTER (WHERE json_type(detail,'$.sandbox_dispatch')='object'),
                     'without_findings',(SELECT count(*) FROM without_findings),
                     'without_findings_with_screen_suggestion',(SELECT count(*) FROM without_findings WHERE flagged),
                     'changed',count(DISTINCT CASE WHEN changed=1 OR proposal_changed=1 THEN thread_key END),

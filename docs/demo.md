@@ -36,6 +36,8 @@ The example attaches a `sandbox_dispatch` receipt to the shadow report. The side
 
 The outcome list counts each identified conversation once within the selected source recommendation and scope. Comparisons share a guard ID, sandbox runner ID, tool, target field and projected state fields. The expected value belongs to each comparison, so a hold and an authorized write can be judged under the same design. Reports that disagree within one conversation open under **Mixed results in one conversation**, with a link for each observed outcome. A conversation without an applicable receipt remains visible as **No comparison with these settings**.
 
+From **Conversations with findings**, open **Conversations with a sandbox dispatch comparison** to group the measured execution outcomes by source and dispatch setup. Select an outcome to see its conversations and open the exact saved comparison. The overview counts each tested conversation once, even when it appears under several setups.
+
 ## Check the next exchange before inference
 
 With the demo running, select **Before inference**, then **Check the next exchange**. This request has the same disagreement about the puzzle order and a new customer message asking to pause it. The preview shows the conflict in the current inputs and two distinct earlier requests where the authorization check preserved sandbox state. Open the result to inspect the earlier proposal and the state comparison. Running the preview makes zero model calls. [Pending request](../examples/exchange-approval/pending.json)

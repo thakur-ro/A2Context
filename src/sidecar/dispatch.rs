@@ -1,5 +1,33 @@
 //! Compare one dispatcher design across the conversations behind a source edit.
 
+pub(super) const DESIGNS: &str = ", receipts AS (
+    SELECT group_id,factor,thread_key,observed,
+        json_extract(detail,'$.sandbox_dispatch.design') AS design,
+        json_extract(detail,'$.sandbox_dispatch.outcome') AS outcome,
+        json_object('sources',json_extract(detail,'$.sources'),'guard',json_extract(detail,'$.sandbox_dispatch.guard'),
+            'runner',json_extract(detail,'$.sandbox_dispatch.runner'),'tool',json_extract(detail,'$.sandbox_dispatch.tool'),
+            'target',json_extract(detail,'$.sandbox_dispatch.target')) AS setup
+    FROM events WHERE thread_key IS NOT NULL AND json_type(detail,'$.sandbox_dispatch')='object'
+), per_conversation AS (
+    SELECT group_id,factor,design,thread_key,max(observed) AS latest,min(setup) AS setup,
+        CASE WHEN min(outcome)!=max(outcome) THEN 'mixed' ELSE min(outcome) END AS outcome
+    FROM receipts GROUP BY group_id,factor,design,thread_key
+), designs AS (
+    SELECT group_id,factor,design,max(latest) AS latest,min(setup) AS setup,count(*) AS tested,
+        count(*) FILTER (WHERE outcome='matched_with_check') AS helped,
+        count(*) FILTER (WHERE outcome='matched_without_check') AS regressed,
+        count(*) FILTER (WHERE outcome='matched_both') AS matched_both,
+        count(*) FILTER (WHERE outcome='missed_both') AS missed_both,
+        count(*) FILTER (WHERE outcome='mixed') AS mixed
+    FROM per_conversation GROUP BY group_id,factor,design
+)
+SELECT json_object('group',group_id,'factor',factor,'design',design,'tested',tested,
+    'setup',json(setup),
+    'outcomes',json_object('matched_with_check',helped,'matched_without_check',regressed,
+        'matched_both',matched_both,'missed_both',missed_both,'mixed',mixed))
+FROM designs ORDER BY regressed DESC,mixed DESC,helped DESC,tested DESC,latest DESC,group_id,factor,design
+LIMIT ? OFFSET ?";
+
 // A NULL outcome means this observation has no verified receipt for the selected design.
 // Count each conversation once. Reports with conflicting outcomes stay visible as mixed.
 pub(super) const COHORT: &str = ", dispatch_observations AS (

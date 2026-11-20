@@ -355,6 +355,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/conflict-conversations"
                 | "/api/sidecar/dispatch-summary"
                 | "/api/sidecar/dispatch-conversations"
+                | "/api/sidecar/dispatch-designs"
                 | "/api/sidecar/conversations-without-findings"
                 | "/api/sidecar/prefix-reference-pairs"
                 | "/api/sidecar/prefix-contrasts"

@@ -54,6 +54,8 @@ The overview assigns each conversation to the first category supported by a find
 
 This ordering describes the outcome an engineer can inspect. One changed answer in a single pair supplies no estimate of how often the effect will recur. The counts cover findings on individual calls. Source-position experiments that compare multiple requests appear under the source factor.
 
+Sandbox dispatch comparisons hold the generated tool proposal and starting state fixed and change the dispatch check. The overview counts distinct conversations with at least one recorded comparison. Each setup groups the same source recommendation, guard, runner, tool, target field and measured state fields. The detail view shows how many conversations reached the expected state with the check, without it, in both runs, or in neither. Disagreements within a setup and conversation remain visible as mixed. These are counts of observed comparisons. Estimating how often a check will help future requests requires evaluating it on new requests. [Exchange example](demo.md#what-the-test-covers)
+
 The coverage panel asks a separate question. Among the findings in scope, did any edit change a complete proposal, and did any comparison preserve one? Each identified conversation counts once according to those two observations. In the saved demo, 13 conversations contain both results, two have matching proposals only, and six have no comparable pair. A conversation can contain different inputs, edits, models or tool inventories. Evidence for both outcomes therefore calls for inspecting the two examples before concluding that repeats disagreed. Standalone proposal trials qualify even when both arms missed the expected answer.
 
 <details>
