@@ -326,6 +326,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/traces"
                 | "/api/sidecar/threads"
                 | "/api/sidecar/impact"
+                | "/api/sidecar/outcome-factors"
                 | "/api/sidecar/conversation-outcomes"
                 | "/api/sidecar/factors"
                 | "/api/sidecar/order-tests"

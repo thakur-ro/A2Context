@@ -16,9 +16,9 @@ From the checkout, run with a stable Rust toolchain and open [Recommendations](h
 cargo run --locked -- sidecar --demo
 ```
 
-**Check whether an edit held up.** Open **Repeats disagreed** on the first recommendation. On one request the edit changed tool selection in two of four runs. Compare the runs to see when the model switched tools and when only the wording changed. [Open the sampled example](http://127.0.0.1:8040/?org=routing-sampling)
+**Check whether an edit held up.** The first recommendation shows what happened when the runner repeated the same source edit on one input. The proposed tool changed in two of four completed runs. Open **Compare runs** to see the changed and unchanged proposals. [Open the sampled example](http://127.0.0.1:8040/?org=routing-sampling)
 
-[Open conversations where a proposal changed](http://127.0.0.1:8040/?level=1). Choose **journal-policy-support**, then **Compare the changed proposals** to see what the model answered before and after the source edit. The overview also links to score shifts and to input conflicts or repetition that still need a test.
+**Find which conversations share a source.** Select **Generated proposal changed**, then **journal-faq**. Two of the 13 conversations in that category have a changed proposal from a test of the FAQ alone. Open either conversation to compare the original and edited answers. [Explore the source groups](http://127.0.0.1:8040/?level=1&by=source)
 
 1. **Choose a source to test before answering.** Open **Before inference**, check a new request against earlier edits, then compare with scores on that request. The strongest measured edit changes the model’s preference from `UNKNOWN` to `KITE`. [Open the scored example](http://127.0.0.1:8040/?view=preview&scenario=scored-history)
 2. **Check which copy of an instruction mattered.** Choose **Compare the two source orders**. With one replacement, moving a dispatch record from the earlier slot to the later one changed the answer after that record was edited. Try the neutral wording in the same view to see where the match counts held. [Experiment](docs/methods.md#check-the-result-against-new-parcel-codes-and-source-order)

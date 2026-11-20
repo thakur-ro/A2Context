@@ -124,6 +124,12 @@ def check_recurrence(binary, folder, sdk_python):
         assert top["signal"] == "routing_repeats"
         test = top["disputed_routing"]
         assert recommendation(base, group=test["group"], routing_design=test["design"]) == [mixed]
+        case, = recommendation(base, group=test["group"], routing_design=test["design"], routing_input=test["input"])
+        profile, = case["routing_profiles"]
+        votes = profile["repeat_evidence"][test["metric"]]
+        assert (test["setup"],test["changed"],test["held"],test["missing"]) == (votes["setup"],8,1,2)
+        assert test["source"] == "request-type" and profile["inputs"] == 1
+        assert not recommendation(base, group=test["group"], routing_input="missing")
         assert get(base, "factors", trace=f"otlp:{802:032x}")["rows"][0]["disputed_routing"] is None
         assert mixed["action"]["title"] == "Check the disagreeing repeat trials"
         row, = [r for r in mixed["routing_profiles"] if r["signature"] == "mixed"]

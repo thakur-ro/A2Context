@@ -40,6 +40,8 @@ The overview assigns each conversation to the first category supported by a find
 
 This ordering describes the outcome an engineer can inspect. One changed answer in a single pair supplies no estimate of how often the effect will recur. The counts cover findings on individual calls. Source-position experiments that compare multiple requests appear under the source factor.
 
+Within a category, the source view keeps every finding at the strongest level for each identified conversation. It groups those findings by versioned source set and counts distinct conversations and requests. Groups with the most conversations appear first. Request count and the stable group ID break ties. Selecting a group returns the latest qualifying finding from that group for each member. Selecting another group cannot move a conversation into a weaker category.
+
 ## Grouping and ranking
 
 Within a trace, use the captured call ID to locate each observation. Conflict groups use the rule key, scope, and the source-version pair. Exact-repeat groups add the hash of the matching text and the participating sources. When a message and a source declaration uniquely resolve to the same complete request field, the detector counts that location once. Unnamed sources are trace-local. Replay groups use the existing compatibility key, including the outcome, scoring rule, interventions, runner, model, and sampling design. Groups are counts of captured observations with similar evidence. Their effects are never pooled by the feed.

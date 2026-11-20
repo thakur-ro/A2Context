@@ -20,6 +20,8 @@ try {
   assert.ok(await page.locator(".brand img").evaluate(img => img.complete && img.naturalWidth > 0));
   assert.equal(await page.locator("#navigation a").count(), 2);
   await factor(page, "Choice flipped").waitFor();
+  await page.locator(".featured h3").filter({hasText:"The proposed tool changed in 2 of 4 completed runs"}).waitFor();
+  assert.match(await page.locator(".featured p").innerText(), /edit to request-type/);
   if (process.env.FINDINGS_SCREENSHOT) await page.screenshot({ path: process.env.FINDINGS_SCREENSHOT });
   const coverage = page.locator(".replay-coverage");
   await coverage.getByText("Scored replays in 7 of 21 conversations").click();
@@ -278,13 +280,25 @@ try {
     }
     await device.goto(base);
     await device.getByRole("link", {name:/Generated proposal changed/}).click();
+    await device.getByRole("heading", {name:"Sources in 13 conversations"}).waitFor();
+    const faq = device.locator(".cohort-row").filter({hasText:"journal-faq"}).filter({hasNotText:"journal-policy"});
+    assert.match(await faq.innerText(), /2 of 13 conversations/);
+    if (device === page && process.env.OUTCOME_SOURCES_SCREENSHOT) await device.screenshot({path:process.env.OUTCOME_SOURCES_SCREENSHOT});
+    await faq.click();
     await device.getByRole("link", {name:/journal-policy-support/}).click();
     await device.getByText("Compare the changed proposals", {exact:true}).click();
     const [original, edited] = await device.locator(".response-pair code").allTextContents();
     assert.ok(original && edited && original !== edited);
     assert.equal(new URL(device.url()).searchParams.get("replay"), "qwen-screened-journal-policy");
+    await device.getByRole("link",{name:"Back to conversations"}).click();
+    await device.getByRole("link", {name:/journal-policy-support/}).waitFor();
+    assert.ok(new URL(device.url()).searchParams.get("cohort_factor"));
+    assert.equal(await device.locator("#content .list li").count(), 2);
     await device.goto(base + "/?org=retail-south");
     await device.getByRole("link", {name:/Model score shifted/}).click();
+    await device.getByRole("link", {name:"By conversation"}).click();
+    assert.equal(new URL(device.url()).searchParams.get("org"), "retail-south");
+    await device.getByRole("link", {name:/routing-holdout-64/}).waitFor();
     assert.equal(await device.getByRole("link", {name:/Paired proposals stayed the same/}).count(), 2);
     await device.getByRole("link", {name:/routing-holdout-64/}).click();
     await device.getByRole("region", {name:"Four routing setups"}).waitFor();

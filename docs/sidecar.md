@@ -1,6 +1,6 @@
 # Run NexusWeave beside inference
 
-The sidecar receives [OTLP/HTTP](https://opentelemetry.io/docs/specs/otlp/) trace exports and writes normalized evidence to embedded SQLite. The dashboard opens on **Recommendations**. It counts distinct identified conversations with findings, and groups them by what the captured evidence shows. Select a count to open the conversations and the measurement behind each one. Select a source factor to see where its findings recur. Each occurrence links to its original conversation and span. URL filters carry across those layers.
+The sidecar receives [OTLP/HTTP](https://opentelemetry.io/docs/specs/otlp/) trace exports and writes normalized evidence to embedded SQLite. The dashboard opens on **Recommendations**. It counts distinct identified conversations with findings, and groups them by what the captured evidence shows. Select a count to see which source groups contributed that level of evidence, then open a conversation and its measurement. Select a source factor to see where its findings recur. Each occurrence links to its original conversation and span. URL filters carry across those layers.
 
 ```sh
 cargo build --release --locked
@@ -18,7 +18,8 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 | GET route under `/api/sidecar/` | Use |
 | --- | --- |
 | `impact` | Get distinct identified conversations, counts by evidence category (`evidence_counts`), requests without conversation IDs and source factors. |
-| `conversation-outcomes?level=1` | Page through conversations in one category. Levels 1 to 5 correspond to `proposal`, `rate`, `score`, `tested` and `inputs`. Omit the level for all categories. Each row identifies the finding, trace, call and measured comparison. |
+| `outcome-factors?level=1` | Rank the source groups with findings at the strongest evidence level for these conversations. Each row returns its `factor`, distinct conversation count, distinct model call count (`requests`) and the number of conversations at that level in scope (`cohort_size`). A trace can contain multiple calls. |
+| `conversation-outcomes?level=1` | Page through conversations in one category. Levels 1 to 5 correspond to `proposal`, `rate`, `score`, `tested` and `inputs`. Omit the level for all categories. With a level selected, pass `cohort_factor` to choose conversations with supporting evidence from that source group. Each row identifies the finding, trace, call and measured comparison. |
 | `factors` | List versioned source sets, the strongest signal associated with each set (including differing results across comparable replacement texts), and the counts in scope. Select the opaque `id` of a factor. |
 | `order-tests?factor=…` | Compare single-edit match counts across paired source orders for a factor. Both requests must pass the current filters. Each row links to both original reports and includes the total number of matched comparisons and how many differed. |
 | `replay-variations?factor=…` | Compare single-source edits across distinct captured inputs. Each row gives counts, one changed and one equal example, their exact replay locations and whether only fragment order differs between those two requests. |
@@ -29,6 +30,14 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 The dashboard counts each identified conversation once after applying the current filters. A conversation can move to another category when new findings arrive or a filter excludes a measurement. Within a category, the most recent eligible finding supplies the evidence link. Requests without a conversation ID contribute to a separate count. [Category definitions](methods.md#what-changed-in-a-conversation)
 
 Expand **Scored replays** on the overview or a source factor to see how many conversations had changed match rates, equal rates, both results across comparisons, or no scored replay. The four counts in `impact.replay_outcomes` add up to the identified conversations with findings in that scope. Probe scores contribute to the broader measured-change count. Only replay comparisons contribute to this breakdown. Two equal match rates can come from as little as one trial per arm. Open the recommendation to check the trial counts and scoring rule.
+
+### Find recurring sources within an outcome
+
+Select **Generated proposal changed** on the overview. In the demo, tests of the dispatch guide and routing note together contributed changed proposals in four of the 13 conversations. Choose that source group to open its four conversations. Choose **By conversation** to see the full set of 13. Organization, user, workflow, metadata and time filters apply in both views. [Open the grouped view](http://127.0.0.1:8040/?level=1&by=source)
+
+![Versioned source groups ranked by the number of conversations with a changed proposal.](media/outcome-sources.png)
+
+A group lists sources involved in a finding. A controlled comparison can include a comparison source whose edit left the proposal unchanged. Open the measurement for the effect of each edit. A conversation can have qualifying evidence in more than one group, so the row counts can add up to more than the category total.
 
 ### See what happened when two sources changed together
 

@@ -285,6 +285,27 @@ def check_replay_representative(base):
     outcomes = get(base, "impact", factor=card["evidence"]["detail"]["factor"])["replay_outcomes"]
     assert outcomes == {"mixed": 0, "changed_only": 1, "equal_only": 1, "unmeasured": 0}, outcomes
 
+    proposal_factors = get(base, "outcome-factors", level=1)["rows"]
+    assert len(proposal_factors) == 2 and all(r["conversations"] == r["cohort_size"] == 1 for r in proposal_factors)
+    for factor in proposal_factors:
+        row, = get(base, "conversation-outcomes", level=1, cohort_factor=factor["factor"])["rows"]
+        assert row["factor"] == factor["factor"] and row["trace"] == changed_report["location"]["run_id"]
+        assert row["decision"] == changed_report["location"]["decision_id"]
+    # One single edit was ineffective in a conversation where another changed the proposal.
+    # A filter applied before classification would incorrectly move that conversation to level 4.
+    weaker = next(r for r in rows if r["evidence"]["detail"]["edit"] == "individual"
+                  and r["evidence"]["detail"]["effect_pp"] == 0)
+    factor_id = weaker["evidence"]["detail"]["factor"]
+    reclassified = get(base, "conversation-outcomes", level=4, factor=factor_id)["rows"]
+    assert {r["thread"] for r in reclassified} == {"older-measured-change","newer-measured-equality"}
+    preserved, = get(base, "conversation-outcomes", level=4, cohort_factor=factor_id)["rows"]
+    assert preserved["thread"] == "newer-measured-equality"
+    group = next(r for r in get(base, "outcome-factors", level=4)["rows"] if r["factor"] == factor_id)
+    assert group["conversations"] == group["cohort_size"] == 1
+    send(base, "/api/sidecar/outcome-factors", expected=400)
+    send(base, "/api/sidecar/outcome-factors?level=6", expected=400)
+    send(base, "/api/sidecar/conversation-outcomes?cohort_factor=unknown", expected=400)
+
     # Mixed proposals in one arm can shift the rate without establishing a uniform answer pair.
     mixed_trace, mixed = prepare_replay("mixed-proposal-trials")
     mixed.pop("pair")
@@ -299,6 +320,33 @@ def check_replay_representative(base):
     rate, = get(base, "conversation-outcomes", level=2)["rows"]
     assert rate["thread"] == "mixed-proposal-trials" and rate["replay"] == mixed["id"]
     assert get(base, "impact", trace=rate["trace"])["evidence_counts"]["rate"] == 1
+
+
+def check_cohort_paging(base):
+    scope = {"org":"cohort-pages", "level":5}
+    # Sixteen groups in one conversation, then sixteen conversations sharing the first group.
+    traces = [case_span("field-" + str(i), "conflict", org=scope["org"]) for i in range(16)]
+    traces.extend(case_span("field-0", "conflict", number=i, org=scope["org"]) for i in range(1,16))
+    sibling_call = deepcopy(traces[0])
+    sibling_call["spanId"] = "3333333333333333"
+    traces.append(sibling_call)
+    send_traces(base, export(*traces))
+    send_traces(base, export(*traces))
+    first = get(base, "outcome-factors", **scope)
+    second = get(base, "outcome-factors", **scope, offset=first["next_offset"])
+    assert len(first["rows"]) == 15 and len(second["rows"]) == 1 and second["next_offset"] is None
+    rows = first["rows"] + second["rows"]
+    assert len({r["factor"] for r in rows}) == 16
+    assert {r["cohort_size"] for r in rows} == {16}
+    top = rows[0]
+    assert (top["conversations"], top["requests"]) == (16, 17)
+    assert all(r["conversations"] == 1 for r in rows[1:])
+    first = get(base, "conversation-outcomes", **scope, cohort_factor=top["factor"])
+    last = get(base, "conversation-outcomes", **scope, cohort_factor=top["factor"], offset=first["next_offset"])
+    assert len({r["thread"] for r in first["rows"]+last["rows"]}) == 16 and last["next_offset"] is None
+    day = get(base, "outcome-factors", **scope, after="2026-10-13", before="2026-10-14")
+    assert len(day["rows"]) == 1 and day["rows"][0]["cohort_size"] == 1
+    assert not get(base, "outcome-factors", **scope, user="missing")["rows"]
 
 
 def check_joint_proposals(base):
@@ -702,6 +750,7 @@ def load(base, clients, batches, batch_size, payload_bytes):
     coverage = get(base, "health", org=org)["coverage"]
     assert coverage["traces"] == batches * batch_size
     reads = []
+    cohort_reads = []
     for _ in range(10):
         start = time.monotonic()
         impact = get(base, "impact", org=org)
@@ -711,12 +760,20 @@ def load(base, clients, batches, batch_size, payload_bytes):
                           "evidence_counts": {"proposal": 0, "rate": 0, "score": 0, "tested": 0, "inputs": batch_size},
                           "replay_outcomes": {"mixed": 0, "changed_only": 0, "equal_only": 0, "unmeasured": batch_size}}
         assert len(factors["rows"]) == min(batches, 15)
+        start = time.monotonic()
+        groups = get(base, "outcome-factors", org=org, level=5)
+        first = groups["rows"][0]
+        members = get(base, "conversation-outcomes", org=org, level=5, cohort_factor=first["factor"])
+        cohort_reads.append(1000 * (time.monotonic() - start))
+        assert first["conversations"] == first["cohort_size"] == batch_size
+        assert len(members["rows"]) == min(batch_size, 15)
     return {"responses": {code: sum(status == code for status, _ in outcomes) for code in codes},
             "wall_s": round(elapsed, 3), "p95_successful_export_ms": round(timings[int((len(timings) - 1) * 0.95)], 2),
             "last_processing_lag_ms": final["processing_lag_ms"], "batch_size": batch_size,
             "clients": clients, "extra_bytes_per_span": payload_bytes, "retry_recovered_batches": recovered,
             "retry_wall_s": round(recovery_seconds, 3), "retained_traces": coverage["traces"],
-            "overview_read_pairs": len(reads), "median_sequential_overview_ms": round(median(reads), 2)}
+            "overview_read_pairs": len(reads), "median_sequential_overview_ms": round(median(reads), 2),
+            "median_source_group_and_members_ms": round(median(cohort_reads), 2)}
 
 
 def measure_token_pages(binary):
@@ -812,6 +869,7 @@ def main():
         representative = folder / "representative.sqlite"
         with server(args.binary, representative, "--capture-content") as base:
             check_replay_representative(base)
+            check_cohort_paging(base)
             check_replacement_comparison(base)
             check_replay_variation(base)
             joint_group, joint_rows = check_joint_proposals(base)

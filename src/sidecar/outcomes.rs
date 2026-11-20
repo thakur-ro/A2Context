@@ -54,7 +54,7 @@ pub(super) fn joint_pattern(report: &replay::Replay) -> Option<&'static str> {
 
 // Keep the sort keys small. Load the selected finding's detail after pagination.
 pub(super) const CLASSIFIED: &str = ", classified AS (
-    SELECT thread_key,trace_id,call_id,n,observed,
+    SELECT thread_key,trace_id,call_id,n,observed,factor,
       CASE WHEN proposal_changed=1 OR (kind='token' AND json_extract(detail,'$.landmark.generated_choice_changed')=1) THEN 1
            WHEN kind='prefill' AND (EXISTS (SELECT 1 FROM json_each(e.detail,'$.proposal_checks') c WHERE json_extract(c.value,'$.changed')=1)
                  OR EXISTS (SELECT 1 FROM json_each(e.detail,'$.routing_test.cells') c WHERE json_extract(c.value,'$.changed')=1)) THEN 1
@@ -64,6 +64,22 @@ pub(super) const CLASSIFIED: &str = ", classified AS (
            ELSE 5 END AS level
     FROM events e WHERE thread_key IS NOT NULL
 )";
+
+/// Keep all observations at a conversation's strongest level. Filtering by source
+/// after this step preserves membership in the original evidence cohort.
+pub(super) const COHORT: &str = ", cohort AS (
+    SELECT * FROM (
+        SELECT c.*,min(level) OVER (PARTITION BY thread_key) AS strongest FROM classified c
+    ) WHERE level=strongest AND strongest=CAST(? AS INTEGER)
+)";
+
+pub(super) const FACTORS: &str = " SELECT json_object('factor',c.factor,
+    'sources',json(min(json_extract(o.detail,'$.sources'))),'org',t.org,
+    'conversations',count(DISTINCT c.thread_key),'requests',count(DISTINCT json_array(c.trace_id,c.call_id)),
+    'cohort_size',(SELECT count(DISTINCT thread_key) FROM cohort))
+    FROM cohort c JOIN observations o ON (o.trace_id,o.n)=(c.trace_id,c.n)
+    JOIN traces t ON t.id=c.trace_id GROUP BY c.factor,t.org
+    ORDER BY count(DISTINCT c.thread_key) DESC,count(DISTINCT json_array(c.trace_id,c.call_id)) DESC,c.factor LIMIT ? OFFSET ?";
 
 #[cfg(test)]
 mod tests {

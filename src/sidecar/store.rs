@@ -577,6 +577,7 @@ impl Store {
             "findings"
                 | "factors"
                 | "impact"
+                | "outcome-factors"
                 | "conversation-outcomes"
                 | "occurrences"
                 | "order-tests"
@@ -590,6 +591,10 @@ impl Store {
                 FROM observations o JOIN selected t ON t.id=o.trace_id WHERE 1");
             for (key, field) in [
                 ("kind", "o.kind"),
+                (
+                    "routing_input",
+                    "json_extract(o.detail,'$.baseline_request_sha256')",
+                ),
                 ("group", "o.group_id"),
                 ("joint_pattern", "json_extract(o.detail,'$.joint_pattern')"),
                 ("report", "json_extract(o.detail,'$.report_id')"),
@@ -644,28 +649,39 @@ impl Store {
             sql.push_str(super::variation::TESTED_POSITIONS);
             super::prefill::append_routing(&mut sql, false);
         }
-        if matches!(view, "impact" | "conversation-outcomes") {
+        if matches!(view, "impact" | "outcome-factors" | "conversation-outcomes") {
             sql.push_str(super::outcomes::CLASSIFIED);
         }
+        let cohort = view == "outcome-factors"
+            || (view == "conversation-outcomes" && filters.contains_key("level"));
+        if cohort {
+            let level = super::required(filters, "level")?;
+            if !matches!(level, "1" | "2" | "3" | "4" | "5") {
+                return Err("choose an evidence level from 1 to 5".into());
+            }
+            sql.push_str(super::outcomes::COHORT);
+            args.push(level.to_owned());
+        }
         match view {
+            "outcome-factors" => sql.push_str(super::outcomes::FACTORS),
             "conversation-outcomes" => {
                 sql.push_str(", ranked AS (
-                    SELECT *,row_number() OVER (PARTITION BY thread_key ORDER BY level,observed DESC,trace_id,call_id,n) AS choice
-                    FROM classified
-                ), page AS (SELECT * FROM ranked WHERE choice=1");
-                if let Some(level) = filters.get("level") {
-                    if !matches!(level.as_str(), "1" | "2" | "3" | "4" | "5") {
-                        return Err("choose an evidence level from 1 to 5".into());
+                    SELECT *,row_number() OVER (PARTITION BY thread_key ORDER BY level,observed DESC,trace_id,call_id,n) AS choice FROM ");
+                sql.push_str(if cohort { "cohort" } else { "classified" });
+                if let Some(factor) = filters.get("cohort_factor") {
+                    if !cohort {
+                        return Err("select an evidence level before a cohort factor".into());
                     }
-                    sql.push_str(" AND level=CAST(? AS INTEGER)");
-                    args.push(level.clone());
+                    sql.push_str(" WHERE factor=?");
+                    args.push(factor.clone());
                 }
+                sql.push_str("), page AS (SELECT * FROM ranked WHERE choice=1");
                 sql.push_str(" ORDER BY level,observed DESC,thread_key LIMIT ? OFFSET ?)
                     SELECT json_object('thread',t.thread,'user',t.user,'org',t.org,'level',p.level,
                         'kind',o.kind,'sources',json_extract(detail,'$.sources'),'observed',p.observed,
                         'factor',json_extract(detail,'$.factor'),'group',o.group_id,'trace',p.trace_id,'call',p.call_id,
                         'replay',json_extract(detail,'$.measurement.replay_id'),'report',json_extract(detail,'$.report_id'),
-                        'context',json_extract(detail,'$.measurement.context_id'),
+                        'context',json_extract(detail,'$.measurement.context_id'),'decision',json_extract(detail,'$.measurement.location.decision_id'),
                         'unchanged_pair',json(CASE WHEN json_type(detail,'$.response_pair.changed')='false'
                             OR EXISTS (SELECT 1 FROM json_each(detail,'$.proposal_checks') c WHERE json_type(c.value,'$.changed')='false')
                             OR EXISTS (SELECT 1 FROM json_each(detail,'$.routing_test.cells') c WHERE json_type(c.value,'$.changed')='false')
@@ -700,8 +716,19 @@ impl Store {
                 return Ok(serde_json::from_str(&row)?);
             }
             "factors" => sql.push_str(", disputed AS (
-                SELECT factor,min(json_object('group',group_id,'design',design)) AS test
-                FROM routing_inputs WHERE witnesses IS NOT NULL GROUP BY factor
+                SELECT factor,min(json_object('group',group_id,'design',design,'input',input,'metric',metric,
+                    'source',(SELECT coalesce(json_extract(s.value,'$.source'),json_extract(s.value,'$.id'))
+                        FROM observations o, json_each(o.detail,'$.sources') s
+                        WHERE o.trace_id=json_extract(r.example,'$.trace') AND o.call_id=json_extract(r.example,'$.call')
+                          AND o.group_id=r.group_id AND json_extract(o.detail,'$.routing_test.design')=r.design
+                          AND json_extract(o.detail,'$.baseline_request_sha256')=r.input
+                          AND json_extract(s.value,'$.id')=json_extract(o.detail,'$.routing_test.context_id') LIMIT 1),
+                    'setup',json_extract(votes,'$.setup'),'changed',json_extract(votes,'$.changed_runs'),
+                    'held',json_extract(votes,'$.held_runs'),'missing',json_extract(votes,'$.missing_runs'))) AS test
+                FROM (SELECT group_id,design,input,factor,example,
+                    CASE WHEN json_type(witnesses,'$.tool') IS NULL THEN 'proposal' ELSE 'tool' END AS metric,
+                    coalesce(json_extract(witnesses,'$.tool'),json_extract(witnesses,'$.proposal')) AS votes
+                    FROM routing_inputs WHERE witnesses IS NOT NULL) r GROUP BY factor
             ), grouped AS (
                 SELECT factor,org,factor IN (SELECT factor FROM variations) AS varies,json_extract(min(detail),'$.sources') AS sources,
                     count(DISTINCT thread_key) AS conversations,count(DISTINCT trace_id) AS requests,
@@ -717,7 +744,9 @@ impl Store {
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
-                    'disputed_routing',json(d.test),'position_test',CASE WHEN t.pair IS NOT NULL THEN json_object(
+                    'disputed_routing',json(d.test),'order_counts',CASE WHEN signal=-4 THEN json((
+                       SELECT json_object('changed',sum(differs),'total',count(*)) FROM pairs WHERE factor=g.factor)) END,
+                    'position_test',CASE WHEN t.pair IS NOT NULL THEN json_object(
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -6 THEN 'routing_repeats' WHEN -5 THEN 'routing' WHEN -4 THEN 'order' WHEN -3 THEN 'replacement' WHEN -2 THEN 'joint_proposal' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'

@@ -11,7 +11,7 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const traceId = query.get("trace");
-const measuredExample = Object.fromEntries(["trace", "call", "decision", "replay", "context", "routing_design", "report"]
+const measuredExample = Object.fromEntries(["trace", "call", "decision", "replay", "context", "routing_design", "routing_input", "report"]
   .filter((key) => recommendationId && query.has(key)).map((key) => [key, query.get(key)]));
 const jointSelection = query.has("joint_pattern") ? {joint_pattern:query.get("joint_pattern"), baseline_trials:query.get("baseline_trials")} : null;
 const positionPair = query.get("pair");
@@ -273,6 +273,8 @@ const outcomeLevels = [
 ];
 const outcomeLevel = Number(query.get("level"));
 const outcomeCategory = outcomeLevels[outcomeLevel - 1];
+const cohortFactor = query.get("cohort_factor");
+const outcomeGrouping = query.get("by") === "source" ? "source" : "conversation";
 
 function impactPanel(impact) {
   return element("section", { className: "impact", "aria-label": "Conversation impact" },
@@ -282,7 +284,7 @@ function impactPanel(impact) {
     element("div", { className: "impact-breakdown" },
       element("p", {text:"Strongest evidence per conversation"}),
       ...outcomeLevels.flatMap(({key, title}, index) => impact.evidence_counts[key] ? [
-        element("a", {className:"impact-outcome", href:url({level:index + 1})},
+        element("a", {className:"impact-outcome", href:url({level:index + 1, by:"source"})},
           element("strong", {text:impact.evidence_counts[key]}), element("span", {text:title}),
           element("span", {"aria-hidden":"true",text:"→"}))] : []),
       replayCoverage(impact)));
@@ -316,18 +318,44 @@ function factorRow(factor, featured = false) {
   const counts = [factor.org, plural(factor.conversations, "identified conversation"), plural(factor.requests, "request"),
     plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ");
   const disputed = factor.disputed_routing;
-  const href = disputed ? url({factor:factor.id, recommendation:disputed.group, routing_design:disputed.design}) :
+  const href = disputed ? url({factor:factor.id, recommendation:disputed.group, routing_design:disputed.design, routing_input:disputed.input}) :
     test ? positionLink(factor.id, test) : url({ factor: factor.id, ...(factor.signal === "order" && { order: 1 }), ...(factor.signal === "variation" && { variation: 1 }) });
-  return element("a", { className: featured ? "factor-row featured" : "factor-row",
-    href },
-    element("div", {},
-      featured ? element("span", { className: "first-step", text: test ? "Measured position test" : "Recommended next step" }) : null,
-      element("strong", { text: featured ? (test ? headline : step[factor.signal]) : name }),
-      featured ? element("span", { className: "source-names", text: name }) : null,
-      element("span", { className: "row-extra", text: counts })),
-    element("span", { className: ["conflict", "duplicate", "dialogue"].includes(factor.signal) ? "basis" : "basis measured",
-      text: test ? positionReadout(test.result) : signals[factor.signal] }),
-    element("span", { className: "arrow", "aria-hidden": "true", text: "→" }));
+  const signal = test ? positionReadout(test.result) : signals[factor.signal];
+  if (featured) {
+    const completed = disputed && disputed.changed + disputed.held;
+    const title = disputed ? (disputed.metric === "tool" ? "The proposed tool" : "The complete proposal") +
+      " changed in " + disputed.changed + " of " + completed + " completed runs" :
+      factor.order_counts ? "Swapping source order changed the match count in " + factor.order_counts.changed + " of " +
+        plural(factor.order_counts.total, "comparison") : test ? headline : step[factor.signal];
+    const description = disputed ? "The runs repeated " + (disputed.source ? "the edit to " + disputed.source : "one source edit") +
+      " on the same input with the same instruction and tools." +
+      (disputed.missing ? " " + plural(disputed.missing, "additional run") + " incomplete." : "") : null;
+    return element("a", {className:"factor-row featured", href},
+      element("div", {}, element("span", {className:"first-step", text:signal}),
+        element("h3", {text:title}), description && element("p", {text:description}),
+        element("span", {className:"row-extra", text:[name, factor.org, plural(factor.conversations, "identified conversation")].filter(Boolean).join(" · ")})),
+      element("span", {className:"investigation-link", text:disputed ? "Compare runs →" : "Open evidence →"}));
+  }
+  return element("a", {className:"factor-row", href}, element("div", {},
+    element("strong", {text:name}), element("span", {className:"row-extra", text:counts})),
+    element("span", {className:["conflict", "duplicate", "dialogue"].includes(factor.signal) ? "basis" : "basis measured", text:signal}),
+    element("span", {className:"arrow", "aria-hidden":"true", text:"→"}));
+}
+
+function cohortNavigation() {
+  return element("nav", {className:"cohort-navigation", "aria-label":"Group evidence"},
+    link("By source", url({level:outcomeLevel, by:"source"}), null, outcomeGrouping === "source" && !cohortFactor),
+    link("By conversation", url({level:outcomeLevel}), null, outcomeGrouping === "conversation" && !cohortFactor),
+    link("All source factors", url({}), "cohort-home"));
+}
+
+function cohortRow(row) {
+  const subtitle = [row.org, plural(row.requests, "request")].filter(Boolean).join(" · ");
+  return element("a", {className:"cohort-row", href:url({level:outcomeLevel, cohort_factor:row.factor})},
+    element("div", {}, element("strong", {text:factorName(row.sources)}), element("span", {className:"row-extra", text:subtitle})),
+    element("div", {className:"cohort-reach"}, element("span", {text:row.conversations + " of " + plural(row.cohort_size, "conversation")}),
+      element("meter", {min:0, max:row.cohort_size, value:row.conversations, "aria-hidden":"true"})),
+    element("span", {className:"arrow", "aria-hidden":"true", text:"→"}));
 }
 
 function positionTrialTable(result, selection) {
@@ -773,7 +801,7 @@ function review(card, occurrences) {
     return element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId || detail.factor })),
       panel(headline, repeated ? null : prefillFollowup(card), element("p", {text:contrast ?
         "Open a changed and an unchanged run below. Check the original and edited proposals before deciding whether to change the source." : card.action.next})),
-      measuredExample.trace && detail.routing_test ? link("All routing results in this scope", url({factor:factorId || detail.factor, recommendation:card.id, routing_design:detail.routing_test.design})) : null,
+      (measuredExample.trace || measuredExample.routing_input) && detail.routing_test ? link("All routing results in this scope", url({factor:factorId || detail.factor, recommendation:card.id, routing_design:detail.routing_test.design})) : null,
       repeated ? routingPatterns(card) : routingComparison(detail),
       !oneRepeated && element("p", { text: "These calls share the tested edits, model, runtime and request settings. Other user text can differ." }),
       ...occurrences.rows.map((row, i) => element("details", { className: "panel", ...(!repeated && i === 0 && { open: "" }) },
@@ -1078,20 +1106,33 @@ async function render(refresh = false) {
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) {
         body = review(cards.rows[0], occurrences);
-        if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel})));
+        if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel, cohort_factor:cohortFactor})));
       }
-      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, ...measuredExample });
+      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, ...measuredExample });
     } else if (outcomeCategory) {
-      const data = await api("conversation-outcomes", {...scope, level:outcomeLevel, offset:pageOffset});
       byId("title").textContent = outcomeCategory.title;
       byId("summary").textContent = outcomeCategory.description;
-      body = element("div", {className:"feed"}, link("All source factors", url({})),
-        data.rows.length ? listing(data.rows, row => rowLink(row.thread,
-          [factorName(row.sources), kindLabels[row.kind], row.level === 3 && (row.unchanged_pair ? "Paired proposals stayed the same" : "Score evidence only for this finding"), row.user, fullDate(row.observed)].filter(Boolean).join(" · "),
-          url({level:outcomeLevel, factor:row.factor, recommendation:row.group, trace:row.trace, call:row.call,
-            report:row.report, replay:row.replay, context:row.context}))) :
-          element("p", {className:"empty", text:"No conversations have this evidence level in the current scope."}));
-      pagination(data.next_offset, {level:outcomeLevel});
+      if (outcomeGrouping === "source" && !cohortFactor) {
+        const data = await api("outcome-factors", {...scope, level:outcomeLevel, offset:pageOffset});
+        body = element("div", {className:"feed"}, cohortNavigation(),
+          data.rows.length ? element("section", {className:"cohort-list"},
+            element("h2", {text:"Sources in " + plural(data.rows[0].cohort_size, "conversation")}),
+            element("p", {text:"Each group lists the sources in a finding. A conversation can appear in more than one group."}), listing(data.rows, cohortRow)) :
+            element("p", {className:"empty", text:"No source groups have this evidence level in the current scope."}));
+        pagination(data.next_offset, {level:outcomeLevel, by:"source"});
+      } else {
+        const filters = {...scope, level:outcomeLevel, offset:pageOffset};
+        if (cohortFactor) filters.cohort_factor = cohortFactor;
+        const data = await api("conversation-outcomes", filters);
+        body = element("div", {className:"feed"}, cohortNavigation(),
+          cohortFactor && data.rows.length ? element("h2", {text:factorName(data.rows[0].sources)}) : null,
+          data.rows.length ? listing(data.rows, row => rowLink(row.thread,
+            [!cohortFactor && factorName(row.sources), kindLabels[row.kind], row.level === 3 && (row.unchanged_pair ? "Paired proposals stayed the same" : "Score evidence only for this finding"), row.user, fullDate(row.observed)].filter(Boolean).join(" · "),
+            url({level:outcomeLevel, cohort_factor:cohortFactor, factor:row.factor, recommendation:row.group, trace:row.trace, call:row.call,
+              decision:row.decision, report:row.report, replay:row.replay, context:row.context}))) :
+            element("p", {className:"empty", text:"No conversations have this evidence level in the current scope."}));
+        pagination(data.next_offset, {level:outcomeLevel, cohort_factor:cohortFactor});
+      }
     } else if (factorId && query.has("variation")) {
       const data = await api("replay-variations", { ...scope, factor: factorId, ...positionDesign, offset: pageOffset });
       byId("title").textContent = "When does the edit matter?";
@@ -1140,10 +1181,13 @@ async function render(refresh = false) {
       const signature = JSON.stringify([impact, factors]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
-      body = element("div", { className: "overview" }, impactPanel(impact),
-        element("section", { className: "factors" }, element("h2", { text: "Source factors" }),
-          factors.rows.length ? listing(factors.rows, (factor) => factorRow(factor, !pageOffset && factor === factors.rows[0])) :
-            element("p", { className: "empty", text: "No recommendations in this scope." })));
+      const featured = !pageOffset && factors.rows[0];
+      const remaining = featured ? factors.rows.slice(1) : factors.rows;
+      body = element("div", {className:"overview"}, impactPanel(impact),
+        featured ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}), factorRow(featured, true)) : null,
+        remaining.length ? element("section", {className:"factors"}, element("h2", {text:featured ? "Other source factors" : "Source factors"}),
+          listing(remaining, factor => factorRow(factor))) : null,
+        !factors.rows.length ? element("p", {className:"empty", text:"No recommendations in this scope."}) : null);
       pagination(factors.next_offset);
     }
   } else {
@@ -1186,7 +1230,7 @@ async function main() {
   const views = { findings: "Recommendations", preview: "Before inference", traces: "Traces", threads: "Threads" };
   byId("navigation").replaceChildren(...Object.entries(views).filter(([key]) => ["findings", "preview"].includes(key)).map(([key, label]) => link(label, url({ view: key }), null, view === key || (key === "findings" && view !== "preview"))));
   byId("title").textContent = views[view];
-  byId("summary").textContent = { findings: "See which conversations warrant a closer look, then choose a source to investigate.",
+  byId("summary").textContent = { findings: "",
     preview: "Check an assembled request and any supplied tests before committing a decision.",
     traces: "Open a trace to inspect its spans and captured sources.",
     threads: "Browse traces grouped by their recorded conversation." }[view];
@@ -1209,7 +1253,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, level:outcomeCategory && outcomeLevel, ...measuredExample }, values);
+      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

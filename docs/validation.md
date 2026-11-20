@@ -37,6 +37,8 @@ The source-order check sends the four replication requests through OTLP, attache
 
 The four-condition regression sends controlled trial records through the live API. It covers both single and joint changes, unchanged outputs, and a condition with mixed answers. It verifies that a constant match rate can coexist with a changed proposal, that different sample sizes stay separate, and that the same conversation can contribute different results. A database upgrade from version 13 rebuilds the saved classifications and input counts. Desktop and mobile browser checks follow the Cedar result to its individual comparisons.
 
+The source-group check gives one conversation 16 contributing source groups and lets 16 conversations share the first group. It checks both pages of results, repeated delivery, the exact evidence link and a restricted time window. A separate replay case verifies that drilling into a source with an ineffective edit cannot move a conversation out of its original evidence category. The desktop and mobile journeys follow the FAQ group to a changed answer and back to the same two conversations.
+
 ## What the public traces support
 
 The pinned Exgentic retail sample contains eight conversations and 99 model calls. On the unannotated import, the sidecar found 101 exact repetitions across 83 calls in all eight conversations. Every repetition was dialogue from unnamed assistant or user messages. The normalized calls had no declared rules, bound experiment reports or replay-ready request bodies. The traces support locating those repetitions. A causal change in the historical model's answer remains unmeasured.
@@ -79,6 +81,8 @@ python3 scripts/measure_exporter_latency.py /path/to/pinned/qwen/snapshot \
 ```
 
 ## Constrained overload
+
+With the source drill-down enabled, ten warm reads of a category’s source groups followed by its leading group’s conversations took a median of **19.28 ms per pair**. The overview and first factor page took 17.13 ms per pair. The sidecar retained all 2,304 traces after 139 of 192 batches needed a retry. It peaked at **49.0 MiB** under the one-CPU, 512 MiB limit, with zero OOM events. The reads ran after the conflict-only burst finished. These timings measure dashboard access, not inference latency.
 
 With conversation evidence categories enabled, the burst below retained all 2,304 traces and placed all 12 identified conversations in the captured-input category. The server accepted 51 batches on the first attempt and recovered the other 141 on retry. The median across ten pairs of overview reads was 20.86 ms after ingestion. The sidecar peaked at 46.9 MiB with zero OOM events. These measurements cover conflict-only inputs and a warm database. Score and proposal reports carry larger payloads.
 
