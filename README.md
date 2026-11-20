@@ -4,9 +4,9 @@
 
 Ship NexusWeave as a small Rust service beside your LLM workflow. When a policy, retrieved passage, or tool description gives a surprising result, start with the affected conversations. Follow a recommendation to the exact source, the edit someone tested, and the answers it changed.
 
-https://github.com/user-attachments/assets/c3038ec0-4445-47e8-babd-64daa2b0d139
+https://github.com/user-attachments/assets/ed94d9ff-7e0d-4189-9b97-ed4a8f381b1a
 
-*In the recording, removing a rehearsal duration changes two answers from 30 to 60 minutes. That fixes the greenhouse booking and breaks the rehearsal booking.* [Reproduce this walkthrough](docs/demo.md)
+A customer stops the second of two exchanges after the first has been requested. The agent still proposes the second write after its confirmation cache is refreshed. Follow the trace to see why the fix belongs at dispatch. [Run the walkthrough](docs/demo.md)
 
 ## What can I learn?
 
@@ -20,13 +20,13 @@ The workflow exports spans asynchronously over OTLP/HTTP. A bounded worker norma
 
 ## Try the demo
 
-From the checkout with stable Rust installed:
+From the checkout with stable Rust, Make and Python 3.11 or later:
 
 ```sh
-cargo run --locked -- sidecar --demo
+make demo
 ```
 
-Open the address printed by the process. The built-in demo uses saved examples and requires no API key. Choose **Compare runs** on the recommended investigation to see which tool calls were proposed for the same request. [Run the booking example from the video](docs/demo.md)
+Open the printed address. The walkthrough uses saved results from local model replays and a sandboxed order database. [Reproduce the measurements](docs/demo.md#what-the-test-covers)
 
 ## Ship it beside your service
 

@@ -41,6 +41,7 @@ jobs:
           python3 tests/sidecar_conflict_coverage.py target/debug/nexusweave
           python3 tests/sidecar_prefix_reference.py target/debug/nexusweave
           python3 tests/sidecar_tool_masks.py target/debug/nexusweave
+          python3 tests/check_exchange_demo.py target/debug/nexusweave
           python3 tests/sidecar_prefix_experiment.py target/debug/nexusweave
           python3 tests/sidecar_prefix_cohort.py target/debug/nexusweave --sdk-python "$RUNNER_TEMP/nexusweave-otel/bin/python"
           python3 tests/sidecar_opening_study.py target/debug/nexusweave

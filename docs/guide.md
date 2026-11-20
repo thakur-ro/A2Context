@@ -1,6 +1,6 @@
 # NexusWeave guide
 
-[Watch the booking walkthrough](demo.md) or run the command for the example you want to inspect. Once the service starts, open the loopback address it prints (by default `http://127.0.0.1:8040`).
+The [retail exchange walkthrough](demo.md) shows a full investigation from affected conversations to the proposed write. For the guides below, open the loopback address printed by the service after you start it.
 
 Run the commands in this guide from the repository root.
 
