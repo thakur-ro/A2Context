@@ -1,0 +1,8 @@
+{
+  "reproduced_pairs": 8,
+  "input_tokens": 3622,
+  "model_output_tokens": 562,
+  "supplied_assistant_tokens": 16,
+  "decode_seconds": 20.442840665811673,
+  "results_sha256": "230e840275f5dd296c348b90543c0945282072b2c24e18f667ca43fbe57561fa"
+}
