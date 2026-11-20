@@ -1,8 +1,8 @@
 # Ask about a workflow
 
-Open the sidecar dashboard and select a workflow or user under **Filters**. The heading counts distinct recommendation groups in that scope. A conversation can contribute to several groups. The three totals count conversations with a finding, all captured conversations, and distinct source factors. The first three cards follow the sidecar’s ranking. **All recommendations** opens the paginated list.
+Open the sidecar dashboard and select a workflow or user under **Filters**. The opening screen shows the highest-ranked recommendation in that scope. Pick a suggested question or type your own. **Browse recommendations** opens the ranked list and coverage totals. A conversation can contribute to several groups.
 
-Ask “Which instructions disagreed?” to compare the values declared by two sources. Ask “Where else did that repeat?” to keep the selected recommendation and see its conversation count and dated observations. A sandbox receipt opens as a diagram with the same proposal on both branches. **Open exact evidence** takes you to the recorded call. **Explore evidence by source** opens the detailed investigations.
+Ask “Which instructions disagreed?” to compare the values declared by two sources. Ask “Where else did that repeat?” to keep the selected recommendation and see its conversation count and dated observations. A sandbox receipt opens as a diagram with the same proposal on both branches. **Open exact evidence** takes you to the recorded call. Inside **Browse recommendations**, **Explore evidence by source** opens detailed investigations.
 
 ## Connect a model
 
@@ -23,7 +23,7 @@ A question sent to a partner makes one request. A direct question about a unique
 
 1. The Rust sidecar groups observations in SQLite and returns the ranked findings and their exact evidence references.
 2. When a question identifies one evidence type with a single matching record, the canvas sends that record to the partner for a plain-language answer. For a measured dispatch comparison it reads the two target states directly from the receipt. For a recurrence follow-up, the partner receives the finding name, counts, and an example conversation. For broader questions the canvas gives the model short references to the retrieved findings. The model returns prose, one reference, and a requested view. A reference outside the supplied set produces a visible error. A recognized reference with an unfamiliar view opens its evidence card.
-3. The browser constructs the diagram from the referenced record through the A2UI v1.0 Lit renderer. A model cannot supply a destination URL or replace a measured value. A rule disagreement shows captured declarations. A replay diagram compares the tested conditions. The partner’s prose is an interpretation.
+3. The browser sends successive A2UI v1.0 component updates to one Lit surface. The heading appears first, followed by the evidence and a follow-up action. A comparison draws both arms together. Selecting a declaration shows the captured role and version. Selecting a sandbox result shows its dispatch status. Choosing another question supersedes the current answer. Reduced-motion preferences show the available components immediately. The sidecar supplies the records, and the browser composes the layout. A model cannot supply a destination URL or replace a measured value. A rule disagreement shows captured declarations. A replay diagram compares the tested conditions. The partner’s prose is an interpretation.
 
 **Choose different evidence** corrects a match for the same question on the open page. Refreshing or switching scope clears that correction and the conversation. This lets an engineer recover a bad match without changing ranking for other users.
 

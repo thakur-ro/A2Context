@@ -11,7 +11,7 @@ const viewport = { width: 1280, height: 720 };
 let pointer = { x: 943, y: 150 };
 
 try {
-  const page = await browser.newPage({ viewport, deviceScaleFactor: 2, reducedMotion: "reduce" });
+  const page = await browser.newPage({ viewport, deviceScaleFactor: 2, reducedMotion: "no-preference" });
   page.setDefaultTimeout(model ? 60000 : 8000);
   // A browser screenshot does not include the system pointer. Draw one at the real click coordinates.
   await page.addInitScript(() => {
@@ -43,7 +43,7 @@ try {
     });
   });
   await page.goto(new URL("/?workflow=exchange-agent", base).href);
-  await page.getByRole("heading",{name:"2 recommendations",exact:true}).waitFor();
+  await page.getByRole("heading",{name:"Check current approval before dispatch",exact:true}).waitFor();
 
   const encoder = spawn(process.env.FFMPEG || "ffmpeg", [
     "-hide_banner", "-loglevel", "error", "-n", "-f", "image2pipe", "-framerate", String(fps),
@@ -113,35 +113,24 @@ try {
       await picker.selectOption(model);
       await read("Ask " + model + " about the evidence captured for this workflow.", 2);
     }
-    await click(page.getByRole("button",{name:"Show the context map"}));
-    const network = page.getByRole("region",{name:"Context map"});
-    await read("The same confirmation cache appears in both findings.", 2.8, network, 38);
-    await click(network.getByRole("button",{name:"source · confirmation-cache",exact:true}));
-    await read("Follow the cache to the conflicting instructions and the dispatch replay.", 2.8);
-    await click(page.getByRole("button",{name:"Which instructions disagreed?"}));
     const canvas = page.getByRole("region",{name:"Answer canvas"});
+    caption = "";
+    await click(page.getByRole("button",{name:"Which instructions disagreed?"}));
+    for (let i = 0; i < 15; i++) await frame();
     await canvas.getByText('"hold"',{exact:true}).waitFor();
-    await read("The confirmation cache still said approved. The latest customer message said hold.", 3.8, canvas, 65);
-    const question = page.getByRole("textbox",{name:"Question about workflow evidence"});
-    await click(question);
+    await click(canvas.getByRole("button",{name:/latest-customer-message/}));
+    await canvas.getByText("latest-customer-message · Role: user · Version: v1",{exact:true}).waitFor();
+    await read("The cache still authorized the exchange. The customer’s message said hold.", 3, canvas, 60);
+    await click(page.getByText("Other questions",{exact:true}));
     caption = "";
-    for (const char of "What changed at dispatch?") {
-      await question.pressSequentially(char);
-      await frame(2);
-    }
-    await click(page.getByRole("button",{name:"Ask question",exact:true}));
+    await click(page.getByRole("button",{name:"What changed at dispatch?"}));
+    for (let i = 0; i < 15; i++) await frame();
     await canvas.getByText("exchange requested",{exact:true}).waitFor();
-    await read("Same proposal, same starting state. Checking approval prevented the second write.", 4.8);
-    await click(question);
+    await read("The same proposal reached dispatch twice. Checking current approval prevented the write.", 3.5, canvas, 60);
     caption = "";
-    for (const char of "Where else did that repeat?") {
-      await question.pressSequentially(char);
-      await frame(2);
-    }
-    await question.press("Enter");
-    await canvas.getByRole("heading",{name:"Where this repeats"}).waitFor();
+    await click(canvas.getByRole("button",{name:"Where else did that repeat?"}));
     await canvas.getByRole("link",{name:"Wait on the second exchange"}).waitFor();
-    await read("Two conversations had this finding. Open the affected requests to inspect either one.", 3.8);
+    await read("Two conversations had this finding. Each links back to the affected request.", 3, canvas, 60);
     await click(canvas.getByRole("link",{name:"See affected requests →"}));
     const dispatch = page.getByRole("region",{name:"Sandbox dispatch comparison"}).first();
     await read("The replay receipt shows that the first exchange stayed in place in both runs.", 4.4, dispatch, 115);

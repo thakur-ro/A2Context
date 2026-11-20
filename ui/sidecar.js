@@ -2558,7 +2558,7 @@ async function main() {
   const form = byId("filter-form");
   byId("reset").href = url({ view }, {});
   byId("filter-count").textContent = Object.keys(scope).length ? " · " + Object.keys(scope).length : "";
-  byId("scope").replaceChildren(...Object.entries(scope).map(([key, value]) => element("span", { className: "chip", text: filterNames[key] + " · " + value })));
+  byId("scope").replaceChildren(...Object.entries(scope).map(([key, value]) => element("span", { className: "chip", "data-filter":key, text: filterNames[key] + " · " + value })));
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const values = Object.fromEntries([...new FormData(form)].filter(([, value]) => value.trim()).map(([key, value]) => [key, value.trim()]));

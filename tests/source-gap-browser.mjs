@@ -9,6 +9,7 @@ try {
     const errors = [];
     page.on("pageerror", err => errors.push(err.message));
     await page.goto(new URL("/?workflow=exchange-agent&user=exchange-customer&kind=source_gap", base).href);
+    await page.getByText(/^Browse \d+ recommendations?$/).click();
     const card = page.getByRole("region",{name:"Recommendation cards"}).getByRole("article");
     await card.getByRole("heading",{name:"Check sources for Exchange authorization"}).waitFor();
     await card.getByText(/2 conversations/).waitFor();

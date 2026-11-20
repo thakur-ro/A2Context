@@ -14,9 +14,9 @@ cargo run --locked -- demo
 
 Open the address it prints. The demo loads saved telemetry and measurements into a temporary SQLite database. It requires no API key.
 
-1. The home page shows two recommendations across three captured conversations. Choose **Show the context map** and select the confirmation cache to see both findings. Choose **Which instructions disagreed?** The map pairs the confirmation cache’s approval with the customer’s hold.
-2. Ask **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
-3. Ask **Where else did that repeat?** Two conversations contributed to this finding. **See affected requests** opens the evidence. The state table shows that the earlier boots exchange stayed in place under both conditions.
+1. The opening recommendation is **Check current approval before dispatch**. Choose **Which instructions disagreed?** to compare the cached approval with the customer’s hold.
+2. Open **Other questions** and choose **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
+3. Choose **Where else did that repeat?** inside the answer. Two conversations contributed to this finding. **See affected requests** opens the evidence. The state table shows that the earlier boots exchange stayed in place under both conditions.
 
 The recording uses **Workspace evidence**. The source comparison reads the two declarations, and the dispatch comparison reads the sandbox receipt. The exchange agent’s saved proposals came from Qwen. You can run the walkthrough without installing a model. [Connect a model](chat-canvas.md)
 

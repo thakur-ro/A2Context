@@ -14,8 +14,8 @@ function canvasRecord(card) {
     facts.sandbox = {tool:dispatch.tool, target:target.key, before:state(target.before),
       without_check:state(target.without_guard), with_check:state(target.with_guard), expected:state(dispatch.expected)};
     map = { root:"Same proposal · " + dispatch.tool, arms:[
-      { label:"Without the check", value:state(target.without_guard) },
-      { label:"With the check", value:state(target.with_guard) },
+      { label:"Without the check", value:state(target.without_guard), detail:"Dispatch without the check: " + state(dispatch.without_guard) + ". Starting state: " + state(target.before) + "." },
+      { label:"With the check", value:state(target.with_guard), detail:"Dispatch with the check: " + state(dispatch.with_guard) + ". Expected state: " + state(dispatch.expected) + "." },
     ] };
     facts.observed = "Without the check, " + target.key + " ended in “" + state(target.without_guard) + "”. With the check, it " +
       (target.before === target.with_guard ? "stayed" : "ended") + " in “" + state(target.with_guard) + "”.";
@@ -27,6 +27,7 @@ function canvasRecord(card) {
   } else if (card.kind === "conflict") {
     map = { root:detail.rule.replaceAll("_", " ") + " · " + detail.scope, arms:detail.sources.map((source, i) => ({
       label:sourceName(source), value:detail.values[i] ?? "Value unavailable",
+      detail:[sourceName(source), source.role && "Role: " + source.role, source.version && "Version: " + source.version].filter(Boolean).join(" · "),
     })) };
     facts.observed = map.arms.map(arm => {
       const label = arm.label.replaceAll("-", " ");
@@ -94,7 +95,7 @@ function canvasAnswer(question, records, previous) {
   return { record, view, focused };
 }
 
-async function partnerAnswer(model, question, records, history, previous) {
+async function partnerAnswer(model, question, records, history, previous, signal) {
   const catalog = records.map((r,i) => ({...r.facts,id:"R" + (i+1)}));
   const shortId = id => catalog[records.findIndex(r => r.facts.id === id)]?.id || null;
   const match = canvasAnswer(question,records,previous);
@@ -112,7 +113,7 @@ async function partnerAnswer(model, question, records, history, previous) {
   const packet = match.focused ? {question, view:match.view, evidence:focusedFacts} :
     {catalog, history:turns, search_suggestion:suggested, question};
   const response = await fetch("/api/chat/completions", {method:"POST",headers:{"Content-Type":"application/json"},
-    signal:AbortSignal.timeout(60000), body:JSON.stringify({model,max_tokens:450,messages:[
+    signal:signal ? AbortSignal.any([signal, AbortSignal.timeout(60000)]) : AbortSignal.timeout(60000), body:JSON.stringify({model,max_tokens:450,messages:[
       {role:"system",content:instruction}, {role:"user",content:JSON.stringify(packet)},
     ]})});
   if (!response.ok) throw new Error("The selected partner could not answer (HTTP " + response.status + ").");
@@ -130,7 +131,7 @@ async function partnerAnswer(model, question, records, history, previous) {
 function investigationCanvas(impact, page, models) {
   const home = element("div", {className:"canvas-home"});
   const heading = byId("title");
-  const input = element("input", {type:"text", maxlength:1200, required:"", placeholder:"Ask about these recommendations…", "aria-label":"Question about workflow evidence"});
+  const input = element("input", {type:"text", maxlength:1200, required:"", placeholder:"Ask about a source, instruction, or outcome…", "aria-label":"Question about workflow evidence"});
   const picker = element("select", {"aria-label":"Analysis partner"}, element("option",{value:"",text:"Workspace evidence"}),
     ...models.map(model => element("option",{value:model,text:model})), element("option",{value:"@setup",text:"Connect a model…"}));
   const setup = element("details",{className:"canvas-setup"},element("summary",{text:"Connect your model"}),
@@ -145,17 +146,21 @@ function investigationCanvas(impact, page, models) {
   const send = element("button",{type:"submit","aria-label":"Ask question",text:"↑"});
   const form = element("form",{className:"canvas-composer"}, input, picker, send);
   const suggestions = element("div",{className:"canvas-prompts"});
+  const prompts = element("details",{className:"canvas-questions",open:""},element("summary",{text:"Other questions"}),suggestions);
+  const lead = element("div",{className:"canvas-lead"});
   const stats = element("div",{className:"canvas-stats","aria-label":"Scope totals"});
   const cards = element("div",{className:"canvas-grid"});
-  const output = element("section",{className:"canvas-answer","aria-live":"polite","aria-label":"Answer canvas"});
+  const output = element("section",{className:"canvas-answer",tabindex:"-1","aria-live":"polite","aria-label":"Answer canvas"});
   const past = element("details",{className:"canvas-history"});
   const status = element("p",{className:"canvas-status",role:"status"});
   const browse = link("All recommendations →",url({cards:1}));
   const listing = element("section",{className:"canvas-list","aria-label":"Recommendation cards"},
     element("div",{className:"canvas-section-title"},element("h2",{text:"Needs attention"}),browse),cards);
-  home.append(form,setup,suggestions,status,output,past,stats,listing,link("Explore evidence by source",url({explore:1})));
+  const browseTitle = element("summary");
+  const drawer = element("details",{className:"canvas-browse"},browseTitle,stats,listing,link("Explore evidence by source",url({explore:1})));
+  home.append(lead,output,prompts,form,setup,status,past,drawer);
   let loadedPage = page, currentTotal = impact.recommendations;
-  let records = [], history = [], previous, answering = false, moreEvidence = false;
+  let records = [], history = [], previous, active, moreEvidence = false;
   const corrections = new Map();
   const normalize = q => q.trim().toLowerCase().replace(/[?.!]+$/, "");
   past.hidden = true;
@@ -165,7 +170,7 @@ function investigationCanvas(impact, page, models) {
     button.addEventListener("click", onClick);
     return button;
   }
-  async function inspect(record, view, question, text, author) {
+  async function inspect(record, view, question, text, author, signal) {
     const facts = record?.facts;
     output.replaceChildren(element("div",{className:"canvas-question",text:question}));
     if (text) output.append(element("p",{className:"partner-text"},element("span",{className:"partner-name",text:author || picker.value}),text));
@@ -177,13 +182,21 @@ function investigationCanvas(impact, page, models) {
     const name = view === "recurrence" ? "Where this repeats" : view === "action" ? "What to test next" : facts.title;
     const description = view === "recurrence" ? "This recommendation appears in " + count.split(" · ")[0] + " in the current scope." :
       view === "action" ? facts.next : facts.observed;
-    output.append(NexusWeaveA2UI.recommendation("answer", {title:name,heading:"h2",description:text ? null : description,
-      detail:view === "evidence" ? facts.comparison : null}));
-    if (view === "evidence" && facts.map) output.append(element("figure",{className:"canvas-map","aria-label":facts.kind + " evidence map"},
-      NexusWeaveA2UI.branches("evidence-map", facts.map)));
+    const followup = view === "evidence" ? "Where else did that repeat?" : null;
+    const surface = NexusWeaveA2UI.answerSurface({title:name,description:text ? null : description,
+      map:view === "evidence" && facts.map,detail:view === "evidence" ? facts.comparison : null,followup},
+      () => ask(followup));
+    surface.view.className = "canvas-result";
+    output.append(surface.view);
+    for (const update of surface.steps) {
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise(resolve => setTimeout(resolve, 160));
+      if (signal.aborted || !home.isConnected) return;
+      update();
+    }
     if (view === "recurrence") {
       if (record.trend?.length) output.append(trend(record.trend));
       const result = await api("occurrences",{...scope,group:facts.id});
+      if (signal.aborted) return;
       const seen = new Set();
       const examples = [];
       for (const row of result.rows) {
@@ -199,15 +212,28 @@ function investigationCanvas(impact, page, models) {
       link(view === "recurrence" ? "See affected requests →" : "Open exact evidence →",view === "recurrence" ? record.group : record.href)));
   }
   async function ask(question, selected) {
-    if (!question.trim() || answering) return;
-    answering = true;
-    send.disabled = true;
+    if (!question.trim()) return;
+    active?.abort();
+    active = new AbortController();
+    const {signal} = active;
+    const model = picker.value;
+    lead.hidden = true;
+    drawer.open = false;
+    prompts.open = false;
+    form.after(prompts);
+    home.classList.add("has-answer");
+    output.replaceChildren(element("div",{className:"canvas-question",text:question}));
+    output.setAttribute("aria-busy","true");
+    output.focus({preventScroll:true});
+    if (output.getBoundingClientRect().top < 0) output.scrollIntoView({block:"start"});
+    input.value = "";
     status.textContent = picker.value && !selected ? "Asking " + picker.value + "…" : "";
     try {
       if (!selected && /^(?:(?:show|open|draw)(?: me)? (?:the |a )?)?(?:context|evidence) (?:map|graph|network)$/i.test(normalize(question))) {
         let rows = loadedPage.rows, offset = loadedPage.next_offset;
         if (previous && !rows.some(row => row.id === previous.facts.id)) {
           const selected = await api("findings",{...scope,group:previous.facts.id});
+          if (signal.aborted) return;
           rows = [...rows,...selected.rows];
         }
         const host = element("div",{});
@@ -229,19 +255,23 @@ function investigationCanvas(impact, page, models) {
       const terms = canvasTerms(question);
       if (moreEvidence && terms.length && !selected) {
         const matches = await api("findings",{...scope,terms:terms.join(" ")});
+        if (signal.aborted) return;
         const unique = new Map([...matches.rows.map(canvasRecord), ...records].map(r => [r.facts.id,r]));
         if (previous && !unique.has(previous.facts.id)) {
           const saved = await api("findings",{...scope,group:previous.facts.id});
+          if (signal.aborted) return;
           previous = saved.rows[0] && canvasRecord(saved.rows[0]);
           if (previous) unique.set(previous.facts.id,previous);
         }
         candidates = [...unique.values()];
       }
       const corrected = candidates.find(r => r.facts.id === corrections.get(normalize(question)));
-      const answer = selected || corrected ? {record:selected || corrected,view:"evidence"} : picker.value ?
-        await partnerAnswer(picker.value,question,candidates,history.slice(-6),previous) : canvasAnswer(question,candidates,previous);
+      const answer = selected || corrected ? {record:selected || corrected,view:"evidence"} : model ?
+        await partnerAnswer(model,question,candidates,history.slice(-6),previous,signal) : canvasAnswer(question,candidates,previous);
+      if (signal.aborted) return;
       previous = answer.record;
-      await inspect(previous,answer.view,question,answer.text,answer.author);
+      await inspect(previous,answer.view,question,answer.text,answer.author || model,signal);
+      if (signal.aborted) return;
       history.push({question,id:previous?.facts.id || null,view:answer.view,
         answer:answer.text || (previous ? (answer.view === "action" ? previous.facts.next :
           answer.view === "recurrence" ? plural(previous.facts.conversations,"conversation") : previous.facts.observed) : "No matching evidence.")});
@@ -259,13 +289,12 @@ function investigationCanvas(impact, page, models) {
         output.append(correction);
       }
       if (selected && output.getBoundingClientRect().top < 0) output.scrollIntoView({block:"start"});
-      input.value = "";
       status.textContent = "";
     } catch (error) {
+      if (signal.aborted) return;
       status.textContent = error.message + " You can retry or choose Workspace evidence.";
     } finally {
-      answering = false;
-      send.disabled = false;
+      if (!signal.aborted) output.removeAttribute("aria-busy");
     }
   }
   form.addEventListener("submit", event => {event.preventDefault(); ask(input.value.trim());});
@@ -275,7 +304,10 @@ function investigationCanvas(impact, page, models) {
     moreEvidence = page.next_offset != null;
     records = page.rows.map(canvasRecord);
     previous = records.find(r => r.facts.id === previous?.facts.id) || (moreEvidence ? previous : null);
-    heading.textContent = plural(impact.recommendations,"recommendation");
+    heading.textContent = scope.workflow || "All workflows";
+    browseTitle.textContent = "Browse " + plural(impact.recommendations,"recommendation");
+    lead.replaceChildren(element("p",{text:plural(impact.recommendations,"recommendation") + " · " + plural(impact.conversations,"affected conversation")}),
+      element("h2",{text:records[0]?.facts.title || "No recommendations match these filters."}));
     const metric = (value,label) => element("div",{},element("strong",{text:value}),element("span",{text:label}));
     stats.replaceChildren(metric(impact.conversations,"Affected conversations"),metric(impact.captured_conversations,"Captured conversations"),
       metric(impact.factors,"Source factors"));
@@ -284,12 +316,13 @@ function investigationCanvas(impact, page, models) {
       records.some(r => r.dispatch) ? "What changed at dispatch?" : "Where does this repeat?",
     ];
     questions.push("Show the context map");
-    suggestions.replaceChildren(...questions.map(q => prompt(q, () => ask(q))));
+    suggestions.replaceChildren(NexusWeaveA2UI.questions(questions, ask));
     cards.replaceChildren(...records.slice(0,3).map(r => element("article",{className:"canvas-card"},
       NexusWeaveA2UI.recommendation("card-"+r.facts.id,{label:r.facts.kind,title:r.facts.title,description:r.facts.observed}),
       element("div",{className:"canvas-card-foot"},element("span",{text:plural(r.facts.conversations,"conversation")}),
         prompt("Inspect", () => ask(r.facts.title,r))))));
-    if (!records.length) cards.append(element("p",{text:"No recommendations match these filters."}));
+    prompts.hidden = !records.length;
+    drawer.hidden = !records.length;
     if (impact.recommendations > 3) browse.textContent = "See all " + impact.recommendations + " recommendations →";
   };
   home.updateEvidence(impact,page);

@@ -16,7 +16,7 @@ cd NexusWeave
 cargo run --locked -- demo
 ```
 
-Open the address printed in the terminal. You’ll see **2 recommendations**. Choose **Which instructions disagreed?** to see the cached approval beside the customer’s hold. Then ask **What changed at dispatch?** to see which run actually submitted the exchange. Press Ctrl+C to stop.
+Open the address printed in the terminal. Start with **Check current approval before dispatch**. Choose **Which instructions disagreed?** to see the cached approval beside the customer’s hold. Open **Other questions** and choose **What changed at dispatch?** to compare the two sandbox runs. Choose **Where else did that repeat?** to open the affected conversations. Press Ctrl+C to stop.
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 

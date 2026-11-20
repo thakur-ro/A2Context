@@ -89,6 +89,7 @@ try {
   await question.fill("What changed when product-id was edited?");
   await question.press("Enter");
   await page.getByRole("region",{name:"Answer canvas"}).getByRole("heading",{name:/product-id/}).waitFor();
+  await page.getByText("Other questions",{exact:true}).click();
   await page.getByRole("button",{name:"Show the context map"}).click();
   await map.locator(".network-readout strong").filter({hasText:"product-id"}).waitFor();
   await page.goto(base + "/?explore=1");
@@ -179,6 +180,7 @@ try {
   await page.getByLabel("Organization").fill("demo-retail");
   await page.getByLabel("User", { exact: true }).fill("user-042");
   await page.getByRole("button", { name: "Apply filters" }).click();
+  await page.getByText(/^Browse \d+ recommendations?$/).click();
   await page.getByRole("link",{name:"Explore evidence by source"}).click();
   await factor(page, "Conflicting rules").click();
   await conflictCard(page).getByRole("link", { name: "Review recommendation" }).click();
@@ -493,6 +495,7 @@ try {
   await mobile.locator(".panel").first().locator("tr.different").waitFor();
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
   await mobile.getByRole("link", { name: "Recommendations", exact: true }).click();
+  await mobile.getByText(/^Browse \d+ recommendations?$/).click();
   await mobile.getByRole("link",{name:"Explore evidence by source"}).click();
   await factor(mobile, "Conflicting rules").click();
   await conflictCard(mobile).getByRole("link", { name: "Review recommendation" }).click();
