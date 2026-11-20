@@ -136,7 +136,9 @@ def main():
                      and f["detail"]["sources"][0]["id"] == context), None)
         print(f"Row {row}, first test: passage {top}, {case['edits'][top-1]['js_bits']:.4f} bits")
         if card:
-            print(f"{base}/?{urlencode({'org': 'public-qa', 'recommendation': card['group']})}")
+            selected = {"org": "public-qa", "recommendation": card["group"], "trace": location["run_id"],
+                        "call": location["call_id"], "replay": report["id"], "context": context}
+            print(f"{base}/?{urlencode(selected)}")
             arm = urlencode({"v": 1, "view": "decisions", "run": location["run_id"], "call": location["call_id"],
                              "decision": location["decision_id"], "replay": report["id"], "variant": context})
             print(f"Exact trial: {base}/details?{urlencode({'run': location['run_id']})}#{arm}")

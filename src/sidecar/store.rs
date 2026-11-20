@@ -357,6 +357,13 @@ impl Store {
             for (key, field) in [
                 ("kind", "o.kind"),
                 ("group", "o.group_id"),
+                ("trace", "o.trace_id"),
+                ("call", "o.call_id"),
+                ("replay", "json_extract(o.detail,'$.measurement.replay_id')"),
+                (
+                    "context",
+                    "json_extract(o.detail,'$.measurement.context_id')",
+                ),
                 ("factor", "json_extract(o.detail,'$.factor')"),
             ] {
                 if let Some(value) = filters.get(key).filter(|value| !value.is_empty()) {

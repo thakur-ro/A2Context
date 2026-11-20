@@ -11,6 +11,8 @@ const kindLabels = { replacement: "Replacement comparison", conflict: "Rule conf
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const traceId = query.get("trace");
+const measuredExample = Object.fromEntries(["trace", "call", "replay", "context"]
+  .filter((key) => recommendationId && query.has(key)).map((key) => [key, query.get(key)]));
 const threadId = query.get("thread");
 const pageOffset = Number(query.get("offset")) || 0;
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
@@ -451,6 +453,7 @@ function review(card, occurrences) {
   return element("div", { className: "feed" },
     link("Back to source factor", url({ factor: factorId || detail.factor })),
     recommendationDetail(card.kind, detail, card.action, card.trend),
+    measuredExample.trace ? link("See this recommendation across requests", url({ recommendation: card.id, factor: factorId })) : null,
     card.threads > 1 ? compareForm(card.id) : null, evidence,
     panel("Where this appeared", ...occurrences.rows.map((row) => element("details", { className: "occurrence" },
       element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + fullDate(row.observed) }),
@@ -630,11 +633,11 @@ async function render(refresh = false) {
     pagination(data.next_offset, { thread: threadId });
   } else if (view === "findings") {
     if (recommendationId) {
-      const filters = { ...scope, group: recommendationId, ...(factorId && { factor: factorId }) };
+      const filters = { ...scope, ...measuredExample, group: recommendationId, ...(factorId && { factor: factorId }) };
       const [cards, occurrences] = await Promise.all([api("findings", filters),
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) body = review(cards.rows[0], occurrences);
-      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId });
+      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, ...measuredExample });
     } else if (factorId && query.has("order")) {
       const data = await api("order-tests", { ...scope, factor: factorId, offset: pageOffset });
       const result = data.rows[0];
@@ -728,7 +731,7 @@ async function main() {
       delete values.meta_value;
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
-      span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), recommendation: recommendationId }, values);
+      span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), recommendation: recommendationId, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

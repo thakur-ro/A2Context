@@ -266,6 +266,13 @@ def check_replay_representative(base):
     assert card["traces"] == 2 and card["latest"] > card["evidence"]["observed"]
     assert card["evidence"]["trace_id"] == changed_report["location"]["run_id"]
     assert card["evidence"]["detail"]["effect_pp"] == -100.0
+    selected = {"group": card["id"], "trace": equal_report["location"]["run_id"],
+                "call": equal_report["location"]["call_id"], "replay": equal_report["id"],
+                "context": card["evidence"]["detail"]["measurement"]["context_id"]}
+    specific, = get(base, "findings", **selected)["rows"]
+    assert specific["evidence"]["trace_id"] == selected["trace"] and specific["evidence"]["detail"]["effect_pp"] == 0
+    assert len(get(base, "occurrences", **selected)["rows"]) == 1
+    assert not get(base, "findings", **{**selected, "context": "absent"})["rows"]
     outcomes = get(base, "impact")["replay_outcomes"]
     assert outcomes == {"mixed": 1, "changed_only": 0, "equal_only": 1, "unmeasured": 0}, outcomes
     outcomes = get(base, "impact", factor=card["evidence"]["detail"]["factor"])["replay_outcomes"]
