@@ -14,7 +14,8 @@ const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
 const targetPatterns = query.get("targets") === "1";
 const targetDesign = query.get("design");
-const targetSelection = targetPatterns ? {targets:1, design:targetDesign} : {};
+const missSignal = query.get("miss_signal");
+const targetSelection = targetPatterns ? {targets:1, design:targetDesign, miss_signal:missSignal} : {};
 const screenedPairs = query.get("screens") === "1";
 const screenedPattern = query.get("pattern");
 const screenedRelation = query.get("relation");
@@ -1157,7 +1158,7 @@ function targetTokenScores(path, paired = true) {
     element("small",{text:[path.model,path.revision,path.runtime].join(" · ")}));
 }
 
-function declaredTarget(check, question) {
+function declaredTarget(check, question, focusOpening = false) {
   const proposal = p => p.kind === "model_output" ? p.outcome_preview : p.label + " · " + p.outcome_preview;
   const totals = {met:"Met", missed:"Missed", mixed:"Mixed", incomplete:"Incomplete"};
   const rows = [check.baseline, ...check.edits, ...(check.joint ? [check.joint] : [])].map((a, i) => {
@@ -1174,29 +1175,53 @@ function declaredTarget(check, question) {
         element("small", {text:c.matched + " of " + score + " scored trials matched" +
           (score < c.attempted ? " · " + (c.attempted - score) + " missing or unscored" : "")})));
   });
+  const scores = (check.token_paths || []).map(path => {
+    const chart = targetTokenScores(path);
+    chart.open = focusOpening && path.conditions.length === rows.length && path.conditions.every(c => c.first_lower === 0);
+    return chart;
+  });
   return element("section", {className:"panel target-check"},
     element("span", {className:"label", text:"Test against the declared outcome"}),
-    element("h2", {text:check.next}),
+    element("h2", {text:focusOpening ? "Compare the opening token across edits" : check.next}),
     question ? element("p", {text:question}) : null,
     element("p", {}, "Target ", element("code", {text:targetCriterion(check.expected,check.match_rule)})),
+    ...(focusOpening ? scores : []),
     element("table", {}, element("thead", {}, element("tr", {},
       ...["Condition", "Proposal", "Target result"].map(text => element("th", {scope:"col", text})))),
       element("tbody", {}, ...rows)),
-    element("small", {text:check.runner}), ...(check.token_paths || []).map(path => targetTokenScores(path)));
+    element("small", {text:check.runner}), ...(focusOpening ? [] : scores));
 }
 
 function targetPatternRow(group) {
+  const opening = group.miss_signals.opening;
   return rowLink("Every trial missed the target in " + plural(group.missed, "conversation"),
     "Target " + targetCriterion(group.setup.expected, group.setup.rule) + " · " + group.setup.sources.join(" + ") +
-      " · " + plural(group.missed_inputs, "distinct request") + " among the misses",
+      " · " + plural(group.missed_inputs, "distinct request") + " among the misses" +
+      (opening ? " · Another opening token led under every edit in " + plural(opening, "conversation") : ""),
     url({targets:1, design:group.design}));
 }
 
+const missLabels = {
+  opening: "Compare the opening token",
+  suffix: "Inspect text after the target",
+  other: "Compare conditions where the target opening kept the top score",
+  varied: "Compare the different signals",
+  unscored: "Check gaps in token scores"
+};
+const missDescriptions = {
+  opening:"Another token outscored the target’s first token in the original and every edited request.",
+  suffix:"At least one condition consistently produced the target text followed by more text.",
+  other:"The target’s first token reached or tied the highest score in at least one condition.",
+  varied:"The score reports or experiments in a conversation gave different signals.",
+  unscored:"At least one experiment lacked a score report covering every tested condition."
+};
+
 async function targetPatternView() {
   const filters = {...scope, ...(targetDesign ? {design:targetDesign} : {})};
+  const examplesFilter = {...filters, ...(missSignal && {miss_signal:missSignal})};
   const back = link("Back to recommendations", url({}));
   if (targetDesign && traceId) {
-    const result = await api("target-check", {...filters, trace:traceId, call:query.get("call"), report:query.get("report")}, true);
+    const result = await api("target-check", {...examplesFilter, trace:traceId, call:query.get("call"), report:query.get("report")}, true);
     if (!result) {
       pagination(null);
       return panel("Experiment unavailable in this scope", link("Back to target results", url(targetSelection)));
@@ -1206,8 +1231,8 @@ async function targetPatternView() {
     const download = element("button", {type:"button", text:"Download recorded trials"});
     download.addEventListener("click", () => downloadJson("target-trials.json", result.trials));
     pagination(null);
-    return element("div", {className:"feed"}, link("Back to target results", url(targetSelection)),
-      declaredTarget(result.check, result.question && result.question.text + (result.question.truncated ? "…" : "")),
+    const target = declaredTarget(result.check, result.question && result.question.text + (result.question.truncated ? "…" : ""), missSignal === "opening");
+    return element("div", {className:"feed"}, link("Back to target results", url(targetSelection)), target,
       element("div", {className:"actions"}, download, link("Open the captured call", url({view:"traces",trace:traceId,call:result.example.call}))));
   }
   const groups = await api("target-patterns", {...filters, offset:targetDesign ? 0 : pageOffset});
@@ -1223,21 +1248,29 @@ async function targetPatternView() {
     pagination(null);
     return element("div", {className:"feed"},back,element("p",{className:"empty",text:"No recorded experiments for this design in the current scope."}));
   }
-  const data = await api("target-examples", {...filters, offset:pageOffset});
+  const data = await api("target-examples", {...examplesFilter, offset:pageOffset});
   const resultText = {missed:"Every trial missed",reached:"At least one trial reached the target",incomplete:"Incomplete trials"};
   byId("title").textContent = group.setup.sources.join(" + ");
   byId("summary").textContent = plural(group.conversations, "tested conversation") + " · " + group.setup.runner;
   const counts = [[group.missed,"Missed in every trial"],[group.reached,"Reached in each experiment"],
     [group.varied,"Varied across experiments"],[group.incomplete,"Incomplete"]];
   const expected = group.setup.expected;
+  const signals = Object.entries(missLabels).filter(([key]) => group.miss_signals[key] > 0);
   pagination(data.next_offset, targetSelection);
   return element("div", {className:"feed"}, link("Back to recurring target misses", url({targets:1})),
     panel("Did any condition reach the target?",
       element("p", {}, "Target ", element("code", {text:targetCriterion(expected,group.setup.rule)})),
       element("dl", {className:"target-counts"}, ...counts.map(([n,text]) =>
         element("div", {}, element("dt",{text}), element("dd",{text:n})))),
-      element("p", {text:"Each identified conversation with verified trials counts once. Reached means at least one original or edited trial matched in each experiment. Any missing score makes the conversation incomplete."})),
-    element("section", {}, element("h2", {text:"Experiments"}), listing(data.rows, row => rowLink(row.question ? row.question.text + (row.question.truncated ? "…" : "") : row.thread,
+      element("p", {text:"Each conversation counts once. Reached means at least one trial matched in each experiment. A missing or unscored proposal trial makes the conversation incomplete."})),
+    signals.length && !missSignal ? element("section", {className:"panel", "aria-label":"Evidence from missed conversations"},
+      element("h2", {text:"Where to look next"}), listing(signals, ([key,label]) =>
+        rowLink(label, plural(group.miss_signals[key], "conversation") + " · " + missDescriptions[key],
+          url({...targetSelection,miss_signal:key})))) : null,
+    element("section", {}, element("h2", {text:missSignal ? missLabels[missSignal] : "Experiments"}),
+      missSignal && link("Show all experiments",url({...targetSelection,miss_signal:null})),
+      missSignal && element("p", {text:missDescriptions[missSignal]}),
+      listing(data.rows, row => rowLink(row.question ? row.question.text + (row.question.truncated ? "…" : "") : row.thread,
       [resultText[row.result],row.question && row.thread,row.user,fullDate(row.started)].filter(Boolean).join(" · "),
       url({...targetSelection,trace:row.trace,call:row.call,report:row.report})))));
 }

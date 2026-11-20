@@ -80,7 +80,7 @@ fn recommendation(
     }
 }
 
-fn has_extended_target(report: &shadow::Report) -> bool {
+pub(super) fn has_extended_target(report: &shadow::Report) -> bool {
     if report.expected.kind != "model_output"
         || !matches!(report.match_rule, replay::MatchRule::Exact)
     {

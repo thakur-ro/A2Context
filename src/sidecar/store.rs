@@ -243,10 +243,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 19 {
+        if version == 20 {
             return Ok(());
         }
-        if !(0..19).contains(&version) {
+        if !(0..20).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -255,7 +255,7 @@ impl Store {
         let mut after = String::new();
         loop {
             let tx = self.0.transaction()?;
-            let mut stmt = tx.prepare(if version == 18 {
+            let mut stmt = tx.prepare(if version >= 18 {
                 "SELECT id FROM traces WHERE id>?1 AND instr(run,'\"shadow_probes\"')>0 ORDER BY id LIMIT 16"
             } else {
                 "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL ORDER BY id LIMIT 16"
@@ -271,7 +271,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 19)?;
+        self.0.pragma_update(None, "user_version", 20)?;
         Ok(())
     }
 
@@ -778,6 +778,13 @@ impl Store {
             }
             "target-examples" => {
                 sql.push_str(super::target_patterns::EXAMPLES);
+                if let Some(signal) = filters.get("miss_signal") {
+                    if !matches!(signal.as_str(),"opening" | "suffix" | "other" | "varied" | "unscored") {
+                        return Err("unknown target miss signal".into());
+                    }
+                    sql.push_str(" AND c.signal=?");
+                    args.push(signal.clone());
+                }
                 for (key, column) in [("trace","r.trace_id"),("call","r.call_id"),("report","r.report")] {
                     if let Some(value) = filters.get(key) {
                         sql.push_str(&format!(" AND {column}=?"));

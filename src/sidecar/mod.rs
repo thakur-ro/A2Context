@@ -728,6 +728,7 @@ fn seed(store: &mut Store) -> Result<()> {
         ("first", "earlier"),
         ("follow-up", "followup"),
         ("unopened", "unopened"),
+        ("fresh", "fresh"),
     ] {
         let envelope = journal_example(name)?;
         let attrs = &envelope["request"]["attributes"];
