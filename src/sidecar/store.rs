@@ -334,8 +334,18 @@ impl Store {
         }
         match view {
             "impact" => {
-                sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
+                sql.push_str(", replay_by_thread AS (
+                    SELECT thread_key, max(kind='replay' AND changed=1) AS shifted,
+                        max(kind='replay' AND json_extract(detail,'$.effect_pp')=0) AS held
+                    FROM events WHERE thread_key IS NOT NULL GROUP BY thread_key
+                ) SELECT json_object('conversations',count(DISTINCT thread_key),
                     'changed',count(DISTINCT CASE WHEN changed=1 THEN thread_key END),
+                    'replay_outcomes',(SELECT json_object(
+                        'changed_only',count(*) FILTER (WHERE shifted AND NOT held),
+                        'equal_only',count(*) FILTER (WHERE held AND NOT shifted),
+                        'mixed',count(*) FILTER (WHERE shifted AND held),
+                        'unmeasured',count(*) FILTER (WHERE NOT shifted AND NOT held))
+                        FROM replay_by_thread),
                     'unlinked_requests',count(DISTINCT CASE WHEN thread_key IS NULL THEN trace_id END),
                     'factors',count(DISTINCT factor)) FROM events");
                 let row: String = self.0.query_row(&sql, params_from_iter(args), |row| row.get(0))?;

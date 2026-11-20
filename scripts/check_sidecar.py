@@ -260,6 +260,10 @@ def check_replay_representative(base):
     assert card["traces"] == 2 and card["latest"] > card["evidence"]["observed"]
     assert card["evidence"]["trace_id"] == changed_report["location"]["run_id"]
     assert card["evidence"]["detail"]["effect_pp"] == -100.0
+    outcomes = get(base, "impact")["replay_outcomes"]
+    assert outcomes == {"mixed": 1, "changed_only": 0, "equal_only": 1, "unmeasured": 0}, outcomes
+    outcomes = get(base, "impact", factor=card["evidence"]["detail"]["factor"])["replay_outcomes"]
+    assert outcomes == {"mixed": 0, "changed_only": 1, "equal_only": 1, "unmeasured": 0}, outcomes
 
 
 def check_predecision_recommendations(base):
@@ -359,6 +363,7 @@ def rank(base, cohort, send_trace=send_traces):
     rows = get(base, "findings", org=cohort)["rows"]
     impact = get(base, "impact", org=cohort)
     assert impact["conversations"] == 4 and impact["changed"] == 0, impact
+    assert impact["replay_outcomes"] == {"mixed": 0, "changed_only": 0, "equal_only": 0, "unmeasured": 4}
     factors = get(base, "factors", org=cohort)["rows"]
     assert impact["factors"] == len(factors)
     assert get(base, "impact", org=cohort, user="absent")["conversations"] == 0
@@ -448,7 +453,8 @@ def load(base, clients, batches, batch_size, payload_bytes):
         impact = get(base, "impact", org=org)
         factors = get(base, "factors", org=org)
         reads.append(1000 * (time.monotonic() - start))
-        assert impact == {"conversations": batch_size, "changed": 0, "unlinked_requests": 0, "factors": batches}
+        assert impact == {"conversations": batch_size, "changed": 0, "unlinked_requests": 0, "factors": batches,
+                          "replay_outcomes": {"mixed": 0, "changed_only": 0, "equal_only": 0, "unmeasured": batch_size}}
         assert len(factors["rows"]) == min(batches, 15)
     return {"responses": {code: sum(status == code for status, _ in outcomes) for code in codes},
             "wall_s": round(elapsed, 3), "p95_successful_export_ms": round(timings[int((len(timings) - 1) * 0.95)], 2),

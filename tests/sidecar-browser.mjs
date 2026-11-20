@@ -20,8 +20,13 @@ try {
   assert.equal(await page.locator("#navigation a").count(), 2);
   await factor(page, "Choice flipped").waitFor();
   if (process.env.FINDINGS_SCREENSHOT) await page.screenshot({ path: process.env.FINDINGS_SCREENSHOT });
+  const coverage = page.locator(".replay-coverage");
+  await coverage.getByText("Scored replays in 3 of 11 conversations").click();
+  assert.deepEqual(await coverage.locator("dd").allTextContents(), ["0", "0", "3", "8"]);
 
   await factor(page, "Results varied across wordings").click();
+  await coverage.getByText("Scored replays in 1 of 1 conversation").click();
+  assert.deepEqual(await coverage.locator("dd").allTextContents(), ["1", "0", "0", "0"]);
   const variation = page.locator(".card").filter({ hasText: "Replacement comparison" });
   await variation.getByRole("link").click();
   const replacementPanel = page.locator(".panel").first();

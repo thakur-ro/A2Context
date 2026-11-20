@@ -22,6 +22,8 @@ All four routes return JSON. Pass the same `org`, `user`, `workflow`, UTC dates 
 | `findings?factor=…` | Get the recommendations for that factor. Each includes an action, comparison details and an example occurrence. Use `group` to select a recommendation by ID. |
 | `occurrences?factor=…&group=…` | Page through the individual observations behind the recommendation. Each row carries its own measurement, request and call IDs, and conversation key when available. |
 
+Expand **Scored replays** on the overview or a source factor to see how many conversations had changed match rates, equal rates, both results across comparisons, or no scored replay. The four counts in `impact.replay_outcomes` add up to the identified conversations with findings in that scope. Probe scores contribute to the broader measured-change count. Only replay comparisons contribute to this breakdown. Two equal match rates can come from as little as one trial per arm. Open the recommendation to check the trial counts and scoring rule.
+
 ### Preview an assembled request
 
 Open **Before inference** and load a preflight request or a request bundled with previously measured probe reports. The workflow can also call `POST /api/sidecar/preview` with a JSON object containing `request` and optional `candidate` or `shadow` reports. The response includes the evidence and suggested next step. This route uses the bounded worker, processes the request in memory, and makes zero model calls. Use it as a separate check when the workflow needs a result before dispatching the original request. [Preflight format](guide.md#check-context-before-inference) · [Pending inspection format](../schema/pending-inspection-1.json)

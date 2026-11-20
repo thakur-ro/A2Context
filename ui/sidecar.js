@@ -179,6 +179,20 @@ function factorName(sources) {
   return sources.map((source) => sourceName(source) + (source.version ? " (" + source.version + ")" : "")).join(" + ");
 }
 
+function replayCoverage(impact) {
+  const counts = impact.replay_outcomes;
+  const tested = impact.conversations - counts.unmeasured;
+  return element("details", { className: "replay-coverage" },
+    element("summary", { text: "Scored replays in " + tested + " of " + plural(impact.conversations, "conversation") }),
+    element("p", { text: "Each conversation counts once. Tests compare how often the answer or tool call matched the recorded outcome." }),
+    element("dl", {}, ...[
+      ["Every scored comparison changed the match rate", counts.changed_only],
+      ["Every scored comparison had equal match rates", counts.equal_only],
+      ["Some comparisons changed the rate and others held steady", counts.mixed],
+      ["No scored replay in these findings", counts.unmeasured],
+    ].map(([label, count]) => element("div", {}, element("dt", { text: label }), element("dd", { text: count })))));
+}
+
 function impactPanel(impact) {
   return element("section", { className: "impact", "aria-label": "Conversation impact" },
     element("div", {}, element("h2", { text: "Conversations with findings" }),
@@ -188,7 +202,8 @@ function impactPanel(impact) {
       element("strong", { text: impact.changed + " with a measured change" }),
       element("meter", { min: 0, max: Math.max(1, impact.conversations), value: impact.changed,
         "aria-label": "Conversations with a change under a tested edit" }),
-      element("p", { text: "A source edit changed a score or an outcome in a test linked to these conversations." })));
+      element("p", { text: "A source edit changed a score or an outcome in a test linked to these conversations." }),
+      replayCoverage(impact)));
 }
 
 function factorRow(factor, featured = false) {
@@ -522,10 +537,12 @@ async function render(refresh = false) {
       if (cards.rows.length) body = review(cards.rows[0], occurrences);
       pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId });
     } else if (factorId) {
-      const data = await api("findings", { ...scope, factor: factorId, offset: pageOffset });
+      const filters = { ...scope, factor: factorId };
+      const [data, impact] = await Promise.all([api("findings", { ...filters, offset: pageOffset }), api("impact", filters)]);
       byId("title").textContent = data.rows.length ? factorName(data.rows[0].evidence.detail.sources) : "Source factor";
       byId("summary").textContent = "Each recommendation below uses its own comparison and outcome.";
       body = element("div", { className: "feed" }, link("All source factors", url({})),
+        data.rows.length ? replayCoverage(impact) : null,
         ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
       pagination(data.next_offset, { factor: factorId });
     } else {
