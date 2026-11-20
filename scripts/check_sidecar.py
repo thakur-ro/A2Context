@@ -479,9 +479,8 @@ def check_replay_variation(base):
     assert (pattern["changed_inputs"], pattern["equal_inputs"], pattern["mixed_inputs"]) == (1, 1, 1)
 
 
-def check_order_tests(base):
+def bound_order_reports(base):
     fixture = json.loads((ROOT / "examples/redundant-routing/measured/local-order.json").read_text())
-    reports = []
     for run in fixture["runs"]:
         call, = run["calls"]
         span = case_span(run["id"], "order")
@@ -506,8 +505,13 @@ def check_order_tests(base):
             report["location"] = {"run_id": "otlp:" + span["traceId"], "call_id": span["spanId"], "decision_id": "output:0:0"}
             for arm in report["variants"]:
                 arm["intervention"]["context_id"] = "request-source:" + arm["intervention"]["context_id"]
-            send(base, "/api/replay-reports", report, expected=201)
-            reports.append(report)
+            yield call["recorded_request"]["body"], report
+
+
+def check_order_tests(base):
+    bodies, reports = zip(*bound_order_reports(base))
+    for report in reports:
+        send(base, "/api/replay-reports", report, expected=201)
     pairs = get(base, "order-tests", org="order-check")["rows"]
     assert [pair["differs"] for pair in pairs] == [1, 1, 0, 0], pairs
     assert all(pair["total"] == 4 and pair["differing"] == 2 for pair in pairs)
@@ -527,7 +531,7 @@ def check_order_tests(base):
         other["attributes"][key] = "different"
         assert prior(other) == []
     repeated = deepcopy(pending)
-    repeated["attributes"]["nexusweave.request.body"] = fixture["runs"][0]["calls"][0]["recorded_request"]["body"]
+    repeated["attributes"]["nexusweave.request.body"] = bodies[0]
     assert not prior(repeated), "An identical prior input must not count toward transfer."
     for change in ["version", "system", "temperature"]:
         other = deepcopy(pending)
@@ -553,6 +557,98 @@ def check_order_tests(base):
     revised = next(edit for edit in prior(pending) if edit["example"]["source"] == "routing-note"
                    and edit["example"]["replacement"] == top["example"]["replacement"])
     assert revised["requests"] == 2 and revised["mixed"] == revised["lower"] == 1
+
+
+def check_history_proposals(base):
+    # All of these proposals satisfy the coarse scoring rule, including the changed answers.
+    saved = [r for _, r in bound_order_reports(base) if r["id"].endswith("dispatch-guide-1")]
+    assert len(saved) == 2
+    pending = json.loads((ROOT / "examples/redundant-routing/pending-maple.json").read_text())
+    pending["attributes"].update({"nexusweave.history.source":"otlp", "nexusweave.organization.id":"order-check",
+                                  "nexusweave.user.id":"dispatch-guide"})
+    def replay(original, suffix, outcomes):
+        report = deepcopy(original)
+        report["id"] += suffix
+        report["match_rule"] = {"kind":"kind_and_label"}
+        report["baseline"].append(deepcopy(report["baseline"][0]))
+        summary = {"attempted":2,"completed":2,"matched":2}
+        report["baseline_summary"] = summary
+        for arm in [*report["variants"],report["pair"]]:
+            arm.update(trials=deepcopy(report["baseline"]), summary=summary, difference_pp=0)
+        arm = next(arm for arm in report["variants"] if arm["intervention"]["context_id"].endswith("dispatch-guide"))
+        for trial, changed in zip(arm["trials"], outcomes, strict=True):
+            if changed:
+                trial["choice"]["outcome"] = "different answer"
+        report["pair"]["interaction_pp"] = 0
+        send(base, "/api/replay-reports", report, expected=201)
+    def check(changed, held, mixed, unresolved):
+        edits = send(base, "/api/sidecar/preview", {"request":pending})[1]["history"]["edits"]
+        tested, = [e for e in edits if e["example"]["source"] == "dispatch-guide"]
+        assert tested["requests"] == tested["equal"] == 2 and tested["lower"] == 0
+        assert tested["proposals"] == dict(changed=changed, held=held, mixed=mixed, unresolved=unresolved), tested
+        if changed:
+            assert edits[0] == tested
+            e = tested["example"]
+            card, = get(base, "findings", group=e["group"], trace=e["trace"], call=e["call"], decision=e["decision"],
+                        replay=e["report"], context=e["context"])["rows"]
+            assert card["evidence"]["detail"]["response_pair"]["changed"] and card["evidence"]["detail"]["effect_pp"] == 0
+    for r in saved:
+        replay(r, "-change", [True, True])
+    check(2, 0, 0, 0)
+    revised = deepcopy(pending)
+    attrs = revised["attributes"]
+    body = json.loads(attrs["nexusweave.request.body"])
+    source = attrs["nexusweave.context.semantics"]["request_sources"][0]
+    source["id"] = "this-call-only"
+    message = body["messages"][1]
+    message["content"] = "Dispatch guide: Route Érable parcels to bay OISEAU."
+    fragment = source["request_fragment"]["text_range"]
+    fragment["end_byte"] = len(message["content"].encode())
+    attrs["nexusweave.request.body"] = json.dumps(body, ensure_ascii=False)
+    plan = send(base, "/api/sidecar/preview", {"request":revised})[1]["history"]["experiment"]
+    edit, = plan["interventions"]
+    encode = lambda doc: json.dumps(doc, ensure_ascii=False, separators=(",",":")).encode()
+    assert plan["baseline_request_sha256"] == sha256(encode(body)).hexdigest()
+    assert edit["context_id"] == "request-source:this-call-only" and edit["text_range"] == fragment
+    message["content"] = "Dispatch guide: " + edit["replacement"]
+    assert plan["edited_request_sha256"] == sha256(encode(body)).hexdigest()
+    fragment["end_byte"] = len(message["content"].encode())
+    attrs["nexusweave.request.body"] = json.dumps(body)
+    skipped = send(base, "/api/sidecar/preview", {"request": revised})[1]["history"]["experiment"]
+    assert skipped == {"status": "already_applied", "baseline_request_sha256": plan["edited_request_sha256"]}
+    replay(saved[0], "-held", [False, False])
+    check(1, 0, 1, 0)
+    replay(saved[1], "-variable", [False, True])
+    check(0, 0, 1, 1)
+
+
+def check_current_history_test(binary):
+    with server(binary, None) as base:
+        folder = ROOT / "examples/redundant-routing"
+        saved = json.loads((folder / "ash-history-check.json").read_text())
+        original = json.loads((folder / "candidate-checks/ash-routing-note.json").read_text())["request"]
+        def preview(request, shadow):
+            return send(base, "/api/sidecar/preview", {"request":request, "shadow":shadow})[1]
+        request = deepcopy(original)
+        request["attributes"]["nexusweave.prefill.probe"] = saved["prefill"]
+        result = preview(request, saved["shadow"])["history"]["experiment"]
+        trial, = result["proposal_tests"]
+        assert result["first_token_js_bits"] == saved["prefill"]["scores"]["effects"][0]["js_bits"]
+        assert trial["pair"]["changed"] is False and trial["pair"]["original"]["outcome_preview"] == "UNKNOWN"
+        changed = deepcopy(saved["shadow"])
+        changed["effects"][0]["trials"][0]["choice"]["outcome"] = "another answer"
+        assert preview(original, changed)["history"]["experiment"]["proposal_tests"][0]["pair"]["changed"] is True
+        other = deepcopy(changed)
+        arm = other["effects"][0]
+        arm["intervention"]["replacement"] = "Different wording"
+        body = json.loads(original["attributes"]["nexusweave.request.body"])
+        body["messages"][2]["content"] = "Dispatch guide: Different wording"
+        arm["request_sha256"] = sha256(json.dumps(body,separators=(",",":")).encode()).hexdigest()
+        unrelated = preview(original, other)
+        assert not unrelated["unverified_probes"] and not unrelated["history"]["experiment"]["proposal_tests"]
+        other["captured_request_sha256"] = "0" * 64
+        stale = preview(original, other)
+        assert stale["unverified_probes"] and not stale["history"]["experiment"]["proposal_tests"]
 
 
 def check_predecision_recommendations(base):
@@ -820,17 +916,42 @@ def measure_token_pages(binary):
             "median_ms": round(median(timings), 3), "p95_ms": round(sorted(timings)[ceil(0.95 * len(timings)) - 1], 3)}
 
 
+def measure_history_preview(binary):
+    folder = ROOT / "examples/redundant-routing"
+    request = json.loads((folder / "candidate-checks/ash-routing-note.json").read_text())["request"]
+    saved = json.loads((folder / "ash-history-check.json").read_text())
+    measured = deepcopy(request)
+    measured["attributes"]["nexusweave.prefill.probe"] = saved["prefill"]
+    cases = {"history": {"request": request}, "with_current_trial": {"request": measured, "shadow": saved["shadow"]}}
+    timings = {name: [] for name in cases}
+    with server(binary, None) as base:
+        for round_index in range(26):
+            for name, envelope in cases.items():
+                start = time.perf_counter()
+                result = send(base, "/api/sidecar/preview", envelope)[1]["history"]["experiment"]
+                elapsed = (time.perf_counter() - start) * 1000
+                assert result["status"] == "ready" and result["total_proposal_tests"] == int(name == "with_current_trial")
+                if round_index:
+                    timings[name].append(elapsed)
+    return {name: {"warm_requests": len(ms), "median_ms": round(median(ms), 3),
+                   "p95_ms": round(sorted(ms)[ceil(len(ms) * 0.95) - 1], 3)} for name, ms in timings.items()}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/nexusweave")
     parser.add_argument("--sdk-python", help="Interpreter with OpenTelemetry SDK and OTLP/HTTP exporter installed")
     parser.add_argument("--overload-url", help="Run load only against an isolated persistent sidecar")
     parser.add_argument("--token-page-cost", action="store_true", help="Measure warm reads of the two instrumented demo answers")
+    parser.add_argument("--history-cost", action="store_true", help="Time the pending Ash request with and without its saved trial")
     parser.add_argument("--clients", type=int, default=24)
     parser.add_argument("--batches", type=int, default=192)
     parser.add_argument("--batch-size", type=int, default=12)
     parser.add_argument("--payload-bytes", type=int, default=4096)
     args = parser.parse_args()
+    if args.history_cost:
+        print(json.dumps(measure_history_preview(args.binary), indent=2))
+        return
     if args.token_page_cost:
         print(json.dumps(measure_token_pages(args.binary), indent=2))
         return
@@ -841,6 +962,9 @@ def main():
         folder = Path(directory)
         check_capture(args.binary, folder, args.sdk_python)
         check_external_batch(args.binary, folder)
+        check_current_history_test(args.binary)
+        with server(args.binary, folder / "prior-proposals", "--capture-content") as base:
+            check_history_proposals(base)
         captured = folder / "scoped.sqlite"
         with server(args.binary, captured, "--capture-content") as base:
             fidelity = check_replay(base)

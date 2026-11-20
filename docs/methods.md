@@ -141,6 +141,12 @@ We held out Maple, Ash, Elm and Pine in both message orders. For each of the eig
 
 In the Ash request with the routing note first, the model initially answered `UNKNOWN`. Editing the earlier note recovered the correct bay, `KITE`. The recommended edit left the answer unchanged. All eight requests share one model and prompt template. The observed counts support presenting a next experiment with its historical evidence. They provide little evidence of a predictive advantage and supply no calibrated probability for the pending request. [All held-out generations](../examples/redundant-routing/heldout-order-results.json)
 
+We revisited all four suggested edits per held-out request, giving 32 edit/request combinations. Where an edit changed both earlier answers, it changed 4 of 8 held-out answers. Where both earlier answers held, it changed 5 of 16 held-out answers. The two earlier inputs disagreed for the remaining 8 combinations. Several comparisons reuse the same request and baseline. These are descriptive counts from the existing dataset.
+
+We also ran the exact dispatch-guide edit prepared for Ash through local Qwen2.5-0.5B-Instruct. It shifted the first-token distribution by 0.2524 bits of Jensen–Shannon divergence. A greedy generation on each request returned `UNKNOWN` both times. With the pinned checkpoint and CPU environment used for the replication above, add `--reproduce-ash /path/to/checkpoint` to the command below to regenerate both reports and check their request hashes. [Saved reports](../examples/redundant-routing/ash-history-check.json) · [Replication script](../examples/redundant-routing/check_prior_edits.py)
+
+![The dispatch-guide experiment shows UNKNOWN in both answer panels and links to an earlier answer that changed.](media/checked-history.png)
+
 With the saved demo running, reproduce the comparison without a model call. To regenerate the 56 held-out outputs on the pinned local model, add `--holdout` to the replication command above.
 
 ```sh

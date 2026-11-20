@@ -150,6 +150,18 @@ impl Probe {
     }
 }
 
+/// Verify one first-token probe edit against the recorded call and fingerprint both requests.
+pub fn edit_digests(call: &Call, edit: &Intervention) -> Result<(String, String), String> {
+    let captured = call
+        .recorded_request
+        .as_ref()
+        .ok_or("Missing captured request.")?;
+    let body: Value = serde_json::from_str(&captured.body).map_err(|e| e.to_string())?;
+    validate_edits(call, &body, std::slice::from_ref(edit))?;
+    let changed = body_with_edit(call, &body, edit)?;
+    Ok((digest(&body), digest(&changed)))
+}
+
 /// Prepare all named single edits, then ask one explicit adapter to score the batch.
 /// The returned request can be opened directly in the sidecar's pre-inference view.
 pub fn measure(

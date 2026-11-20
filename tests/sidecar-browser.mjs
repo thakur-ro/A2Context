@@ -2,6 +2,7 @@
 // CHROME_BINARY set to a Chrome or Chromium executable.
 import assert from "node:assert/strict";
 import process from "node:process";
+import {readFile} from "node:fs/promises";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({ executablePath: process.env.CHROME_BINARY });
@@ -169,13 +170,22 @@ try {
   await page.getByRole("button", { name: "Check a new request against earlier edits" }).click();
   const prior = page.locator(".prior-edits");
   await prior.getByRole("heading", { name: "Test dispatch-guide on this request" }).waitFor();
-  await prior.getByText(/2 of 2 distinct earlier inputs/).waitFor();
+  await prior.getByText(/changed the generated proposal on 2 of 2 distinct earlier inputs/).waitFor();
+  const downloadPromise = page.waitForEvent("download");
+  await prior.getByRole("button", {name:"Download edit for this request"}).click();
+  const download = await downloadPromise;
+  const [prepared] = JSON.parse(await readFile(await download.path(), "utf8"));
+  assert.equal(prepared.pointer, "/messages/2/content");
+  assert.deepEqual(prepared.text_range, {start_byte:16, end_byte:46});
   await prior.getByText("Compare tested edits").click();
   assert.equal(await prior.locator("tbody tr").count(), 4);
-  const oldReplay = await prior.getByRole("link", { name: "Inspect an earlier replay" }).getAttribute("href");
+  const oldReplay = await prior.getByRole("link", { name: "Compare an earlier answer or tool call" }).getAttribute("href");
   const original = await browser.newPage();
   await original.goto(new URL(oldReplay, base).href);
-  await original.locator('[data-context-id="dispatch-guide"]:focus').waitFor();
+  await original.locator(".response-pair[open] summary:focus").waitFor();
+  const [before, after] = await original.locator(".response-pair code").allTextContents();
+  assert.ok(before && after && before !== after);
+  assert.equal(new URL(original.url()).searchParams.get("context"), "dispatch-guide");
   await original.close();
   await page.getByRole("button", { name: "Compare with model scores for this request" }).click();
   const measuredEdit = page.locator(".panel").filter({ has: page.getByRole("heading", {
@@ -192,6 +202,15 @@ try {
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
   mobile.on("pageerror", (error) => errors.push(error.message));
+  for (const device of [page, mobile]) {
+    await device.goto(base + "/?view=preview&scenario=checked-history");
+    const result = device.locator(".prior-edits");
+    await result.getByRole("heading", {name:"The proposal stayed the same after editing dispatch-guide"}).waitFor();
+    assert.deepEqual(await result.locator(".response-pair code").allTextContents(), ["UNKNOWN", "UNKNOWN"]);
+    assert.match(await result.innerText(), /0\.252 bits/);
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (device === page && process.env.HISTORY_CHECK_SCREENSHOT) await result.screenshot({path:process.env.HISTORY_CHECK_SCREENSHOT});
+  }
   await mobile.goto(base + "/?recommendation=602208c5e9c068fab608137a9c92699923591b1f349ab8504b57e65084f85808");
   await mobile.locator(".joint-recurrence a").click();
   await mobile.locator("#content .list a").first().click();

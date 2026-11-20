@@ -379,15 +379,24 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                         Some("history") => json!({
                             "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/redundant-routing/pending-maple.json"))?
                         }),
-                        Some(scenario @ ("prior-only" | "scored-history")) => {
+                        Some(scenario @ ("prior-only" | "scored-history" | "checked-history")) => {
                             let mut fixture: serde_json::Value = serde_json::from_str(include_str!(
                                 "../../examples/redundant-routing/candidate-checks/ash-routing-note.json"
                             ))?;
-                            if scenario == "prior-only" {
+                            if scenario != "scored-history" {
                                 fixture
                                     .as_object_mut()
                                     .expect("demo envelope")
                                     .remove("candidate");
+                            }
+                            if scenario == "checked-history" {
+                                let checks: serde_json::Value =
+                                    serde_json::from_str(include_str!(
+                                        "../../examples/redundant-routing/ash-history-check.json"
+                                    ))?;
+                                fixture["request"]["attributes"][replay::prefill::ATTRIBUTE] =
+                                    checks["prefill"].clone();
+                                fixture["shadow"] = checks["shadow"].clone();
                             }
                             fixture
                         }

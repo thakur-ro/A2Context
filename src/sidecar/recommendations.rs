@@ -181,7 +181,7 @@ pub fn preview(
     let history_scope = super::history::Scope::read(&input.request.attributes);
     let (call, scope, prefill) =
         pending::recommendation_measurements(input).map_err(|message| (400, message))?;
-    let history = match history_scope {
+    let mut history = match history_scope {
         Ok(history_scope) => history_scope
             .lookup(store, &call)
             .map_err(|e| (503, e.to_string()))?,
@@ -221,6 +221,13 @@ pub fn preview(
             })
         })
         .collect::<Vec<_>>();
+    let shadow = replay::shadow::recorded("pending", call);
+    if let Some(experiment) = history
+        .get_mut("experiment")
+        .filter(|e| e["status"] == "ready")
+    {
+        super::history::current_tests(experiment, call, &shadow, prefill.as_ref());
+    }
     let unverified = replay::candidates::recorded("pending", call)
         .into_iter()
         .filter_map(|probe| match probe.verification {
@@ -228,7 +235,7 @@ pub fn preview(
             _ => None,
         })
         .chain(
-            replay::shadow::recorded("pending", call)
+            shadow
                 .into_iter()
                 .filter_map(|probe| match probe.verification {
                     replay::shadow::Verification::Unverified { issue } => Some(issue),

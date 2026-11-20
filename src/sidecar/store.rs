@@ -531,33 +531,21 @@ impl Store {
     }
 
     pub fn prior_edits(&self, partition: &str, current: &str) -> Result<Value> {
-        let sql = "WITH recent AS MATERIALIZED (
-            SELECT detail, trace_id, call_id, observed, n FROM observations
-            WHERE json_extract(detail,'$.prior.partition')=?1
-            ORDER BY observed DESC,trace_id,n LIMIT 513
-        ), tested AS (
-            SELECT * FROM recent ORDER BY observed DESC,trace_id,n LIMIT 512
-        ), requests AS (
-            SELECT json_extract(detail,'$.prior.setup') AS setup, json_extract(detail,'$.prior.body') AS body,
-                min(json_extract(detail,'$.effect_pp')<0) AS lo,max(json_extract(detail,'$.effect_pp')<0) AS hi,
-                min(json_object('trace',trace_id,'call',call_id,'source',json_extract(detail,'$.sources[0].source'),
-                    'version',json_extract(detail,'$.sources[0].version'),'replacement',json_extract(detail,'$.prior.replacement'),
-                    'runner',json_extract(detail,'$.runner'),'rule',json_extract(detail,'$.match_rule'),
-                    'outcome',json_extract(detail,'$.outcome'),'report',json_extract(detail,'$.measurement.replay_id'),
-                    'decision',json_extract(detail,'$.measurement.location.decision_id'),
-                    'context',json_extract(detail,'$.measurement.context_id'))) AS example
-            FROM tested WHERE json_extract(detail,'$.prior.body')!=?2 GROUP BY setup,body
-        ), ranked AS (
-            SELECT setup,count(*) AS bodies,sum(lo) AS lower,sum(1-hi) AS equal,sum(hi-lo) AS mixed,min(example) AS example
-            FROM requests GROUP BY setup HAVING count(*)>=2
-            ORDER BY lower DESC,mixed ASC,bodies DESC,setup LIMIT 5
-        ) SELECT json_object('status','checked','truncated',(SELECT count(*)>512 FROM recent),
-            'edits',json_group_array(json_object('requests',bodies,'lower',lower,'equal',equal,'mixed',mixed,
-            'example',json(example)))) FROM ranked";
-        let data: String = self
-            .0
-            .query_row(sql, rusqlite::params![partition, current], |row| row.get(0))?;
+        let data: String = self.0.query_row(
+            super::history::PRIOR_EDITS,
+            rusqlite::params![partition, current],
+            |row| row.get(0),
+        )?;
         Ok(serde_json::from_str(&data)?)
+    }
+
+    pub fn prior_replay(&self, example: &Value) -> Result<Option<replay::Replay>> {
+        let body: Option<String> = self.0.query_row(
+            "SELECT body FROM reports WHERE trace_id=?1 AND kind='replay-reports' AND call_id=?2 AND decision_id=?3 AND id=?4",
+            params![example["trace"].as_str(), example["call"].as_str(), example["decision"].as_str(), example["report"].as_str()],
+            |row| row.get(0),
+        ).optional()?;
+        Ok(body.as_deref().map(serde_json::from_str).transpose()?)
     }
 
     pub fn list(&self, view: &str, filters: &BTreeMap<String, String>) -> Result<Value> {
