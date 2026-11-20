@@ -665,6 +665,7 @@ function renderPatterns() {
   list.replaceChildren();
   const patternType = element("pattern-type").value;
   element("activation-dates").hidden = patternType !== "activation";
+  element("replay-pattern-dates").hidden = !isReplayPattern(patternType);
   element("source-profile-dates").hidden = patternType !== "sources";
   element("source-profile-evidence-field").hidden = patternType !== "sources";
   element("pattern-thread-filter").hidden = patternType === "tools" || patternType === "breakdown";
@@ -696,7 +697,7 @@ function renderPatterns() {
     renderContextPatterns(list, organization, user, query);
     return;
   }
-  if (patternType === "effects" || patternType === "controls") {
+  if (isReplayPattern(patternType)) {
     renderReplayEffects(list, primaryScope, scopes, query, patternType === "controls");
     return;
   }
@@ -771,8 +772,10 @@ function patternThreadKey(occurrence, group) {
 }
 
 function compareTimes(left, right) {
-  const a = timestampNanos(left.started_at);
-  const b = timestampNanos(right.started_at);
+  return compareRecordedTimes(timestampNanos(left.started_at), timestampNanos(right.started_at));
+}
+
+function compareRecordedTimes(a, b) {
   if (a === null) return b === null ? 0 : 1;
   if (b === null) return -1;
   return a < b ? -1 : a > b ? 1 : 0;
@@ -845,7 +848,8 @@ function updatePatternThreadFilter(groups) {
 }
 
 function supportsScopeComparison(patternType) {
-  return isAssessmentPattern(patternType) || ["changes", "controls", "activation", "visibility", "sources"].includes(patternType);
+  return isAssessmentPattern(patternType) || isReplayPattern(patternType)
+    || ["changes", "activation", "visibility", "sources"].includes(patternType);
 }
 
 function comparisonPatternFilter(scopes, patterns) {
@@ -1051,6 +1055,49 @@ function contextPatternCard({ group, occurrences, matching, source, relationship
   return card;
 }
 
+const replayPatternDateFields = ["after", "before", "after_b", "before_b"];
+const replayPatternDate = (field) => element("replay-pattern-" + field);
+const isReplayPattern = (kind) => kind === "effects" || kind === "controls";
+
+function setupReplayPatternDates() {
+  element("replay-pattern-dates").addEventListener("change", () => {
+    linkNotice();
+    renderPatterns();
+  });
+}
+
+function writeReplayPatternLink(params) {
+  const fields = patternComparison.scope ? replayPatternDateFields : replayPatternDateFields.slice(0, 2);
+  for (const field of fields) {
+    const value = replayPatternDate(field).value;
+    if (value) params.set(field, value);
+  }
+}
+
+function restoreReplayPatternLink(params) {
+  let valid = true;
+  let dated = false;
+  for (const field of replayPatternDateFields) {
+    const enabled = !field.endsWith("_b") || params.has("scope_b");
+    const value = enabled ? params.get(field) ?? "" : "";
+    const input = replayPatternDate(field);
+    input.value = value;
+    valid &&= input.value === value && input.validity.valid;
+    dated ||= Boolean(value);
+  }
+  element("replay-pattern-dates").open = dated;
+  return valid;
+}
+
+function replayDateCaption(selection) {
+  return [selection.after && "From " + selection.after.slice(0, 10),
+    selection.before && "Before " + selection.before.slice(0, 10)].filter(Boolean).join(" · ");
+}
+
+function replayScopeCaption(scope, threadSelect, selection) {
+  return [patternScopeCaption(scope, threadSelect), replayDateCaption(selection)].filter(Boolean).join(" · ");
+}
+
 function renderReplayEffects(list, primaryScope, scopes, query, controlled) {
   const { organization, user } = primaryScope;
   const patterns = data.replay_effects.flatMap((group, index) =>
@@ -1058,11 +1105,24 @@ function renderReplayEffects(list, primaryScope, scopes, query, controlled) {
   );
   const primary = scopedPatternGroups(patterns, organization, user);
   updatePatternThreadFilter(primary);
-  const comparison = controlled ? comparisonPatternFilter(scopes, patterns) : null;
-  const cohorts = [replayScope(primary, state.patternThread)];
+  const comparison = comparisonPatternFilter(scopes, patterns);
+  element("replay-pattern-compare-dates").hidden = !comparison;
+  const selection = patternScopeSelection(primaryScope, state.patternThread, replayPatternDateFields.slice(0, 2).map(replayPatternDate));
+  const compare = comparison && patternScopeSelection(comparison.scope, comparison.thread,
+    replayPatternDateFields.slice(2).map(replayPatternDate));
+  const primaryDates = selection && replayDateCaption(selection);
+  element("replay-pattern-dates").querySelector("summary").textContent = comparison ? "Date ranges"
+    : primaryDates ? "Date range · " + primaryDates : "Date range";
+  if (!selection || (comparison && !compare)) {
+    list.append(node("p", "Enter complete UTC dates with Before later than From.", "muted"));
+    return;
+  }
+  const cohorts = [replayScope(primary, state.patternThread, selection)];
+  const captions = [replayScopeCaption(primaryScope, element("pattern-thread"), selection)];
   if (comparison) {
-    cohorts.push(replayScope(comparison.groups, comparison.thread));
-    list.append(controlComparisonSummary(cohorts, primaryScope, comparison.scope));
+    cohorts.push(replayScope(comparison.groups, comparison.thread, compare));
+    captions.push(replayScopeCaption(comparison.scope, element("pattern-compare-thread"), compare));
+    if (controlled) list.append(controlComparisonSummary(cohorts, captions));
   }
 
   let shown = false;
@@ -1085,23 +1145,24 @@ function renderReplayEffects(list, primaryScope, scopes, query, controlled) {
       .filter(Boolean).join(" · "), "muted"));
     if (group.sampling_design === "independent") card.append(node("small", "Independent sampling declared", "anchor"));
     const edits = replayPatternEdits(changes, titles, controlled, Boolean(group.pair));
+    const querySpec = { version: 1, selection, ...(compare && { compare }), group: group.key };
+    const queryDetails = node("details");
+    queryDetails.append(node("summary", "Query JSON"), node("pre", JSON.stringify(querySpec, null, 2)));
+    const renderSide = (column, results) => {
+      appendReplayPatternEvidence(column, group, results);
+      if (!controlled) appendRecurringOutcomes(column, results);
+    };
     if (comparison) {
       const details = node("details");
-      details.append(node("summary", "Target and negative-control edits"), edits);
-      card.append(details);
-      const columns = node("div", undefined, "compare-grid pattern-scope-columns");
-      for (const [index, results] of occurrences.entries()) {
-        const column = patternScopeColumn(index);
-        appendReplayPatternEvidence(column, group, results);
-        columns.append(column);
-      }
-      card.append(columns);
+      details.append(node("summary", controlled ? "Target and negative-control edits" : "Tested edits"), edits);
+      card.append(details, patternScopeColumns(captions, occurrences, renderSide));
     } else {
       appendReplayPatternEvidence(card, group, occurrences[0], edits);
       if (controlled) {
         if (!state.patternThread) appendControlScopeBreakdown(card, occurrences[0], organization, user);
       } else appendRecurringOutcomes(card, occurrences[0]);
     }
+    card.append(queryDetails);
     list.append(card);
     shown = true;
   }
@@ -1110,13 +1171,19 @@ function renderReplayEffects(list, primaryScope, scopes, query, controlled) {
     : "No recorded replay effects match this scope and filter.", "muted"));
 }
 
-function replayScope(groups, thread) {
-  return new Map(groups.map((group) => [group.index, group.occurrences.filter((item) =>
-    !thread || patternThreadKey(item, group) === thread
-  ).sort(compareTimes)]));
+function replayScope(groups, thread, selection) {
+  const after = timestampNanos(selection.after);
+  const before = timestampNanos(selection.before);
+  return new Map(groups.map((group) => [group.index, group.occurrences
+    .filter((item) => !thread || patternThreadKey(item, group) === thread)
+    .map((item) => [item, item.started_at_unix_nanos === undefined ? null : BigInt(item.started_at_unix_nanos)])
+    .filter(([, time]) => (after === null || (time !== null && time >= after))
+      && (before === null || (time !== null && time < before)))
+    .sort((a, b) => compareRecordedTimes(a[1], b[1]))
+    .map(([item]) => item)]));
 }
 
-function controlComparisonSummary(cohorts, primaryScope, comparisonScope) {
+function controlComparisonSummary(cohorts, captions) {
   const decisions = [];
   const counts = cohorts.map((groups) => {
     const reports = [...groups.values()].flat();
@@ -1126,8 +1193,11 @@ function controlComparisonSummary(cohorts, primaryScope, comparisonScope) {
       countLabel(locations.size, "decision"), "count");
   });
   const shared = [...decisions[1]].filter((key) => decisions[0].has(key)).length;
-  return patternScopeSummary("Controlled comparisons by scope", [primaryScope, comparisonScope],
-    counts, countLabel(shared, "recorded decision"), "control-comparison-coverage");
+  const panel = node("section", undefined, "panel pattern control-comparison-coverage");
+  panel.append(node("h2", "Controlled comparisons by scope"),
+    patternScopeColumns(captions, counts, (column, count) => column.append(count)),
+    node("p", countLabel(shared, "recorded decision") + " in both scopes", "muted"));
+  return panel;
 }
 
 function replayPatternEdits(changes, titles, controlled, paired) {
@@ -1150,14 +1220,15 @@ function appendReplayPatternEvidence(container, group, occurrences, edits) {
   const measured = occurrences.filter((item) => item.difference_pp !== null);
   const verified = occurrences.filter(({ location }) => hasRecordedRequest(location.run_id, location.call_id)).length;
   const decisions = replayResultsByDecision(occurrences);
+  const conversations = new Set(occurrences.map((item) => patternThreadKey(item)).filter(Boolean));
   const count = controlled ? " comparisons measured · " + countLabel(decisions.size, "decision")
-    : " tests measured · " + decisions.size + " decisions";
+    : " tests measured · " + countLabel(decisions.size, "decision");
   let summary = measured.length + " of " + occurrences.length + count;
   if (group.pair) summary += " · Joint " + effectRange(occurrences, "difference_pp")
     + " · Interaction " + effectRange(occurrences, "interaction_pp");
   else if (measured.length) summary += " · " + effectRange(occurrences, "difference_pp");
-  summary += " · " + verified + " of " + occurrences.length + " baselines verified against capture";
-  container.append(node("p", summary, "count"));
+  container.append(node("p", summary, "count"), node("p", countLabel(conversations.size, "identified conversation")
+    + " · " + verified + " of " + occurrences.length + " baselines verified", "muted"));
   const details = node("details");
   const label = !edits ? "Open recorded decisions"
     : controlled ? "Both edits and recorded decisions" : "Intervention and recorded decisions";
@@ -1165,14 +1236,24 @@ function appendReplayPatternEvidence(container, group, occurrences, edits) {
   if (edits) details.append(edits);
   const samples = node("div");
   details.append(samples);
+  let selected = occurrences;
+  function renderPage(offset, focus = false) {
+    const table = replayEffectTable(selected.slice(offset, offset + 20), group);
+    samples.replaceChildren(table);
+    patternPager(samples, offset, offset + 20 < selected.length ? offset + 20 : null, (next) => renderPage(next, true));
+    if (focus) {
+      table.tabIndex = -1;
+      table.focus();
+    }
+  }
   details.addEventListener("toggle", () => {
-    if (details.open && !samples.children.length) samples.append(replayEffectTable(occurrences, group));
+    if (details.open && !samples.children.length) renderPage(0);
   });
   container.append(replayDecisionBreakdown(decisions, (result) => {
-    const filtered = result
+    selected = result
       ? occurrences.filter(({ location }) => decisions.get(replayDecisionKey(location)) === result)
       : occurrences;
-    samples.replaceChildren(replayEffectTable(filtered, group));
+    renderPage(0);
     details.open = true;
   }), details);
 }
@@ -1301,10 +1382,13 @@ function replayEffectTable(occurrences, group) {
   const paired = Boolean(group.pair);
   const controlled = Boolean(group.control_edit);
   const table = node("table", undefined, "effects-table");
+  const caption = table.createCaption();
+  caption.className = "replay-trial-counts";
+  caption.textContent = "Matches out of scored trials";
   const headings = table.createTHead().insertRow();
-  const columns = ["Decision", "Baseline matches"];
-  columns.push(...(controlled ? ["Target edit matches", "Control edit matches", "Target minus control"]
-    : ["Variant matches", paired ? "Joint match rate change" : "Match rate change"]));
+  const columns = ["Decision", "Baseline"];
+  columns.push(...(controlled ? ["Target", "Control", "Target minus control"]
+    : [paired ? "Joint edit" : "Edited", "Match-rate change"]));
   if (paired) columns.push("Interaction");
   for (const heading of columns) {
     const cell = node("th", heading);
@@ -1314,9 +1398,15 @@ function replayEffectTable(occurrences, group) {
   const rows = table.createTBody();
   for (const item of occurrences) {
     const row = rows.insertRow();
-    const name = [item.organization_id, item.user_id, item.conversation_id || item.location.run_id].filter(Boolean).join(" / ");
     const decision = row.insertCell();
-    decision.append(occurrenceButton(item.location, name, item));
+    const { run_id: run, call_id: call, decision_id: id } = item.location;
+    const path = new URLSearchParams({ v: "1", view: "decisions", run, call, decision: id });
+    writeReference(path, item);
+    const link = patternEvidenceLink("/#" + path, item.conversation_id || run);
+    link.className = "replay-evidence-link";
+    decision.append(link);
+    const owner = [item.organization_id, item.user_id].filter(Boolean).join(" / ");
+    if (owner) decision.append(node("small", owner, "anchor"));
     const provenance = [item.started_at, item.turn_id, replayBaselineLabel(item.location), item.rescored_from && "Rescored from " + item.rescored_from]
       .filter(Boolean).join(" · ");
     if (provenance) decision.append(node("small", provenance, "anchor"));
@@ -1335,6 +1425,8 @@ function replayEffectTable(occurrences, group) {
     }
   }
   const scroll = node("div", undefined, "effects-scroll");
+  scroll.setAttribute("role", "region");
+  scroll.setAttribute("aria-label", "Contributing replays");
   scroll.append(table);
   return scroll;
 }
@@ -1427,6 +1519,7 @@ async function start() {
     setupConflictBreakdown();
     setupVisibilityPatterns();
     setupAssessmentPatterns();
+    setupReplayPatternDates();
     setupSourceProfileFilters();
     const share = element("copy-view-link");
     share.hidden = false;

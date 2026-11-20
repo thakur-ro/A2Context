@@ -262,6 +262,8 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .83rem/1.5 ui-monosp
 .effects-table { width: 100%; border-collapse: collapse; }
 .effects-table :is(th, td) { text-align: left; vertical-align: top; padding: .42rem; border-bottom: 1px solid var(--line); }
 .effects-table td:not(:first-child) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.effects-table .replay-evidence-link { color: var(--accent); text-underline-offset: .15em; }
+.effects-table .replay-trial-counts { text-align: left; color: var(--muted); font-size: .84rem; }
 .source-history .effects-table thead th { white-space: nowrap; }
 .source-history .pattern-scope-columns + button { margin-top: .65rem; }
 #source-profile-compare-dates { display: contents; }

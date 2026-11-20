@@ -48,6 +48,7 @@ fn compares_exact_groups_and_pages_each_scope_in_recorded_order() {
     let first = &evidence["primary"]["rows"][0];
     assert_eq!(first["location"]["run_id"], "qwen-journal-returns");
     assert_eq!(first["baseline_verified"], true);
+    assert_eq!(first["started_at_unix_nanos"], "1795096800000000000");
     assert!(first["inspector_path"]
         .as_str()
         .unwrap()

@@ -13,7 +13,6 @@ use crate::{
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
 
@@ -120,9 +119,11 @@ pub fn query<'a>(
         {
             continue;
         }
-        let bytes = serde_json::to_vec(&group.comparison).map_err(|error| error.to_string())?;
-        let key = format!("{:x}", Sha256::digest(bytes));
-        if request.group.as_ref().is_some_and(|wanted| wanted != &key) {
+        if request
+            .group
+            .as_ref()
+            .is_some_and(|wanted| wanted != &group.key)
+        {
             continue;
         }
         let mut sides = [Vec::new(), Vec::new()];
@@ -146,7 +147,7 @@ pub fn query<'a>(
             || (total_groups >= request.offset && groups.len() < request.limit)
         {
             let row = json!({
-                "key": key, "setup": setup(&group.comparison, kind, &changes, request.include_excerpts),
+                "key": group.key, "setup": setup(&group.comparison, kind, &changes, request.include_excerpts),
                 "primary": primary, "comparison": comparison,
             });
             if request.group.is_some() {

@@ -2,12 +2,15 @@
 
 pub mod query;
 
-use crate::{replay, Call, Run};
-use serde::Serialize;
+use crate::{conflict_query::timestamp, replay, Call, Run};
+use serde::{Serialize, Serializer};
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Serialize)]
 pub struct EffectGroup<'a> {
+    /// Stable comparison key shared by the inspection snapshot and effect queries.
+    pub key: String,
     #[serde(flatten)]
     pub comparison: Comparison<'a>,
     pub occurrences: Vec<EffectOccurrence<'a>>,
@@ -66,6 +69,11 @@ pub struct EffectOccurrence<'a> {
     pub conversation_id: Option<&'a str>,
     pub turn_id: Option<&'a str>,
     pub started_at: Option<&'a str>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_time"
+    )]
+    started_at_unix_nanos: Option<i128>,
     pub baseline: &'a replay::Summary,
     pub variant: &'a replay::Summary,
     pub difference_pp: Option<f64>,
@@ -73,6 +81,10 @@ pub struct EffectOccurrence<'a> {
     pub difference_95_interval_pp: Option<replay::ReplayInterval>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub interaction_95_interval_pp: Option<replay::ReplayInterval>,
+}
+
+fn serialize_time<S: Serializer>(time: &Option<i128>, serializer: S) -> Result<S::Ok, S::Error> {
+    time.map(|nanos| nanos.to_string()).serialize(serializer)
 }
 
 #[derive(Debug, Serialize)]
@@ -163,6 +175,11 @@ fn group_reports<'a>(
             .iter()
             .find(|call| call.id == location.call_id)
             .ok_or("replay call is missing")?;
+        let started_at_unix_nanos = call
+            .started_at
+            .as_deref()
+            .and_then(|value| timestamp(value).ok())
+            .map(|time| time.unix_timestamp_nanos());
         let match_rule = report.match_rule.normalized();
         let mut record =
             |comparison_target,
@@ -193,6 +210,7 @@ fn group_reports<'a>(
                         conversation_id: run.conversation_id.as_deref(),
                         turn_id: call.turn_id.as_deref(),
                         started_at: call.started_at.as_deref(),
+                        started_at_unix_nanos,
                         baseline: &report.baseline_summary,
                         variant,
                         difference_pp,
@@ -269,13 +287,17 @@ fn group_reports<'a>(
             );
         }
     }
-    Ok(comparisons
+    comparisons
         .into_iter()
-        .map(|(comparison, occurrences)| EffectGroup {
-            comparison,
-            occurrences,
+        .map(|(comparison, occurrences)| {
+            let bytes = serde_json::to_vec(&comparison).map_err(|error| error.to_string())?;
+            Ok(EffectGroup {
+                key: format!("{:x}", Sha256::digest(bytes)),
+                comparison,
+                occurrences,
+            })
         })
-        .collect())
+        .collect()
 }
 
 fn context_change<'a>(

@@ -267,6 +267,21 @@
           <label class="visibility-repeat-filter"><span><input id="candidate-pattern-recurring" type="checkbox"> Recurring only</span></label>
         </div>
       </div>
+      <details id="replay-pattern-dates" class="activation-dates" hidden>
+        <summary>Date range</summary>
+        <div class="activation-date-controls">
+          <fieldset>
+            <legend>Scope A · UTC</legend>
+            <label>From <input id="replay-pattern-after" type="date" max="9999-12-31"></label>
+            <label>Before <input id="replay-pattern-before" type="date" max="9999-12-31"></label>
+          </fieldset>
+          <fieldset id="replay-pattern-compare-dates" hidden>
+            <legend>Scope B · UTC</legend>
+            <label>From <input id="replay-pattern-after_b" type="date" max="9999-12-31"></label>
+            <label>Before <input id="replay-pattern-before_b" type="date" max="9999-12-31"></label>
+          </fieldset>
+        </div>
+      </details>
       <details id="source-profile-dates" class="activation-dates" hidden>
         <summary>Date range</summary>
         <div class="activation-date-controls">

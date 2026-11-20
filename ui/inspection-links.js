@@ -188,6 +188,7 @@ function inspectionLink(reference = state.reference) {
       else if (isAssessmentPattern(kind)) writeAssessmentPatternLink(params);
       else if (element("pattern-search").value) params.set("q", element("pattern-search").value);
       if (kind === "sources") writeSourceProfileLink(params);
+      if (isReplayPattern(kind)) writeReplayPatternLink(params);
       if (kind === "context") {
         params.set("presentation", element("context-view").value);
         params.set("replay_status", element("context-replay-status").value);
@@ -261,6 +262,7 @@ function restorePatternLink(params) {
   if (activation) activationPatternBlock = Number(params.get("block")) || 0;
   const datesAvailable = activation ? restoreActivationDateLink(params)
     : kind === "sources" ? restoreSourceProfileLink(params)
+    : isReplayPattern(kind) ? restoreReplayPatternLink(params)
     : isAssessmentPattern(kind) ? restoreAssessmentPatternLink(params)
     : kind !== "visibility" || restoreVisibilityPatternLink(params);
   const compare = supportsScopeComparison(element("pattern-type").value);

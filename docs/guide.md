@@ -1050,13 +1050,26 @@ On a finding card, each input shows its own replay effects. A joint effect appea
 
 In **Patterns → Replay effects**, select a thread, a user within an organization, an organization, or all imported runs. The breakdown counts each recorded decision once within each comparison. A decision shows **Mixed results** when its measured replays disagree in direction, including a measured change alongside a measured zero. **Effect unavailable** means every replay for that decision lacked a usable measurement. Select a result to filter the evidence table and open any row to see its exact intervention and trials. The table orders records by the original call timestamp where available.
 
+Use **Compare with** in **Replay effects** or **Controlled attribution** to put two selections side by side. Each side can have its own thread and UTC date window. **From** includes that day. **Before** excludes it. Calls without a valid timestamp appear in undated selections. A group with evidence on only one side stays visible. Open **Open recorded decisions** to page through that side's trials, then select a decision to see the exact replay. **Copy view link** preserves both selections and date windows.
+
+To try a date comparison, load the two saved Qwen reports and select `support-17` in `journal-north` in both scopes. Leave Scope A undated and set Scope B's **From** date to `2026-11-20`. Filter for `journal-faq`. The single FAQ edit shows two contributing conversations on the left and one on the right.
+
+```sh
+cargo run --locked -- serve \
+  --replay examples/context-screening/replay/report.json \
+  --replay examples/context-screening/replay/report-policy.json \
+  examples/context-screening/replay/evidence.json
+```
+
+Expand **Query JSON** on a group to rerun the same comparison through MCP, HTTP, or the CLI. It includes the comparison key and both selections. [Query replay effects](#query-replay-effects-through-mcp-or-http)
+
 The comparison groups require the same source and version when supplied, captured text or structured value, context kind and role, operation and replacement, runner ID, model, decision kind and label, match rule, and sampling design. A pair comparison requires both context changes to match. Each report retains its own baseline and variant counts. The displayed ranges describe the measured changes across those tests. Supply different runner IDs for different runner or model configurations.
 
 ```sh
 cargo run --locked -- inspect --replay data/return-replay.json fixtures/support.json
 ```
 
-The JSON output includes `replay_effects` with per-test counts, original call timestamps when available, and run, call, decision, and replay IDs. Loading an identical report twice counts it once.
+The JSON output includes `replay_effects` with the same group keys used by the effect query, per-test counts, and run, call, decision, and replay IDs. A valid original call timestamp includes `started_at_unix_nanos` as a decimal string so readers can compare dates without rounding. Loading an identical report twice counts it once.
 
 ### Query replay effects through MCP or HTTP
 
