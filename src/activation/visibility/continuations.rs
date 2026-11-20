@@ -95,6 +95,18 @@ pub(super) fn validate(
 }
 
 impl MaskContinuation {
+    pub(super) fn context_ids(&self) -> Vec<&str> {
+        self.context_ids.iter().map(String::as_str).collect()
+    }
+
+    pub(super) fn token_budget(&self) -> usize {
+        self.max_new_tokens
+    }
+
+    pub(super) fn tool_proposal(&self) -> Option<&ToolProposal> {
+        self.tool_call.as_ref()
+    }
+
     pub(super) fn matches(&self, ids: &[&str]) -> bool {
         self.context_ids.len() == ids.len()
             && self.context_ids.iter().all(|id| ids.contains(&id.as_str()))

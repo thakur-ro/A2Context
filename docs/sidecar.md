@@ -542,6 +542,26 @@ python3 examples/runtime-comparison/pending-routing/replicate_routing.py | \
 
 To repeat the model measurements, pass `--model "$MODEL_DIR" --output /tmp/routing-holdout-results.json` to the same script with the Qwen adapter environment. [Protocol and results](methods.md#does-the-tool-inventory-result-repeat-on-fresh-requests)
 
+### Compare tool proposals after masking sources
+
+Start a sidecar with content capture enabled.
+
+```sh
+cargo run --locked -- sidecar --db /tmp/retail-tool-masks.sqlite --capture-content
+```
+
+In a second terminal, import the seven saved tool proposals and their intervention reports.
+
+```sh
+python3 examples/send_tool_masks.py
+```
+
+Open the address printed by the sender. Under **Source factors** select **price and stock** for **retail-north** and open the recommendation for the recorded `price` tool. One masked continuation changed arguments and one reached the token limit. Open each conversation to compare the proposals and follow **Inspect this model replay** to the exact mask and resumed output. Apply the organization or user filter to narrow which decisions are counted.
+
+![A source-mask recommendation shows two outcomes. One proposal kept the price tool and changed its arguments. The other reached the token limit.](media/routing-mask-outcomes.png)
+
+The instrumented runner keeps the earlier generated tokens fixed and masks attention to the selected sources while decoding. The control reproduces the recorded proposal with all sources visible. The sidecar checks the report, counts each decision once per comparable mask, and shows disagreements across reports as mixed. The original and masked results are proposals supplied by the runner. Validate them against the tool contract before changing production routing. [Protocol and results](inference-attribution-plan.md#count-masked-outcomes-across-the-routing-cohort)
+
 ### Run the position test on a matched comparison
 
 **Download position test** prepares eight conditions. On each of the two captured backgrounds, it keeps the other named fragments in their relative order, puts the selected source at each tested position, and applies the original replacement at each slot. The download contains the full request bodies. Preparation makes zero model calls. **Attach completed trials** binds each returned proposal to its background, replay, source, slot, replacement state and request digest.

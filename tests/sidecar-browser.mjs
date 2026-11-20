@@ -908,6 +908,38 @@ try {
       assert.equal(await device.getByRole("heading",{name:"What did the runner generate?"}).count(),0);
     }
   }
+  if (process.env.TOOL_MASK_URL) {
+    const origin = process.env.TOOL_MASK_URL;
+    for (const device of [page,mobile]) {
+      await device.goto(origin + "/?workflow=retail-tool-masks");
+      await device.getByText("of 6 captured conversations",{exact:true}).waitFor();
+      await device.getByRole("link",{name:/price.*stock.*retail-north.*Source masks tested/}).click();
+      const card = device.locator(".card").filter({has:device.getByRole("heading",
+        {name:"Mask price and stock when the recorded tool was price",exact:true})});
+      await card.getByText("Arguments changed · 1  /  Token limit reached · 1").waitFor();
+      await card.getByRole("link",{name:"Review recommendation"}).click();
+      await device.getByRole("heading",{name:"Tool proposals after masking sources"}).waitFor();
+      const limit = device.locator("details.panel").filter({has:device.getByText("north-1 · Token limit reached",{exact:true})});
+      await limit.locator("summary").click();
+      await limit.getByText("Stopped at the 41-token limit.").waitFor();
+      const argument = device.locator("details.panel[open]").filter({has:device.getByText("north-2 · Arguments changed",{exact:true})});
+      await argument.getByText("All sources visible",{exact:true}).waitFor();
+      const replay = new URL(await argument.getByRole("link",{name:"Inspect this model replay"}).getAttribute("href"),origin);
+      assert.equal(replay.pathname,"/details");
+      const branch = new URLSearchParams(replay.hash.slice(1)).get("continuation");
+      assert.ok(branch);
+      if (device === page && process.env.TOOL_MASK_SCREENSHOT) await device.screenshot({path:process.env.TOOL_MASK_SCREENSHOT,fullPage:true});
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      await device.goto(replay.href);
+      const selection = device.locator("details.visibility-continuations[open] [data-visibility-continuation]");
+      await selection.waitFor();
+      assert.equal(await selection.inputValue(),branch);
+      await device.goto(origin + "/?workflow=retail-tool-masks&proposal_result=both");
+      await device.getByRole("link",{name:"See a changed proposal"}).first().click();
+      await device.locator("details.panel[open] summary:focus").waitFor();
+      await device.getByText("All sources visible",{exact:true}).waitFor();
+    }
+  }
   assert.deepEqual(errors, []);
   console.log("Verified recommendations, before-inference preview, measured choices and tokens, legacy links, and desktop and mobile layouts.");
 } finally {

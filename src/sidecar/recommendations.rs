@@ -108,6 +108,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Repeat this intervention with neighboring tokens and a control source. Test fresh continuations to see whether the change carries forward.",
             "Measured token scores on a fixed output path",
         ),
+        "source_mask" => (
+            "Compare proposals after the source mask",
+            "Check the proposed tool and arguments against the workflow contract. Repeat on representative inputs before changing a tool definition.",
+            "Instrumented greedy continuations with an all-visible control",
+        ),
         _ => (
             "Check whether the edit generalizes",
             "Repeat this edit on other requests in the same scope. Keep the outcome rule and runner configuration comparable.",
@@ -452,5 +457,64 @@ pub fn token_measurements(
             "report_id": report.id(), "sources": [findings::source(item)], "location": report.location(),
             "landmark": landmark, "changed_edits":changed, "held_witness":held,
         })));
+    }
+}
+
+pub fn tool_mask_measurements(
+    run: &Run,
+    reports: &[activation::Report],
+    findings: &mut Vec<Observation>,
+) {
+    for report in reports {
+        if !matches!(report, activation::Report::Visibility(_))
+            || report.validate(std::slice::from_ref(run)).is_err()
+        {
+            continue;
+        }
+        let location = report.location();
+        let Some(call) = run.calls.iter().find(|call| call.id == location.call_id) else {
+            continue;
+        };
+        for trial in activation::visibility::tool_trials::tool_trials(report) {
+            let mut inputs = trial
+                .context_ids
+                .iter()
+                .filter_map(|id| call.context.iter().find(|item| item.id == *id))
+                .collect::<Vec<_>>();
+            inputs.sort_by_key(|item| findings::identity(run, item));
+            let key = json!([
+                "source_mask",
+                [
+                    trial.model_id,
+                    trial.model_revision,
+                    trial.runtime,
+                    trial.tokenizer_sha256
+                ],
+                trial.target,
+                trial.start,
+                trial.target_tokens,
+                findings::digest(json!(trial.fixed_prefix).to_string()),
+                trial.max_new_tokens,
+                trial.original.label,
+                inputs
+                    .iter()
+                    .map(|item| findings::identity(run, item))
+                    .collect::<Vec<_>>()
+            ]);
+            let before = super::outcomes::preview(&trial.original);
+            let after = trial.masked.as_ref().map(super::outcomes::preview);
+            let pair = after.as_ref().map(|edited| {
+                json!({"original":before,"edited":edited,
+                "changed":trial.outcome != "same_proposal","baseline_trials":1,"edited_trials":1})
+            });
+            findings.push(findings::occurrence("source_mask", key, call, json!({
+                "report_id":report.id(), "sources":inputs.iter().map(|item| findings::source(item)).collect::<Vec<_>>(),
+                "response_pair":pair, "measurement":{"location":location},
+                "mask":{"outcome":trial.outcome,"target":trial.target,"start":trial.start,
+                    "original":before,"proposal":after,"log_probability_change":trial.log_probability_change,
+                    "budget":trial.max_new_tokens,"model":trial.model_id,
+                    "trace":run.id,"inspector_path":trial.inspector_path}
+            })));
+        }
     }
 }

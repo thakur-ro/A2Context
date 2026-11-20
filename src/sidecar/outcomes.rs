@@ -58,6 +58,10 @@ pub(super) fn changed_edits(run: &Run, observation: &Observation) -> Vec<Value> 
     let detail = &observation.detail;
     let sources = detail["sources"].as_array().expect("finding sources");
     if detail["response_pair"]["changed"] == true {
+        if observation.kind == "source_mask" {
+            return vec![json!({"id":detail["factor"],"sources":sources,"pair":true,
+                "tool_changed":detail["mask"]["outcome"] == "changed_tool"})];
+        }
         return vec![json!({"id":detail["factor"],"sources":sources,"pair":true})];
     }
     // The joint comparison can qualify through a changed single arm while the joint edit held.
@@ -163,7 +167,7 @@ pub(super) const CLASSIFIED: &str = ", classified AS (
       CASE WHEN proposal_changed=1 THEN 1
            WHEN kind='replacement' OR (kind IN ('replay','shadow') AND json_extract(detail,'$.effect_pp')!=0) THEN 2
            WHEN kind IN ('candidate','token') OR (kind='prefill' AND json_extract(detail,'$.shifted')=1) THEN 3
-           WHEN kind IN ('replay','shadow','prefill') THEN 4
+           WHEN kind IN ('replay','shadow','prefill','source_mask') THEN 4
            ELSE 5 END AS level
     FROM events e WHERE thread_key IS NOT NULL
 )";

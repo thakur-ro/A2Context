@@ -7,7 +7,7 @@ const filterNames = { after: "From", before: "Before", org: "Organization", user
   workflow: "Workflow", meta_key: "Metadata key", meta_value: "Metadata value" };
 const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
 const kindLabels = { prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
-  candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
+  candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const openingStudy = query.get("opening") === "1";
@@ -197,6 +197,7 @@ function orderComparison({ forward, reverse, differs }) {
 
 function visual(kind, detail, rows = []) {
   if (kind === "prefill") return firstTokenPreview(detail, true);
+  if (kind === "source_mask") return maskComparison(detail.mask);
   const [label, body] = kind === "replacement" ? ["Trials matching the recorded outcome", replacementVisual(detail)] :
     kind === "conflict" ? ["Captured declarations", sourceCells(detail.sources, detail.values)] :
     kind === "replay" || kind === "shadow" ? ["Matches by trial arm", replayTrials(detail)] :
@@ -215,6 +216,7 @@ const jointPatterns = {
 };
 
 function findingTitle(kind, detail) {
+  if (kind === "source_mask") return "Mask " + detail.sources.map(sourceName).join(" and ") + " when the recorded tool was " + detail.mask.original.label;
   if (kind === "prefill") {
     if (detail.leader.status === "zero") return "The tested edits left the first-token distribution unchanged";
     if (detail.leader.status === "tie") return "Several edits tied for the largest first-token shift";
@@ -255,6 +257,7 @@ function findingTitle(kind, detail) {
 }
 
 function findingDetail(kind, detail) {
+  if (kind === "source_mask") return maskOutcomes[detail.mask.outcome] + " · " + detail.mask.model;
   if (kind === "prefill") return plural(detail.ranked.length, "source edit") + " · " + detail.model_id;
   if (kind === "replacement") return detail.outcome + " · " + detail.model + " · " + plural(detail.wordings, "tested wording");
   if (kind === "conflict") return detail.rule + " · " + detail.scope + " scope";
@@ -445,11 +448,11 @@ function positionReadout(result) {
 
 function factorRow(factor, featured = false) {
   const signals = { routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
-    token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
+    token: "Token score shifted", source_mask: "Source masks tested", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
   const step = { routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
-    shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
+    shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer", source_mask: "Compare tool proposals after masking sources",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
     duplicate: "Check whether one copy can be removed", dialogue: "Check the repeated message positions",
     equal: "Review the equal match rates" };
@@ -737,7 +740,8 @@ function findingCard(card) {
   const { kind, evidence: { detail } } = card;
   return element("article", { className: "card" },
     element("div", {}, tag(kind), element("h2", { text: kind === "prefill" ? prefillSummary(card.prefill_counts) : findingTitle(kind, detail) }),
-      repeatedRouting(card) ? element("p", {text:routingCoverage(card)}) : kind === "prefill" ? prefillFollowup(card) : element("p", { text: findingDetail(kind, detail) }),
+      repeatedRouting(card) ? element("p", {text:routingCoverage(card)}) : kind === "prefill" ? prefillFollowup(card) :
+        element("p", { text:kind === "source_mask" ? maskOutcomeSummary(card.mask_outcomes) : findingDetail(kind, detail) }),
       element("p", { className: "label", text: plural(card.occurrences, "observation") + " · " + plural(card.traces, "request") }),
       link("Review recommendation", url({ factor: factorId, recommendation: card.id }), "action"),
       card.kind === "conflict" && card.threads > 1 && factorId ? link("Review test coverage across conversations",url({recommendation:card.id,factor:factorId,conflict_coverage:"all"})) : null),
@@ -951,6 +955,34 @@ function responsePair(pair) {
       " edited trials. All trials completed and agreed within each setup."}));
 }
 
+const maskOutcomes = {
+  changed_tool:"Tool changed",
+  changed_arguments:"Arguments changed",
+  same_proposal:"Proposal held",
+  token_limit:"Token limit reached",
+  unparsed_proposal:"Proposal unavailable",
+  mixed:"Runs disagreed"
+};
+
+function maskOutcomeSummary(counts) {
+  return Object.entries(maskOutcomes).filter(([key]) => counts[key])
+    .map(([key,label]) => label + " · " + counts[key]).join("  /  ");
+}
+
+function maskComparison(mask, showOutcome = true) {
+  const rows = [[mask.original,"All sources visible"],[mask.proposal,"Source mask applied"]];
+  return element("div", {className:"mask-comparison"},
+    showOutcome && element("h3", {text:maskOutcomes[mask.outcome]}),
+    element("div", {className:"comparison"}, ...rows.map(([proposal,label]) => element("div", {},
+      element("strong", {text:label}), proposal ?
+        element("code", {text:proposal.label + " " + proposal.outcome_preview}) :
+        element("p", {text:mask.outcome === "token_limit" ? "Stopped at the " + mask.budget + "-token limit." : "The runner could not parse a complete proposal."})))),
+    element("p", {className:"row-extra", text:"Resumed at token " + (mask.start + 1) + (mask.target ? " · " + mask.target : "") +
+      (mask.log_probability_change == null ? "" : " · " + signed(mask.log_probability_change) + " change in original log probability")}),
+    link("Inspect this model replay", "/details?" + new URLSearchParams({run:mask.trace}) +
+      mask.inspector_path.slice(mask.inspector_path.indexOf("#"))));
+}
+
 function recommendationDetail(kind, detail, action, rows = [], hasConflictTrial = false) {
   const interval = detail.measurement?.interval || detail.measurement?.difference_95_interval_pp;
   const uncertainty = interval ? "95% interval for the difference: " + interval.lower + " to " + interval.upper + " percentage points." :
@@ -1122,6 +1154,19 @@ function findingReview(card, occurrences) {
   byId("title").textContent = detail.joint_pattern ? "Two-source replay" : "Recommendation";
   byId("summary").textContent = detail.joint_pattern ? [card.evidence.thread, detail.model,
     plural(detail.measurement.baseline.attempted, "trial") + " per condition"].filter(Boolean).join(" · ") : card.action.basis;
+  if (card.kind === "source_mask") {
+    byId("title").textContent = "Tool proposals after masking sources";
+    byId("summary").textContent = plural(card.threads, "identified conversation") + " · " + plural(card.traces,"captured request");
+    return element("div", {className:"feed"}, link("Back to source factor",url({factor:factorId || detail.factor})),
+      panel(findingTitle(card.kind,detail),
+        element("p", {text:maskOutcomeSummary(card.mask_outcomes)}),
+        element("p", {text:"Counts cover decisions with a saved replay in this scope. These tests resume from the same output prefix and use the same model and mask sources."}),
+        element("p", {text:card.action.next})),
+      ...occurrences.rows.map((row,i) => element("details", {className:"panel",...(i === 0 && {open:""})},
+        element("summary", {text:[row.thread || "Request without a conversation ID",maskOutcomes[row.detail.mask.outcome]].join(" · ")}),
+        maskComparison(row.detail.mask, false),
+        row.thread_key && link("Read the captured conversation",url({view:"threads",thread:row.thread_key,focus_trace:row.trace,focus_call:row.call})))));
+  }
   if (card.kind === "prefill" && openingStudy && detail.opening && traceId) {
     const context = query.get("opening_context");
     const ranked = detail.ranked.filter(r => !context || r.context_id === context);
@@ -2239,10 +2284,13 @@ async function main() {
     if (coverage) { coverage.open = true; coverage.querySelector("summary").focus(); }
   }
   if (location.hash === "#proposal-pair" && (measuredExample.replay || measuredExample.report) && measuredExample.trace) {
-    const pair = byId("content").querySelector(".response-pair");
+    const pair = byId("content").querySelector(".response-pair, .mask-comparison");
     if (pair) {
-      pair.open = true;
-      pair.querySelector("summary").focus();
+      const details = pair.closest("details");
+      if (details) {
+        details.open = true;
+        details.querySelector("summary").focus();
+      }
     } else {
       const joint = byId("content").querySelector("[data-joint-edit]");
       if (joint) { joint.tabIndex = -1; joint.focus(); }

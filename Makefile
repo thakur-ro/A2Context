@@ -16,6 +16,7 @@ check:
 	node --test tests/*.test.mjs
 	$(PYTHON) scripts/check_sidecar.py --binary target/debug/nexusweave
 	$(PYTHON) tests/sidecar_prefix_reference.py target/debug/nexusweave
+	$(PYTHON) tests/sidecar_tool_masks.py target/debug/nexusweave
 
 image:
 	docker build -t "$(IMAGE)" .

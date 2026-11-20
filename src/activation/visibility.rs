@@ -3,6 +3,7 @@
 mod continuations;
 pub mod patterns;
 pub mod query;
+pub mod tool_trials;
 
 use super::{inside, is_digest, ToolProposal};
 use crate::{

@@ -247,10 +247,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 30 {
+        if version == 31 {
             return Ok(());
         }
-        if !(0..30).contains(&version) {
+        if !(0..31).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -266,8 +266,11 @@ impl Store {
                AND EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='replay') AS has_conflict_trials,
                 EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='prefill'
                     AND json_type(o.detail,'$.ranked[0].opening_changed') IN ('true','false')) AS has_opening,
-                instr(t.run,'\"candidate_probes\"')>0 AS has_candidates
-            FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR (?2<25 AND has_conflict_trials) OR (?2<26 AND has_opening) OR has_candidates)
+                instr(t.run,'\"candidate_probes\"')>0 AS has_candidates,
+                EXISTS(SELECT 1 FROM reports p WHERE p.trace_id=t.id AND p.kind='activation-reports'
+                    AND json_extract(p.body,'$.kind')='source_visibility' AND json_array_length(p.body,'$.continuations')>0) AS has_masks
+            FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR (?2<25 AND has_conflict_trials)
+                OR (?2<26 AND has_opening) OR (?2<30 AND has_candidates) OR has_masks)
             ORDER BY t.id LIMIT 16",
             )?;
             let ids = stmt
@@ -278,12 +281,15 @@ impl Store {
                         r.get::<_, bool>(2)?,
                         r.get::<_, bool>(3)?,
                         r.get::<_, bool>(4)?,
+                        r.get::<_, bool>(5)?,
                     ))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
             drop(stmt);
             let Some(last) = ids.last() else { break };
-            for (id, has_ranking, has_conflict_trials, has_opening, has_candidates) in &ids {
+            for (id, has_ranking, has_conflict_trials, has_opening, has_candidates, has_masks) in
+                &ids
+            {
                 let run = load_run(&tx, id)?;
                 if let Some(run) = run {
                     if version < 20 {
@@ -291,7 +297,7 @@ impl Store {
                     } else if version < 23 {
                         super::conversation::index(&tx, &run)?;
                     }
-                    if version >= 20 && *has_candidates {
+                    if (20..30).contains(&version) && *has_candidates {
                         tx.execute("DELETE FROM prefix_checks WHERE trace_id=?", [id])?;
                         for call in &run.calls {
                             super::prefix_patterns::index(&tx, &run, call)?;
@@ -300,6 +306,7 @@ impl Store {
                     if (version < 22 && *has_ranking)
                         || (version < 25 && *has_conflict_trials)
                         || (version < 26 && *has_opening)
+                        || *has_masks
                     {
                         refresh_findings(&tx, &run)?;
                     }
@@ -308,7 +315,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 30)?;
+        self.0.pragma_update(None, "user_version", 31)?;
         Ok(())
     }
 
@@ -1147,9 +1154,10 @@ impl Store {
                     count(DISTINCT group_id) + (factor IN (SELECT factor FROM pairs)) + (factor IN (SELECT factor FROM variations)) AS recommendations,max(observed) AS latest,
                     CASE WHEN factor IN (SELECT factor FROM disputed) THEN -6 WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -4 ELSE
                     min(CASE WHEN kind='replacement' THEN -3 WHEN json_extract(detail,'$.joint_pattern')='joint_only' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
-                        WHEN kind='replay' AND changed=1 THEN 1 WHEN kind IN ('shadow','replay') AND (changed OR proposal_changed) THEN 2 WHEN kind='token' THEN 3
+                        WHEN kind='replay' AND changed=1 THEN 1 WHEN kind IN ('shadow','replay') AND (changed OR proposal_changed) THEN 2
+                        WHEN kind='source_mask' AND proposal_changed THEN 2.5 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
-                        WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 ELSE 9 END) END AS signal
+                        WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
@@ -1159,7 +1167,8 @@ impl Store {
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -6 THEN 'routing_repeats' WHEN -5 THEN 'routing' WHEN -4 THEN 'order' WHEN -3 THEN 'replacement' WHEN -2 THEN 'joint_proposal' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
-                        WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
+                        WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
+                        WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
             "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
@@ -1175,6 +1184,7 @@ impl Store {
                              WHEN max(json_extract(detail,'$.joint_pattern')='joint_only') THEN -2
                              WHEN kind='candidate' AND min(json_extract(detail,'$.baseline')*json_extract(detail,'$.edited'))<0 THEN -3
                              WHEN kind='token' OR (kind='shadow' AND max(changed OR proposal_changed)) THEN -2
+                             WHEN kind='source_mask' AND max(proposal_changed) THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
                              WHEN kind='conflict' AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
@@ -1215,6 +1225,12 @@ impl Store {
                      'routing_conversations',CASE WHEN json_extract(e.detail,'$.routing_test.design') IS NOT NULL THEN (
                          SELECT count(DISTINCT thread_key) FROM routing_events r
                          WHERE r.group_id=g.group_id AND r.design=json_extract(e.detail,'$.routing_test.design')) END,
+                     'mask_outcomes',CASE WHEN g.kind='source_mask' THEN json((SELECT json_group_object(outcome,n) FROM (
+                         SELECT outcome,count(*) AS n FROM (
+                           SELECT CASE WHEN min(outcome)=max(outcome) THEN min(outcome) ELSE 'mixed' END AS outcome
+                           FROM (SELECT trace_id,call_id,json_extract(detail,'$.measurement.location.decision_id') AS decision,
+                               json_extract(detail,'$.mask.outcome') AS outcome FROM events WHERE group_id=g.group_id)
+                           GROUP BY trace_id,call_id,decision) GROUP BY outcome))) END,
                      'evidence',json_object('thread_key',e.thread_key,'thread',e.thread,'trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail)),
                      'trend',json((SELECT json_group_array(json_object('day',day,'count',hits)) FROM
                        (SELECT date(observed,'unixepoch') AS day,count(*) AS hits FROM events e
@@ -1228,7 +1244,7 @@ impl Store {
                        WHEN json_extract(chosen.detail,'$.joint_pattern')='joint_only' THEN -2
                        WHEN json_extract(chosen.detail,'$.routing_test') IS NOT NULL OR json_extract(chosen.detail,'$.joint_only')=1 THEN -1
                        WHEN chosen.kind='candidate' AND json_extract(chosen.detail,'$.baseline')*json_extract(chosen.detail,'$.edited')<0 THEN 0
-                       WHEN chosen.kind IN ('shadow','replay') AND (chosen.changed OR chosen.proposal_changed) THEN 0 ELSE 1 END,
+                       WHEN chosen.kind IN ('shadow','replay','source_mask') AND (chosen.changed OR chosen.proposal_changed) THEN 0 ELSE 1 END,
                        d.completed DESC,d.inputs DESC,chosen.observed DESC,chosen.trace_id,chosen.call_id,chosen.n LIMIT 1)
                  ORDER BY priority,threads DESC,traces DESC,latest DESC,g.group_id");
             }

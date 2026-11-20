@@ -178,6 +178,7 @@ pub fn derive(
         super::recommendations::probes(run, call, reports, &mut findings);
     }
     super::recommendations::token_measurements(run, activations, &mut findings);
+    super::recommendations::tool_mask_measurements(run, activations, &mut findings);
     let by_location: BTreeMap<_, _> = reports
         .iter()
         .map(|report| ((&report.location, report.id.as_str()), report))
