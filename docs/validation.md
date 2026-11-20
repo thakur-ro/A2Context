@@ -109,3 +109,10 @@ With source-order matching enabled, the same capped burst retained all 2,304 req
 ## Public multi-document QA
 
 Ten public questions were each run with ten passages in two orders. The scorer chose a passage for testing before decoding. Its suggested edit changed the generated text in 8/10 cases in the first order and 10/10 in the second. Testing the first passage changed 8/10 and 6/10 respectively. Rotating the inputs changed the top-ranked source on all ten questions. The replay loader verifies the original and edited requests through the Rust planner and scorer. CI recomputes the saved rankings, counts and order comparison without loading a model. [Design, timings, reproducible findings and dashboard](../examples/public-qa/README.md)
+
+
+## Routing instruction and tool test
+
+The South stock-only fixture carries a four-setup experiment. The local Qwen adapter produced byte-identical output files on two runs of `test-routing`. The sidecar verification suite covers substitution of a request digest, an incomplete trial, an unlisted tool proposal, archive upgrades from versions 8 and 9, JSON and SDK exports, and MCP excerpt permissions. Desktop and mobile browser checks cover both the unscoped demo and the organization-filtered recommendation. [Reproduction](sidecar.md#test-instruction-text-and-tool-definitions) · [Integration checks](../tests/sidecar_prefill.py)
+
+An offline Linux container with one CPU and a 512 MiB limit ran the prebuilt Rust release tests and the JSON routing integration suite. The cgroup peak for the whole run was 397,635,584 bytes with zero OOM events. The release compiler was killed when building under that same limit. Build the binary separately. This run measures test-suite memory and does not estimate serving latency.

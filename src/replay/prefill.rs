@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 
+pub mod routing;
+
 pub const ATTRIBUTE: &str = "nexusweave.prefill.probe";
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -37,6 +39,8 @@ pub struct Effect {
 pub struct Probe {
     pub interventions: Vec<Intervention>,
     scores: Scores,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    routing_test: Option<Value>,
 }
 
 fn validate_edits(call: &Call, body: &Value, edits: &[Intervention]) -> Result<(), String> {
@@ -133,11 +137,16 @@ impl Probe {
             ranked.push((effect.js_bits, row));
         }
         ranked.sort_by(|a, b| b.0.total_cmp(&a.0));
-        Ok(
-            json!({"metric":"first_token_js_bits","model_id":s.model_id,"model_revision":s.model_revision,
+        let mut view = json!({"metric":"first_token_js_bits","model_id":s.model_id,"model_revision":s.model_revision,
             "runtime":s.runtime,"tokenizer_sha256":s.tokenizer_sha256,"baseline_request_sha256":s.baseline_request_sha256,
-            "ranked":ranked.into_iter().map(|(_,row)| row).collect::<Vec<_>>()}),
-        )
+            "ranked":ranked.into_iter().map(|(_,row)| row).collect::<Vec<_>>()});
+        if let Some(raw) = &self.routing_test {
+            match routing::checked(raw, self, call, body, excerpts) {
+                Ok(result) => view["routing_test"] = result,
+                Err(issue) => view["routing_issue"] = json!(issue),
+            }
+        }
+        Ok(view)
     }
 }
 
@@ -163,6 +172,7 @@ pub fn measure(
     let probe = Probe {
         interventions,
         scores,
+        routing_test: None,
     };
     probe.checked(&call, &body, false)?;
     input.attributes.insert(

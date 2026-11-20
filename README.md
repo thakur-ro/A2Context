@@ -21,6 +21,8 @@ cargo run --locked -- sidecar --demo
 3. **Locate the effect along an answer.** Open the refund-policy token recommendation to see which output token changed most under the source edit and what the decoder-block swap measured.
 4. **Test what to change.** Try a policy conflict before inference. Filter Recommendations by organization `demo-retail` and user `user-042` to compare recurrence with `user-077`.
 
+In the [tool-routing experiment](http://127.0.0.1:8040/?view=preview&scenario=routing-test), giving the model a price tool changed its proposal even with the instruction “Always call stock.” Open the four setups to compare the exact conditions.
+
 The demo uses saved local and hosted model measurements on synthetic inputs and makes zero model calls. To explore public data, compare where the same passage edit changed an answer across two input orders. [Public QA walkthrough](examples/public-qa/README.md#compare-an-edit-across-inputs)
 
 ## Connect a workflow

@@ -233,10 +233,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 9 {
+        if version == 10 {
             return Ok(());
         }
-        if !(0..9).contains(&version) {
+        if !(0..10).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -244,7 +244,8 @@ impl Store {
             let ids = {
                 let mut stmt = self.0.prepare(
                     "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL AND
-                      (?2<8 OR instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0))
+                      (?2<8 OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
+                       OR (?2=9 AND (instr(raw,'routing_test')>0 OR instr(run,'routing_test')>0)))
                       ORDER BY id LIMIT 16",
                 )?;
                 let rows = stmt
@@ -278,7 +279,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 9)?;
+        self.0.pragma_update(None, "user_version", 10)?;
         Ok(())
     }
 
@@ -583,6 +584,7 @@ impl Store {
                     CASE WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -3 ELSE
                     min(CASE WHEN kind='replacement' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
                         WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' THEN 2 WHEN kind='token' THEN 3
+                        WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -4
                         WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
@@ -590,7 +592,7 @@ impl Store {
                     'position_test',CASE WHEN t.pair IS NOT NULL THEN json_object(
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
-                    'signal',CASE signal WHEN -3 THEN 'order' WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
+                    'signal',CASE signal WHEN -4 THEN 'routing' WHEN -3 THEN 'order' WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
                         WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
@@ -602,6 +604,7 @@ impl Store {
                     SELECT group_id,kind,count(*) AS hits,count(DISTINCT trace_id) AS traces,
                            count(DISTINCT thread_key) AS threads,max(observed) AS latest,
                            CASE
+                             WHEN kind='prefill' AND max(json_extract(detail,'$.routing_test') IS NOT NULL) THEN -4
                              WHEN kind='replacement' THEN -4
                              WHEN kind='candidate' AND min(json_extract(detail,'$.baseline')*json_extract(detail,'$.edited'))<0 THEN -3
                              WHEN kind IN ('shadow','token') THEN -2
@@ -628,6 +631,7 @@ impl Store {
                      'evidence',json((SELECT json_object('thread_key',e.thread_key,'thread',e.thread,'trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail))
                        FROM events e WHERE e.group_id=g.group_id
                        ORDER BY CASE
+                                  WHEN e.kind='prefill' AND json_extract(e.detail,'$.routing_test') IS NOT NULL THEN -1
                                   WHEN json_extract(e.detail,'$.joint_only')=1 THEN -1
                                   WHEN e.kind='candidate' AND json_extract(e.detail,'$.baseline')*json_extract(e.detail,'$.edited')<0 THEN 0
                                   WHEN e.kind='replay' AND abs(json_extract(e.detail,'$.effect_pp'))>0 THEN 0

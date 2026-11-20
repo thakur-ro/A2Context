@@ -273,10 +273,10 @@ function positionReadout(result) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
+  const signals = { routing: "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
+  const step = { routing: "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
@@ -445,7 +445,7 @@ function prefillFollowup(card) {
   if (!card.prefill_followup.length) return element("p", { text: "No paired proposals for the leading edit in this scope." });
   return element("div", {}, ...card.prefill_followup.map((check) => {
     const scored = check.changed + check.equal + check.mixed;
-    return element("p", { title: check.runner, text: "Leading edit · " + check.changed + " changed, " + check.equal + " unchanged" +
+    return element("p", { title: check.runner, text: (card.evidence.detail.routing_test ? "Leading edit in the original setup · " : "Leading edit · ") + check.changed + " changed, " + check.equal + " unchanged" +
       (check.mixed ? ", " + check.mixed + " mixed" : "") + " across " + plural(scored, "replayed input") +
       (eligible > scored ? " · " + (eligible - scored) + " without a paired result on this runner" : "") +
       (card.prefill_followup.length > 1 ? " · " + check.runner : "") });
@@ -625,14 +625,18 @@ function review(card, occurrences) {
   byId("title").textContent = "Recommendation";
   byId("summary").textContent = card.action.basis;
   if (card.kind === "prefill") {
-    byId("title").textContent = "First-token sensitivity";
+    const titles = { tools:"Tool definitions changed the edit’s effect", instruction:"The instruction changed the edit’s effect",
+      combined:"The edit depended on the routing setup", constant:"The edit’s effect held across setups", incomplete:"Some routing trials are missing" };
+    byId("title").textContent = titles[detail.routing_test?.pattern] || "First-token sensitivity";
     byId("summary").textContent = prefillSummary(card.prefill_counts);
     return element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId || detail.factor })),
       panel(card.action.title, prefillFollowup(card), element("p", {text:card.action.next})),
+      routingComparison(detail),
       element("p", { text: "These calls share the tested edits, model, runtime and request settings. Other user text can differ." }),
       ...occurrences.rows.map((row, i) => element("details", { className: "panel", ...(i === 0 && { open: "" }) },
         element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + findingTitle("prefill", row.detail) }),
         firstTokenPreview(row.detail, true),
+        row.trace === trace_id && row.call === call_id ? null : routingComparison(row.detail),
         link("Open original span", url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))));
   }
   const traceLink = url({ view: "traces", trace: trace_id, call: call_id, finding: card.id });
@@ -698,6 +702,33 @@ function proposalComparisons(probe) {
     }));
 }
 
+function routingComparison(probe) {
+  if (probe.routing_issue) return element("p", {className:"label", text:probe.routing_issue});
+  const test = probe.routing_test;
+  if (!test) return null;
+  const source = probe.ranked.find(row => row.context_id === test.context_id);
+  const toolList = (names) => names.length ? names.join(", ") : "No tools";
+  const trialText = trial => trial.status === "completed"
+    ? trial.label + (trial.listed === false ? " (unlisted)" : "") + " · " + trial.outcome
+    : "Trial failed";
+  const rows = test.cells.map((cell, index) => element("tr", {className:cell.changed ? "changed" : ""},
+    element("th", {scope:"row", text:index < 2 ? "Original" : "Alternate"}),
+    element("td", {text:(index % 2 ? "Alternate · " : "Original · ") + toolList(test.inventories[index % 2])}),
+    ...cell.trials.map(trial => element("td", {}, element("code", {text:trialText(trial)}))),
+    element("td", {text:cell.changed == null ? "Incomplete" : cell.changed ? "Changed" : "Unchanged"})));
+  return element("section", {className:"panel routing-comparison"},
+    element("h2", {text:"When did the source edit change the proposal?"}),
+    element("p", {text:"Each row tests the same edit to " + (source.source || source.context_id) +
+      " on one request. Only the instruction text and tool definitions vary across rows."}),
+    element("div", {className:"routing-table", role:"region", "aria-label":"Four routing setups", tabindex:"0"},
+      element("table", {}, element("thead", {}, element("tr", {}, ...["Instruction", "Tools", "Original proposal", "Edited proposal", "Result"]
+        .map(text => element("th", {scope:"col", text})))), element("tbody", {}, ...rows))),
+    element("details", {}, element("summary", {text:"Compare instruction text"}),
+      element("div", {className:"comparison"}, ...test.instructions.map((text, i) =>
+        element("div", {}, element("strong", {text:i ? "Alternate" : "Original"}), element("p", {text}))))),
+    element("p", {className:"label", text:"One proposal per condition · " + test.runner}));
+}
+
 function firstTokenPreview(probe, recorded = false) {
   const [top] = probe.ranked;
   const tied = probe.ranked.filter((row) => row.js_bits === top.js_bits).length;
@@ -755,6 +786,7 @@ function pendingPreview() {
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
         ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
+        report.prefill ? routingComparison(report.prefill) : null,
         report.prefill ? firstTokenPreview(report.prefill) : null,
         ...current, priorEdits(report.history, current.length > 0 || Boolean(report.prefill)), followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
@@ -781,7 +813,9 @@ function pendingPreview() {
   policy.addEventListener("click", () => show(() => api("preview-example", { scenario: "policy" })));
   const routing = element("button", { type: "button", text: "Try a measured tool choice" });
   const prefillLink = link("Check the same edits before the first token", url({ view: "preview", scenario: "prefill" }), "action");
-  routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" }), prefillLink));
+  const routingLinks = element("div", {className:"actions"}, prefillLink,
+    link("Test instruction text and available tools", url({view:"preview",scenario:"routing-test"}), "action"));
+  routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" }), routingLinks));
   const history = element("button", { type: "button", text: "Check a new request against earlier edits" });
   history.addEventListener("click", () => {
     const scores = element("button", { type: "button", text: "Compare with model scores for this request" });
@@ -789,9 +823,9 @@ function pendingPreview() {
     show(() => api("preview-example", { scenario: "prior-only" }), scores);
   });
   const scenario = query.get("scenario");
-  if (["scored-history", "warranty", "routing", "policy", "history", "prefill"].includes(scenario)) {
+  if (["scored-history", "warranty", "routing", "policy", "history", "prefill", "routing-test"].includes(scenario)) {
     const next = scenario === "prefill" ? link("Compare the measured tool proposals", url({ view: "preview", scenario: "routing" }), "action") :
-      scenario === "routing" ? prefillLink : null;
+      scenario === "routing" ? routingLinks : null;
     show(() => api("preview-example", { scenario }), next);
   }
   return element("div", { className: "feed" }, panel("Review an assembled request",

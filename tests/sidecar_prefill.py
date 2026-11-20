@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FOLDER = ROOT / "examples/runtime-comparison/pending-routing"
 sys.path[:0] = [str(ROOT / "scripts"), str(FOLDER)]
 from check_sidecar import get, sdk_sender, send_traces, server
-from prefill_cohort import ATTRIBUTE, export
+from prefill_cohort import ATTRIBUTE, export, inputs
 
 
 def recommendation(base, **scope):
@@ -33,9 +33,53 @@ def modified(doc, identifier, update):
     return record
 
 
+def check_routing(binary, record, probe, folder):
+    request = {"version": 1, "attributes": {**inputs(record), ATTRIBUTE: deepcopy(probe)}}
+    raw = request["attributes"][ATTRIBUTE]["routing_test"]
+
+    def inspect():
+        out = subprocess.run([binary, "inspect-pending", "-"], check=True, input=json.dumps({"request": request}),
+                             capture_output=True, text=True)
+        return json.loads(out.stdout)["prefill"]
+
+    raw["cells"][2][1]["request_sha256"] = raw["cells"][0][1]["request_sha256"]
+    bad = inspect()
+    assert "routing_test" not in bad and "reconstructed request" in bad["routing_issue"] and bad["ranked"]
+    raw["cells"] = deepcopy(probe["routing_test"]["cells"])
+    raw["cells"][1][0]["trial"] = {"status": "failed"}
+    measured = inspect()["routing_test"]
+    assert measured["pattern"] == "incomplete" and measured["cells"][1]["changed"] is None
+    raw["cells"] = deepcopy(probe["routing_test"]["cells"])
+    raw["cells"][0][1]["trial"]["choice"]["label"] = "unlisted"
+    assert inspect()["routing_test"]["cells"][0]["trials"][1]["listed"] is False
+
+    for labels, expected in [(["stock", "stock", "price", "price"], "instruction"),
+                             (["stock"] * 4, "constant"), (["stock", "stock", "stock", "price"], "combined")]:
+        for cell, label in zip(raw["cells"], labels):
+            cell[1]["trial"]["choice"]["label"] = label
+        assert inspect()["routing_test"]["pattern"] == expected
+
+    del request["attributes"][ATTRIBUTE]["routing_test"]
+    req, output = folder / "scored.json", folder / "checked.json"
+    req.write_text(json.dumps(request))
+    adapter = folder / "runner.py"
+    adapter.write_text("import json,sys\n"
+                       "r=json.load(sys.stdin)\n"
+                       "print(json.dumps(dict(kind='model_output',label='answer',outcome=r['messages'][1]['content'])))\n")
+    command = [binary, "test-routing", req, FOLDER / "routing-design.json", "test-runner", output, "--", sys.executable, adapter]
+    subprocess.run(command, check=True)
+    sample = json.loads(output.read_text())["attributes"][ATTRIBUTE]["routing_test"]
+    assert [arm["request_sha256"] for cell in sample["cells"] for arm in cell] == [
+        arm["request_sha256"] for cell in probe["routing_test"]["cells"] for arm in cell]
+    assert len({arm["request_sha256"] for cell in sample["cells"] for arm in cell}) == 8
+    assert subprocess.run(command, capture_output=True).returncode != 0
+
+
 def check(binary, folder, sdk_python):
     records = json.loads((FOLDER / "shadow-cohort.json").read_text())
     probes = json.loads((FOLDER / "prefill-cohort.json").read_text())
+    crossed, = [r for r in records if "routing_test" in probes[r["id"]]]
+    check_routing(binary, crossed, probes[crossed["id"]], folder)
     doc = export(records, probes)
     db = folder / "archive"
     with server(binary, db, "--capture-content") as base:
@@ -49,7 +93,12 @@ def check(binary, folder, sdk_python):
         follow, = north["prefill_followup"]
         assert (follow["changed"], follow["equal"], follow["mixed"]) == (2, 0, 0)
         south = recommendation(base, org="retail-south")
-        unchanged, = [r for r in south if r["action"]["title"] == "Check a later output token"]
+        unchanged, = [r for r in south if r["action"]["title"] == "Retest the tool inventory on another request"]
+        routing = unchanged["evidence"]["detail"]["routing_test"]
+        assert routing["pattern"] == "tools"
+        assert [cell["changed"] for cell in routing["cells"]] == [False, True, False, True]
+        assert [[t["label"] for t in cell["trials"]] for cell in routing["cells"]] == [
+            ["stock", "stock"], ["stock", "price"], ["stock", "stock"], ["stock", "price"]]
         assert unchanged["evidence"]["detail"]["tool_names"] == ["stock"]
         assert len(south) == 2 and {row["prefill_followup"][0]["changed"] for row in south} == {0, 1}
         assert get(base, "findings", kind="prefill", user="unrelated")["rows"] == []
@@ -90,6 +139,12 @@ def check(binary, folder, sdk_python):
     with server(binary, db, "--capture-content") as base:
         restored, = recommendation(base, org="retail-north")
         assert restored == north
+    with sqlite3.connect(db) as connection:
+        connection.execute("UPDATE traces SET run=json_remove(run,'$.calls[0].prefill_probe.report.routing_test')")
+        connection.execute("UPDATE observations SET detail=json_remove(detail,'$.routing_test') WHERE kind='prefill'")
+        connection.execute("PRAGMA user_version=9")
+    with server(binary, db, "--capture-content") as base:
+        assert recommendation(base, org="retail-south") == south
     if sdk_python:
         with server(binary, folder/"sdk", "--capture-content") as base:
             sdk_sender(sdk_python)(base, doc)
@@ -116,4 +171,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with TemporaryDirectory() as folder:
         check(args.binary.resolve(), Path(folder), args.sdk_python)
-    print("Verified recorded prefill coverage, ties, exact proposal checks, scope, retries, redaction, and v8 recovery.")
+    print("Verified recorded prefill coverage, ties, controlled routing trials, scope, retries, redaction, and v8/v9 recovery.")

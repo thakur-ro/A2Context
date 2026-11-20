@@ -142,9 +142,24 @@ We measured the same two source edits on four synthetic routing requests with th
 | South | 52 | 0.000177 | stock → price |
 | South, stock only | 52 | 0.00119 | stock → stock |
 
-The stock-only request had the largest shift and retained its tool call. It offered one tool and carried different system instructions. Isolating the effect of either difference would require another intervention. The dashboard keeps this setup separate from the two-tool comparisons. The two North conversations share a card. [Measured first-token reports](../examples/runtime-comparison/pending-routing/prefill-cohort.json) · [Inputs and paired proposals](../examples/runtime-comparison/pending-routing/shadow-cohort.json)
+The stock-only request had the largest shift and retained its tool call. It offered one tool and carried different system instructions. The follow-up below varies those two settings independently. The dashboard keeps this setup separate from the two-tool comparisons. The two North conversations share a card. [Measured first-token reports](../examples/runtime-comparison/pending-routing/prefill-cohort.json) · [Inputs and paired proposals](../examples/runtime-comparison/pending-routing/shadow-cohort.json)
 
 To repeat the prefill measurements, use `prefill_cohort.py --prepare /tmp/nexus-routing` to export one request and edit list for each case. Run each pair through `probe-prefill` with the Qwen adapter and checkpoint specified in the [sidecar guide](sidecar.md#measure-an-edit-before-the-first-output-token). The four saved rankings used twelve forward passes in total.
+
+### Did the instruction or the available tools matter?
+
+On the South stock-only request for product 52, we crossed the two observed instruction texts with the two observed tool inventories. Within each setup, we replayed the original stock request and the same edit asking for price. All other request fields stayed fixed. The outcome was the complete proposed tool call, including arguments. The runner generated each proposal without dispatching it.
+
+| System instruction | Tools offered | Original request | Edited request |
+| --- | --- | --- | --- |
+| Always call stock | stock | stock(52) | stock(52) |
+| Always call stock | stock, price | stock(52) | price(52) |
+| Route by request type | stock | stock(52) | stock(52) |
+| Route by request type | stock, price | stock(52) | price(52) |
+
+Adding the price tool changed the effect of the user edit under both instruction texts. Changing the instruction alone preserved the proposed call for each fixed inventory. A second local run reproduced all eight proposals and request digests. Both runs used the same synthetic request and greedy Qwen checkpoint. The repeated run checks reproducibility and adds no independent workflow to the sample. [Experiment design](../examples/runtime-comparison/pending-routing/routing-design.json) · [Completed trials](../examples/runtime-comparison/pending-routing/prefill-cohort.json) · [Run the comparison](sidecar.md#test-instruction-text-and-tool-definitions)
+
+![Four routing setups show which inventories led to a different tool proposal](media/routing-comparison.png)
 
 ## Reproduction
 

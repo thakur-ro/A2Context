@@ -68,6 +68,23 @@ pub fn action(kind: &str, detail: &Value) -> Action {
 }
 
 pub(super) fn prefill_action(card: &Value) -> Action {
+    if let Some(pattern) = card
+        .pointer("/evidence/detail/routing_test/pattern")
+        .and_then(Value::as_str)
+    {
+        let (title, next) = match pattern {
+            "tools" => ("Retest the tool inventory on another request", "On the selected request, switching tool inventories changed whether the source edit affected the proposal under both instructions. Repeat the inventory change on a fresh input."),
+            "instruction" => ("Retest the instruction on another request", "On the selected request, switching instruction text changed whether the source edit affected the proposal under both tool inventories. Repeat the instruction change on a fresh input."),
+            "constant" => ("Test another source or workflow setting", "The edit had the same changed-or-unchanged result in all four setups on the selected request. Compare the proposals before choosing another factor."),
+            "combined" => ("Test the instruction and tools together", "The edit had different effects across the four setups on the selected request. Repeat those combinations on a fresh input."),
+            _ => ("Complete the missing routing trials", "At least one setup lacks a completed proposal. Repeat those trials before attributing the difference to either factor."),
+        };
+        return Action {
+            title,
+            next,
+            basis: "One selected request, two instructions and two tool inventories",
+        };
+    }
     let runners = card["prefill_followup"]
         .as_array()
         .expect("scoped proposal counts");

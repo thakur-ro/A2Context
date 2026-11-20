@@ -186,6 +186,10 @@ try {
     }
     await device.getByRole("link", {name:"Compare the measured tool proposals"}).click();
     await device.getByRole("link", {name:"Check the same edits before the first token"}).waitFor();
+    await device.getByRole("link", {name:"Test instruction text and available tools"}).click();
+    await device.getByRole("region", {name:"Four routing setups"}).waitFor();
+    assert.equal(await device.locator(".routing-comparison tbody tr").count(), 4);
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   }
   if (process.env.PREFILL_COHORT_URL) {
     for (const device of [page, mobile]) {
@@ -200,9 +204,14 @@ try {
       await device.getByRole("heading", {name:"request-type · proposal changed"}).first().waitFor();
       if (device === page && process.env.COHORT_SCREENSHOT) await device.screenshot({path:process.env.COHORT_SCREENSHOT});
       await device.goto(study + "/?org=retail-south");
-      await factor(device, "First-token sensitivity").click();
+      await factor(device, "Instruction and tool test").click();
       await device.locator(".card").filter({hasText:"0 changed, 1 unchanged"}).getByRole("link").click();
-      await device.getByRole("heading", {name:"Check a later output token"}).waitFor();
+      await device.getByRole("heading", {name:"Retest the tool inventory on another request"}).waitFor();
+      const matrix = device.getByRole("region", {name:"Four routing setups"});
+      assert.deepEqual(await matrix.locator("tbody tr td:last-child").allTextContents(), ["Unchanged", "Changed", "Unchanged", "Changed"]);
+      await device.getByText("Compare instruction text", {exact:true}).click();
+      await device.getByText(/Always call stock using/).first().waitFor();
+      if (device === page && process.env.ROUTING_SCREENSHOT) await device.screenshot({path:process.env.ROUTING_SCREENSHOT});
       await device.getByText("Original request · 1 available tool · stock", {exact:true}).waitFor();
       await device.getByText("Compare generated proposals", {exact:true}).first().click();
       await device.getByRole("heading", {name:"request-type · same proposal"}).waitFor();

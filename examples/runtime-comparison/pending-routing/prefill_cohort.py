@@ -40,19 +40,22 @@ def export(records, probes):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--endpoint", help="POST the saved measurements to this traces endpoint. Defaults to stdout.")
-    parser.add_argument("--prepare", metavar="DIRECTORY", type=Path, help="Write a preflight request and edits per case for probe-prefill.")
+    parser.add_argument("--prepare", metavar="DIRECTORY", type=Path, help="Write requests, saved scores and edits per case for probe-prefill.")
     args = parser.parse_args()
     records = json.loads((FOLDER / "shadow-cohort.json").read_text())
+    probes = json.loads((FOLDER / "prefill-cohort.json").read_text())
     if args.prepare:
         args.prepare.mkdir(parents=True, exist_ok=True)
         for record in records:
             report, = record["extra"]["metadata"]["nexusweave.shadow_probes"]
-            for suffix, value in [("request", {"version": 1, "attributes": inputs(record)}),
+            request = {"version": 1, "attributes": inputs(record)}
+            scored = {"version": 1, "attributes": {**inputs(record), ATTRIBUTE: probes[record["id"]]}}
+            for suffix, value in [("request", request), ("scored", scored),
                                   ("edits", [e["intervention"] for e in report["effects"]])]:
                 with (args.prepare / (record["id"] + "-" + suffix + ".json")).open("x") as out:
                     json.dump(value, out, ensure_ascii=False)
     else:
-        body = json.dumps(export(records, json.loads((FOLDER / "prefill-cohort.json").read_text())))
+        body = json.dumps(export(records, probes))
         if args.endpoint:
             with urlopen(Request(args.endpoint, body.encode(), {"Content-Type": "application/json"}), timeout=30) as response:
                 print(f"Sent {len(records)} recorded experiments (HTTP {response.status}).")

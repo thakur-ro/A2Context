@@ -30,6 +30,7 @@ const USAGE: &str = "Usage:
   nexusweave screen-context <request.json> <selection.json|-> <report.json> [-- <scorer> [args...]]
   nexusweave screen-recorded-context <evidence.json> <run-id> <call-id> <selection.json|-> <output.json> [-- <scorer> [args...]]
   nexusweave probe-prefill <request.json> <edits.json> <preview.json> -- <scorer> [args...]
+  nexusweave test-routing <scored-request.json> <design.json> <runner-id> <preview.json> -- <runner> [args...]
   nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
   nexusweave shadow <request.json> <case.json> <report.json> -- <runner> [args...]
   nexusweave query-conflicts <view.json> <evidence.json> [...]
@@ -228,6 +229,34 @@ fn run(args: Vec<String>) -> Result<()> {
             })?;
             write_new(output, &serde_json::to_vec_pretty(&preview)?)?;
             println!("Saved the measured pending request to {output}.");
+        }
+        ["test-routing", input, design, runner, output, "--", program, args @ ..] => {
+            if Path::new(output).exists() {
+                return Err(format!("routing comparison already exists: {output}").into());
+            }
+            let input = serde_json::from_reader(fs::File::open(input)?)?;
+            let design = serde_json::from_reader(fs::File::open(design)?)?;
+            let mut completed = 0;
+            let preview =
+                replay::prefill::routing::measure(
+                    input,
+                    design,
+                    runner,
+                    |request| match run_json(program, args, request, Stdio::inherit()) {
+                        Ok(choice) => {
+                            completed += 1;
+                            Some(choice)
+                        }
+                        Err(error) => {
+                            eprintln!("Routing trial failed: {error}");
+                            None
+                        }
+                    },
+                )?;
+            write_new(output, &serde_json::to_vec_pretty(&preview)?)?;
+            println!(
+                "Saved {completed} completed proposals across eight routing trials to {output}."
+            );
         }
         ["probe-candidates", request, specification, output, "--", program, scorer_args @ ..] => {
             if Path::new(output).exists() {

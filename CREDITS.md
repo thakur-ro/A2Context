@@ -12,6 +12,8 @@
 
 The [scoping review](docs/research-review.md) compares the sidecar workflow with TRACE, REFLECT, LangSmith Insights, SentinelRCA, and Langfuse. The README structure uses [Transformers](https://github.com/huggingface/transformers) as a reference for showing a runnable result near the top.
 
+- The routing comparison draws on research into tool-set changes by Ella Rabinovich and Ateret Anaby-Tavor. BFCL and the hidden-state study by Eric Yeats and colleagues provide benchmark and probe comparisons. [Function-calling robustness](https://arxiv.org/abs/2504.00914v1) · [BFCL](https://proceedings.mlr.press/v267/patil25a.html) · [Tool-error probes](https://arxiv.org/abs/2608.27750v1)
+
 ## Data and tools
 
 - Exgentic’s `agent-llm-traces` dataset supplied the recorded retail sessions for the importer comparison. The [sample manifest](examples/retail-sample.manifest.json) pins the dataset revision and documents session selection. The policy excerpt in [retail-annotations.json](examples/retail-annotations.json) comes from that dataset and is distributed under [CDLA Permissive 2.0](LICENSES/CDLA-Permissive-2.0.txt). [Exgentic dataset card](https://huggingface.co/datasets/Exgentic/agent-llm-traces)

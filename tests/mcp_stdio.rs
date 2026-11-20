@@ -1724,7 +1724,11 @@ fn recorded_first_token_measurements_follow_mcp_excerpt_permissions() {
     let folder = tempfile::tempdir().unwrap();
     let path = folder.path().join("evidence.json");
     std::fs::write(&path, serde_json::to_vec(&runs).unwrap()).unwrap();
-    let location = json!({"run_id":runs[0].id,"call_id":runs[0].calls[0].id});
+    let run = runs
+        .iter()
+        .find(|run| run.id.contains("routing-south-stock-only"))
+        .unwrap();
+    let location = json!({"run_id":run.id,"call_id":run.calls[0].id});
     let mut client = Client::start(&[path.to_str().unwrap()], true);
     let result = client.call("get_turn_evidence", location.clone());
     let measured = &result["structuredContent"]["prefill"];
@@ -1732,6 +1736,11 @@ fn recorded_first_token_measurements_follow_mcp_excerpt_permissions() {
     let top = &measured["measurement"]["ranked"][0];
     assert_eq!(top["source"], "request-type");
     assert!(top["js_bits"].as_f64().unwrap() > 0.0 && top.get("replacement").is_none());
+    let test = &measured["measurement"]["routing_test"];
+    assert_eq!(test["pattern"], "tools");
+    assert!(test.get("instructions").is_none() && test.get("inventories").is_none());
+    assert!(test["cells"][0]["trials"][0].get("label").is_none());
+    assert!(test["cells"][0]["trials"][0].get("outcome").is_none());
     let mut allowed = Client::start(&["--include-excerpts", path.to_str().unwrap()], true);
     let mut with_text = location;
     with_text["include_excerpts"] = json!(true);

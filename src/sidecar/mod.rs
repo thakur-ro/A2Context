@@ -385,6 +385,26 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             }
                             fixture
                         }
+                        Some("routing-test") => {
+                            let records: Vec<serde_json::Value> = serde_json::from_str(include_str!(
+                                "../../examples/runtime-comparison/pending-routing/shadow-cohort.json"
+                            ))?;
+                            let probes: serde_json::Value = serde_json::from_str(include_str!(
+                                "../../examples/runtime-comparison/pending-routing/prefill-cohort.json"
+                            ))?;
+                            let id = "routing-south-stock-only";
+                            let record = records
+                                .iter()
+                                .find(|r| r["id"] == id)
+                                .ok_or("Missing routing example")?;
+                            let meta = &record["extra"]["metadata"];
+                            json!({"request":{"version":1,"attributes":{
+                                "gen_ai.request.model":meta["ls_model_name"],
+                                "nexusweave.request.body":meta["nexusweave.request.body"],
+                                "nexusweave.context.semantics":meta["nexusweave.context.semantics"],
+                                (replay::prefill::ATTRIBUTE):probes[id]
+                            }}})
+                        }
                         Some("prefill") => json!({
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/prefill-preview.json"))?,
                         }),

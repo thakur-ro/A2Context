@@ -32,6 +32,14 @@ We included primary sources that describe an implemented or evaluated method for
 
 This matrix records capabilities described in the reviewed sources. The combination to test is a source-level queue of findings with exact evidence locations, bounded default processing, and a controlled follow-up. There is no measured head-to-head result against these systems in this review.
 
+## Tool selection under changes to context
+
+On 20 November 2026 we followed up with the search `Berkeley function calling leaderboard irrelevant function tools relevance detection BFCL` and checked the primary papers on tool-set changes and hidden-state probes returned by that search.
+
+Rabinovich and Anaby-Tavor studied how function selection responds to query variations and the addition of semantically related tools on an expanded BFCL subset. Their study makes tool availability a direct comparison point. NexusWeave crosses tool definitions with instruction text on one captured request, then repeats the same user edit in each setup. Its four-row result concerns that request and runner. BFCL measures function-calling performance across tasks. Both are related research. The NexusWeave example uses synthetic requests. [Rabinovich and Anaby-Tavor, 2025, v1](https://arxiv.org/abs/2504.00914v1) · [BFCL, ICML 2025](https://proceedings.mlr.press/v267/patil25a.html)
+
+Yeats et al. trained linear probes on model hidden states to detect incorrect tool calls across 18 models. This approach needs instrumented states and labels for errors. It addresses whether a call is likely incorrect. A controlled replay asks whether the proposed call changes under a specific input intervention. [Yeats et al., 2026, v1](https://arxiv.org/abs/2608.27750v1)
+
 ## Attribution and experimental methods
 
 Wang et al. found discrepancies between first-token rankings and generated text on multiple-choice tasks with instruction-tuned language models. NexusWeave scores the full token sequence of each supplied continuation. Unscored alternatives can still receive substantial probability. The warranty check therefore compares score reversals with freely generated answers and reports the probability outside the specified pair. [Wang et al., Findings of ACL 2024](https://aclanthology.org/2024.findings-acl.441/) · [NexusWeave experiment](methods.md#what-do-model-scores-add-before-generation)
