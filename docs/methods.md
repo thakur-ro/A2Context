@@ -188,6 +188,36 @@ python3 examples/context-screening/replay/check_question_holdout.py --model "$qw
 cmp examples/context-screening/replay/question-results.json /tmp/question-results.json
 ```
 
+### Where did the answers first diverge?
+
+We reran all three held-opening edits that changed a completed journal answer. For each question we reproduced the original answer and both edited answers on the same checkpoint. At their shared generated prefix we read the full-vocabulary next-token distribution for each request. The table gives the earliest position where the original and the answer-changing edit chose different tokens. The edit to the other source preserved the complete original answer in all three cases.
+
+| Journal question | Source edited | First differing token (1-based) | Original → edited answer |
+| --- | --- | ---: | --- |
+| 4, finish the policy sentence | Policy | 8 | A journal may be returned within **30** days. → A journal may be returned within **60** days. |
+| 7, complete “The deadline is” | FAQ | 4 | The deadline is **exactly 60** days. → The deadline is **30** days. |
+| 8, write the receipt deadline | Policy | 4 | Returns: **30** days → Returns: **60** days |
+
+On question 4, after “A journal may be returned within ”, the model assigned 60.4% probability to `3` and 36.4% to `6`. After the policy edit, those probabilities were 1.7% and 97.7%. Question 7 first diverged on wording, before either number appeared. These measurements locate the effect of a particular source replacement on a greedy output. Internal reasoning and the effects of untested sources remain unknown. [Saved token IDs, probabilities and request digests](../examples/context-screening/replay/held-opening-tokens.json)
+
+Reproduce the three readouts in the same pinned CPU environment as the eight-question study.
+
+```sh
+python3 examples/context-screening/replay/inspect_journal_openings.py "$qwen_dir" /tmp/journal-tokens.json
+cmp examples/context-screening/replay/held-opening-tokens.json /tmp/journal-tokens.json
+```
+
+The dashboard resource check reused those eight request bodies across 128 synthetic conversations. Of the 128, 80 had complete comparisons and 48 had a changed proposal after the same opening. In a Linux container limited to 1 CPU and 512 MiB, 30 warm loopback reads per route gave the following timings. Peak container memory, including the Python driver, replay preparation and SQLite cache, was 54.4 MiB. Model inference took place separately. These numbers measure dashboard reads on this fixture.
+
+| Route | Median | p95 |
+| --- | ---: | ---: |
+| Overview (`impact`) | 4.85 ms | 10.84 ms |
+| Opening coverage | 1.57 ms | 2.53 ms |
+| Source breakdown | 1.44 ms | 2.50 ms |
+| First page of affected conversations | 1.93 ms | 3.03 ms |
+
+Run `python3 tests/sidecar_opening_study.py target/release/nexusweave --measure` with a release build under the same CPU and memory limits. [Benchmark driver](../tests/sidecar_opening_study.py)
+
 ### What do model scores add before generation?
 
 We gave the local Qwen scorer the pending dispatch request, two source edits and two continuations taken from the task: the specified bay code and `UNKNOWN`. At the empty assistant prefix it summed the conditional log probabilities of the tokens in each continuation. Subtracting the second sum from the first gives the preference margin. The sidecar checks the request and edit bindings. Within one probe, it lists edits that reverse the preference first, then orders by absolute change in margin. A tied margin supplies no reversal.

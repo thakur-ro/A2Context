@@ -13,17 +13,31 @@ def measure(runtime, case, record, study):
     ranked = sorted(case["edits"], key=lambda e: -e["js_bits"])
     lower = next(e for e in ranked[1:] if e["answer"] is not None and e["answer"] != case["baseline"])
     _, _, conditions = prepare(record, case, study)
-    prompts, generated, rows = [], [], []
+    arms = []
     for label, edit in [("original", None), ("top", ranked[0]), ("lower", lower)]:
         key = (f"request-source:passage-{edit['position']}",) if edit else ()
         request, expected = conditions[key]
+        arms.append((label, request, expected, edit["js_bits"] if edit else 0.0))
+    readout = measure_conditions(runtime, arms)
+    positions = (None, ranked[0]["position"], lower["position"])
+    readout["conditions"] = [
+        {"condition": row["condition"], "passage": position, **row}
+        for row, position in zip(readout["conditions"], positions, strict=True)
+    ]
+    return {"row":case["row"], "question_sha256":case["question_sha256"], **readout}
+
+
+def measure_conditions(runtime, arms):
+    """Locate the first differing greedy token using the shared generated prefix."""
+    prompts, generated, rows = [], [], []
+    for label, request, expected, _ in arms:
         prompt, ids, _, _ = runtime.prompt_input(request["messages"], None)
         answer, output = runtime.generate(prompt, ids, request)
         if answer != expected:
-            raise ValueError(f"Row {case['row']} {label} no longer reproduces the saved answer.")
+            raise ValueError(f"The {label} condition no longer reproduces the saved answer.")
         prompts.append(ids)
         generated.append(output)
-        rows.append({"condition":label, "passage":edit["position"] if edit else None,
+        rows.append({"condition":label,
                      "request_sha256":body_digest(request), "answer":answer, "answer_token_ids":output})
 
     original, top, changed = generated
@@ -49,10 +63,10 @@ def measure(runtime, case, record, study):
         row["chosen_token_id"] = leader
         row["probability_original_token"] = score[leaders[0]].exp().item()
         row["probability_lower_token"] = score[leaders[2]].exp().item()
-    for row, edit in zip(rows[1:], (ranked[0], lower), strict=True):
-        if abs(row["first_token_js_bits"] - edit["js_bits"]) > 1e-8:
+    for row, (_, _, _, expected_js) in zip(rows, arms, strict=True):
+        if abs(row["first_token_js_bits"] - expected_js) > 1e-8:
             raise ValueError("The first-token shift differs from the saved ranking.")
-    return {"row":case["row"], "question_sha256":case["question_sha256"], "prefix_ids":prefix,
+    return {"prefix_ids":prefix,
             "prefix":runtime.tokenizer.decode(prefix), "position":offset + 1,
             "original_token":runtime.tokenizer.decode([leaders[0]]), "lower_token":runtime.tokenizer.decode([leaders[2]]),
             "conditions":rows}

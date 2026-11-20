@@ -92,6 +92,7 @@ try {
   }
   await recurrence.getByRole("link", {name:"Only the joint edit changed the proposal"}).click();
   const fourArmReports = page.locator("#content .list a");
+  await fourArmReports.first().waitFor();
   assert.equal(await fourArmReports.count(), 2);
   await fourArmReports.last().click();
   await page.getByText(/Joint interaction: -100 percentage points/).waitFor();
@@ -567,6 +568,33 @@ try {
       await device.getByRole("link",{name:/QA 1000/}).click();
       await device.getByText("The effect of the top edit on the completed proposal is unmeasured.").waitFor();
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+  }
+  if (process.env.OPENING_STUDY_URL) {
+    for (const device of [page, mobile]) {
+      await device.goto(process.env.OPENING_STUDY_URL);
+      await device.getByRole("link", {name:/Review 3 conversations where the top opening token held/}).click();
+      await device.getByRole("heading",{name:"When the opening token held"}).waitFor();
+      assert.match(await device.locator("#summary").innerText(), /5 of 8 scored conversations/);
+      const policy = device.getByRole("row").filter({has:device.getByRole("link",{name:"journal-policy",exact:true})});
+      assert.deepEqual(await policy.getByRole("cell").allTextContents(), ["8","5","2"]);
+      if (device === page && process.env.OPENING_STUDY_SCREENSHOT) {
+        await device.screenshot({path:process.env.OPENING_STUDY_SCREENSHOT});
+      }
+      await policy.getByRole("link").click();
+      await device.getByRole("link",{name:/Using the stated policy/}).click();
+      await device.getByRole("heading",{name:"The choice changed at token 8"}).waitFor();
+      assert.match(await device.locator(".opening-comparison").innerText(), /60 days/);
+      assert.match(await device.locator(".opening-comparison").innerText(), /30 days/);
+      await device.getByRole("rowheader",{name:"Edit journal-policy"}).waitFor();
+      const back = device.getByRole("link",{name:"Back to source edits"});
+      assert.ok(new URL(await back.getAttribute("href"),device.url()).searchParams.get("slot"));
+      const conversation = device.getByRole("link",{name:"See this call in its conversation"});
+      assert.ok(new URL(await conversation.getAttribute("href"),device.url()).searchParams.get("focus_call"));
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true);
+      await back.click();
+      await device.getByRole("heading",{name:"Changes after editing journal-policy"}).waitFor();
+      assert.equal(new URL(device.url()).searchParams.get("org"),"journal-opening-study");
     }
   }
   if (process.env.OPENING_URL) {

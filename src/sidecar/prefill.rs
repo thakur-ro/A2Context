@@ -86,6 +86,9 @@ pub(super) fn observation(
         reference.as_ref(),
         probe.token_contrast.is_some(),
     );
+    let mut opening = ranked[0]["opening_changed"]
+        .is_boolean()
+        .then(|| opening_shadow_checks(ranked, call, shadow));
     for report in replays.iter().filter(|r| {
         r.location.run_id == run.id
             && r.location.call_id == call.id
@@ -93,14 +96,24 @@ pub(super) fn observation(
             && r.rescored_from.is_none()
             && measured["baseline_request_sha256"] == r.baseline_request_sha256
     }) {
-        let [replay::Trial::Completed { choice: original }] = report.baseline.as_slice() else {
-            continue;
-        };
-        for variant in &report.variants {
-            let [replay::Trial::Completed { choice: edited }] = variant.trials.as_slice() else {
-                continue;
-            };
-            if probe.interventions.contains(&variant.intervention) {
+        for variant in report
+            .variants
+            .iter()
+            .filter(|v| probe.interventions.contains(&v.intervention))
+        {
+            if let Some(checks) = opening.as_mut() {
+                let mut check = super::opening::trial(&report.baseline, &variant.trials);
+                check["context_id"] = json!(variant.intervention.context_id);
+                check["report"] = json!(report.id);
+                check["decision"] = json!(report.location.decision_id);
+                check["runner"] = json!(report.runner_id);
+                checks.push(check);
+            }
+            if let (
+                [replay::Trial::Completed { choice: original }],
+                [replay::Trial::Completed { choice: edited }],
+            ) = (report.baseline.as_slice(), variant.trials.as_slice())
+            {
                 let mut check = json!({"context_id":variant.intervention.context_id,"report":report.id,
                     "runner":report.runner_id,"decision":report.location.decision_id,"changed":original!=edited,
                     "original":super::outcomes::preview(original),"edited":super::outcomes::preview(edited)});
@@ -115,6 +128,7 @@ pub(super) fn observation(
             }
         }
     }
+    let opening = opening.map(|checks| super::opening::review(ranked, checks));
     if probe.interventions.len() >= 2 {
         let first = &probe.interventions[0].context_id;
         let top_id = top["context_id"].as_str()?;
@@ -132,6 +146,9 @@ pub(super) fn observation(
             measured["answer_reference"] = json!(probe.answer_reference);
         }
         measured["selector_check"] = comparison;
+    }
+    if let Some(review) = opening {
+        measured["opening"] = review;
     }
     measured["sources"] = json!(sources);
     measured["leader"] = json!(leader);
@@ -247,20 +264,23 @@ pub(super) fn attach_opening_checks(
     }) else {
         return;
     };
+    probe["proposal_checks"] = json!(opening_shadow_checks(rows, call, shadow));
+}
+
+fn opening_shadow_checks(
+    rows: &[Value],
+    call: &Call,
+    shadow: &[replay::shadow::RecordedProbe],
+) -> Vec<Value> {
     let mut checks = Vec::new();
     matching_shadow_arms(shadow, call, rows, |report, effect, id| {
-        let mut check = super::outcomes::compare(&report.baseline, &effect.result.trials)
-            .unwrap_or_else(|| {
-                let complete = report.baseline_summary.completed == report.baseline.len()
-                    && effect.result.summary.completed == effect.result.trials.len();
-                json!({"status":if complete { "varied" } else { "incomplete" }})
-            });
+        let mut check = super::opening::trial(&report.baseline, &effect.result.trials);
         check["context_id"] = json!(id);
         check["runner"] = json!(&report.runner_id);
         check["report"] = json!(&report.id);
         checks.push(check);
     });
-    probe["proposal_checks"] = json!(checks);
+    checks
 }
 
 fn proposal_checks(

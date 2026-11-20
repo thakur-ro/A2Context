@@ -3,6 +3,7 @@ mod conflict;
 mod conversation;
 mod findings;
 mod history;
+mod opening;
 mod order;
 mod outcomes;
 mod position_plan;
@@ -340,6 +341,9 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/target-patterns"
                 | "/api/sidecar/target-examples"
                 | "/api/sidecar/ranking-results"
+                | "/api/sidecar/opening-coverage"
+                | "/api/sidecar/opening-sources"
+                | "/api/sidecar/opening-conversations"
                 | "/api/sidecar/ranking-review"
                 | "/api/sidecar/ranking-reference"
                 | "/api/sidecar/ranking-examples"

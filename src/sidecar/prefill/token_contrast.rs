@@ -69,17 +69,23 @@ pub(super) fn checked(
     };
     let top = index("top_check")?;
     let lower = index("lower_check")?;
-    let request = |check: &Value| {
+    let ranked_edit = |check: &Value| {
         measured["ranked"]
             .as_array()?
             .iter()
-            .find(|row| row["context_id"] == check["context_id"])?["request_sha256"]
-            .as_str()
+            .find(|row| row["context_id"] == check["context_id"])
     };
+    let top_edit = ranked_edit(top).ok_or("Missing higher-ranked source edit.")?;
+    let lower_edit = ranked_edit(lower).ok_or("Missing lower-ranked source edit.")?;
     let requests = [
         measured["baseline_request_sha256"].as_str(),
-        request(top),
-        request(lower),
+        top_edit["request_sha256"].as_str(),
+        lower_edit["request_sha256"].as_str(),
+    ];
+    let openings = [
+        &measured["top_token_id"],
+        &top_edit["top_token_id"],
+        &lower_edit["top_token_id"],
     ];
     let answers = [
         &top["answer_digests"][0],
@@ -96,6 +102,13 @@ pub(super) fn checked(
             return Err(
                 "The token contrast does not reproduce these exact requests and text outputs.",
             );
+        }
+        let first = c.output_ids.first().copied().unwrap_or(c.chosen);
+        if openings[i]
+            .as_u64()
+            .is_some_and(|id| id != u64::from(first))
+        {
+            return Err("The greedy rerun disagrees with the recorded opening token.");
         }
         let next = c.output_ids.get(readout.prefix_ids.len());
         if c.output_ids.len() > 4096
@@ -146,6 +159,12 @@ mod tests {
                           condition("lower","17",vec![1,7],9,[0.1,0.8])]});
         let check = |v: &Value| checked(v, &measured, &review, &checks);
         assert_eq!(check(&valid).unwrap()["position"], 3);
+        let mut mismatch = measured.clone();
+        mismatch["ranked"][1]["top_token_id"] = json!(7);
+        assert_eq!(
+            checked(&valid, &mismatch, &review, &checks).unwrap_err(),
+            "The greedy rerun disagrees with the recorded opening token."
+        );
         for (pointer, value) in [
             ("/runtime", json!("other")),
             ("/prefix_ids/1", json!(8)),

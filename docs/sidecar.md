@@ -228,6 +228,25 @@ In **Before inference**, the table shows which edits changed the most likely ope
 
 Other model adapters can implement the same batch interface. On stdin, version 1 supplies `baseline`, its `baseline_request_sha256`, and 1–32 single `edits` with exact request bodies, source IDs, versions and digests. The adapter returns version 1, model ID and revision, runtime, tokenizer hash, baseline digest and one effect per edit in input order. Each effect echoes the context ID, source ID, version and request digest, and adds `js_bits` in [0, 1]. Declare byte ranges when equal text occurs in multiple fields. Full-vocabulary access is required by this metric. [Reference adapter](../scripts/score_qwen_prefill.py) · [Algorithm and interpretation](methods.md#which-source-would-you-test-without-candidate-answers)
 
+### Find answers that changed after the same opening
+
+Open **Recommendations** and select **Review 3 conversations where the top opening token held and the proposal changed**. Choose `journal-policy`, then the sentence-completion question. The original and edited answers agree for seven tokens. At token eight the policy edit changes the first digit of the return window. **See this call in its conversation** brings up the surrounding dialogue.
+
+![Eight scored conversations, five with completed comparisons and three changed proposals, grouped by the source edited](media/held-opening-conversations.png)
+
+Load the saved study into a sidecar running with `--capture-content`. Run the sender from the checkout using Python 3.11 or later. It makes zero model calls.
+
+```sh
+cargo build --locked
+target/debug/nexusweave sidecar --db /tmp/journal-study.sqlite --capture-content
+# In a second terminal
+python3 examples/view_opening_study.py --url http://127.0.0.1:8040
+```
+
+The overview counts identified conversations with compatible request settings, versioned edits, model, runtime and tokenizer. **Opening held** counts conversations where the same vocabulary token scored highest before and after that source edit. **Proposal tested** requires a completed original and edited comparison with consistent outcomes within each arm. **Proposal changed** requires at least one such comparison with different outcomes. Several sources can contribute to one conversation. The evidence page identifies the proposal runner for each comparison. These totals describe the supplied experiments, including the three questions with scores only. [Measurement and reproduction](methods.md#where-did-the-answers-first-diverge)
+
+Use `impact.opening_gap` for the featured group and factor. Pass both values to `opening-coverage`, `opening-sources` or `opening-conversations` under `/api/sidecar/`. Pass a source row’s `slot` to limit the conversations to that edit. The routes use the dashboard’s scope filters and pagination.
+
 ### Follow a first-token test across conversations
 
 From **Answers or tool calls compared**, choose **Compare ranked edits across calls**. For each eligible call, the sidecar compares the edit with the largest first-token Jensen–Shannon divergence with the first edit listed by the producer. This inexpensive baseline uses declaration order. It corresponds to prompt order only when the producer lists edits that way. Ties use declaration order too.
@@ -260,7 +279,7 @@ Choose **Which changes would a top-edit test miss?** in the ranking view. A call
 
 **Optional token probabilities.** A producer with access to the decoder can attach `token_contrast` to the captured prefill probe. The readout reports an independent greedy rerun at the first differing output token. Version 1 carries the model ID, revision, runtime and tokenizer digest used by the prefill adapter, the shared prefix text and IDs, the stop-token IDs, and two candidate tokens with IDs and decoded text. The three conditions are ordered original, top edit, lower-ranked edit. Each supplies the request digest, SHA-256 of the full UTF-8 answer, generated IDs excluding the stop token, the chosen ID and both candidates’ full-vocabulary probabilities. [Producer serialization](../examples/public-qa/view_passage_edits.py) · [Readout validation](../src/sidecar/prefill/token_contrast.rs)
 
-The sidecar binds the readout to the replayed text and requests, checks the common prefix and the two different token IDs, and verifies probability bounds and their ordering. It accepts up to 4,096 generated IDs per condition. The adapter supplies the tokenizer decoding, greedy choices and scores. An invalid readout leaves the verified source comparison available. The dashboard shows the stopping token explicitly when a generation ends at the shared prefix. [Reproduce the model measurements](../examples/public-qa/inspect_rank_misses.py)
+When the producer also supplied opening-token IDs, the first generated token must agree with the corresponding opening ID for all three requests. The sidecar binds the readout to the replayed text and requests, checks the common prefix and the two different token IDs, and verifies probability bounds and their ordering. It accepts up to 4,096 generated IDs per condition. The adapter supplies the tokenizer decoding, greedy choices and scores. An invalid readout leaves the verified source comparison available. The dashboard shows the stopping token explicitly when a generation ends at the shared prefix. [Reproduce the model measurements](../examples/public-qa/inspect_rank_misses.py)
 
 ### Check whether an edit preserves a reference answer
 

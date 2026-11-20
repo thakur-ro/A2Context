@@ -244,10 +244,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 25 {
+        if version == 26 {
             return Ok(());
         }
-        if !(0..25).contains(&version) {
+        if !(0..26).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -260,8 +260,10 @@ impl Store {
                 "SELECT t.id, EXISTS (
                 SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='prefill'
             ) AS has_ranking, EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='conflict')
-               AND EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='replay') AS has_conflict_trials
-            FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR has_conflict_trials)
+               AND EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='replay') AS has_conflict_trials,
+                EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='prefill'
+                    AND json_type(o.detail,'$.ranked[0].opening_changed') IN ('true','false')) AS has_opening
+            FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR (?2<25 AND has_conflict_trials) OR has_opening)
             ORDER BY t.id LIMIT 16",
             )?;
             let ids = stmt
@@ -270,12 +272,13 @@ impl Store {
                         r.get::<_, String>(0)?,
                         r.get::<_, bool>(1)?,
                         r.get::<_, bool>(2)?,
+                        r.get::<_, bool>(3)?,
                     ))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
             drop(stmt);
             let Some(last) = ids.last() else { break };
-            for (id, has_ranking, has_conflict_trials) in &ids {
+            for (id, has_ranking, has_conflict_trials, has_opening) in &ids {
                 let run = load_run(&tx, id)?;
                 if let Some(run) = run {
                     if version < 20 {
@@ -283,7 +286,7 @@ impl Store {
                     } else if version < 23 {
                         super::conversation::index(&tx, &run)?;
                     }
-                    if (version < 22 && *has_ranking) || *has_conflict_trials {
+                    if (version < 22 && *has_ranking) || *has_conflict_trials || *has_opening {
                         refresh_findings(&tx, &run)?;
                     }
                 }
@@ -291,7 +294,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 25)?;
+        self.0.pragma_update(None, "user_version", 26)?;
         Ok(())
     }
 
@@ -651,6 +654,9 @@ impl Store {
                 | "factors"
                 | "impact"
                 | "conversations-without-findings"
+                | "opening-coverage"
+                | "opening-sources"
+                | "opening-conversations"
                 | "conflict-examples"
                 | "conflict-conversations"
                 | "conflict-coverage"
@@ -722,6 +728,12 @@ impl Store {
             "conflict-coverage" | "conflict-conversations" | "impact"
         ) {
             sql.push_str(super::conflict::COVERAGE);
+        }
+        if matches!(
+            view,
+            "impact" | "opening-coverage" | "opening-sources" | "opening-conversations"
+        ) {
+            sql.push_str(super::opening::CALLS);
         }
         if matches!(view, "impact" | "conflict-examples") {
             sql.push_str(super::conflict::PATTERNS);
@@ -924,6 +936,27 @@ impl Store {
                     FROM page p JOIN observations o ON o.trace_id=p.trace_id AND o.n=p.n
                     JOIN traces t ON t.id=p.trace_id ORDER BY p.level,p.observed DESC,p.thread_key");
             }
+            "opening-coverage" | "opening-sources" | "opening-conversations" => {
+                for key in ["group", "factor"] {
+                    if super::required(filters,key)?.is_empty() {return Err(format!("missing {key}").into());}
+                }
+                if view == "opening-coverage" {
+                    sql.push_str(super::opening::SUMMARY);
+                    sql.push_str(" LIMIT ? OFFSET ?");
+                } else {
+                    sql.push_str(super::opening::ARMS);
+                    if view == "opening-sources" {
+                        sql.push_str(super::opening::SOURCES);
+                    } else {
+                        sql.push_str(super::opening::EXAMPLES);
+                        if let Some(slot) = filters.get("slot") {
+                            sql.push_str(" AND slot=?");
+                            args.push(slot.clone());
+                        }
+                        sql.push_str(super::opening::PAGE);
+                    }
+                }
+            }
             "conflict-examples" => {
                 for key in ["group", "factor", "design"] {
                     if super::required(filters,key)?.is_empty() { return Err(format!("missing {key}").into()); }
@@ -951,7 +984,10 @@ impl Store {
                 'forward',json(forward),'reverse',json(reverse)) FROM pairs
                 ORDER BY differs DESC,factor,design LIMIT ? OFFSET ?"),
             "impact" => {
-                sql.push_str(" SELECT json_object('conflict_pattern',json((");
+                sql.push_str(" SELECT json_object('opening_gap',json((");
+                sql.push_str(super::opening::SUMMARY);
+                sql.push_str(" WHERE affected>0 ORDER BY affected DESC,inputs DESC,latest DESC,group_id,factor LIMIT 1)),
+                    'conflict_pattern',json((");
                 sql.push_str(super::conflict::TOP_PATTERN);
                 sql.push_str(")),'conflict_gap',json((");
                 sql.push_str(super::conflict::SUMMARY);

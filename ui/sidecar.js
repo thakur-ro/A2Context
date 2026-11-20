@@ -10,6 +10,8 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
+const openingStudy = query.get("opening") === "1";
+const openingSlot = query.get("slot");
 const conflictDesign = query.get("conflict_design");
 const conflictCoverage = query.get("conflict_coverage");
 const comparisonResult = query.get("proposal_result");
@@ -305,6 +307,8 @@ function proposalCoverage(impact, factor) {
       element("dt", {}, counts[result] ? link(label, url({proposal_result:result, coverage_factor:factor})) : label),
       element("dd", {text:counts[result]})))),
     !factor && impact.ranked_calls ? link("Compare ranked edits across " + plural(impact.ranked_calls,"call"),url({ranking:"all"})) : null,
+    impact.opening_gap && (factor || impact.ranked_reference_losses) ? link("Compare answers that changed after the same opening",
+      url({opening:1, recommendation:impact.opening_gap.group, factor:impact.opening_gap.factor})) : null,
     replayCoverage(impact));
 }
 
@@ -1117,6 +1121,27 @@ function findingReview(card, occurrences) {
   byId("title").textContent = detail.joint_pattern ? "Two-source replay" : "Recommendation";
   byId("summary").textContent = detail.joint_pattern ? [card.evidence.thread, detail.model,
     plural(detail.measurement.baseline.attempted, "trial") + " per condition"].filter(Boolean).join(" · ") : card.action.basis;
+  if (card.kind === "prefill" && openingStudy && detail.opening && traceId) {
+    const context = query.get("opening_context");
+    const ranked = detail.ranked.filter(r => !context || r.context_id === context);
+    const checks = detail.opening.checks.filter(c => !context || c.context_id === context);
+    byId("title").textContent = card.evidence.thread || "Source edit comparison";
+    byId("summary").textContent = detail.model_id + " · " + detail.runtime;
+    const back = link("Back to source edits",url({...openingSelection(),offset:query.get("from_offset")}));
+    if (!ranked.length) return panel("This source is unavailable",back);
+    const comparison = openingComparison({...detail,ranked,proposal_checks:checks},null);
+    const proposals = comparison.querySelector("section[data-proposal-check]")?.closest("details");
+    if (proposals) proposals.open = true;
+    const audit = detail.selector_check;
+    const witness = audit?.rank_review?.witness;
+    const lower = witness && detail.proposal_checks[witness.lower_check];
+    const matchingReadout = audit?.token_contrast && lower && (!context || lower.context_id === context);
+    const editName = check => sourceName(detail.ranked.find(r => r.context_id === check.context_id));
+    return element("div",{className:"feed"},back,comparison,
+      matchingReadout && element("section",{className:"panel target-check"},tokenContrast(audit.token_contrast,
+        ["Original","Edit " + editName(detail.proposal_checks[witness.top_check]),"Edit " + editName(lower)])),
+      audit?.token_contrast_issue && element("p",{className:"label",text:audit.token_contrast_issue}));
+  }
   if (card.kind === "prefill") {
     const titles = { tools:"Tool definitions changed the edit’s effect", instruction:"The instruction changed the edit’s effect",
       combined:"The edit depended on the routing setup", constant:"The edit’s effect held across setups", incomplete:"Some routing trials are missing" };
@@ -1288,6 +1313,48 @@ function routingComparison(probe) {
     element("p", {className:"label", text:"One proposal per condition · " + test.runner}));
 }
 
+function openingSelection() {
+  return {opening:1, recommendation:recommendationId, factor:factorId, slot:openingSlot};
+}
+
+async function openingCoverageView() {
+  const filters = {...scope, group:recommendationId, factor:factorId};
+  const selection = openingSelection();
+  const [summary, sources, examples] = await Promise.all([api("opening-coverage",filters), api("opening-sources",filters),
+    api("opening-conversations",{...filters,...(openingSlot && {slot:openingSlot}),offset:pageOffset})]);
+  const group = summary.rows[0];
+  byId("title").textContent = "When the opening token held";
+  pagination(examples.next_offset,selection);
+  if (!group) return panel("No scored conversations in this scope");
+  byId("summary").textContent = plural(group.affected,"conversation") + " had a changed proposal. " +
+    group.tested + " of " + plural(group.scored,"scored conversation") + " had a completed comparison for an edit that kept the same token on top.";
+  const arms = [...sources.rows];
+  let next = sources.next_offset;
+  while (next != null) {
+    const page = await api("opening-sources",{...filters,offset:next});
+    arms.push(...page.rows);
+    next = page.next_offset;
+  }
+  const selected = arms.find(a => a.slot === openingSlot);
+  const name = arm => arm.source || arm.pointer;
+  return element("div",{className:"feed"},link("Back to recommendations",url({})),
+    element("section",{className:"panel replacement"},element("h2",{text:"Which source edits changed a proposal?"}),
+      comparisonTable(["Source edited","Opening held","Proposal tested","Proposal changed"],arms.map(arm => {
+        const duplicate = arms.some(a => a.slot !== arm.slot && name(a) === name(arm));
+        const location = duplicate ? " · " + arm.pointer + (arm.text_range ? " · byte " + arm.text_range.start_byte : "") : "";
+        return element("tr",{},element("th",{scope:"row"},arm.affected ? link(name(arm) + location,
+          url({...selection,slot:arm.slot}),null,arm.slot===openingSlot) : name(arm) + location),
+          element("td",{text:arm.scored}),element("td",{text:arm.tested}),element("td",{},String(arm.affected),
+            arm.tested > 0 && element("meter",{min:0,max:arm.tested,value:arm.affected,"aria-label":name(arm) + " changed among tested conversations"})));
+      })),
+      element("p",{className:"row-extra",text:"Each column counts conversations. The same conversation can appear under two sources. A change needs at least one completed original and edited proposal comparison."})),
+    panel(selected ? "Changes after editing " + name(selected) : "Conversations with a changed proposal",
+      openingSlot && link("Show all sources",url({...selection,slot:null})),
+      examples.rows.length ? listing(examples.rows,row => rowLink(row.question || row.thread,
+        [row.thread,row.source].filter(Boolean).join(" · "),url({...selection,trace:row.trace,call:row.call,opening_context:row.context,
+          from_offset:pageOffset || null}))) : element("p",{text:"No changed proposals for this selection."})));
+}
+
 function openingComparison(probe, question) {
   const checks = probe.proposal_checks || [];
   const flips = probe.ranked.filter(edit => edit.opening_changed);
@@ -1390,11 +1457,11 @@ const reviewLabels = {
   tied:"Several edits tied for the largest shift"
 };
 
-function tokenContrast(readout) {
+function tokenContrast(readout, conditions = ["Original","Top edit","Lower-ranked edit"]) {
   const names = readout.tokens.map((token,i) => readout.stop[i] ? "End of answer" : JSON.stringify(token));
   const percent = new Intl.NumberFormat(undefined,{style:"percent",maximumFractionDigits:1});
   const rows = readout.probabilities.map((pair,i) => element("tr",{},
-    element("th",{scope:"row",text:["Original","Top edit","Lower-ranked edit"][i]}),
+    element("th",{scope:"row",text:conditions[i]}),
     ...pair.map((value,j) => element("td",{}, element("meter",{min:0,max:1,value,"aria-label":names[j]+" probability"}),
       element("small",{text:percent.format(value)+(j===(i===2?1:0) ? " · chosen" : "")})))));
   const prefix = readout.position === 1 ? "The first output token differed." :
@@ -1873,7 +1940,9 @@ async function render(refresh = false) {
   } else if (view === "threads" && threadId) {
     body = await conversationView();
   } else if (view === "findings") {
-    if (conflictDesign && recommendationId && factorId) {
+    if (openingStudy && recommendationId && factorId && !traceId) {
+      body = await openingCoverageView();
+    } else if (conflictDesign && recommendationId && factorId) {
       body = await conflictExamplesView();
     } else if (conflictCoverage && recommendationId && factorId) {
       body = await conflictCoverageView();
@@ -2030,16 +2099,21 @@ async function render(refresh = false) {
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
       const losses = !pageOffset && impact.ranked_reference_losses;
+      const opening = !pageOffset && impact.opening_gap;
       const lower = !pageOffset && impact.lower_edit_changes;
       const pattern = !pageOffset && impact.conflict_pattern;
       const gap = !pageOffset && impact.conflict_gap;
-      const featured = !losses && !lower && !pattern && !gap && !pageOffset && factors.rows[0];
+      const featured = !losses && !opening && !lower && !pattern && !gap && !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
       body = element("div", {className:"overview"}, impactPanel(impact),
         losses ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}),
           element("a", {className:"featured", href:url({ranking:"all",quality:"ranked_lost"})}, element("div", {},
             element("h3", {text:"Inspect " + plural(losses,"call") + " where the ranked edit lost a reference match"}),
             element("p", {text:"Compare each original answer with the answer after the source edit."})))) :
+        opening ? element("section",{className:"investigation"},element("h2",{text:"Recommended investigation"}),
+          element("a",{className:"featured",href:url({opening:1,recommendation:opening.group,factor:opening.factor})},element("div",{},
+            element("h3",{text:"Review " + plural(opening.affected,"conversation") + " where the top opening token held and the proposal changed"}),
+            element("p",{text:opening.tested + " of " + plural(opening.scored,"scored conversation") + " had a completed proposal comparison for an edit that kept the opening token on top."})))) :
         lower ? element("section", {className:"investigation"}, element("h2",{text:"Recommended investigation"}),
           element("a",{className:"featured",href:url({ranking:"all",review:"lower_changed"})},element("div",{},
             element("h3",{text:"Inspect " + plural(lower,"call") + " where a lower-ranked edit changed the proposal"}),
@@ -2123,7 +2197,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      ranking, quality, review, conflict_design:conflictDesign, conflict_coverage:conflictCoverage,from_coverage:query.get("from_coverage"),pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
+      opening:openingStudy ? 1 : null,slot:openingSlot,opening_context:query.get("opening_context"),ranking, quality, review, conflict_design:conflictDesign, conflict_coverage:conflictCoverage,from_coverage:query.get("from_coverage"),pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
