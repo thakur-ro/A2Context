@@ -177,6 +177,7 @@ pub fn derive(
         .iter()
         .map(|report| ((&report.location, report.id.as_str()), report))
         .collect();
+    let mut layouts = BTreeMap::new();
     for group in replay_effects::group(&[run], reports)? {
         for item in &group.occurrences {
             let Some(effect) = item.difference_pp else {
@@ -225,6 +226,19 @@ pub fn derive(
             if edit == "joint" {
                 if let Some(trial) = super::order::trial(call, report) {
                     detail["order_test"] = trial;
+                }
+            }
+            if edit == "individual" && run.organization_id.is_some() {
+                let layout = layouts
+                    .entry(call.id.as_str())
+                    .or_insert_with(|| super::history::Layout::new(call));
+                if let replay_effects::OccurrenceTarget::Single { context_id } = &item.target {
+                    if let Some(prior) = layout
+                        .as_ref()
+                        .and_then(|l| l.observation(run, report, context_id))
+                    {
+                        detail["prior"] = prior;
+                    }
                 }
             }
             findings.push(occurrence(

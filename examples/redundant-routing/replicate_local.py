@@ -34,11 +34,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("model", type=Path)
     parser.add_argument("--revision", required=True)
+    parser.add_argument("--holdout", action="store_true", help="Run the separate prospective check on four new parcel codes.")
     args = parser.parse_args()
     runtime = load_runtime(args.model)
     cases = []
     with runtime.torch.inference_mode():
-        for parcel, bay in [("Cedar", "IBIS"), ("Birch", "WREN")]:
+        parcels = [("Maple", "TERN"), ("Ash", "KITE"), ("Elm", "LARK"), ("Pine", "DOVE")] if args.holdout else [("Cedar", "IBIS"), ("Birch", "WREN")]
+        for parcel, bay in parcels:
             for order in [RECORDS, RECORDS[::-1]]:
                 baseline = answer(runtime, parcel, bay, order)
                 conditions = []

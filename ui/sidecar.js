@@ -450,6 +450,34 @@ function review(card, occurrences) {
         link("Open span " + row.call, url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))))));
 }
 
+function priorEdits(history) {
+  if (history?.status !== "checked") return null;
+  const [top] = history.edits;
+  const limit = history.truncated ? " The lookup used the latest 512 matching observations." : "";
+  if (!top) return element("p", { className: "label", text: "No comparable source edit on two distinct earlier inputs in this scope." + limit });
+  function trial(edit) {
+    const e = edit.example;
+    const measurement = { location: { decision_id: e.decision }, replay_id: e.report, context_id: e.context };
+    return advancedHref({ id: e.trace }, { id: e.call }, { detail: { measurement } });
+  }
+  const e = top.example;
+  const rows = history.edits.map(edit => element("tr", {},
+    element("th", { scope: "row" }, link(edit.example.source, trial(edit))),
+    element("td", { text: edit.example.replacement || "(Removed text)" }),
+    element("td", { text: edit.lower }), element("td", { text: edit.equal }), element("td", { text: edit.mixed })));
+  return element("section", { className: "panel replacement prior-edits" },
+    element("span", { className: "label", text: "Evidence from earlier requests" }),
+    element("h2", { text: top.lower ? "Test " + e.source + " on this request" : "Review earlier source edits" }),
+    element("p", { text: "Replacing " + e.source + " with " + JSON.stringify(e.replacement) +
+      " reduced the match rate on " + top.lower + " of " + plural(top.requests, "distinct earlier input") + "." }),
+    element("p", { text: "These requests shared the model, request settings, source versions and positions. The result for this input is unmeasured." + limit }),
+    link("Inspect an earlier replay", trial(top), "action"),
+    element("details", {}, element("summary", { text: "Compare tested edits" }),
+      element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Replacement", "Lower", "Equal", "Mixed"].map(text => element("th", { scope: "col", text })))),
+        element("tbody", {}, ...rows)),
+      element("p", { className: "label", text: "Each count is a distinct earlier input. Mixed means repeat tests on that input disagreed about whether the match rate fell." })));
+}
+
 function pendingPreview() {
   const output = element("section", { className: "feed", "aria-live": "polite" });
   const input = element("input", { type: "file", accept: "application/json,.json" });
@@ -457,13 +485,16 @@ function pendingPreview() {
     output.textContent = "Checking the request…";
     try {
       const report = await load();
-      output.replaceChildren(
+      const cards = report.recommendations.map(({ kind, detail, action }) => recommendationDetail(kind, detail, action));
+      const measured = report.recommendations.filter(r => r.kind === "candidate" || r.kind === "shadow").length;
+      cards.splice(measured, 0, priorEdits(report.history));
+      output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
-          " · " + plural(report.total, "recommendation") }),
+          " · " + plural(report.total, "current-request finding") }),
         ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
-        ...report.recommendations.map(({ kind, detail, action }) => recommendationDetail(kind, detail, action)),
+        ...cards,
         report.total ? element("p", { className: "label", text: report.total > 15 ? "Showing the first 15 recommendations." : "" }) :
-          element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }));
+          element("p", { className: "empty", text: "No supported issues or measured shifts in this request." })].filter(Boolean));
     } catch (error) {
       output.textContent = error.message;
     }
@@ -486,9 +517,11 @@ function pendingPreview() {
   policy.addEventListener("click", () => show(() => api("preview-example", { scenario: "policy" })));
   const routing = element("button", { type: "button", text: "Try a measured tool choice" });
   routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" })));
+  const history = element("button", { type: "button", text: "Check a new request against earlier edits" });
+  history.addEventListener("click", () => show(() => api("preview-example", { scenario: "history" })));
   return element("div", { className: "feed" }, panel("Review an assembled request",
     element("label", { text: "Load a preflight request or a request bundled with probe results" }, input),
-    element("div", { className: "actions" }, policy, routing)), output);
+    element("div", { className: "actions" }, history, routing, policy)), output);
 }
 
 function traceDetail({ trace, findings, activation_reports }) {

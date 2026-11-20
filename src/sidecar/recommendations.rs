@@ -56,8 +56,18 @@ pub fn action(kind: &str, detail: &Value) -> Action {
     Action { title, next, basis }
 }
 
-pub fn preview(input: pending::Request) -> Result<Value, String> {
-    let (call, scope) = pending::recommendation_input(input)?;
+pub fn preview(
+    store: &super::store::Store,
+    input: pending::Request,
+) -> Result<Value, (u16, String)> {
+    let history_scope = super::history::Scope::read(&input.request.attributes);
+    let (call, scope) = pending::recommendation_input(input).map_err(|message| (400, message))?;
+    let history = match history_scope {
+        Ok(history_scope) => history_scope
+            .lookup(store, &call)
+            .map_err(|e| (503, e.to_string()))?,
+        Err(status) => json!({"status":status,"edits":[]}),
+    };
     let run = Run {
         schema_version: nexusweave::SCHEMA_VERSION,
         id: "pending".into(),
@@ -69,7 +79,7 @@ pub fn preview(input: pending::Request) -> Result<Value, String> {
         spans: vec![],
     };
     let call = &run.calls[0];
-    let mut observations = findings::derive(&run, &[], &[])?;
+    let mut observations = findings::derive(&run, &[], &[]).map_err(|message| (400, message))?;
     observations.retain(|item| {
         item.kind != "conflict"
             || scope.as_ref().is_none_or(|scope| {
@@ -110,7 +120,7 @@ pub fn preview(input: pending::Request) -> Result<Value, String> {
         .collect::<Vec<_>>();
     Ok(json!({
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
-        "total": total, "recommendations": items, "unverified_probes": unverified,
+        "total": total, "recommendations": items, "unverified_probes": unverified, "history":history,
     }))
 }
 

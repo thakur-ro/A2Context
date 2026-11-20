@@ -300,6 +300,35 @@ def check_order_tests(base):
     assert all(pair["total"] == 4 and pair["differing"] == 2 for pair in pairs)
     assert not get(base, "order-tests", org="order-check", user="routing-note")["rows"]
     assert get(base, "factors", org="order-check")["rows"][0]["signal"] == "order"
+    pending = json.loads((ROOT / "examples/redundant-routing/pending-maple.json").read_text())
+    attributes = pending["attributes"]
+    attributes.pop("nexusweave.history.source")
+    attributes.update({"nexusweave.organization.id": "order-check", "nexusweave.user.id": "dispatch-guide"})
+    def prior(request):
+        return send(base, "/api/sidecar/preview", {"request": request})[1]["history"]["edits"]
+    coverage = get(base, "health")["coverage"]
+    top = prior(pending)[0]
+    assert (top["example"]["source"], top["requests"], top["lower"], top["mixed"]) == ("routing-note", 2, 2, 0)
+    for key in ["nexusweave.organization.id", "nexusweave.user.id", "nexusweave.history.source", "gen_ai.request.model"]:
+        other = deepcopy(pending)
+        other["attributes"][key] = "different"
+        assert prior(other) == []
+    repeated = deepcopy(pending)
+    repeated["attributes"]["nexusweave.request.body"] = fixture["runs"][0]["calls"][0]["recorded_request"]["body"]
+    assert not prior(repeated), "An identical prior input must not count toward transfer."
+    for change in ["version", "system", "temperature"]:
+        other = deepcopy(pending)
+        fields = other["attributes"]
+        body = json.loads(fields["nexusweave.request.body"])
+        if change == "version":
+            fields["nexusweave.context.semantics"]["request_sources"][0]["source_version"] = "v2"
+        elif change == "system":
+            body["messages"][0]["content"] += " Changed instructions."
+        else:
+            body["temperature"] = 0.9
+        fields["nexusweave.request.body"] = json.dumps(body)
+        assert prior(other) == []
+    assert get(base, "health")["coverage"] == coverage
     # An inconsistent repeat in one orientation retires only that matched comparison.
     repeat = deepcopy(reports[0])
     repeat["id"] += "-repeat"
@@ -308,6 +337,9 @@ def check_order_tests(base):
     repeat["pair"]["interaction_pp"] = -100
     send(base, "/api/replay-reports", repeat, expected=201)
     assert len(get(base, "order-tests", org="order-check")["rows"]) == 3
+    revised = next(edit for edit in prior(pending) if edit["example"]["source"] == "routing-note"
+                   and edit["example"]["replacement"] == top["example"]["replacement"])
+    assert revised["requests"] == 2 and revised["mixed"] == revised["lower"] == 1
 
 
 def check_predecision_recommendations(base):
@@ -564,6 +596,25 @@ def main():
             sql.execute("UPDATE observations SET detail=json_remove(detail,'$.order_test') WHERE kind='replay'")
         with server(args.binary, representative, "--capture-content") as base:
             assert get(base, "order-tests", org="order-check") == pairs
+        with sqlite3.connect(representative) as sql:
+            sql.execute("PRAGMA user_version = 4")
+            sql.execute("UPDATE observations SET detail=json_remove(detail,'$.prior') WHERE kind='replay'")
+        lookup = json.loads((ROOT / "examples/redundant-routing/pending-maple.json").read_text())
+        lookup["attributes"].update({"nexusweave.organization.id": "order-check", "nexusweave.user.id": "dispatch-guide",
+                                     "nexusweave.history.source": "otlp"})
+        with server(args.binary, representative, "--capture-content") as base:
+            rebuilt = send(base, "/api/sidecar/preview", {"request": lookup})[1]["history"]
+            assert rebuilt["edits"] and not rebuilt["truncated"], rebuilt
+        with sqlite3.connect(representative) as sql:
+            # Fill the most recent window with repeats of a single measured input.
+            row = sql.execute("""SELECT o.trace_id,o.call_id,o.kind,o.group_id,o.detail FROM observations o
+                JOIN traces t ON t.id=o.trace_id WHERE t.org='order-check' AND t.user='dispatch-guide'
+                AND json_extract(o.detail,'$.prior.partition') IS NOT NULL LIMIT 1""").fetchone()
+            sql.executemany("INSERT INTO observations VALUES (?,?,?,?,?,?,?)",
+                            [(row[0], n, *row[1:4], 2147483647, row[4]) for n in range(10000,10513)])
+        with server(args.binary, representative, "--capture-content") as base:
+            bounded = send(base, "/api/sidecar/preview", {"request": lookup})[1]["history"]
+            assert bounded["truncated"] and not bounded["edits"], bounded
         if args.sdk_python:
             # Repeat the live card, recurrence, and replay journeys using the
             # SDK's actual encoder, processor, and exporter.

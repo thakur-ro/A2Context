@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "attributes": {
+    "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "nexusweave.organization.id": "dispatch-lab",
+    "nexusweave.history.source": "synthetic-qwen-order",
+    "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Dispatch guide: Route Maple parcels to bay TERN.\"},{\"role\":\"user\",\"content\":\"Routing note: Route Maple parcels to bay TERN.\"},{\"role\":\"user\",\"content\":\"Where should a Maple parcel go?\"}],\"temperature\":0,\"max_tokens\":16}",
+    "nexusweave.context.semantics": {
+      "version": 1,
+      "request_sources": [
+        {
+          "id": "dispatch-guide",
+          "source_id": "dispatch-guide",
+          "source_version": "1",
+          "role": "user",
+          "request_fragment": {
+            "pointer": "/messages/1/content",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            }
+          }
+        },
+        {
+          "id": "routing-note",
+          "source_id": "routing-note",
+          "source_version": "1",
+          "role": "user",
+          "request_fragment": {
+            "pointer": "/messages/2/content",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            }
+          }
+        }
+      ]
+    }
+  }
+}

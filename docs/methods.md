@@ -86,6 +86,26 @@ python3 examples/redundant-routing/package_order_replays.py target/debug/nexuswe
   examples/redundant-routing/local-order-results.json /tmp/order-replays.json
 ```
 
+### Can an earlier replay identify what to test on the next request?
+
+**Before inference** looks for single-source edits already tested on the same request layout, model and settings. It keeps the order and versions of the sources fixed. It can match new text inside named source fragments and a new final user question. It counts distinct earlier request bodies for each edit, runner and scoring rule. A receipt for the current body contributes zero to those counts. The [sidecar guide](sidecar.md#preview-an-assembled-request) describes the lookup and its limits.
+
+We held out Maple, Ash, Elm and Pine in both message orders. For each of the eight requests we sent only its inputs to the demo sidecar. Its history contained Cedar and Birch. In every case the first suggested test was the availability replacement on the later source, which had reduced the exact-match rate on both earlier inputs in that order. We checked the suggestion against greedy Qwen generations on the eight held-out requests, with one baseline and six edited conditions per request.
+
+| Held-out observation | Count |
+| --- | ---: |
+| Editing the recommended source changed the generated text from baseline | 4 / 8 |
+| Editing the other source with the same replacement changed the text | 3 / 8 |
+| The unedited answer matched the expected bay code | 5 / 8 |
+
+In the Ash request with the routing note first, the model initially answered `UNKNOWN`. Editing the earlier note recovered the correct bay, `KITE`. The recommended edit left the answer unchanged. All eight requests share one model and prompt template. The observed counts support presenting a next experiment with its historical evidence. They provide little evidence of a predictive advantage and supply no calibrated probability for the pending request. [All held-out generations](../examples/redundant-routing/heldout-order-results.json)
+
+With the saved demo running, reproduce the comparison without a model call. To regenerate the 56 held-out outputs on the pinned local model, add `--holdout` to the replication command above.
+
+```sh
+python3 examples/redundant-routing/check_prior_edits.py --url http://127.0.0.1:8040
+```
+
 ## Reproduction
 
 - Run the saved demo and follow the three [README journeys](../README.md#try-the-demo).

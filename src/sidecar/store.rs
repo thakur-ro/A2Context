@@ -43,6 +43,8 @@ impl Store {
              );
              CREATE INDEX IF NOT EXISTS observations_type ON observations(kind,group_id,observed);
              CREATE INDEX IF NOT EXISTS observations_factor ON observations(json_extract(detail,'$.factor'),observed);
+             CREATE INDEX IF NOT EXISTS observations_prior ON observations(json_extract(detail,'$.prior.partition'),
+                observed DESC,trace_id,n) WHERE json_extract(detail,'$.prior.partition') IS NOT NULL;
              CREATE TABLE IF NOT EXISTS reports (
                  trace_id TEXT REFERENCES traces(id) ON DELETE CASCADE, kind TEXT, call_id TEXT, decision_id TEXT, id TEXT, body TEXT,
                  PRIMARY KEY(trace_id,kind,call_id,decision_id,id)
@@ -223,10 +225,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 4 {
+        if version == 5 {
             return Ok(());
         }
-        if !(0..4).contains(&version) {
+        if !(0..5).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -248,7 +250,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 4)?;
+        self.0.pragma_update(None, "user_version", 5)?;
         Ok(())
     }
 
@@ -299,6 +301,36 @@ impl Store {
                 "with_rules": row.get::<_,i64>(4)?}),
             )
         })?)
+    }
+
+    pub fn prior_edits(&self, partition: &str, current: &str) -> Result<Value> {
+        let sql = "WITH recent AS MATERIALIZED (
+            SELECT detail, trace_id, call_id, observed, n FROM observations
+            WHERE json_extract(detail,'$.prior.partition')=?1
+            ORDER BY observed DESC,trace_id,n LIMIT 513
+        ), tested AS (
+            SELECT * FROM recent ORDER BY observed DESC,trace_id,n LIMIT 512
+        ), requests AS (
+            SELECT json_extract(detail,'$.prior.setup') AS setup, json_extract(detail,'$.prior.body') AS body,
+                min(json_extract(detail,'$.effect_pp')<0) AS lo,max(json_extract(detail,'$.effect_pp')<0) AS hi,
+                min(json_object('trace',trace_id,'call',call_id,'source',json_extract(detail,'$.sources[0].source'),
+                    'version',json_extract(detail,'$.sources[0].version'),'replacement',json_extract(detail,'$.prior.replacement'),
+                    'runner',json_extract(detail,'$.runner'),'rule',json_extract(detail,'$.match_rule'),
+                    'outcome',json_extract(detail,'$.outcome'),'report',json_extract(detail,'$.measurement.replay_id'),
+                    'decision',json_extract(detail,'$.measurement.location.decision_id'),
+                    'context',json_extract(detail,'$.measurement.context_id'))) AS example
+            FROM tested WHERE json_extract(detail,'$.prior.body')!=?2 GROUP BY setup,body
+        ), ranked AS (
+            SELECT setup,count(*) AS bodies,sum(lo) AS lower,sum(1-hi) AS equal,sum(hi-lo) AS mixed,min(example) AS example
+            FROM requests GROUP BY setup HAVING count(*)>=2
+            ORDER BY lower DESC,mixed ASC,bodies DESC,setup LIMIT 5
+        ) SELECT json_object('status','checked','truncated',(SELECT count(*)>512 FROM recent),
+            'edits',json_group_array(json_object('requests',bodies,'lower',lower,'equal',equal,'mixed',mixed,
+            'example',json(example)))) FROM ranked";
+        let data: String = self
+            .0
+            .query_row(sql, rusqlite::params![partition, current], |row| row.get(0))?;
+        Ok(serde_json::from_str(&data)?)
     }
 
     pub fn list(&self, view: &str, filters: &BTreeMap<String, String>) -> Result<Value> {

@@ -1,4 +1,5 @@
 mod findings;
+mod history;
 mod order;
 mod recommendations;
 mod replacement;
@@ -246,9 +247,8 @@ fn work(
                 .lag_ms
                 .store(enqueued.elapsed().as_millis() as usize, Relaxed);
         } else if request.url() == "/api/sidecar/preview" {
-            let reply = replay_http::read_json(&mut request, LIMIT).and_then(|input| {
-                recommendations::preview(input).map_err(|message| (400, message))
-            });
+            let reply = replay_http::read_json(&mut request, LIMIT)
+                .and_then(|input| recommendations::preview(&store, input));
             let (status, body) = match reply {
                 Ok(body) => (200, body),
                 Err((status, message)) => (status, json!({"message": message})),
@@ -339,6 +339,9 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 }
                 "/api/sidecar/preview-example" => {
                     let fixture = match fields.get("scenario").map(String::as_str) {
+                        Some("history") => json!({
+                            "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/redundant-routing/pending-maple.json"))?
+                        }),
                         Some("routing") => json!({
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/request.json"))?,
                             "candidate": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/report.json"))?,
@@ -348,7 +351,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/preflight-returns.json"))?,
                         }),
                     };
-                    recommendations::preview(serde_json::from_value(fixture)?)?
+                    recommendations::preview(store, serde_json::from_value(fixture)?)
+                        .map_err(|(_, message)| message)?
                 }
                 "/api/inspection" => {
                     let details = detail_scope(store, &fields)?;
