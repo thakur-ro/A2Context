@@ -177,6 +177,27 @@ To run the follow-up with local weights, use the replay command above with `case
 python3 examples/send_otlp_replay.py --followup --conversation-id journal-return-followup
 ```
 
+### Does the answer follow an edited value?
+
+The first experiment replaced a whole statement with an availability notice. In a second experiment we changed only the number in the policy, the FAQ or both to `45`. The rest of each request stayed byte-for-byte identical.
+
+| Qwen condition | Earlier question | Follow-up question |
+| --- | ---: | ---: |
+| Original | 60 | 30 |
+| Policy says 45 | 60 | 120 |
+| FAQ says 45 | 45 | 30 |
+| Both say 45 | 45 | 100 |
+
+On the earlier question, the answer followed the edited FAQ. On the follow-up, editing the policy changed the answer to a number that neither source specified. Even making the two windows agree produced `100` on that question. A recommendation to change the policy needs a test of the **intended answer** as well as a test of whether the answer changes. These two synthetic questions establish behavior for the tested model, replacements and greedy settings. They give no estimate for another workflow and no mechanism for the appearance of `120` or `100`. [Earlier trials](../examples/context-screening/replay/earlier-45-days.json) · [Follow-up trials](../examples/context-screening/replay/followup-45-days.json)
+
+Each arm had one greedy trial. A second execution of both four-condition experiments reproduced the reports byte for byte. To rerun them, use the pinned Transformers environment and local checkpoint described above. To inspect the saved results without running a model, send both questions to a sidecar with content capture enabled, then open **Flagged source pairs**.
+
+```sh
+python3 examples/context-screening/replay/test_window_values.py "$qwen_dir" /tmp/window-values
+python3 examples/send_otlp_replay.py --conversation-id journal-earlier --compare-values
+python3 examples/send_otlp_replay.py --conversation-id journal-followup --followup --compare-values
+```
+
 ### Find recurring screened pairs
 
 ```sh

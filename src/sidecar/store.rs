@@ -59,6 +59,7 @@ impl Store {
              );",
         )?;
         db.execute_batch(super::capture::SCHEMA)?;
+        db.execute_batch(super::screened::INDEX)?;
         Ok(Self(db))
     }
 
@@ -241,10 +242,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 17 {
+        if version == 18 {
             return Ok(());
         }
-        if !(0..17).contains(&version) {
+        if !(0..18).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -267,7 +268,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 17)?;
+        self.0.pragma_update(None, "user_version", 18)?;
         Ok(())
     }
 
@@ -687,6 +688,26 @@ impl Store {
             append_window(&mut sql, &mut args, "c.started", filters)?;
             sql.push_str(super::capture::BY_CONVERSATION);
         }
+        if matches!(view, "screened-pairs" | "screened-pair-examples") {
+            sql.push_str(super::screened::SCOPED);
+            for (key, column) in [("trace", "p.trace_id"), ("call", "p.call_id")] {
+                if let Some(value) = filters.get(key).filter(|v| !v.is_empty()) {
+                    sql.push_str(&format!(" AND {column}=?"));
+                    args.push(value.clone());
+                }
+            }
+            if view == "screened-pair-examples" || filters.contains_key("pattern") {
+                sql.push_str(" AND p.pattern=? AND p.relation=?");
+                args.push(super::required(filters, "pattern")?.to_owned());
+                args.push(super::required(filters, "relation")?.to_owned());
+            }
+            append_window(&mut sql, &mut args, "c.started", filters)?;
+            sql.push_str(if view == "screened-pair-examples" {
+                super::screened::TESTED
+            } else {
+                ")"
+            });
+        }
         let cohort = view == "outcome-factors"
             || (view == "conversation-outcomes" && filters.contains_key("level"));
         let edited = filters.get("by").is_some_and(|s| s == "edit");
@@ -711,6 +732,8 @@ impl Store {
             }
         }
         match view {
+            "screened-pairs" => sql.push_str(super::screened::GROUPS),
+            "screened-pair-examples" => sql.push_str(super::screened::EXAMPLES),
             "conversations-without-findings" => sql.push_str(super::capture::PAGE),
             "proposal-conversations" => {
                 let result = super::required(filters, "result")?;

@@ -65,6 +65,25 @@ struct PairKey<'a> {
     scorer: Option<&'a Scorer>,
 }
 
+impl<'a> PairKey<'a> {
+    fn new(sources: [&'a Source; 2], scorer: Option<&'a Scorer>) -> Self {
+        let mut sources = sources.map(SourceKey::from);
+        sources.sort_unstable();
+        Self { sources, scorer }
+    }
+
+    fn id(&self) -> String {
+        let identity = serde_json::to_vec(&("nexusweave.screening_pattern.v1", self))
+            .expect("screened source identity is serializable");
+        sha256(&identity)
+    }
+}
+
+/// Identify a scored pair using the same unordered source and scorer identity as the pattern query.
+pub fn scored_pair_id(sources: [&Source; 2], scorer: &Scorer) -> String {
+    PairKey::new(sources, Some(scorer)).id()
+}
+
 #[derive(Clone)]
 struct Occurrence<'a> {
     run: &'a Run,
@@ -326,14 +345,7 @@ pub fn query_with_replays<'a>(
                 let Some(scorer) = comparable_scorer(report, pair) else {
                     continue;
                 };
-                let mut identity = sources.map(SourceKey::from);
-                identity.sort_unstable();
-                let group = groups
-                    .entry(PairKey {
-                        sources: identity,
-                        scorer,
-                    })
-                    .or_default();
+                let group = groups.entry(PairKey::new(sources, scorer)).or_default();
                 let row = Occurrence {
                     run,
                     call,
@@ -368,9 +380,7 @@ pub fn query_with_replays<'a>(
         {
             continue;
         }
-        let identity = serde_json::to_vec(&("nexusweave.screening_pattern.v1", &key))
-            .map_err(|error| error.to_string())?;
-        let id = sha256(&identity);
+        let id = key.id();
         if request.group.as_ref().is_some_and(|group| group != &id) {
             continue;
         }

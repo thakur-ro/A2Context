@@ -12,6 +12,10 @@ const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
+const screenedPairs = query.get("screens") === "1";
+const screenedPattern = query.get("pattern");
+const screenedRelation = query.get("relation");
+const screenSelection = screenedPairs ? {screens:1, pattern:screenedPattern, relation:screenedRelation} : {};
 const withoutFindings = query.get("coverage") === "without-findings";
 const traceId = query.get("trace");
 const measuredExample = Object.fromEntries(["trace", "call", "decision", "replay", "context", "routing_design", "routing_input", "report"]
@@ -330,6 +334,66 @@ function positionLink(factor, test) {
     baseline_trials: test.baseline_trials, edit_trials: test.edit_trials });
 }
 
+function screenedPairHref(row, sources, decision) {
+  const sample = new URLSearchParams({v:1, view:"conversation", run:row.trace, call:row.call,
+    screen_pair:JSON.stringify(sources.flatMap(s => [s.id,s.digest]))});
+  if (decision) sample.set("decision", decision);
+  return "/details?" + new URLSearchParams({run:row.trace}) + "#" + sample;
+}
+
+function pairName(sources) {
+  return sources.map(s => s.source || (s.role || "Input") + " · " + s.text.slice(0, 45)).join(" and ");
+}
+
+function screenedRow(group) {
+  const conflict = group.relation === "possible_conflict";
+  const detail = plural(group.conversations, "flagged conversation") + " · " + group.tested + " with a completed single-source comparison";
+  return rowLink(pairName(group.sources), (conflict ? "Possible conflict" : "Possible overlap") + " · " + detail,
+    url({screens:1, pattern:group.pattern, relation:group.relation}));
+}
+
+function sourceOutcomes(group) {
+  const rows = group.sources.map(source => {
+    const counts = group.source_outcomes[source.digest];
+    return element("tr", {}, element("th", {scope:"row", text:sourceName(source)}),
+      element("td", {text:counts?.changed ?? "—"}), element("td", {text:counts?.held ?? "—"}));
+  });
+  return panel(group.relation === "possible_conflict" ? "Possible conflict" : "Possible overlap", pairExcerpts(group.sources),
+    element("h3", {text:"What changed when one source was edited?"}),
+    element("p", {text:group.tested + " of " + plural(group.conversations,"flagged conversation") +
+      " had a completed single-source comparison. Each count includes conversations with at least one such result."}),
+    element("table", {className:"screen-outcomes"}, element("thead", {}, element("tr", {},
+      ...["Edited source","Proposal changed","Proposal held"].map(text => element("th",{scope:"col",text})))),
+      element("tbody", {}, ...rows)),
+    group.sources.some(source => !group.source_outcomes[source.digest]) ? element("p", {className:"label", text:"A dash means this source has no completed comparison."}) : null,
+    element("details", {}, element("summary", {text:"Classifier"}), element("p", {text:[group.scorer.model_id, group.scorer.revision, group.scorer.runtime].join(" · ")})));
+}
+
+function pairExample(row) {
+  const comparisons = row.comparisons.map(test => {
+    const source = row.sources.find(s => s.id === test.context);
+    const changed = test.pair.changed;
+    const report = url({...screenSelection, recommendation:test.group, trace:row.trace, call:row.call, decision:test.decision,
+      replay:test.replay, context:test.context}) + "#proposal-pair";
+    return element("li", {}, link(sourceName(source) + (changed ? " edit changed the proposal" : " edit preserved the proposal"), report),
+      element("p", {text:proposalLabel(test.pair.original, test.pair) + " → " + proposalLabel(test.pair.edited, test.pair)}),
+      element("details", {}, element("summary", {text:"Edit and runner"}),
+        test.replacement && element("p", {text:test.replacement.text + (test.replacement.truncated ? "…" : "")}),
+        element("p", {className:"row-extra", text:[test.pair.baseline_trials + " original / " + test.pair.edited_trials + " edited", test.runner].join(" · ")})));
+  });
+  return panel(row.thread, element("p", {className:"label", text:[row.org,row.user,fullDate(row.started)].filter(Boolean).join(" · ")}),
+    row.last_user_text ? element("p", {text:"Last user text · " + row.last_user_text.text + (row.last_user_text.truncated ? "…" : "")}) : null,
+    comparisons.length ? element("ul", {className:"pair-trials"}, ...comparisons) :
+      element("p", {text:"No completed single-source replay comparison for these inputs on this call."}),
+    link(comparisons.length ? "Inspect the screened inputs" : "Review the pair for a replay",
+      screenedPairHref(row, row.sources, row.decision)));
+}
+
+function pairExcerpts(sources) {
+  return element("div", {className:"comparison"}, ...sources.map(s => element("div", {},
+    element("strong", {text:sourceName(s) + version(s.version)}), element("p", {text:s.text + (s.truncated ? "…" : "")}))));
+}
+
 function captureReview(row) {
   const screen = row.screen;
   const sample = new URLSearchParams({v:1, view:"conversation", run:row.trace, call:row.call});
@@ -339,18 +403,15 @@ function captureReview(row) {
   if (!screen) return panel(row.thread, element("p", {className:"label", text:metadata.join(" · ")}), element("p", {text:captured}),
     row.with_text ? link("Review a captured exchange", path + sample) :
       link("Inspect a call with missing input text", url({view:"traces", trace:row.trace, call:row.call})));
-  sample.set("screen_pair", JSON.stringify(screen.sources.flatMap(s => [s.id,s.digest])));
-  if (screen.decision) sample.set("decision", screen.decision);
   return screenReview(screen, element("p", {className:"label", text:[row.thread, ...metadata].join(" · ")}),
-    link(screen.decision ? "Inspect the pair and its replay options" : "Inspect the source pair", path + sample, "action"), captured);
+    link(screen.decision ? "Inspect the pair and its replay options" : "Inspect the source pair", screenedPairHref(row, screen.sources, screen.decision), "action"), captured);
 }
 
 function screenReview(screen, subtitle = null, action = null, captured = "") {
   const conflict = screen.suggestion === "possible_conflict";
   const score = conflict ? "contradiction" : "entailment";
   return panel(conflict ? "Possible conflict between two sources" : "Possible overlap between two sources", subtitle,
-    element("div", {className:"comparison"}, ...screen.sources.map(s => element("div", {},
-      element("strong", {text:sourceName(s) + version(s.version)}), element("p", {text:s.text + (s.truncated ? "…" : "")})))),
+    pairExcerpts(screen.sources),
     element("p", {text:"A text classifier flagged this pair. Test each source edit against the answer or tool call to measure its effect."}),
     action,
     element("details", {}, element("summary", {text:"Classifier and coverage"}),
@@ -788,13 +849,16 @@ function recommendationContext(kind, detail) {
   return null;
 }
 
+function proposalLabel(proposal, pair) {
+  return proposal.kind === "tool_call" || pair.original.label !== pair.edited.label || pair.original.kind !== pair.edited.kind
+    ? [proposal.kind, proposal.label, proposal.outcome_preview].join(" · ") : proposal.outcome_preview;
+}
+
 function responsePair(pair) {
   if (!pair) return null;
-  const proposal = p => p.kind === "tool_call" || pair.original.label !== pair.edited.label || pair.original.kind !== pair.edited.kind
-    ? [p.kind, p.label, p.outcome_preview].join(" · ") : p.outcome_preview;
   return element("details", {className:"response-pair"}, element("summary", {text:pair.changed ? "Compare the changed proposals" : "Compare the matching proposals"}),
     element("div", {className:"comparison"}, ...[[pair.original,"Original"],[pair.edited,"Edited"]].map(([p, name]) =>
-      element("div", {}, element("strong", {text:name}), element("code", {text:proposal(p)})))),
+      element("div", {}, element("strong", {text:name}), element("code", {text:proposalLabel(p, pair)})))),
     (pair.original.truncated || pair.edited.truncated) ? element("p", {className:"label", text:"Previews show the first 160 characters. The comparison uses the complete proposals."}) : null,
     element("p", {className:"label", text:pair.baseline_trials + " original and " + pair.edited_trials +
       " edited trials. All trials completed and agreed within each setup."}));
@@ -1222,10 +1286,26 @@ async function render(refresh = false) {
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) {
         body = review(cards.rows[0], occurrences);
+        if (screenedPattern && screenedPairs) body.prepend(link("Back to flagged pair", url(screenSelection)));
         if (comparisonResult) body.prepend(link("Back to compared conversations", url({proposal_result:comparisonResult,coverage_factor:comparisonScope})));
         if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel, ...cohortMode, cohort_factor:cohortFactor})));
       }
       pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, ...cohortMode, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, ...measuredExample });
+    } else if (screenedPairs) {
+      const detail = Boolean(screenedPattern);
+      const selection = detail ? {pattern:screenedPattern, relation:screenedRelation} : {};
+      const [groups, examples] = await Promise.all([api("screened-pairs", {...scope, ...selection, offset:detail ? 0 : pageOffset}),
+        detail ? api("screened-pair-examples", {...scope, ...selection, offset:pageOffset}) : null]);
+      const data = examples || groups;
+      const group = detail && groups.rows[0];
+      byId("title").textContent = group ? pairName(group.sources) : "Flagged source pairs";
+      byId("summary").textContent = detail ? "Calls awaiting a source edit appear first. Open a comparison to see its trials. Each call shows up to two examples per source for changed and matching proposals." :
+        "A classifier flagged these instructions for possible conflict or overlap. Choose a pair to see where an edit changed the answer and where a test is still missing.";
+      body = element("div", {className:"feed"}, link(detail ? "Back to flagged pairs" : "Back to recommendations", url(detail ? {screens:1} : {})),
+        group ? sourceOutcomes(group) : null,
+        detail ? element("div", {className:"feed"}, ...data.rows.map(pairExample)) : listing(data.rows, screenedRow),
+        data.rows.length ? null : element("p", {className:"empty",text:"No flagged source pairs in this scope."}));
+      pagination(data.next_offset, screenSelection);
     } else if (withoutFindings) {
       byId("title").textContent = "Conversations without a finding";
       byId("summary").textContent = "These conversations have captured calls. When a text classifier flags a source pair, you can inspect the texts and prepare an experiment here.";
@@ -1321,17 +1401,20 @@ async function render(refresh = false) {
         ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
       pagination(data.next_offset, { factor: factorId });
     } else {
-      const [impact, factors] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset })]);
-      const signature = JSON.stringify([impact, factors]);
+      const [impact, factors, screens] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset }),
+        pageOffset ? Promise.resolve({rows:[]}) : api("screened-pairs", scope)]);
+      const signature = JSON.stringify([impact, factors, screens]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
       const featured = !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
       body = element("div", {className:"overview"}, impactPanel(impact),
         featured ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}), factorRow(featured, true)) : null,
+        screens.rows.length ? element("section", {className:"factors"}, element("h2", {text:"Flagged source pairs"}),
+          listing(screens.rows.slice(0,1), screenedRow), screens.rows.length > 1 ? link("Review all flagged pairs", url({screens:1})) : null) : null,
         remaining.length ? element("section", {className:"factors"}, element("h2", {text:featured ? "Other source factors" : "Source factors"}),
           listing(remaining, factor => factorRow(factor))) : null,
-        !factors.rows.length ? element("p", {className:"empty", text:"No recommendations in this scope."}) : null);
+        !factors.rows.length && !screens.rows.length ? element("p", {className:"empty", text:"No recommendations in this scope."}) : null);
       pagination(factors.next_offset);
     }
   } else {
@@ -1397,7 +1480,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...measuredExample }, values);
+      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
@@ -1444,7 +1527,7 @@ async function main() {
       row.focus();
     }
   }
-  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !outcomeCategory && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
     }

@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
 from hashlib import sha256
+from itertools import combinations
 from math import ceil
 import json
 from pathlib import Path
@@ -248,13 +249,68 @@ def check_screen_suggestions(binary, folder):
             assert population["without_findings"] == 2
             assert population["without_findings_with_screen_suggestion"] == (2 if capture else 0)
 
+            groups = get(base, "screened-pairs")["rows"]
+            assert len(groups) == (2 if capture else 0)
+            if capture:
+                assert all(g["conversations"] == g["calls"] == 1 and g["tested"] == 0 for g in groups)
+                # Reverse the same pair without changing either source role or scorer.
+                _, texts, report, relation = cases[-1]
+                reversed_report = deepcopy(report)
+                reversed_report["sources"] = [{**src, "context_id":f"input:{i}:0"} for i, src in enumerate(reversed(report["sources"]))]
+                pair = reversed_report["pairs"][0]
+                pair["left_to_right"], pair["right_to_left"] = pair["right_to_left"], pair["left_to_right"]
+                def reversal(name, scores):
+                    span = case_span(name, "undeclared")
+                    span["attributes"] = attrs({"gen_ai.operation.name":"chat","gen_ai.conversation.id":name,
+                        "gen_ai.input.messages":json.dumps(texts[::-1]),"nexusweave.context_screening":json.dumps(scores)})
+                    send_traces(base, export(span))
+                reversal("reversed", reversed_report)
+                pattern, = (g for g in groups if g["relation"] == relation)
+                members = get(base, "screened-pair-examples", pattern=pattern["pattern"], relation=relation)["rows"]
+                assert len(members) == 2 and sorted(r["thread"] for r in members) == [relation, "reversed"]
+                assert all(len(r["sources"]) == 2 for r in members)
+                different = deepcopy(reversed_report)
+                different["scorer"]["revision"] += "-test"
+                reversal("different-scorer", different)
+                assert len(get(base, "screened-pairs")["rows"]) == 3
+                multi = case_span("all-screened", "undeclared")
+                multi["attributes"] = attrs({"gen_ai.operation.name":"chat", "gen_ai.conversation.id":"multi",
+                    "gen_ai.input.messages":json.dumps(request["attributes"]["gen_ai.input.messages"]),
+                    "nexusweave.context_screening":json.dumps(screen)})
+                send_traces(base, export(multi))
+                scoped = {"trace":"otlp:" + multi["traceId"]}
+                assert get(base, "findings", **scoped)["rows"][0]["kind"] == "duplicate"
+                groups = get(base, "screened-pairs", **scoped)["rows"]
+                occurrences = [row for group in groups for row in get(base, "screened-pair-examples",
+                    pattern=group["pattern"], relation=group["relation"], **scoped)["rows"]]
+                expected = [[screen["sources"][i]["context_id"] for i in pair["sources"]] for pair in screen["pairs"]
+                            if pair.get("suggestion") in ("possible_conflict","possible_overlap")]
+                assert sorted([[s["id"] for s in row["sources"]] for row in occurrences]) == sorted(expected)
+                assert not get(base, "screened-pairs", after="2026-11-01", **scoped)["rows"]
+                assert not get(base, "screened-pairs", call="absent", **scoped)["rows"]
+
     sys.path.insert(0, str(ROOT / "examples"))
     from send_otlp_replay import prepare
+    with server(binary, folder / "one-arm.sqlite", "--capture-content") as base:
+        trace, measured = prepare("one-arm", followup=True)
+        send_traces(base, trace)
+        # Keep only the actual FAQ arm, which preserved the answer in this case.
+        measured["variants"] = measured["variants"][1:]
+        measured["pair"] = None
+        measured["id"] += "-faq-only"
+        send(base, "/api/replay-reports", measured, expected=201)
+        group, = get(base, "screened-pairs")["rows"]
+        policy, faq = group["sources"]
+        assert policy["digest"] not in group["source_outcomes"]
+        assert group["source_outcomes"][faq["digest"]] == {"changed":0,"held":1}
     with server(binary, folder / "followup.sqlite", "--capture-content") as base:
         trace, report = prepare("journal-return-followup", followup=True)
         send_traces(base, trace)
         gap, = get(base, "conversations-without-findings")["rows"]
         assert [s["source"] for s in gap["screen"]["sources"]] == ["journal-policy", "journal-faq"]
+        group, = get(base, "screened-pairs")["rows"]
+        query = {"pattern":group["pattern"], "relation":group["relation"]}
+        assert group["calls"] == group["conversations"] == 1 and group["tested"] == 0
         send(base, "/api/replay-reports", report, expected=201)
         send(base, "/api/replay-reports", report)
         impact = get(base, "impact")
@@ -262,6 +318,45 @@ def check_screen_suggestions(binary, folder):
         assert impact["without_findings"] == 0
         edits = get(base, "outcome-factors", level=1, by="edit")["rows"]
         assert [row["sources"][0]["source"] for row in edits if len(row["sources"]) == 1] == ["journal-policy"]
+        earlier, earlier_report = prepare("earlier")
+        send_traces(base, earlier)
+        groups = get(base, "screened-pairs")["rows"]
+        assert len(groups) == 1 and groups[0]["tested"] == 1 and groups[0]["conversations"] == 2
+        send(base, "/api/replay-reports", earlier_report, expected=201)
+        send_traces(base, trace)
+        group, = get(base, "screened-pairs")["rows"]
+        assert group["conversations"] == group["calls"] == group["tested"] == 2
+        assert group["source_outcomes"] == {s["digest"]:{"changed":1, "held":1} for s in group["sources"]}
+        assert get(base, "screened-pairs", **query)["rows"] == [group]
+        members = get(base, "screened-pair-examples", **query)
+        changed = {row["thread"]:[t["context"] for t in row["comparisons"] if t["pair"]["changed"]]
+                   for row in members["rows"]}
+        assert changed == {"journal-return-followup":["input:0:0"], "earlier":["input:1:0"]}
+        south, = get(base, "screened-pair-examples", org="journal-south", user="support-41", **query)["rows"]
+        assert south["call"] == report["location"]["call_id"] and len(south["comparisons"]) == 2
+        for test in south["comparisons"]:
+            exact, = get(base, "findings", group=test["group"], trace=south["trace"], call=south["call"],
+                         replay=test["replay"], decision=test["decision"], context=test["context"])["rows"]
+            assert exact["evidence"]["detail"]["response_pair"] == test["pair"]
+        assert not get(base, "screened-pair-examples", **{**query, "relation":"possible_overlap"})["rows"]
+        from send_otlp_replay import value_report
+        for prior, followup in [(earlier_report,False),(report,True)]:
+            send(base, "/api/replay-reports", value_report(prior, followup=followup), expected=201)
+        assert get(base, "screened-pairs")["rows"] == [group]
+        members = get(base, "screened-pair-examples", **query)
+        for row in members["rows"]:
+            assert len(row["comparisons"]) == 4 and row["last_user_text"]["text"]
+            values = [t for t in row["comparisons"] if "45 days" in t["replacement"]["text"]]
+            assert len(values) == 2
+            edited = {t["context"]: t["pair"]["edited"]["outcome_preview"] for t in values}
+            assert edited == ({"input:0:0":"120","input:1:0":"30"} if row["thread"] == "journal-return-followup"
+                              else {"input:0:0":"60","input:1:0":"45"})
+    with sqlite3.connect(folder / "followup.sqlite") as sql:
+        sql.execute("DROP TABLE screened_pairs")
+        sql.execute("DROP TABLE screened_inputs")
+        sql.execute("PRAGMA user_version=17")
+    with server(binary, folder / "followup.sqlite", "--capture-content") as base:
+        assert get(base, "screened-pair-examples", **query) == members
 
 
 def check_replay(base, send_trace=send_traces):
@@ -1075,6 +1170,71 @@ def measure_token_pages(binary):
             "median_ms": round(median(timings), 3), "p95_ms": round(sorted(timings)[ceil(0.95 * len(timings)) - 1], 3)}
 
 
+def measure_dense_screens(binary):
+    # Force every assessed pair to receive a flag so the index reaches its supported per-call limit.
+    scores = {"contradiction":1.0, "entailment":0.0, "neutral":0.0}
+    pairs = [{"sources":[a,b], "status":"scored", "suggestion":"possible_conflict",
+              "left_to_right":scores, "right_to_left":scores} for a,b in list(combinations(range(24),2))[:256]]
+    timings = []
+    with tempfile.TemporaryDirectory() as directory, server(binary, Path(directory) / "dense.sqlite", "--capture-content") as base:
+        for call in range(32):
+            messages, sources = [], []
+            for i in range(24):
+                text = f"Synthetic instruction {call}/{i} for limit testing."
+                messages.append({"role":"developer", "parts":[{"type":"text","content":text}]})
+                sources.append({"context_id":f"input:{i}:0", "kind":"text", "role":"developer",
+                                "text_sha256":sha256(text.encode()).hexdigest()})
+            report = {"version":1, "selection":{"version":1,"pair_limit":256}, "sources":sources,
+                      "scorer":{"model_id":"synthetic-load","revision":"v1","runtime":"fixture"},
+                      "total_pairs":276, "pairs":pairs}
+            span = case_span("dense","undeclared",number=call)
+            span["attributes"] = attrs({"gen_ai.operation.name":"chat","gen_ai.conversation.id":f"c{call}",
+                "gen_ai.input.messages":json.dumps(messages),"nexusweave.context_screening":json.dumps(report)})
+            send_traces(base, export(span))
+        assert len(get(base, "screened-pairs", offset=8191)["rows"]) == 1
+        for iteration in range(21):
+            start = time.perf_counter()
+            page = get(base, "screened-pairs")
+            elapsed = (time.perf_counter() - start) * 1000
+            assert len(page["rows"]) == page["next_offset"] == 15
+            if iteration:
+                timings.append(elapsed)
+    return {"distinct_flagged_pairs":8192, "warm_first_pages":len(timings),
+            "median_ms":round(median(timings),3), "p95_ms":round(sorted(timings)[ceil(len(timings)*.95)-1],3)}
+
+
+def measure_screened_pairs(binary):
+    sys.path.insert(0, str(ROOT / "examples"))
+    from send_otlp_replay import prepare
+    timings = []
+    with tempfile.TemporaryDirectory() as directory, server(binary, Path(directory) / "pairs.sqlite", "--capture-content") as base:
+        for i in range(128):
+            trace, report = prepare(f"journal-{i}", followup=i % 2 == 0)
+            send_traces(base, trace)
+            if i % 4 < 2:
+                send(base, "/api/replay-reports", report, expected=201)
+        for iteration in range(21):
+            start = time.perf_counter()
+            group, = get(base, "screened-pairs")["rows"]
+            query = {"pattern":group["pattern"], "relation":group["relation"]}
+            page = get(base, "screened-pair-examples", **query)
+            elapsed = (time.perf_counter() - start) * 1000
+            assert group["conversations"] == 128 and group["tested"] == 64
+            assert all(x == {"changed":32,"held":32} for x in group["source_outcomes"].values())
+            assert len(page["rows"]) == 15 and all(not row["comparisons"] for row in page["rows"])
+            if iteration:
+                timings.append(elapsed)
+        threads = []
+        while True:
+            threads.extend(row["thread"] for row in page["rows"])
+            if page["next_offset"] is None:
+                break
+            page = get(base, "screened-pair-examples", offset=page["next_offset"], **query)
+        assert len(threads) == len(set(threads)) == 128
+    return {"flagged_conversations":128, "tested":64, "warm_read_pairs":len(timings),
+            "median_ms":round(median(timings),3), "p95_ms":round(sorted(timings)[ceil(len(timings)*.95)-1],3)}
+
+
 def measure_population(binary):
     timings = []
     with tempfile.TemporaryDirectory() as directory, server(binary, Path(directory) / "population.sqlite", "--capture-content") as base:
@@ -1126,6 +1286,8 @@ def main():
     parser.add_argument("--sdk-python", help="Interpreter with OpenTelemetry SDK and OTLP/HTTP exporter installed")
     parser.add_argument("--overload-url", help="Run load only against an isolated persistent sidecar")
     parser.add_argument("--token-page-cost", action="store_true", help="Measure warm reads of the two instrumented demo answers")
+    parser.add_argument("--dense-screen-cost", action="store_true", help="Time a page of groups at 256 synthetic flags per call")
+    parser.add_argument("--screen-cost", action="store_true", help="Time screened-pair summaries and example pages on 128 conversations")
     parser.add_argument("--population-cost", action="store_true", help="Time the overview and first page of conversations without a finding")
     parser.add_argument("--history-cost", action="store_true", help="Time the pending Ash request with and without its saved trial")
     parser.add_argument("--clients", type=int, default=24)
@@ -1133,6 +1295,12 @@ def main():
     parser.add_argument("--batch-size", type=int, default=12)
     parser.add_argument("--payload-bytes", type=int, default=4096)
     args = parser.parse_args()
+    if args.dense_screen_cost:
+        print(json.dumps(measure_dense_screens(args.binary)))
+        return
+    if args.screen_cost:
+        print(json.dumps(measure_screened_pairs(args.binary)))
+        return
     if args.population_cost:
         print(json.dumps(measure_population(args.binary)))
         return

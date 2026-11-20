@@ -7,6 +7,7 @@ mod position_plan;
 mod prefill;
 mod recommendations;
 mod replacement;
+mod screened;
 mod store;
 mod variation;
 
@@ -328,6 +329,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/threads"
                 | "/api/sidecar/impact"
                 | "/api/sidecar/conversations-without-findings"
+                | "/api/sidecar/screened-pairs"
+                | "/api/sidecar/screened-pair-examples"
                 | "/api/sidecar/outcome-factors"
                 | "/api/sidecar/conversation-outcomes"
                 | "/api/sidecar/proposal-conversations"

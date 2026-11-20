@@ -1,7 +1,7 @@
 //! Captured calls form the population for conversation-level findings.
 use super::store::at;
 use nexusweave::{
-    context_screening::{self, Assessment, Suggestion},
+    context_screening::{self, Assessment, Pair, Source, Suggestion},
     Availability, Call, Run,
 };
 use rusqlite::{params, Transaction};
@@ -12,7 +12,17 @@ pub(super) const SCHEMA: &str = "CREATE TABLE IF NOT EXISTS captured_calls (
     call_id TEXT NOT NULL, started INTEGER, with_text INTEGER NOT NULL, screen TEXT,
     PRIMARY KEY(trace_id,call_id)
 ) WITHOUT ROWID;
-CREATE INDEX IF NOT EXISTS captured_calls_started ON captured_calls(started,trace_id);";
+CREATE INDEX IF NOT EXISTS captured_calls_started ON captured_calls(started,trace_id);
+CREATE TABLE IF NOT EXISTS screened_inputs (
+    trace_id TEXT NOT NULL, call_id TEXT NOT NULL, input_id TEXT NOT NULL, detail TEXT NOT NULL,
+    PRIMARY KEY(trace_id,call_id,input_id), FOREIGN KEY(trace_id,call_id) REFERENCES captured_calls ON DELETE CASCADE
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS screened_pairs (
+    trace_id TEXT NOT NULL, call_id TEXT NOT NULL, ordinal INTEGER NOT NULL,
+    pattern TEXT NOT NULL, relation TEXT NOT NULL, left_id TEXT NOT NULL, right_id TEXT NOT NULL,
+    PRIMARY KEY(trace_id,call_id,ordinal), FOREIGN KEY(trace_id,call_id) REFERENCES captured_calls ON DELETE CASCADE
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS screened_pairs_pattern ON screened_pairs(pattern,relation,trace_id,call_id);";
 
 // Keep one review candidate per call. The detailed inspector shows the full screen.
 pub(super) fn screen_candidate(call: &Call) -> Result<Option<Value>, String> {
@@ -24,12 +34,10 @@ pub(super) fn screen_candidate(call: &Call) -> Result<Option<Value>, String> {
 
 fn review_pair(call: &Call, report: &context_screening::Report) -> Option<Value> {
     let scorer = report.scorer.as_ref()?;
-    let flagged = report.pairs.iter().filter(|p| {
-        matches!(
-            p.suggestion,
-            Some(Suggestion::PossibleConflict | Suggestion::PossibleOverlap)
-        )
-    });
+    let flagged = report
+        .pairs
+        .iter()
+        .filter(|pair| semantic_relation(pair).is_some());
     let count = flagged.clone().count();
     let pair = flagged.min_by_key(|p| p.suggestion != Some(Suggestion::PossibleConflict))?;
     let Assessment::Scored {
@@ -42,24 +50,92 @@ fn review_pair(call: &Call, report: &context_screening::Report) -> Option<Value>
     let mut sources = Vec::with_capacity(2);
     for index in pair.sources {
         let source = &report.sources[index];
-        let text = call
-            .context
-            .iter()
-            .find(|i| i.id == source.context_id)?
-            .text
-            .as_deref()?;
-        let mut chars = text.chars();
-        let excerpt: String = chars.by_ref().take(200).collect();
-        sources.push(
-            json!({"id":source.context_id,"source":source.source_id,"version":source.source_version,
-            "digest":source.text_sha256,"text":excerpt,"truncated":chars.next().is_some()}),
-        );
+        sources.push(source_excerpt(call, source)?);
     }
+    let question = call
+        .context
+        .iter()
+        .filter(|item| {
+            item.role.as_deref() == Some("user")
+                && matches!(item.kind.as_str(), "message" | "text")
+                && item.evidence.message_index.is_some()
+        })
+        .max_by_key(|item| (item.evidence.message_index, item.evidence.part_index))
+        .filter(|item| item.availability == Availability::Included)
+        .and_then(|item| item.text.as_deref())
+        .map(|s| {
+            let mut chars = s.chars();
+            let text: String = chars.by_ref().take(200).collect();
+            json!({"text":text,"truncated":chars.next().is_some()})
+        });
     Some(
-        json!({"suggestion":pair.suggestion,"sources":sources,"scorer":scorer,
+        json!({"last_user_text":question,"suggestion":pair.suggestion,"sources":sources,"scorer":scorer,
         "left_to_right":left_to_right,"right_to_left":right_to_left,"flagged_pairs":count,"examined_pairs":report.pairs.len(),
         "total_pairs":report.total_pairs,"decision":call.decisions.iter().find(|d| d.kind!="tool_execution" && !d.outcome.is_null()).map(|d| &d.id)}),
     )
+}
+
+fn semantic_relation(pair: &Pair) -> Option<&'static str> {
+    match pair.suggestion {
+        Some(Suggestion::PossibleConflict) => Some("possible_conflict"),
+        Some(Suggestion::PossibleOverlap) => Some("possible_overlap"),
+        _ => None,
+    }
+}
+
+fn source_excerpt(call: &Call, source: &Source) -> Option<Value> {
+    let item = call
+        .context
+        .iter()
+        .find(|item| item.id == source.context_id)?;
+    let mut chars = item.text.as_deref()?.chars();
+    let excerpt: String = chars.by_ref().take(200).collect();
+    Some(
+        json!({"id":source.context_id, "source":source.source_id, "version":source.source_version,
+        "role":source.role, "digest":source.text_sha256, "text":excerpt, "truncated":chars.next().is_some()}),
+    )
+}
+
+fn index_pairs(
+    tx: &Transaction<'_>,
+    trace: &str,
+    call: &Call,
+    report: &context_screening::Report,
+) -> rusqlite::Result<()> {
+    let Some(scorer) = &report.scorer else {
+        return Ok(());
+    };
+    let mut inputs = std::collections::BTreeSet::new();
+    let mut pairs = tx.prepare_cached("INSERT INTO screened_pairs VALUES (?,?,?,?,?,?,?)")?;
+    for (ordinal, pair) in report.pairs.iter().enumerate() {
+        let Some(relation) = semantic_relation(pair) else {
+            continue;
+        };
+        inputs.extend(pair.sources);
+        let sources = pair.sources.map(|index| &report.sources[index]);
+        let pattern = context_screening::patterns::scored_pair_id(sources, scorer);
+        pairs.execute(params![
+            trace,
+            call.id,
+            ordinal,
+            pattern,
+            relation,
+            sources[0].context_id,
+            sources[1].context_id
+        ])?;
+    }
+    let mut insert = tx.prepare_cached("INSERT INTO screened_inputs VALUES (?,?,?,?)")?;
+    for index in inputs {
+        let source = &report.sources[index];
+        let detail = source_excerpt(call, source).expect("validated screen has captured text");
+        insert.execute(params![
+            trace,
+            call.id,
+            source.context_id,
+            detail.to_string()
+        ])?;
+    }
+    Ok(())
 }
 
 pub(super) fn replace(tx: &Transaction<'_>, id: &str, run: Option<&Run>) -> rusqlite::Result<()> {
@@ -71,13 +147,22 @@ pub(super) fn replace(tx: &Transaction<'_>, id: &str, run: Option<&Run>) -> rusq
                 item.availability == Availability::Included
                     && item.text.as_ref().is_some_and(|text| !text.is_empty())
             });
+            let report = call
+                .context_screening
+                .as_ref()
+                .and_then(|r| r.verified(call).ok());
             insert.execute(params![
                 id,
                 call.id,
                 at(call.started_at.as_deref()),
                 with_text,
-                screen_candidate(call).ok().flatten().map(|s| s.to_string())
+                report
+                    .and_then(|r| review_pair(call, r))
+                    .map(|s| s.to_string())
             ])?;
+            if let Some(report) = report {
+                index_pairs(tx, id, call, report)?;
+            }
         }
     }
     Ok(())

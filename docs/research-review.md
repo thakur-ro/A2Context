@@ -15,9 +15,14 @@ We searched the web for primary sources in arXiv, NeurIPS, ICLR, ACL Anthology, 
 - `IHEval conflicting instruction hierarchy` and `activation patching Heimersheim Nanda interpret interventions`
 - `language model sensitivity prompt format Sclar performance spread`
 - `counterfactual interventions multiple independently sufficient causes language models` and `does causal localization inform model editing`
+- Follow-up on 20 November 2026 used `site:aclanthology.org Longpre Entity-Based Knowledge Conflicts in Question Answering substitution contextual answer 2021`.
 - `context-render Claude Code source context view` and `Langfuse trace sessions metadata`
 
 We included primary sources that describe an implemented or evaluated method for trace mining, context provenance, instruction conflict, controlled replay, or internal interventions. We included adjacent observability tools where an existing feature could replace part of the design. We excluded broad LLM monitoring and prompt-management products without a documented mechanism bearing on the question. Preprints and product documentation support claims about their described methods and interfaces. Use the linked paper identifiers and named product documentation to reproduce this reading set.
+
+### Counterfactual values in question answering
+
+Longpre and colleagues substituted an answer entity in a passage to evaluate whether a QA model followed the new evidence. Subsequent work on multiple passages studied conflicting contextual answers alongside a model’s parametric knowledge. Both are related methods. The journal experiment adapts value substitution to two named workflow instructions. It records the complete answer under each edit. A different answer can still disagree with the replacement, as the follow-up question illustrates. [Longpre et al., EMNLP 2021](https://aclanthology.org/2021.emnlp-main.565/) · [Rich Knowledge Sources Bring Complex Knowledge Conflicts, EMNLP 2022](https://aclanthology.org/2022.emnlp-main.146/) · [Workflow experiment](guide.md#does-the-answer-follow-an-edited-value)
 
 ## Closest systems
 

@@ -233,3 +233,10 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 .repeat-token button { margin-top: .25rem; }
 .joint-recurrence { list-style: none; padding: 0; }
 .joint-recurrence li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .4rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+
+.pair-trials { list-style: none; padding: 0; }
+.pair-trials li + li { margin-top: 10px; }
+
+.screen-outcomes { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.screen-outcomes th, .screen-outcomes td { text-align: right; padding: 7px; border-bottom: 1px solid var(--line); }
+.screen-outcomes th:first-child { text-align: left; overflow-wrap: anywhere; }

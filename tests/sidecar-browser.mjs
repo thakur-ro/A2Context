@@ -218,6 +218,28 @@ try {
   mobile.on("pageerror", (error) => errors.push(error.message));
   for (const device of [page, mobile]) {
     await device.goto(base);
+    await device.getByRole("link", {name:/3 flagged conversations · 2 with a completed single-source comparison/}).click();
+    const screenGroup = device.url();
+    const calls = device.locator("#content .feed > .feed > section.panel");
+    await calls.first().getByRole("heading").waitFor();
+    assert.deepEqual(await device.locator(".screen-outcomes tbody tr").allTextContents(), ["journal-policy02","journal-faq20"]);
+    assert.deepEqual(await calls.locator("h2").allTextContents(), ["journal-return-followup", "journal-policy-support", "journal-return-support"]);
+    await calls.first().getByText(/No completed single-source replay/).waitFor();
+    const testedPolicy = calls.nth(1);
+    await testedPolicy.getByRole("link", {name:"journal-policy edit preserved the proposal"}).waitFor();
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (device === page && process.env.SCREEN_PATTERN_SCREENSHOT) await device.screenshot({path:process.env.SCREEN_PATTERN_SCREENSHOT});
+    await testedPolicy.getByRole("link", {name:"journal-faq edit changed the proposal"}).click();
+    await device.locator(".response-pair[open] summary:focus").waitFor();
+    assert.match(await device.locator(".response-pair[open]").innerText(), /60/);
+    await device.getByRole("link", {name:"Back to flagged pair", exact:true}).click();
+    assert.equal(device.url(), screenGroup);
+    await device.goto(screenGroup + "&org=journal-south");
+    await calls.first().getByText(/No completed single-source replay/).waitFor();
+    assert.equal(await calls.count(), 1);
+    await device.getByRole("link", {name:"Back to flagged pairs"}).click();
+    await device.getByRole("link", {name:/1 flagged conversation · 0 with a completed single-source comparison/}).waitFor();
+    await device.goto(base);
     await device.getByRole("link", {name:/1 conversation without a finding.*1 with a flagged source pair/}).click();
     const screen = device.locator(".panel").filter({hasText:"Possible conflict between two sources"});
     assert.match(await screen.innerText(), /30 days/);

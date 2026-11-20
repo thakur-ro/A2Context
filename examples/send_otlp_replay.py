@@ -73,15 +73,34 @@ def prepare(conversation_id, *, followup=False):
     return {"resourceSpans": [{"scopeSpans": [{"spans": [span]}]}]}, report
 
 
+def value_report(original, *, followup):
+    """Bind the saved numerical edit to the same exported call and source IDs."""
+    name = "followup" if followup else "earlier"
+    path = Path(__file__).parent / "context-screening" / "replay" / (name + "-45-days.json")
+    measured = json.loads(path.read_text())
+    if measured["baseline_request_sha256"] != original["baseline_request_sha256"]:
+        raise ValueError("The numerical replay belongs to a different request.")
+    ids = {(v["intervention"]["pointer"], v["captured_context_sha256"]): v["intervention"]["context_id"]
+           for v in original["variants"]}
+    measured["location"] = original["location"]
+    for arm in measured["variants"]:
+        arm["intervention"]["context_id"] = ids[arm["intervention"]["pointer"], arm["captured_context_sha256"]]
+    return measured
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8040", help="Inspector base URL.")
     parser.add_argument("--conversation-id", default="journal-live-replay")
     parser.add_argument("--followup", action="store_true", help="Send the follow-up question and its four saved Qwen conditions.")
+    parser.add_argument("--compare-values", action="store_true", help="Also attach the replay that changes only the day count to 45.")
     args = parser.parse_args()
     base_url = args.url.rstrip("/")
     trace, report = prepare(args.conversation_id, followup=args.followup)
-    for path, payload in [("/v1/traces", trace), ("/api/replay-reports", report)]:
+    posts = [("/v1/traces", trace), ("/api/replay-reports", report)]
+    if args.compare_values:
+        posts.append(("/api/replay-reports", value_report(report, followup=args.followup)))
+    for path, payload in posts:
         request = Request(
             base_url + path, json.dumps(payload).encode(), {"Content-Type": "application/json"},
         )
