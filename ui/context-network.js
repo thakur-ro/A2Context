@@ -54,6 +54,78 @@ function networkSvg(tag, attributes, text) {
   return node;
 }
 
+// Each card contributes once, under the workflow of its representative evidence.
+function workflowHierarchy(rows, evidence) {
+  const root = {id:"workflows",type:"scope",name:"Loaded findings",count:0,children:[]};
+  const nodes = new Map([[root.id,root]]);
+  const parents = new Map();
+  function connect(parent, node) {
+    if (!nodes.has(node.id)) {
+      nodes.set(node.id,node);
+      parents.set(node.id,parent.id);
+      parent.children.push(node.id);
+    }
+    return nodes.get(node.id);
+  }
+  for (const card of rows) {
+    const finding = evidence.nodes.get("finding:"+card.id);
+    if (parents.has(finding.id)) continue;
+    const {producer,organization,workflow} = card.evidence;
+    const scope = [producer,organization,workflow];
+    const group = connect(root,{id:"workflow:"+JSON.stringify(scope),type:"workflow",
+      name:workflow || "Workflow unavailable",description:[organization,producer].filter(Boolean).join(" · "),count:0,children:[]});
+    const kind = connect(group,{id:"kind:"+JSON.stringify([...scope,card.kind]),type:"category",
+      name:finding.kind || card.kind || "Unknown finding type",count:0,children:[]});
+    connect(kind,finding);
+    root.count++;
+    group.count++;
+    kind.count++;
+  }
+  for (const node of nodes.values()) {
+    if (!node.children) continue;
+    node.caption = plural(node.count,"finding");
+    // Preserve the feed's ranking among the individual findings.
+    if (node.type !== "category") node.children.sort((a,b) => nodes.get(b).count - nodes.get(a).count);
+  }
+  return {nodes,parents};
+}
+
+function renderWorkflowBranches(hierarchy,node,page,choose,flip) {
+  const view = element("section",{className:"workflow-tree","aria-label":"Findings by workflow"});
+  const trail = element("nav",{"aria-label":"Workflow path"});
+  for (let id = hierarchy.parents.get(node.id); id; id = hierarchy.parents.get(id)) {
+    const ancestor = hierarchy.nodes.get(id);
+    const back = element("button",{type:"button",text:ancestor.name});
+    back.onclick = () => choose(ancestor.id);
+    trail.prepend(back);
+  }
+  const heading = element("h3",{tabindex:"-1",text:node.name});
+  const branch = element("div",{className:"workflow-branch"},
+    element("header",{},heading,element("small",{text:[node.description,node.caption].filter(Boolean).join(" · ")})));
+  const items = element("ul",{});
+  const size = 8;
+  for (const id of node.children.slice(page*size,(page+1)*size)) {
+    const child = hierarchy.nodes.get(id);
+    const button = element("button",{type:"button"},element("span",{text:child.name}));
+    if (child.children) button.append(element("small",{text:[child.description,child.caption].filter(Boolean).join(" · ")}));
+    button.onclick = () => choose(id);
+    items.append(element("li",{},button));
+  }
+  branch.append(items);
+  view.append(trail,branch);
+  if (node.children.length > size) {
+    const pages = Math.ceil(node.children.length/size);
+    const prev = element("button",{type:"button",text:"Previous"});
+    const next = element("button",{type:"button",text:"Next"});
+    prev.disabled = page === 0;
+    next.disabled = page+1 === pages;
+    prev.onclick = () => flip(page-1);
+    next.onclick = () => flip(page+1);
+    view.append(element("div",{className:"network-pager"},prev,element("span",{text:(page+1)+" / "+pages}),next));
+  }
+  return view;
+}
+
 function renderNeighborhood(graph, focus, page, choose, flip) {
   const adjacent = graph.edges.filter(e => e.from === focus.id || e.to === focus.id);
   // Each side is paged independently so a high-degree source never hides both measured arms.
@@ -148,10 +220,10 @@ function layoutNetwork(points, links) {
   }
 }
 
-// The overview spends a fixed layout budget. The node picker and neighborhoods cover every loaded row.
+const networkLayoutLimit = 120;
+
 function networkOverview(graph, choose) {
-  const limit = 120;
-  const nodes = [...graph.nodes.values()].slice(0,limit);
+  const nodes = [...graph.nodes.values()];
   const count = nodes.length;
   const points = nodes.map((node,i) => {
     const radius = Math.sqrt((i+.5)/count);
@@ -204,9 +276,15 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
   const root = element("section",{className:"context-network","aria-label":"Context map"});
   const graph = makeContextNetwork(rows);
   if (!graph.nodes.size) return element("p",{className:"empty",text:"No findings match this scope."});
+  const hierarchy = workflowHierarchy(rows,graph);
+  const large = graph.nodes.size > networkLayoutLimit;
   const search = element("select",{"aria-label":"Focus a node"});
-  for (const node of graph.nodes.values()) search.append(element("option",{value:node.id,text:node.type+" · "+node.name}));
-  search.prepend(element("option",{value:"",text:"Whole network"}));
+  search.append(element("option",{value:"workflows",text:"Browse by workflow"}));
+  const option = node => element("option",{value:node.id,text:node.type+" · "+node.name});
+  if (!large) {
+    search.prepend(element("option",{value:"",text:"Whole network"}));
+    for (const node of graph.nodes.values()) search.append(option(node));
+  }
   const body = element("div",{});
   const summary = element("span",{text:plural(rows.length,"finding")+(total != null ? " of "+total : "")+" loaded"});
   const labels = {source:"Source",unconfirmed:"Unconfirmed source",finding:"Finding",outcome:"Declared or measured value"};
@@ -214,19 +292,57 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
   const legend = element("div",{className:"network-legend"},...Object.keys(labels).filter(type => types.has(type))
     .map(type => element("span",{className:type,text:labels[type]})));
   const controls = element("div",{className:"network-controls"},element("label",{}, "Focus", search),summary);
+  let currentId;
+  let currentOption;
+  function selectFocus(value) {
+    currentOption?.remove();
+    currentOption = undefined;
+    search.value = value;
+    if (large && search.selectedIndex < 0 && graph.nodes.has(value)) {
+      currentOption = option(graph.nodes.get(value));
+      search.append(currentOption);
+      search.value = value;
+    }
+  }
+  if (large) {
+    const query = element("input",{type:"search","aria-label":"Find a source or finding",placeholder:"Find a source or finding"});
+    const matches = element("small",{"aria-live":"polite"});
+    controls.prepend(element("div",{className:"network-search"},query,matches));
+    query.oninput = () => {
+      const term = query.value.trim().toLocaleLowerCase();
+      search.replaceChildren(element("option",{value:"workflows",text:"Browse by workflow"}));
+      let count = 0;
+      for (const node of graph.nodes.values()) {
+        if (!term || !node.name.toLocaleLowerCase().includes(term)) continue;
+        if (++count <= 30) search.append(option(node));
+      }
+      selectFocus(graph.nodes.has(currentId) ? currentId : "workflows");
+      matches.textContent = term ? count+(count === 1 ? " match" : " matches")+(count>30 ? " · first 30 listed" : "") : "";
+    };
+  }
   if (onNext) {
     const more = element("button",{type:"button",text:"Load more findings"});
     more.onclick = async () => {
       more.disabled = true;
-      try { await onNext(search.value); }
+      try { await onNext(currentId); }
       catch (err) { summary.textContent=err.message;more.disabled=false; }
     };
     controls.append(more);
   }
   function show(id,page=0,keyboard=false) {
-    search.value=id;
+    const grouped = hierarchy.nodes.get(id)?.children;
+    selectFocus(grouped ? "workflows" : id);
+    legend.hidden = Boolean(grouped);
+    currentId = id;
     if (!id) {
       body.replaceChildren(networkOverview(graph,next=>show(next,0,true)));
+      return;
+    }
+    if (grouped) {
+      const node = hierarchy.nodes.get(id);
+      body.replaceChildren(renderWorkflowBranches(hierarchy,node,page,next=>show(next,0,true),next=>show(id,next,true)),
+        element("small",{className:"network-key",text:"Each card is counted once, under the workflow of its displayed evidence."}));
+      if (keyboard) body.querySelector("h3").focus({preventScroll:true});
       return;
     }
     const node = graph.nodes.get(id);
@@ -237,6 +353,13 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
       element("strong",{text:node.name}),element("span",{text:node.description}),
       element("small",{text:plural(neighbors.length,"connection")+" · "+relations}),
       node.href && link("Inspect this evidence →",node.href)));
+    const parent = hierarchy.parents.get(id);
+    if (parent) {
+      const group = hierarchy.nodes.get(parent);
+      const back = element("button",{type:"button",text:"See "+group.caption+" in "+group.name});
+      back.onclick = () => show(parent,0,true);
+      body.querySelector(".network-readout").append(back);
+    }
     if (node.coverage) body.append(element("section",{className:"panel","aria-label":"Configured alternatives"},
       element("h3",{text:"One complete alternative is required"}),requiredSourceList(node.coverage)));
     if (node.probe?.kind === "prefill") {
@@ -259,6 +382,6 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
   }
   search.onchange=()=>show(search.value);
   root.append(element("div",{className:"network-heading"},element("h2",{text:"Context map"}),legend),controls,body);
-  show(graph.nodes.has(focusId) ? focusId : "");
+  show(graph.nodes.has(focusId) || hierarchy.nodes.has(focusId) ? focusId : large ? "workflows" : "");
   return root;
 }

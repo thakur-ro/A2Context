@@ -20,6 +20,12 @@ A customer pauses the second of two exchanges. The agent still proposes it after
 
 The workflow exports spans asynchronously over OTLP/HTTP. A bounded worker normalizes them and stores findings in SQLite. The Rust binary serves the dashboard. Default analysis makes zero model calls. You can attach replay results or measurements from an instrumented model when you need stronger evidence. A trace records the observable request and response. Internal activation claims require a model intervention. [Algorithms and limits](docs/methods.md) · [Research and related systems](docs/research-review.md) · [What the experiments support](docs/research-preview.md)
 
+## Which source mattered at this word?
+
+![Measured effects of three source edits across a generated answer about returns and refunds](docs/media/source-edits-by-token.png)
+
+On this recorded answer, editing the returns policy had the largest measured effect on the return-window number. Editing the refund policy had the largest effect on the refund time. Each cell compares the probability of the same next token with the preceding output held fixed. Select a cell in the dashboard to see the edit and the two freely generated replies. [Explore the measurements](docs/research-preview.md#follow-a-source-through-a-workflow)
+
 ## Try the demo
 
 From the checkout with stable Rust, Make and Python 3.11 or later:

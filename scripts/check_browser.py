@@ -21,6 +21,7 @@ def main():
     with server(binary, None) as base:
         subprocess.run(["node", "tests/sidecar-browser.mjs"], cwd=ROOT, check=True,
                        env={**os.environ, "SIDECAR_URL": base})
+        subprocess.run(["node", "tests/context-network-browser.mjs", base], cwd=ROOT, check=True)
     with TemporaryDirectory() as directory, server(binary, Path(directory) / "exchange.sqlite", "--capture-content") as base:
         export(base)
         subprocess.run(["node", "tests/exchange-a2ui-browser.mjs", base], cwd=ROOT, check=True)

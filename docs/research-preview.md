@@ -4,9 +4,11 @@ A workflow engineer can check that the pending request contains a declared rule,
 
 ## Follow a source through a workflow
 
-![Scoped graph of sources, findings and outcomes in the multi-workflow fixture](media/context-network.png)
+![The returns workflow branches into 12 replay findings, three replacement comparisons and two exact repetitions](media/context-workflows.png)
 
-Choose **Show the context map**. The overview uses the representative evidence returned for each finding in the current filter scope. A source can connect to several findings. Select it to see those relationships, then select a finding or a value to open the exact call. Declared values come from captured instructions. Trial outcomes come from attached comparisons. Matching a source across findings uses its producer, organization, workflow, identifier, revision and role. Unnamed items stay tied to their call.
+Choose **Show the context map**. For up to 120 loaded nodes, the overview draws the relationships between sources, findings and outcomes. Larger maps open by workflow. Each branch counts every loaded finding once, using the workflow of the card’s representative evidence. Follow a workflow to a finding type, select a finding, then open the exact call. Loading another page updates counts in the current filter scope.
+
+Select a source to see other findings that cite it. Matching a source uses its producer, organization, workflow, identifier, revision and role. Unnamed items stay tied to their call. Declared values come from captured instructions. Trial outcomes come from attached comparisons.
 
 Select a first-token finding to compare the source edits before generation. For a candidate-score finding, the two branches show log odds at a fixed prefix. A token finding shows the original token’s probability before and after the named edit. In the example below, editing the refund policy reduced the probability assigned to the token `4` at output position 14 from 99.97% to about 0.0011%. The bar chart shows nearby token positions. The decoder-block swap is a separate measurement on the same output path.
 
@@ -18,7 +20,7 @@ Choose **Follow source edits across this answer** to see which edits mattered at
 
 Each cell compares two log probabilities for the same output token with all earlier output tokens fixed. The sign shows direction and the color intensity uses one scale for the entire answer. The report requires access to a model that can score edited requests. A workflow trace alone supplies no cell values. [Measurement and generation conditions](methods.md) · [Saved CPU measurements](../examples/runtime-comparison/output-token-report-transformers.json)
 
-The overview fixture contains 43 findings. The overview draws up to 120 nodes and the picker includes every loaded node. The layout brings linked nodes closer for navigation. Edge length carries no importance score. To investigate model internals, open the exchange demo’s **Before inference** view, select the measured request, then **Inspect both activation positions**. Each dot there represents one intervention at a known decoder block and token position. [Walkthrough](demo.md#see-what-the-model-did-on-the-pending-request)
+The example above contains 43 findings. A browser regression builds 2,400 synthetic finding cards across 60 workflows, pages through the workflow branches and opens the last finding and its source on desktop and mobile. This exercises client-side navigation. The layout groups related evidence for browsing. To investigate model internals, open the exchange demo’s **Before inference** view, select the measured request, then **Inspect both activation positions**. Each dot there represents one intervention at a known decoder block and token position. [Browser regression](../tests/context-network-browser.mjs) · [Walkthrough](demo.md#see-what-the-model-did-on-the-pending-request)
 
 ## Evidence ledger for 20 November 2026
 
@@ -88,10 +90,12 @@ Four fresh exchange conversations put the latest customer instruction in conflic
 
 On the desk fan order, the assistant promised to submit the exchange in both conditions. The parser received text and the order stayed delivered. An engineer could correctly close the instruction-conflict finding and still need to investigate why no tool was invoked. [Frozen repair, expected outcomes, per-arm requests and execution receipts](../examples/exchange-approval/dispatch-study/prospective/README.md)
 
-The next test should compare how the tool interface is rendered while keeping the exchange request, consent, parser and expected arguments fixed. Score the generated tool name, argument validation and resulting order state separately. The independent usability check also remains open. A new engineer should be able to identify the affected source and follow its downstream outcome without a guided walkthrough.
+Changing the tool-call example by two braces changed two of eight replies, both on the desk fan order. One renderer made the assistant name the right tool in prose. Across both renderers the native parser received zero calls in 16 completed generations. Neither rendering changed a database outcome. The two cache states of one order are paired measurements. [Frozen renderer comparison and reproduction](../examples/exchange-approval/dispatch-study/rendering/README.md)
 
 ## Release scope
 
 A source preview can ship the deterministic checks, trace adapters, UI and reproducible experiments. The sidecar and browser journeys have scripted fixture coverage. The release still needs a completed hosted CI run. GitHub declined to start the runners for the last validation push. The public QA examples now include upstream data notices and an article index for the 62 questions used in the passage studies. The SQuAD transfer example ships identifiers, labels, hashes and measurements, with the full text downloaded separately for reproduction. [QA data credits](../examples/public-qa/data-credits.md) · [SQuAD source and license](https://rajpurkar.github.io/SQuAD-explorer/)
 
 Inference accuracy and deployment cost require separate evidence on the target workflow. [Validation and resource measurements](validation.md) · [Dataset and software credits](../CREDITS.md)
+
+The remaining usability check requires an engineer who has never used NexusWeave. Give them the saved exchange demo and ask, “Did refreshing consent fix the order? Show what happened to the pending order and where you found it.” Record their first action, whether they find both the conflicting sources and the SQLite receipt, and where they need help. Desktop and mobile scripts exercise those controls. We have yet to observe an unfamiliar engineer complete this task.

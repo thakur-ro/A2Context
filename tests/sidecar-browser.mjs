@@ -19,19 +19,45 @@ try {
   await page.goto(base);
   await page.getByRole("button",{name:"Show the context map"}).click();
   const map = page.getByRole("region",{name:"Context map"});
-  const firstPage = await map.getByLabel("Focus a node").locator("option").count();
-  await map.getByRole("button",{name:"Load more findings"}).click();
-  await page.waitForFunction(n => document.querySelector('[aria-label="Focus a node"]').length > n, firstPage);
+  await map.getByRole("button",{name:"Load more findings"}).waitFor();
   while (await map.getByRole("button",{name:"Load more findings"}).count()) {
-    const before = await map.getByLabel("Focus a node").locator("option").count();
+    const before = await map.locator(".network-controls > span").innerText();
     await map.getByRole("button",{name:"Load more findings"}).click();
-    await page.waitForFunction(n => document.querySelector('[aria-label="Focus a node"]').length > n, before);
+    await page.waitForFunction(text => document.querySelector(".network-controls > span").textContent !== text,before);
   }
-  const loaded = await map.getByLabel("Focus a node").locator("option").count()-1;
-  assert.equal(await map.locator(".overview-plot .network-node").count(),Math.min(loaded,120));
-  if (process.env.CONTEXT_NETWORK_CAPTURE) await map.screenshot({path:process.env.CONTEXT_NETWORK_CAPTURE});
   const focus = map.getByLabel("Focus a node");
-  const findingOption = pattern => focus.locator("option").filter({hasText:pattern}).first().getAttribute("value");
+  const loaded = await focus.locator("option").count() - await focus.locator('option[value=""],option[value="workflows"]').count();
+  const query = map.getByLabel("Find a source or finding");
+  if (await query.count()) assert.equal(await focus.inputValue(),"workflows");
+  else {
+    assert.equal(await map.locator(".overview-plot .network-node").count(),loaded);
+    if (process.env.CONTEXT_NETWORK_CAPTURE) await map.screenshot({path:process.env.CONTEXT_NETWORK_CAPTURE});
+  }
+  await focus.selectOption("workflows");
+  const branches = map.getByRole("region",{name:"Findings by workflow"});
+  const children = branches.locator("li button");
+  await branches.getByRole("heading",{name:"Loaded findings"}).waitFor();
+  const workflow = await children.first().locator("span").innerText();
+  await children.first().click();
+  await branches.getByRole("heading",{name:workflow,exact:true}).waitFor();
+  if (process.env.CONTEXT_WORKFLOW_CAPTURE) await map.screenshot({path:process.env.CONTEXT_WORKFLOW_CAPTURE});
+  await children.first().click();
+  const finding = await children.first().locator("span").innerText();
+  await children.first().click();
+  assert.equal(await map.locator(".network-readout strong").innerText(),finding);
+  await map.getByRole("link",{name:"Inspect this evidence →"}).waitFor();
+  await map.getByRole("button",{name:/^See \d+ findings? in /}).click();
+  await branches.getByRole("button",{name:"Loaded findings",exact:true}).click();
+  await branches.getByRole("heading",{name:"Loaded findings"}).waitFor();
+  const findingOption = async pattern => {
+    if (await query.count()) {
+      for (const term of pattern.source.split("|")) {
+        await query.fill(term);
+        if (await focus.locator("option").filter({hasText:pattern}).count()) break;
+      }
+    }
+    return focus.locator("option").filter({hasText:pattern}).first().getAttribute("value");
+  };
   await focus.selectOption(await findingOption(/largest first-token shift/));
   await map.getByText("Compare source edits",{exact:true}).click();
   await map.getByRole("columnheader",{name:"Divergence"}).waitFor();
@@ -57,7 +83,7 @@ try {
   await firstSignal.click();
   assert.equal(await inlinePath.locator(".edit-ranks details[open]").count(),1);
   assert.equal(page.url(),graphUrl);
-  await focus.selectOption("");
+  await focus.selectOption("workflows");
   assert.equal(await map.locator(".selected-token").count(),0);
   const question = page.getByLabel("Question about workflow evidence");
   await question.fill("What changed when product-id was edited?");
