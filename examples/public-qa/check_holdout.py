@@ -6,6 +6,8 @@ import json
 from math import comb
 from pathlib import Path
 from statistics import median
+from urllib.parse import urlencode
+from urllib.request import urlopen
 
 from check_passage_edits import COHORTS, DATA_SHA, contains_reference, dataset_records, ordered_documents
 from compare_orders import check_study
@@ -28,6 +30,43 @@ def verify_dataset(study, path):
                 raise ValueError("Reference-alias result differs from the saved answer.")
 
 
+def paired_result(case):
+    baseline = case["baseline"]
+    ranked = case["edits"][case["top_js"]-1]["answer"]
+    first = case["edits"][0]["answer"]
+    if None in (baseline, ranked, first):
+        return "missing"
+    if (ranked != baseline) == (first != baseline):
+        return "both" if ranked != baseline else "neither"
+    return "ranked_only" if ranked != baseline else "first_only"
+
+
+def verify_sidecar(study, base):
+    from view_passage_edits import workflow_name
+    scope = {"org":"public-qa", "workflow":workflow_name(study)}
+    expected = {c["question_sha256"]: paired_result(c) for c in study["cases"]}
+    def get(route, **params):
+        query = urlencode({**scope, **params})
+        with urlopen(f"{base.rstrip('/')}/api/sidecar/{route}?{query}", timeout=30) as response:
+            return json.load(response)
+    summary = get("ranking-results")["rows"]
+    if {r["result"]:r["calls"] for r in summary} != dict(Counter(expected.values())):
+        raise ValueError("Dashboard counts differ from the held-out trials.")
+    seen = {}
+    offset = 0
+    while offset is not None:
+        page = get("ranking-examples", offset=offset)
+        for row in page["rows"]:
+            _, sep, question = row["thread"].partition(" · ")
+            key = sha256(question.encode()).hexdigest()
+            if not sep or key in seen:
+                raise ValueError("Missing or repeated held-out question in the dashboard.")
+            seen[key] = row["result"]
+        offset = page["next_offset"]
+    if seen != expected:
+        raise ValueError("A question has missing or different paired evidence in the dashboard.")
+
+
 def compare(held, pilot):
     if held["cohort"] != "holdout" or held["dataset_sha256"] != DATA_SHA or held["rotation"] != 0:
         raise ValueError("Expected the fixed holdout on the pinned dataset at rotation zero.")
@@ -44,16 +83,8 @@ def compare(held, pilot):
     paired = Counter(ranked_only=0, first_only=0, both=0, neither=0, missing=0)
     same_passage = 0
     for case in cases:
-        baseline = case["baseline"]
-        ranked = case["edits"][case["top_js"]-1]["answer"]
-        first = case["edits"][0]["answer"]
         same_passage += case["top_js"] == 1
-        if None in (baseline, ranked, first):
-            paired["missing"] += 1
-        elif (ranked != baseline) == (first != baseline):
-            paired["both" if ranked != baseline else "neither"] += 1
-        else:
-            paired["ranked_only" if ranked != baseline else "first_only"] += 1
+        paired[paired_result(case)] += 1
     scored = len(cases) - paired["missing"]
     wins, losses = paired["ranked_only"], paired["first_only"]
     discordant = wins + losses
@@ -69,9 +100,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("results", type=Path, nargs="?", default=folder / "holdout-results.json")
     parser.add_argument("--dataset", type=Path, help="Also verify passage identity, order and alias matching.")
+    parser.add_argument("--sidecar", help="Verify the live ranking counts and each question across result pages.")
     args = parser.parse_args()
     held = json.loads(args.results.read_text())
     result = compare(held, json.loads((folder / "results.json").read_text()))
     if args.dataset:
         verify_dataset(held, args.dataset)
+    if args.sidecar:
+        verify_sidecar(held, args.sidecar)
     print(json.dumps(result, indent=2))

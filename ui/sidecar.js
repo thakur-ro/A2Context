@@ -13,6 +13,7 @@ const factorId = query.get("factor");
 const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
 const targetPatterns = query.get("targets") === "1";
+const ranking = query.get("ranking");
 const targetDesign = query.get("design");
 const missSignal = query.get("miss_signal");
 const targetSelection = targetPatterns ? {targets:1, design:targetDesign, miss_signal:missSignal} : {};
@@ -299,6 +300,7 @@ function proposalCoverage(impact, factor) {
     element("dl", {}, ...Object.entries(comparisonLabels).map(([result, label]) => element("div", {},
       element("dt", {}, counts[result] ? link(label, url({proposal_result:result, coverage_factor:factor})) : label),
       element("dd", {text:counts[result]})))),
+    !factor && impact.ranked_calls ? link("Compare ranked edits across " + plural(impact.ranked_calls,"call"),url({ranking:"all"})) : null,
     replayCoverage(impact));
 }
 
@@ -939,7 +941,9 @@ function review(card, occurrences) {
       contrast.changed_runs + " of " + (contrast.changed_runs + contrast.held_runs) + " completed runs in one setup" : card.action.title;
     byId("title").textContent = oneRepeated ? "Repeat trials on one input" : repeated ? "Routing results across requests" : titles[detail.routing_test?.pattern] || "First-token sensitivity";
     byId("summary").textContent = repeated ? routingCoverage(card) : prefillSummary(card.prefill_counts);
-    return element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId || detail.factor })),
+    return element("div", { className: "feed" },
+      ranking ? link("Back to edit rankings",url({ranking})) : link("Back to source factor", url({ factor: factorId || detail.factor })),
+      !ranking && detail.selector_check ? link("Compare ranked edits across calls",url({ranking:"all"})) : null,
       panel(headline, repeated ? null : prefillFollowup(card), element("p", {text:contrast ?
         "Open a changed and an unchanged run below. Check the original and edited proposals before deciding whether to change the source." : card.action.next})),
       (measuredExample.trace || measuredExample.routing_input) && detail.routing_test ? link("All routing results in this scope", url({factor:factorId || detail.factor, recommendation:card.id, routing_design:detail.routing_test.design})) : null,
@@ -1090,16 +1094,29 @@ function firstTokenPreview(probe, recorded = false, tested = false) {
   const tied = probe.ranked.filter((row) => row.js_bits === top.js_bits).length;
   const name = (row) => row.source || row.context_id;
   const bits = (value) => Number(value.toPrecision(3)).toString() + " bits";
+  const checks = probe.proposal_checks || [];
+  const outcomes = new Map();
+  for (const check of checks) {
+    const value = check.changed ? "Changed" : "Held";
+    const prior = outcomes.get(check.context_id);
+    outcomes.set(check.context_id, prior && prior !== value ? "Results differed" : value);
+  }
+  const describe = {"Changed":"The top edit changed the completed proposal.",
+    "Held":"The completed proposal stayed the same after the top edit.",
+    "Results differed":"Completed comparisons disagreed about the top edit."};
   const rows = probe.ranked.map((row) => element("tr", {},
-    element("th", { scope: "row", text: name(row), title: row.version || row.context_id }),
+    element("th", { scope: "row", title: row.version || row.context_id }, name(row),
+      probe.selector_check?.first === row.context_id && element("small",{text:"First listed edit"})),
     element("td", {}, element("meter", { min: 0, max: top.js_bits || 1, value: row.js_bits, "aria-label": name(row) + " divergence" })),
-    element("td", { text: bits(row.js_bits) })));
+    element("td", { text: bits(row.js_bits) }),
+    recorded && element("td", {text:outcomes.get(row.context_id) || "No completed comparison"})));
   return element("section", { className: "panel replacement" },
     element("span", { className: "label", text: recorded ? "Captured first-token measurement" : "Before the first output token" }),
     element("h2", { text: top.js_bits === 0 ? "The tested edits left the first-token distribution unchanged" :
       tied === 1 ? (recorded || tested ? "Largest shift from editing " : "Test the edit to ") + name(top) : plural(tied, "source edit") + " tied for the largest shift" }),
     element("p", { text: "Largest shift across " + plural(rows.length, "tested edit") + " · " + bits(top.js_bits) +
       " of Jensen–Shannon divergence." + (recorded || tested ? "" : " Replay the original and edited requests to see whether the answer or tool call changes.") }),
+    recorded && tied === 1 && element("p", {text:describe[outcomes.get(top.context_id)] || "The effect of the top edit on the completed proposal is unmeasured."}),
     tied === 1 && top.before !== undefined ? element("div", { className: "comparison" },
       element("div", {}, element("strong", { text: "Original" }), element("code", { text: top.before })),
       element("div", {}, element("strong", { text: "Edited" }), element("code", { text: top.operation === "remove_json" ? "(Removed)" : top.replacement }))) : null,
@@ -1108,7 +1125,7 @@ function firstTokenPreview(probe, recorded = false, tested = false) {
         (probe.tool_names.length ? " · " + probe.tool_names.join(", ") : "") }) : null,
     recorded ? proposalComparisons(probe) : null,
     element("details", {}, element("summary", { text: "Compare source edits" }),
-      element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Relative to largest shift", "Divergence"].map(
+      element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Relative to largest shift", "Divergence", ...(recorded ? ["Completed proposal"] : [])].map(
         (text) => element("th", { scope: "col", text })))), element("tbody", {}, ...rows)),
       element("p", { className: "label", text: probe.model_id + " · " + probe.model_revision + " · " + probe.runtime })));
 }
@@ -1119,6 +1136,35 @@ function targetCriterion(expected, rule) {
   if (rule.kind === "outcome_fields") return value + " · Match fields " + rule.pointers.join(", ");
   if (rule.kind === "text_capture") return value + " · Match captured text · " + rule.pattern;
   return value + " · Exact match";
+}
+
+const rankingLabels = {ranked_only:"Only the ranked edit changed the proposal", first_only:"Only the first listed edit changed it",
+  both:"Both edits changed it", neither:"Neither edit changed it", missing:"Missing a completed pair", mixed:"Completed pairs disagreed"};
+
+async function rankingView() {
+  const filtered = ranking !== "all";
+  const [summary, examples] = await Promise.all([api("ranking-results",scope),
+    api("ranking-examples",{...scope, ...(filtered && {result:ranking}), offset:pageOffset})]);
+  const counts = Object.fromEntries(summary.rows.map(row => [row.result,row.calls]));
+  const total = summary.rows.reduce((n,row) => n + row.calls, 0);
+  const same = summary.rows.reduce((n,row) => n + row.same_edit, 0);
+  const scored = total - (counts.missing || 0) - (counts.mixed || 0);
+  byId("title").textContent = "Which edit changed the proposal?";
+  byId("summary").textContent = "Compare the edit with the largest first-token shift against the first edit on the workflow’s list.";
+  pagination(examples.next_offset,{ranking});
+  if (!total) return panel("No rankings in this scope",element("p",{text:"This comparison needs a verified first-token report with at least two edits."}));
+  return element("div",{className:"feed"},link("Back to recommendations",url({})),
+    panel(scored + " of " + plural(total,"call") + " had a scored pair",
+      scored > 0 && element("p",{text:"The ranked edit changed the proposal in " + ((counts.ranked_only || 0) + (counts.both || 0)) +
+        " of " + scored + " scored calls. The first listed edit changed it in " + ((counts.first_only || 0) + (counts.both || 0)) + "."}),
+      listing(Object.entries(rankingLabels).filter(([key]) => counts[key]), ([key,label]) =>
+        rowLink(label,plural(counts[key],"call"),url({ranking:key}),key === ranking)),
+      element("p",{className:"label",text:"Both selectors chose the same edit in " + plural(same,"call") +
+        ". A pair uses completed single trials from the same report. Counts describe the selected calls, including repeated inputs."})),
+    element("section",{}, element("h2",{text:filtered ? rankingLabels[ranking] : "Measured calls"}),
+      filtered && link("Show all calls",url({ranking:"all"})),
+      listing(examples.rows,row => rowLink(row.thread || row.call,[row.source,rankingLabels[row.result]].filter(Boolean).join(" · "),
+        url({ranking,recommendation:row.group,trace:row.trace,call:row.call})))));
 }
 
 function targetTokenScores(path, paired = true) {
@@ -1476,7 +1522,9 @@ async function render(refresh = false) {
     body = data.rows.length ? traceRows(data.rows) : null;
     pagination(data.next_offset, { thread: threadId });
   } else if (view === "findings") {
-    if (targetPatterns) {
+    if (ranking && !recommendationId) {
+      body = await rankingView();
+    } else if (targetPatterns) {
       body = await targetPatternView();
     } else if (recommendationId && jointSelection) {
       const selection = {recommendation:recommendationId, factor:factorId, ...jointSelection};
@@ -1693,7 +1741,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
+      ranking, pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
@@ -1740,7 +1788,7 @@ async function main() {
       row.focus();
     }
   }
-  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !targetPatterns && !outcomeCategory && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !targetPatterns && !ranking && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
     }

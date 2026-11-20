@@ -7,6 +7,7 @@ pub(super) fn observation(
     run: &Run,
     call: &Call,
     shadow: &[replay::shadow::RecordedProbe],
+    replays: &[replay::Replay],
 ) -> Option<findings::Observation> {
     let mut measured = replay::prefill::recorded(call, true)?.ok()?;
     let probe = call.prefill_probe.as_ref()?.report.as_ref()?;
@@ -65,12 +66,71 @@ pub(super) fn observation(
         json!({"status":"unique","source":top["source"].as_str().or(top["context_id"].as_str()),
                "version":top["version"],"pointer":top["pointer"],"text_range":top["text_range"]})
     };
-    let checks = proposal_checks(shadow, call, ranked);
+    let mut checks = proposal_checks(shadow, call, ranked);
+    for report in replays.iter().filter(|r| {
+        r.location.run_id == run.id
+            && r.location.call_id == call.id
+            && matches!(r.recorded.kind.as_str(), "model_output" | "tool_call")
+            && r.rescored_from.is_none()
+            && measured["baseline_request_sha256"] == r.baseline_request_sha256
+    }) {
+        let [replay::Trial::Completed { choice: original }] = report.baseline.as_slice() else {
+            continue;
+        };
+        for variant in &report.variants {
+            let [replay::Trial::Completed { choice: edited }] = variant.trials.as_slice() else {
+                continue;
+            };
+            if probe.interventions.contains(&variant.intervention) {
+                checks.push(json!({"context_id":variant.intervention.context_id,"report":report.id,
+                    "runner":report.runner_id,"decision":report.location.decision_id,"changed":original!=edited,
+                    "original":super::outcomes::preview(original),"edited":super::outcomes::preview(edited)}));
+            }
+        }
+    }
+    if probe.interventions.len() >= 2 {
+        let first = &probe.interventions[0].context_id;
+        let top_id = top["context_id"].as_str()?;
+        measured["selector_check"] = json!({"first":first, "same_edit":first==top_id,
+            "result":paired_result(&checks, first, top_id)});
+    }
     measured["sources"] = json!(sources);
     measured["leader"] = json!(leader);
     measured["shifted"] = json!(shifted);
     measured["proposal_checks"] = json!(checks);
     Some(findings::occurrence("prefill", key, call, measured))
+}
+
+fn paired_result(checks: &[Value], first: &str, top: &str) -> &'static str {
+    fn report_key(check: &Value) -> (Option<&str>, Option<&str>, Option<&str>) {
+        (
+            check["runner"].as_str(),
+            check["report"].as_str(),
+            check["decision"].as_str(),
+        )
+    }
+    let first_by_report: std::collections::BTreeMap<_, _> = checks
+        .iter()
+        .filter(|c| c["context_id"] == first)
+        .map(|c| (report_key(c), c["changed"] == true))
+        .collect();
+    let mut result = "missing";
+    for ranked in checks.iter().filter(|c| c["context_id"] == top) {
+        let Some(&other_changed) = first_by_report.get(&report_key(ranked)) else {
+            continue;
+        };
+        let pair = match (ranked["changed"] == true, other_changed) {
+            (true, true) => "both",
+            (true, false) => "ranked_only",
+            (false, true) => "first_only",
+            (false, false) => "neither",
+        };
+        if result != "missing" && result != pair {
+            return "mixed";
+        }
+        result = pair;
+    }
+    result
 }
 
 // Keep system instructions, tool inventories, message positions and request settings fixed.
@@ -206,4 +266,33 @@ pub(super) fn append_routing(sql: &mut String, page_only: bool) {
                     SELECT group_id,design,count(*) AS inputs,
                         sum(signature!='mixed' AND instr(signature,'?')=0) AS completed
                     FROM routing_inputs GROUP BY group_id,design)");
+}
+
+#[cfg(test)]
+mod ranking_tests {
+    use super::*;
+
+    #[test]
+    fn only_pairs_checks_from_the_same_runner_report_and_decision() {
+        let first = json!({"runner":"q","report":"r","decision":"one","context_id":"first","changed":false});
+        let top =
+            json!({"runner":"q","report":"r","decision":"one","context_id":"top","changed":true});
+        for key in ["runner", "report", "decision"] {
+            let mut unrelated = top.clone();
+            unrelated[key] = "different".into();
+            assert_eq!(
+                paired_result(&[first.clone(), unrelated], "first", "top"),
+                "missing"
+            );
+        }
+        let mut next_first = first.clone();
+        next_first["report"] = "second".into();
+        let mut next_top = top.clone();
+        next_top["report"] = "second".into();
+        next_top["changed"] = false.into();
+        assert_eq!(
+            paired_result(&[first, top, next_first, next_top], "first", "top"),
+            "mixed"
+        );
+    }
 }

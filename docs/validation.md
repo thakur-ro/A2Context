@@ -163,6 +163,8 @@ python3 scripts/check_sidecar.py --binary target/release/nexusweave --token-page
 
 Ten public questions were each run with ten passages in two orders. The scorer chose a passage for testing before decoding. Its suggested edit changed the generated text in 8/10 cases in the first order and 10/10 in the second. Testing the first passage changed 8/10 and 6/10 respectively. Rotating the inputs changed the top-ranked source on all ten questions. The replay loader verifies the original and edited requests through the Rust planner and scorer. CI recomputes the saved rankings, counts and order comparison without loading a model. [Design, timings, reproducible findings and dashboard](../examples/public-qa/README.md)
 
+The live ranking review reproduced the held-out counts and all 20 question-level outcomes, including three incomplete comparisons. Reimporting the study preserved the same counts and links. A separate offline Linux run with one CPU and 512 MiB reproduced the same results. The container peaked at 75.8 MiB while running the release sidecar, importer and verifier on saved measurements. This excludes model inference. [Holdout protocol and reproduction](../examples/public-qa/holdout.md#inspect-the-measured-calls)
+
 
 ## Routing instruction and tool test
 

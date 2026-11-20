@@ -243,10 +243,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 20 {
+        if version == 21 {
             return Ok(());
         }
-        if !(0..20).contains(&version) {
+        if !(0..21).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -255,23 +255,35 @@ impl Store {
         let mut after = String::new();
         loop {
             let tx = self.0.transaction()?;
-            let mut stmt = tx.prepare(if version >= 18 {
-                "SELECT id FROM traces WHERE id>?1 AND instr(run,'\"shadow_probes\"')>0 ORDER BY id LIMIT 16"
-            } else {
-                "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL ORDER BY id LIMIT 16"
-            })?;
+            let mut stmt = tx.prepare(
+                "SELECT t.id, EXISTS (
+                SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='prefill'
+            ) AS has_ranking FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND
+            (?2<18 OR (?2<20 AND instr(t.run,'\"shadow_probes\"')>0) OR has_ranking)
+            ORDER BY t.id LIMIT 16",
+            )?;
             let ids = stmt
-                .query_map([&after], |r| r.get::<_, String>(0))?
+                .query_map(params![after, version], |r| {
+                    Ok((r.get::<_, String>(0)?, r.get::<_, bool>(1)?))
+                })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
             drop(stmt);
             let Some(last) = ids.last() else { break };
-            for id in &ids {
-                super::capture::replace(&tx, id, load_run(&tx, id)?.as_ref())?;
+            for (id, has_ranking) in &ids {
+                let run = load_run(&tx, id)?;
+                if version < 20 {
+                    super::capture::replace(&tx, id, run.as_ref())?;
+                }
+                if *has_ranking {
+                    if let Some(run) = run {
+                        refresh_findings(&tx, &run)?;
+                    }
+                }
             }
             tx.commit()?;
-            after.clone_from(last);
+            after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 20)?;
+        self.0.pragma_update(None, "user_version", 21)?;
         Ok(())
     }
 
@@ -748,6 +760,18 @@ impl Store {
             append_window(&mut sql, &mut args, "c.started", filters)?;
             sql.push_str(super::target_patterns::CONVERSATIONS);
         }
+        if matches!(view, "ranking-results" | "ranking-examples") {
+            sql.push_str(
+                ", rankings AS (SELECT o.trace_id,o.call_id,o.group_id,o.observed,t.thread,
+                json_extract(o.detail,'$.selector_check.result') AS result,
+                json_extract(o.detail,'$.selector_check.same_edit') AS same_edit,
+                json_extract(o.detail,'$.ranked[0].source') AS source
+                FROM observations o JOIN selected t ON t.id=o.trace_id
+                WHERE o.kind='prefill' AND json_type(o.detail,'$.selector_check')='object'",
+            );
+            append_window(&mut sql, &mut args, "o.observed", filters)?;
+            sql.push(')');
+        }
         let cohort = view == "outcome-factors"
             || (view == "conversation-outcomes" && filters.contains_key("level"));
         let edited = filters.get("by").is_some_and(|s| s == "edit");
@@ -772,6 +796,20 @@ impl Store {
             }
         }
         match view {
+            "ranking-results" => sql.push_str(" SELECT json_object('result',result,'calls',count(*),
+                'same_edit',sum(same_edit)) FROM rankings GROUP BY result ORDER BY result LIMIT ? OFFSET ?"),
+            "ranking-examples" => {
+                sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'group',group_id,'thread',thread,
+                    'source',source,'result',result,'same_edit',same_edit) FROM rankings WHERE 1");
+                if let Some(value) = filters.get("result") {
+                    if !matches!(value.as_str(),"both"|"ranked_only"|"first_only"|"neither"|"missing"|"mixed") {
+                        return Err("unknown ranking comparison result".into());
+                    }
+                    sql.push_str(" AND result=?");
+                    args.push(value.clone());
+                }
+                sql.push_str(" ORDER BY observed DESC,trace_id,call_id LIMIT ? OFFSET ?");
+            }
             "target-patterns" => {
                 args.push(if filters.contains_key("design") {"0"} else {"2"}.into());
                 sql.push_str(super::target_patterns::GROUPS);
@@ -842,6 +880,7 @@ impl Store {
                 ORDER BY differs DESC,factor,design LIMIT ? OFFSET ?"),
             "impact" => {
                 sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
+                    'ranked_calls',count(*) FILTER (WHERE kind='prefill' AND json_type(detail,'$.selector_check')='object'),
                     'captured_conversations',(SELECT count(*) FROM captured_threads),
                     'without_findings',(SELECT count(*) FROM without_findings),
                     'without_findings_with_screen_suggestion',(SELECT count(*) FROM without_findings WHERE flagged),

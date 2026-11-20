@@ -51,7 +51,7 @@ cargo build --locked
 target/debug/nexusweave sidecar --db /tmp/nexus-qa.sqlite --capture-content
 ```
 
-In a second terminal, load one or both orders. Each command prints a link per question to the recommendation for the passage chosen by the pre-generation ranking. The link selects the exact trace, call, replay and source edit. From that card, **See this recommendation across requests** opens the group. Single-edit cards show an answer excerpt for each arm whose trials all returned the same text. The study completion time timestamps the reconstructed spans. A repeat import of the same saved study uses the same IDs and timestamps.
+In a second terminal, load one or both orders. Each command prints a link per question to the recommendation for the passage chosen by the pre-generation ranking. The link selects the exact trace, call, replay and source edit. From that card, **See this recommendation across requests** opens the group. Single-edit cards show an answer excerpt for each arm whose trials all returned the same text. The study completion time timestamps the reconstructed spans. A repeat import of the same saved study uses the same IDs and timestamps. For the live paired ranking comparison, use the [holdout importer](holdout.md#inspect-the-measured-calls).
 
 ```sh
 python3 examples/public-qa/view_passage_edits.py /tmp/nexus-qa.jsonl.gz

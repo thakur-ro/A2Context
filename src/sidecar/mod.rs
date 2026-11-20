@@ -333,6 +333,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/conversations-without-findings"
                 | "/api/sidecar/target-patterns"
                 | "/api/sidecar/target-examples"
+                | "/api/sidecar/ranking-results"
+                | "/api/sidecar/ranking-examples"
                 | "/api/sidecar/screened-pairs"
                 | "/api/sidecar/screened-pair-examples"
                 | "/api/sidecar/outcome-factors"

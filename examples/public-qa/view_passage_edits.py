@@ -12,7 +12,15 @@ from uuid import NAMESPACE_URL, uuid5
 from check_passage_edits import DATA_SHA, dataset_records, ordered_documents, request, summarize
 
 
-def prepare(record, case, study):
+def body_digest(body):
+    return sha256(json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+
+
+def workflow_name(study):
+    return f"public-qa-{study.get('cohort', 'pilot')}-order-{study['rotation']}"
+
+
+def prepare(record, case, study, *, rankings=False):
     documents = ordered_documents(case["row"], record, study["rotation"])
     question = record["question"]
     passages = [doc["title"] + "\n" + doc["text"] for doc in documents]
@@ -48,6 +56,8 @@ def prepare(record, case, study):
 
     identity = [DATA_SHA, str(case["row"]), str(study["rotation"]), str(study["finished_unix_ns"]),
                 study["model"], study["revision"], study["runtime"], study["tokenizer_sha256"]]
+    if rankings:
+        identity.append("prefill-ranking-v1")
     trace_id = uuid5(NAMESPACE_URL, "/".join(identity)).hex
     span_id = trace_id[:16]
     attributes = {
@@ -58,14 +68,29 @@ def prepare(record, case, study):
         "nexusweave.context.semantics": json.dumps({"version": 1, "request_sources": sources}),
         "gen_ai.input.messages": json.dumps([{"role": message["role"], "parts": [
             {"type": "text", "content": message["content"]}]} for message in original["messages"]]),
-        "gen_ai.output.messages": json.dumps([{"role": "assistant", "parts": [
-            {"type": "text", "content": case["baseline"]}]}]),
     }
+    if case["baseline"] is not None:
+        attributes["gen_ai.output.messages"] = json.dumps([{"role": "assistant", "parts": [
+            {"type": "text", "content": case["baseline"]}]}])
+    if rankings:
+        scores = {"version": 1, "model_id": study["model"], "model_revision": study["revision"],
+                  "runtime": study["runtime"], "tokenizer_sha256": study["tokenizer_sha256"],
+                  "baseline_request_sha256": body_digest(original), "effects": []}
+        for edit, source, measured in zip(edits, sources, case["edits"], strict=True):
+            key = edit["context_id"]
+            scores["effects"].append({"context_id": key, "source_id": source["source_id"],
+                                     "source_version": source["source_version"],
+                                     "request_sha256": body_digest(outcomes[(key,)][0]),
+                                     "js_bits": measured["js_bits"]})
+        attributes["nexusweave.prefill.probe"] = json.dumps({"interventions": edits, "scores": scores})
     timestamp = study["finished_unix_ns"]
     span = {"traceId": trace_id, "spanId": span_id, "name": "Public QA study replay",
             "startTimeUnixNano": str(timestamp), "endTimeUnixNano": str(timestamp),
             "attributes": [{"key": key, "value": {"stringValue": value}} for key, value in attributes.items()]}
-    trace = {"resourceSpans": [{"scopeSpans": [{"spans": [span]}]}]}
+    resource_spans = {"scopeSpans": [{"spans": [span]}]}
+    if rankings:
+        resource_spans["resource"] = {"attributes": [{"key": "service.name", "value": {"stringValue": workflow_name(study)}}]}
+    trace = {"resourceSpans": [resource_spans]}
     replay = {"version": 1, "id": "public-qa-" + trace_id, "samples": 1,
               "runner_id": " / ".join(study[key] for key in ("model", "revision", "runtime", "tokenizer_sha256")),
               "location": {"run_id": "otlp:" + trace_id, "call_id": span_id, "decision_id": "output:0:0"},

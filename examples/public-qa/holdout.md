@@ -18,6 +18,19 @@ Ranking all ten passages took a median of 11.00 seconds for eleven forward passe
 
 For row 1000, the baseline answer reached the generation limit. We supplied the assembled request and ten edits to `probe-prefill`, excluding the output-message attribute. The CLI rerun selected the same top passage and reproduced all ten saved scores to within 2 × 10⁻¹⁷ bits. The sidecar displayed the ranking before receiving an answer. The effect on the completed answer remains unknown on that row. [Pre-inference workflow](../../docs/sidecar.md#measure-an-edit-before-the-first-output-token)
 
+## Inspect the measured calls
+
+Start a content-capturing sidecar and download the pinned dataset using the [public QA setup](README.md). Load the saved holdout with the command below. Each span includes the original input, the ten edit scores and their captured source locations. The importer attaches replay trials only when a baseline answer completed. Loading the study makes zero model calls.
+
+```sh
+python3 examples/public-qa/view_rankings.py /tmp/nexus-qa.jsonl.gz \
+  --results examples/public-qa/holdout-results.json
+```
+
+Open **Only the first listed edit changed it**. For the question about the University of Michigan’s school of public health, both the baseline and the model-ranked edit returned `17th`. Editing the first passage returned `17`. All three answers missed the dataset reference `#4`. Here an exact text difference was enough to count as a change. Open **Missing a completed pair** to inspect a ranking whose effect on the answer remains unknown. [Open the imported holdout](http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0&ranking=all)
+
+![On 17 paired calls, only the ranked edit changed four answers, only the first edit changed one, both changed ten, and neither changed two. Three calls lacked a pair.](../../docs/media/public-qa-ranking.png)
+
 ## Protocol
 
 We will test the passage selector from the ten-question pilot on 20 further questions from the same pinned public QA file. This protocol fixes the inputs, method and comparisons before generating the new answers.
@@ -39,7 +52,7 @@ python3 examples/public-qa/check_passage_edits.py /tmp/nexus-qa.jsonl.gz /path/t
   --cohort holdout --rotation 0 --output /tmp/nexus-qa-holdout.json
 ```
 
-Check the saved results without a model. Supplying the dataset also checks each question and passage against the pinned bytes and recomputes the alias labels.
+Check the saved results without a model. Supplying the dataset also checks each question and passage against the pinned bytes and recomputes the alias labels. After importing the rankings, add `--sidecar http://127.0.0.1:8040` to verify the counts and all 20 question-level results served by the dashboard.
 
 ```sh
 python3 examples/public-qa/check_holdout.py --dataset /tmp/nexus-qa.jsonl.gz

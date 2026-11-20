@@ -289,7 +289,7 @@ pub fn preview(
     }))
 }
 
-pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
+pub fn probes(run: &Run, call: &Call, replays: &[replay::Replay], findings: &mut Vec<Observation>) {
     for probe in replay::candidates::recorded(&run.id, call) {
         let replay::candidates::Verification::Matched { mut measurement } = probe.verification
         else {
@@ -343,7 +343,7 @@ pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
         }
     }
     let shadow = replay::shadow::recorded(&run.id, call);
-    findings.extend(super::prefill::observation(run, call, &shadow));
+    findings.extend(super::prefill::observation(run, call, &shadow, replays));
     let reports = call
         .shadow_probes
         .as_ref()

@@ -174,7 +174,7 @@ pub fn derive(
         }
     }
     for call in &run.calls {
-        super::recommendations::probes(run, call, &mut findings);
+        super::recommendations::probes(run, call, reports, &mut findings);
     }
     super::recommendations::token_measurements(run, activations, &mut findings);
     let by_location: BTreeMap<_, _> = reports

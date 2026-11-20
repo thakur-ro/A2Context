@@ -505,6 +505,28 @@ try {
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
   }
+  if (process.env.PUBLIC_QA_URL) {
+    for (const device of [page,mobile]) {
+      await device.goto(process.env.PUBLIC_QA_URL + "/?org=public-qa&workflow=public-qa-holdout-order-0&ranking=all");
+      await device.getByRole("heading",{name:"17 of 20 calls had a scored pair"}).waitFor();
+      await device.getByText("The ranked edit changed the proposal in 14 of 17 scored calls. The first listed edit changed it in 11.").waitFor();
+      if (device === page && process.env.RANKING_SCREENSHOT) await device.locator("#content .panel").first().screenshot({path:process.env.RANKING_SCREENSHOT});
+      await device.getByRole("link",{name:/Only the first listed edit changed it.*1 call/}).click();
+      await device.getByRole("link",{name:/QA 1200/}).click();
+      await device.getByText("The completed proposal stayed the same after the top edit.").waitFor();
+      await device.getByText("Compare source edits",{exact:true}).click();
+      const table = device.locator(".panel.replacement table");
+      assert.equal(await table.locator("tbody tr").first().locator("td").last().innerText(), "Held");
+      assert.equal(await table.locator("tr").filter({hasText:"First listed edit"}).locator("td").last().innerText(),"Changed");
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await device.getByRole("link",{name:"Back to edit rankings"}).click();
+      assert.equal(new URL(device.url()).searchParams.get("workflow"),"public-qa-holdout-order-0");
+      await device.getByRole("link",{name:/Missing a completed pair.*3 calls/}).click();
+      await device.getByRole("link",{name:/QA 1000/}).click();
+      await device.getByText("The effect of the top edit on the completed proposal is unmeasured.").waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+  }
   assert.deepEqual(errors, []);
   console.log("Verified recommendations, before-inference preview, measured choices and tokens, legacy links, and desktop and mobile layouts.");
 } finally {

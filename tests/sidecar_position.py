@@ -21,13 +21,16 @@ def seed(base, binary, folder):
         case = {"row": 0, "baseline": "A", "question_sha256": sha256(b"Where?").hexdigest(), "edits": []}
         for i, doc in enumerate(docs[rotation:] + docs[:rotation]):
             case["edits"].append({"position": i+1, "passage_sha256": sha256((doc["title"]+"\n"+doc["text"]).encode()).hexdigest(),
+                                  "js_bits": 0.25 if doc is docs[0] else 0.0,
                                   "answer": "B" if doc is docs[0] and rotation == 0 else "A"})
         study = {"rotation": rotation, "finished_unix_ns": 1_800_000_000_000_000_000, "model": "fixture",
-                 "revision": "1", "runtime": "unit", "tokenizer_sha256": "synthetic"}
-        trace, case, outcomes = prepare(record, case, study)
+                 "revision": "1", "runtime": "unit", "tokenizer_sha256": "0" * 64}
+        trace, case, outcomes = prepare(record, case, study, rankings=True)
         with TemporaryDirectory(dir=folder) as temporary:
             report = verified_report(binary, Path(temporary), trace, case, outcomes)
         send_traces(base, trace)
+        missing = get(base, "ranking-examples", org="public-qa", result="missing")["rows"]
+        assert case["location"]["run_id"] in {r["trace"] for r in missing}
         send(base, "/api/replay-reports", report, expected=201)
 
 
@@ -35,6 +38,9 @@ def check(binary, folder):
     database = folder / "position.sqlite"
     with server(binary, database, "--capture-content") as base:
         seed(base, binary, folder)
+        ranking = [{"result":"both","calls":1,"same_edit":1},{"result":"neither","calls":1,"same_edit":0}]
+        assert get(base, "ranking-results", org="public-qa")["rows"] == ranking
+        assert not get(base, "ranking-examples", org="another-workspace")["rows"]
         row, = get(base, "replay-variations", org="public-qa")["rows"]
         selection = {"factor": row["factor"], "group": row["group"], "pair": row["position_pair"],
                      "baseline_trials": 1, "edit_trials": 1, "org": "public-qa"}
@@ -76,7 +82,11 @@ def check(binary, folder):
         plan_path.write_text(json.dumps(plan))
         command[4] = folder/"invalid-result"
         assert subprocess.run(command, capture_output=True).returncode != 0 and not command[4].exists()
+    with sqlite3.connect(database) as db:
+        db.execute("UPDATE observations SET detail=json_remove(detail,'$.selector_check','$.proposal_checks') WHERE kind='prefill'")
+        db.execute("PRAGMA user_version=20")
     with server(binary, database, "--capture-content") as base:
+        assert get(base, "ranking-results", org="public-qa")["rows"] == ranking
         row, = get(base, "replay-variations", org="public-qa")["rows"]
         assert row["position_reports"] == 2 and row["latest_position_result"]["present"]["compared"] == 1
         assert row["latest_position_result"]["replaced"] == {"changed": 0, "compared": 2}
