@@ -9,7 +9,7 @@ use super::{named, Report, VERSION};
 use crate::{Call, ContextItem, Evidence};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Shadow reports and the trace attribute that carried them.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -53,6 +53,45 @@ pub struct Measurement<'a> {
     pub effects: Vec<RecordedEffect<'a>>,
     pub pair: Option<RecordedPair<'a>>,
     pub control_comparison: Option<&'a ControlComparison>,
+}
+
+impl Measurement<'_> {
+    /// Named proposal counts for each condition in this request-verified report.
+    /// The unchanged request's catalog remains the reference when an edit changes tools.
+    pub fn tool_proposals(&self) -> Value {
+        fn counts(trials: &[Trial], edits: &[Value]) -> Value {
+            let mut names = BTreeMap::new();
+            let mut completed = 0;
+            for trial in trials {
+                if let Trial::Completed { choice } = trial {
+                    completed += 1;
+                    if choice.kind == "tool_call" {
+                        *names.entry(&choice.label).or_insert(0usize) += 1;
+                    }
+                }
+            }
+            serde_json::json!({"edits":edits, "attempted":trials.len(),"completed":completed,"names":names})
+        }
+        let mut conditions = vec![counts(&self.report.baseline, &[])];
+        let mut sources = Vec::new();
+        for effect in &self.report.effects {
+            let source = effect
+                .source_id
+                .as_deref()
+                .unwrap_or(&effect.result.intervention.context_id);
+            let edit = &effect.result.intervention;
+            let location = serde_json::json!({"source":source, "pointer":edit.pointer, "text_range":edit.text_range});
+            conditions.push(counts(
+                &effect.result.trials,
+                std::slice::from_ref(&location),
+            ));
+            sources.push(location);
+        }
+        if let Some(pair) = &self.report.pair {
+            conditions.push(counts(&pair.result.trials, &sources));
+        }
+        serde_json::json!({"id":self.report.id,"runner":self.runner_id,"conditions":conditions})
+    }
 }
 
 /// One effect resolved to its source on the recorded call.

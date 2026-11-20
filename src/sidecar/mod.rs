@@ -585,7 +585,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                         Some("prefill") => json!({
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/prefill-preview.json"))?,
                         }),
-                        Some("routing") => json!({
+                        Some(scenario @ ("routing" | "routing-scope")) => json!({
+                            "allowed_tools":(scenario == "routing-scope").then_some(["stock"]),
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/request.json"))?,
                             "candidate": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/report.json"))?,
                             "shadow": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/shadow-report.json"))?,
@@ -686,6 +687,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
             (
                 "/source-coverage.js",
                 include_bytes!("../../ui/source-coverage.js"),
+            ),
+            (
+                "/tool-catalog.js",
+                include_bytes!("../../ui/tool-catalog.js"),
             ),
             ("/sidecar.js", include_bytes!("../../ui/sidecar.js")),
         ];

@@ -330,6 +330,18 @@ pub fn preview(
     });
     let items: Vec<_> = issue.into_iter().chain(findings).take(15).collect();
     let shadow = replay::shadow::recorded("pending", call);
+    let tool_map = tool_scope.as_ref().map(|catalog| {
+        let trials: Vec<_> = shadow
+            .iter()
+            .filter_map(|probe| match &probe.verification {
+                replay::shadow::Verification::Matched { measurement } => {
+                    Some(measurement.tool_proposals())
+                }
+                replay::shadow::Verification::Unverified { .. } => None,
+            })
+            .collect();
+        json!({"permitted":catalog.permitted, "trials":trials})
+    });
     if let Some(experiment) = history
         .get_mut("experiment")
         .filter(|e| e["status"] == "ready")
@@ -377,7 +389,7 @@ pub fn preview(
         "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths, "prefix_reviews":prefix_reviews,
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
         "scope_coverage": preflight.scope_coverage, "source_coverage": preflight.source_coverage,
-        "anchor_overlap": preflight.anchor_overlap, "tool_scope":tool_scope,
+        "anchor_overlap": preflight.anchor_overlap, "tool_scope":tool_scope,"tool_map":tool_map,
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))
 }

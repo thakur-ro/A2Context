@@ -1995,20 +1995,6 @@ async function targetPatternView() {
       url({...targetSelection,trace:row.trace,call:row.call,report:row.report})))));
 }
 
-function pendingToolScope(check, issue) {
-  if (!check) return null;
-  const count = check.captured;
-  return element("section", {className:"panel", "aria-label":"Tool catalog scope"},
-    element("h2", {text:issue?.action.title || "Tool catalog matches the workflow scope"}),
-    element("p", {text:count == null ? "The assembled tools array is unavailable." :
-      plural(count, "tool definition") + " · " + check.outside.length + " outside scope · " + check.unclassified.length + " unclassified"}),
-    check.outside.length > 0 && element("ul", {}, ...check.outside.map(tool =>
-      element("li", {}, element("code", {text:tool.name}), " at /tools/" + tool.index))),
-    check.unclassified.length > 0 && element("p", {text:"Unclassified entries: " +
-      check.unclassified.map(index => "/tools/" + index).join(", ")}),
-    issue && element("p", {text:issue.action.next}));
-}
-
 function pendingTokenScores(paths) {
   const heading = element("h2");
   const chart = element("div");
@@ -2085,7 +2071,7 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "finding") + (report.prefill ? " · First-token test attached" : "") }),
-        pendingToolScope(report.tool_scope, report.recommendations.find(r => r.kind === "tool_scope")),
+        pendingToolScope(report.tool_scope, report.tool_map, report.recommendations.find(r => r.kind === "tool_scope")),
         overlappingAnchors(report.anchor_overlap),
         sources && element("section",{className:"panel","aria-label":"Required source coverage"},
           element("h2",{text:(sources.matched ? "Sources captured for " : "Check sources for ") + sources.name}),
@@ -2139,7 +2125,8 @@ function pendingPreview() {
       link("Compare instructions using a text classifier", url({view:"preview", scenario:"screen"})))));
   const routing = element("button", { type: "button", text: "Try a measured tool choice" });
   const prefillLink = link("Check the same edits before the first token", url({ view: "preview", scenario: "prefill" }), "action");
-  const routingLinks = element("div", {className:"actions"}, prefillLink,
+  const routingLinks = element("div", {className:"actions"},
+    link("Inspect proposals under a stock-only scope",url({view:"preview",scenario:"routing-scope"}),"action"), prefillLink,
     link("Test instruction text and available tools", url({view:"preview",scenario:"routing-test"}), "action"));
   routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" }), routingLinks));
   const history = element("button", { type: "button", text: "Check a new request against earlier edits" });
@@ -2177,7 +2164,7 @@ function pendingPreview() {
   } else if (windowQuestions.some(([key]) => key === scenario)) {
     show(() => api("preview-example", {scenario}), element("div",{className:"feed"}, questions,
       scenario === "window-earlier" ? link("See the scores before running proposal trials",url({view:"preview",scenario:"window-before"})) : null));
-  } else if (["screen", "scored-history", "checked-history", "warranty", "routing", "policy", "history", "prefill", "routing-test"].includes(scenario)) {
+  } else if (["screen", "scored-history", "checked-history", "warranty", "routing", "policy", "history", "prefill", "routing-test", "routing-scope"].includes(scenario)) {
     const next = scenario === "screen" ? link("Test a 45-day answer across questions", url({view:"preview", scenario:"window-earlier"}), "action") :
       scenario === "prefill" ? link("Compare the measured tool proposals", url({ view: "preview", scenario: "routing" }), "action") :
       scenario === "routing" ? routingLinks : scenario === "checked-history" ?

@@ -48,6 +48,12 @@ cargo run --locked -- inspect-pending examples/bfcl-transfer/mlx/tool-scope/prev
 
 Load the same file under **Before inference**. The sample quote permits a fare lookup. The card identifies authentication at `/tools/1` and booking at `/tools/2`. Replace the sample body and list with your own. The comparison reads flat and wrapped function definitions. Missing catalogs and unclassified entries stay visible as capture gaps. An empty permission list means the operation permits no named functions. This check reads the catalog without calling a model or enforcing dispatch. Check the proposed tool and its arguments in your application before executing it. [Runnable input](../examples/bfcl-transfer/mlx/tool-scope/preview.json)
 
+**Follow a proposed tool through a source edit.** In **Before inference**, choose **Try a measured tool choice**, then **Inspect proposals under a stock-only scope**. This applies a stock-only permission list to the saved product-routing experiment. Open **Outside scope** and select **Edit request-type**. The original trial proposed `stock`; the edited trial proposed `price`. Changing the store name preserved the original proposal. Expand the completed-trial count to see the source location, runner and report ID. Each condition here contains one greedy trial. [Saved inputs and proposals](../examples/runtime-comparison/pending-routing/shadow-report.json)
+
+![The original catalog branches into permitted and out-of-scope tools. The price row shows zero of one original trials and one of one edited trials proposed it.](media/catalog-proposals.png)
+
+The map groups definitions from the original request. Counts show how often a completed trial proposed that function name. They include completed text replies in the denominator and exclude failed trials. A proposal whose name has no matching catalog entry appears separately. An unavailable report leaves counts unmeasured. Search spans all branches, and each page shows up to eight matching entries.
+
 ### Prepare a shadow probe from captured sources
 
 Select **Prepare shadow probe** beside the request evidence. You can also start from an editable input, flagged pair, or rule conflict. Choose the outcome to measure and the exact locations to edit. If you start from an editable two-source finding, the planner selects both sources and includes a joint condition.

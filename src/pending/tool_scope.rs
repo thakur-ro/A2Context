@@ -3,9 +3,9 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeSet;
 
-/// A function present in the request outside the declared workflow scope.
+/// A named function and its position in the assembled request.
 #[derive(Serialize)]
-pub struct OutsideTool {
+pub struct CatalogEntry {
     pub name: String,
     /// Index in the request body's `tools` array.
     pub index: usize,
@@ -15,7 +15,10 @@ pub struct OutsideTool {
 #[derive(Serialize)]
 pub struct ToolScope {
     pub captured: Option<usize>,
-    pub outside: Vec<OutsideTool>,
+    pub outside: Vec<CatalogEntry>,
+    /// Catalog locations available for interactive drill-down.
+    #[serde(skip)]
+    pub permitted: Vec<CatalogEntry>,
     /// Entries whose function names could not be established.
     pub unclassified: Vec<usize>,
 }
@@ -31,6 +34,7 @@ pub(super) fn check(body: Option<&Value>, allowed: &[String]) -> Result<ToolScop
     let mut check = ToolScope {
         captured: catalog.map(Vec::len),
         outside: Vec::new(),
+        permitted: Vec::new(),
         unclassified: Vec::new(),
     };
     for (index, tool) in catalog.into_iter().flatten().enumerate() {
@@ -48,11 +52,17 @@ pub(super) fn check(body: Option<&Value>, allowed: &[String]) -> Result<ToolScop
         };
         match name {
             None => check.unclassified.push(index),
-            Some(name) if !allowed.contains(name) => check.outside.push(OutsideTool {
-                name: name.to_owned(),
-                index,
-            }),
-            Some(_) => {}
+            Some(name) => {
+                let entries = if allowed.contains(name) {
+                    &mut check.permitted
+                } else {
+                    &mut check.outside
+                };
+                entries.push(CatalogEntry {
+                    name: name.to_owned(),
+                    index,
+                });
+            }
         }
     }
     Ok(check)

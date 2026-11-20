@@ -19,8 +19,8 @@ try {
   const catalog = page.getByRole("region",{name:"Tool catalog scope"});
   await catalog.getByRole("heading",{name:"Review tools outside the workflow scope"}).waitFor();
   await catalog.getByText("3 tool definitions · 2 outside scope · 0 unclassified").waitFor();
-  assert.deepEqual(await catalog.getByRole("listitem").allTextContents(),
-    ["authenticate_travel at /tools/1","book_flight at /tools/2"]);
+  assert.deepEqual(await catalog.getByRole("listitem").locator("code").allTextContents(),
+    ["/tools/1","/tools/2"]);
   await page.goto(base);
   await setup.waitFor();
   const sample = await readFile(new URL("../examples/exchange-approval/exchange.otlp.json",import.meta.url),"utf8");
