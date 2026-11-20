@@ -12,6 +12,11 @@ pub struct Action {
 
 pub fn action(kind: &str, detail: &Value) -> Action {
     let (title, next, basis) = match kind {
+        "replacement" => (
+            "Repeat the comparison with both wordings",
+            "Vary the wording and the order of the sources on fresh requests. Keep the scoring rule fixed and check which result repeats before changing the workflow.",
+            "Different match counts in comparable replay conditions",
+        ),
         "conflict" => (
             "Resolve the competing rules",
             "Confirm which source should govern this scope. Test changing only the other declaration against the answer or tool choice you expect.",

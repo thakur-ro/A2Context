@@ -223,10 +223,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 2 {
+        if version == 3 {
             return Ok(());
         }
-        if !(0..2).contains(&version) {
+        if !(0..3).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -248,7 +248,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 2)?;
+        self.0.pragma_update(None, "user_version", 3)?;
         Ok(())
     }
 
@@ -346,13 +346,13 @@ impl Store {
                     count(DISTINCT thread_key) AS conversations,count(DISTINCT trace_id) AS requests,
                     count(DISTINCT CASE WHEN changed=1 THEN trace_id END) AS changed_requests,
                     count(DISTINCT group_id) AS recommendations,max(observed) AS latest,
-                    min(CASE WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
+                    min(CASE WHEN kind='replacement' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
                         WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' THEN 2 WHEN kind='token' THEN 3
                         WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 6 ELSE 7 END) AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,
-                    'signal',CASE signal WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN 'replay' WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
+                    'signal',CASE signal WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN 'replay' WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
                         WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
                 FROM grouped ORDER BY signal,conversations DESC,requests DESC,latest DESC,factor LIMIT ? OFFSET ?"),
             "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
@@ -363,6 +363,7 @@ impl Store {
                     SELECT group_id,kind,count(*) AS hits,count(DISTINCT trace_id) AS traces,
                            count(DISTINCT thread_key) AS threads,max(observed) AS latest,
                            CASE
+                             WHEN kind='replacement' THEN -4
                              WHEN kind='candidate' AND min(json_extract(detail,'$.baseline')*json_extract(detail,'$.edited'))<0 THEN -3
                              WHEN kind IN ('shadow','token') THEN -2
                              WHEN kind='candidate' THEN -1

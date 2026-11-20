@@ -11,6 +11,7 @@ We searched the web for primary sources in arXiv, NeurIPS, ICLR, ACL Anthology, 
 - `LangSmith Insights trace patterns failure modes` and `SentinelRCA deterministic detectors traces`
 - `context attribution source ablation LLM ContextCite AttriBoT`
 - `IHEval conflicting instruction hierarchy` and `activation patching Heimersheim Nanda interpret interventions`
+- `language model sensitivity prompt format Sclar performance spread`
 - `counterfactual interventions multiple independently sufficient causes language models` and `does causal localization inform model editing`
 - `context-render Claude Code source context view` and `Langfuse trace sessions metadata`
 
@@ -39,6 +40,7 @@ This matrix records capabilities described in the reviewed sources. The combinat
 | **Activation patching guide** | Explains activation interventions, metrics, and interpretation. | Adapted in optional instrumented examples. A patch measures an outcome under that intervention for the tested model and inputs. [arXiv:2404.15255](https://arxiv.org/abs/2404.15255) |
 | **Unfaithful explanations** | Controlled prompt perturbations changed predictions while explanations omitted the triggering input. | Related. Recommendations use observable effects of specific tests as evidence. [Turpin et al., NeurIPS 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/ed3fea9033a80fea1376299fa7863f4a-Abstract-Conference.html) |
 | **Circuit tracing** | Attribution graphs and follow-up activation interventions probe selected mechanisms of a particular instrumented model. | Related. The current token view shows a source edit and decoder-block measurements along a fixed output path. [Lindsey et al., 2025](https://transformer-circuits.pub/2025/attribution-graphs/biology.html) |
+| **Prompt format sensitivity** | Sclar and colleagues varied few-shot prompt formatting and measured changes in task accuracy across plausible formats. | Related motivation for showing the alternatives behind a result. NexusWeave compares exact edit wordings against one captured decision. These wordings may differ in meaning. [ICLR 2024](https://proceedings.iclr.cc/paper_files/paper/2024/hash/6c0e99d736da621403018ca7b32b1a4d-Abstract-Conference.html) |
 | **Missed causes** | Mueller explains how independently sufficient causes can mask one another under individual interventions. | Motivates the four-condition source comparison. A single unchanged score can warrant a joint test. [Mueller, 2024](https://arxiv.org/abs/2407.04690v1) |
 | **Localization and editing** | In factual recall experiments, the layer localized by denoising did not predict the best layer for the tested fact rewrite. | A large block-swap effect warrants a follow-up on the measured output. It cannot by itself justify a production model edit. [Hase et al., NeurIPS 2023](https://arxiv.org/abs/2301.04213v2) |
 

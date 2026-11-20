@@ -225,6 +225,7 @@ pub fn derive(
                        "sampling_design": group.comparison.sampling_design})));
         }
     }
+    super::replacement::compare(run, reports, &mut findings);
     Ok(findings)
 }
 

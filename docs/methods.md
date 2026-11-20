@@ -41,12 +41,41 @@ Two synthetic records gave the same routing instruction, “Route Alder parcels 
 | No dispatch record available. | LARK | LARK | UNKNOWN | UNKNOWN |
 | This parcel was scanned this morning. | LARK | LARK | LARK | UNKNOWN |
 
-With the neutral replacement, the two single edits missed the dependency that the joint edit exposed. With the availability wording, editing the later copy alone changed the answer. A single request cannot distinguish a position effect from sensitivity to the replacement’s meaning or sampling variation. For a follow-up, vary source order, wording and parcel codes, sample more requests, and score them with the same criterion. The dashboard keeps the two experiments separate. [Original request](../examples/redundant-routing/measured/evidence.json) · [Neutral replacement](../examples/redundant-routing/measured/neutral-report.json) · [Availability replacement](../examples/redundant-routing/measured/unavailable-report.json)
+With the neutral replacement, the two single edits missed the dependency that the joint edit exposed. With the availability wording, editing the later copy alone changed the answer. A single request cannot distinguish a position effect from sensitivity to the replacement’s meaning or sampling variation. For a follow-up, vary source order, wording and parcel codes, sample more requests, and score them with the same criterion. The dashboard places the two sets of trial counts side by side and highlights the edit whose count differed. [Original request](../examples/redundant-routing/measured/evidence.json) · [Neutral replacement](../examples/redundant-routing/measured/neutral-report.json) · [Availability replacement](../examples/redundant-routing/measured/unavailable-report.json)
 
 The capture and eight replay trials used 569 input tokens and 15 output tokens. To reproduce with your own `OPENAI_API_KEY`, run the command below from the checkout. It makes nine hosted requests, each capped at 16 output tokens. Opening the demo reads the saved reports offline.
 
 ```sh
 python3 examples/redundant-routing/run.py --binary target/debug/nexusweave --output data/dispatch-replication
+```
+
+### When another wording changes the recommendation
+
+The sidecar checks verified text-edit reports for the same call and recorded decision. To compare two reports, the original request digest, edited source positions, runner, scoring rule, sampling design, trial counts and baseline match counts must agree. For joint or controlled edits the design must also agree. Every scored arm must have a usable difference from baseline. The comparison aligns source IDs before counting matches, so changing the order of variants in a report preserves the result.
+
+Within a design the sidecar groups reports by their full replacement strings. A wording with inconsistent match counts across repeats cannot serve as an example of a wording difference. Among the remaining wordings, it selects the first two in text order with different counts in a corresponding arm, then links each example to its original trials. A match-count difference motivates replication. It does not quantify the probability that wording caused the difference. The sidecar makes this recommendation from saved reports without an additional model call.
+
+![A side-by-side comparison shows the routing note produced UNKNOWN with the availability wording and LARK with the neutral wording](media/replacement-comparison.png)
+
+### Check the result against new parcel codes and source order
+
+We ran the two wordings on Qwen2.5-0.5B-Instruct with a local CPU runner, greedy decoding and a 16-token cap. Two new parcels, Cedar and Birch, each appeared with the dispatch guide first and with the routing note first. The prompts kept the two source labels visible. Each of the four requests had a baseline and six edited conditions, for 28 generations. The scoring criterion was exact agreement with the original bay code.
+
+| Result | Observed |
+| --- | --- |
+| Original answer was the expected bay code | 4 of 4 requests |
+| Availability wording preserved the code when editing the earlier source | 4 of 4 |
+| Availability wording preserved the code when editing the later source | 0 of 4 |
+| Neutral wording preserved the code under both single edits, and the joint edit changed it | 2 of 4 |
+| Both records replaced, answer was `UNKNOWN` | 8 of 8 joint edits |
+
+In one neutral Birch trial, Qwen returned `BAY WREN` instead of the required `WREN`. It identified the bay while failing exact match. Another returned `UNKNOWN` after only the dispatch guide was edited. The comparison therefore shows the answer text alongside the match count when every trial in that arm produced the same text. These four requests share a template and a model, which limits generalization. [All 28 outputs](../examples/redundant-routing/local-order-results.json) · [Local runner](../examples/redundant-routing/replicate_local.py)
+
+To repeat offline, supply the local Qwen snapshot used by the [Transformers experiments](inference-attribution-plan.md).
+
+```sh
+python3 examples/redundant-routing/replicate_local.py /path/to/qwen/snapshot \
+  --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2
 ```
 
 ## Reproduction

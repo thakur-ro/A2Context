@@ -146,3 +146,17 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
   #filters form { left: 0; right: auto; }
   h1 { font-size: clamp(28px, 7.6vw, 42px); }
 }
+
+.replacement table { width: 100%; margin-top: 14px; border-collapse: collapse; table-layout: fixed; }
+.replacement th, .replacement td { text-align: left; padding: 7px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.replacement thead th { font-size: 13px; }
+.replacement .different { background: #f6e2c5; color: #42280b; }
+.replacement td { font-variant-numeric: tabular-nums; }
+
+.list > li > .featured { border-inline-start: 4px solid #ae4e2c; background: #f1f5ed; border-start-start-radius: inherit; }
+.featured .first-step, .featured .source-names { display: block; }
+.featured .first-step { color: #715034; font-size: 12px; font-weight: 650; margin-bottom: 3px; }
+.featured strong { font-size: clamp(20px, 2.3vw, 26px); }
+.featured .source-names { margin-top: 4px; font-size: 15px; }
+
+.arm-answer { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85em; }

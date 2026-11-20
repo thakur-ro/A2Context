@@ -21,7 +21,26 @@ try {
   await factor(page, "Choice flipped").waitFor();
   if (process.env.FINDINGS_SCREENSHOT) await page.screenshot({ path: process.env.FINDINGS_SCREENSHOT });
 
-  await factor(page, "Only the joint edit").click();
+  await factor(page, "Results varied across wordings").click();
+  const variation = page.locator(".card").filter({ hasText: "Replacement comparison" });
+  await variation.getByRole("link").click();
+  const replacementPanel = page.locator(".panel").first();
+  const changed = replacementPanel.locator("tr.different");
+  assert.equal(await changed.count(), 1);
+  assert.match(await changed.innerText(), /routing-note.*0 \/ 1.*1 \/ 1/s);
+  assert.deepEqual(await changed.locator("code").allTextContents(), ['"UNKNOWN"', '"LARK"']);
+  if (process.env.COMPARISON_SCREENSHOT) await replacementPanel.screenshot({ path: process.env.COMPARISON_SCREENSHOT });
+  await page.locator("summary", { hasText: "Underlying evidence" }).click();
+  const evidenceLinks = page.getByRole("link", { name: /Open wording [AB] trials/ });
+  assert.equal(await evidenceLinks.count(), 2);
+  for (const [index, id] of ["unavailable", "neutral"].entries()) {
+    const evidenceUrl = await evidenceLinks.nth(index).getAttribute("href");
+    const original = await browser.newPage();
+    await original.goto(new URL(evidenceUrl, base).href);
+    await original.locator('[data-replay-id="two-routing-sources-' + id + '"] [data-context-id="routing-note"]:focus').waitFor();
+    await original.close();
+  }
+  await page.getByRole("link", { name: "Back to source factor" }).click();
   await page.locator(".card").filter({ hasText: "Only the joint edit" }).getByRole("link").click();
   await page.getByText(/Joint interaction: -100 percentage points/).waitFor();
   await page.getByText("How this was measured", { exact: true }).click();
@@ -97,6 +116,11 @@ try {
   assert.ok(await mobile.locator("h1").evaluate(node => node.clientHeight < 1.5 * parseFloat(getComputedStyle(node).lineHeight)));
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
   if (process.env.MOBILE_SCREENSHOT) await mobile.screenshot({ path: process.env.MOBILE_SCREENSHOT });
+  await factor(mobile, "Results varied across wordings").click();
+  await mobile.locator(".card").filter({ hasText: "Replacement comparison" }).getByRole("link").click();
+  await mobile.locator(".panel").first().locator("tr.different").waitFor();
+  assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
+  await mobile.getByRole("link", { name: "Recommendations", exact: true }).click();
   await factor(mobile, "Conflicting rules").click();
   await conflictCard(mobile).getByRole("link", { name: "Review recommendation" }).click();
   await mobile.getByRole("heading", { name: "Recommendation", exact: true }).waitFor();

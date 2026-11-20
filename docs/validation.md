@@ -29,6 +29,8 @@ The preview and live-path tests verify a candidate flip, its smaller comparison 
 
 The layered dashboard tests also verify the difference between distinct conversations and requests without a conversation ID. In the saved demo, 11 identified conversations have findings and five have a measured change. Browser checks open the four-arm joint-edit result, verify the counts for each selected arm, and follow a scoped occurrence back to its original span. These are scripted journeys. Ease of use with workflow engineers still needs a user study.
 
+The comparison test attaches two different wordings to one live decision. A different runner or scoring rule cannot generate the comparison. Retrying the same report keeps one recommendation. When a repeat under identical wording disagrees with its earlier results, the sidecar withdraws the example that depended on it. The browser opens both original replay links and checks the source-specific answer text beside each count. A separate [local replication with reversed source order](methods.md#check-the-result-against-new-parcel-codes-and-source-order) retains all 28 generated answers.
+
 ## What the public traces support
 
 The pinned Exgentic retail sample contains eight conversations and 99 model calls. On the unannotated import, the sidecar found 101 exact repetitions across 83 calls in all eight conversations. Every repetition was dialogue from unnamed assistant or user messages. The normalized calls had no declared rules, bound experiment reports or replay-ready request bodies. The traces support locating those repetitions. A causal change in the historical model's answer remains unmeasured.

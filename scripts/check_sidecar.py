@@ -202,6 +202,42 @@ def check_replay(base, send_trace=send_traces):
     return len(measured)
 
 
+def check_replacement_comparison(base):
+    # These edited trial records exercise the validator and comparison logic.
+    from send_otlp_replay import prepare
+    trace, original = prepare("replacement-validation")
+    original.pop("pair")
+    original["variants"] = [original["variants"][1]]
+    send_traces(base, trace)
+    send(base, "/api/replay-reports", original, expected=201)
+
+    second = deepcopy(original)
+    second["id"] = "second-wording"
+    arm = second["variants"][0]
+    arm["intervention"]["replacement"] = "Another synthetic replacement"
+    arm.update(trials=second["baseline"], summary=second["baseline_summary"], difference_pp=0.0)
+    for name, changes in [("other-runner", {"runner_id": "another-runner"}),
+                          ("different-rule", {"match_rule": {"kind": "text_capture", "pattern": "(.*)"}})]:
+        incompatible = deepcopy(second)
+        incompatible.update(id=name, **changes)
+        send(base, "/api/replay-reports", incompatible, expected=201)
+    assert not get(base, "findings", kind="replacement")["rows"]
+    send(base, "/api/replay-reports", second, expected=201)
+    send(base, "/api/replay-reports", second)
+    card, = get(base, "findings", kind="replacement")["rows"]
+    detail = card["evidence"]["detail"]
+    assert card["occurrences"] == 1 and detail["wordings"] == detail["consistent_wordings"] == 2
+    assert {c["report_id"] for c in detail["conditions"]} == {original["id"], second["id"]}
+    assert {c["edits"][0]["matched"] for c in detail["conditions"]} == {0, 1}
+    assert not get(base, "findings", kind="replacement", user="absent")["rows"]
+    # Repeats of the same wording now disagree. The two-wording comparison must retire.
+    conflicting = deepcopy(original)
+    conflicting["id"] = "second-wording-again"
+    conflicting["variants"][0]["intervention"] = arm["intervention"]
+    send(base, "/api/replay-reports", conflicting, expected=201)
+    assert not get(base, "findings", kind="replacement")["rows"]
+
+
 def check_replay_representative(base):
     sys.path.insert(0, str(ROOT / "examples"))
     from send_otlp_replay import prepare as prepare_replay
@@ -469,6 +505,7 @@ def main():
                 assert get(base, "findings", kind="token")["rows"]
         with server(args.binary, folder / "representative.sqlite", "--capture-content") as base:
             check_replay_representative(base)
+            check_replacement_comparison(base)
         if args.sdk_python:
             # Repeat the live card, recurrence, and replay journeys using the
             # SDK's actual encoder, processor, and exporter.

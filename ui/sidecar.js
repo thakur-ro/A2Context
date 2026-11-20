@@ -6,7 +6,7 @@ const view = ["traces", "threads", "preview"].includes(query.get("view")) ? quer
 const filterNames = { after: "From", before: "Before", org: "Organization", user: "User",
   workflow: "Workflow", meta_key: "Metadata key", meta_value: "Metadata value" };
 const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
-const kindLabels = { conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
+const kindLabels = { replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
@@ -99,8 +99,32 @@ function tokenVisual(landmark) {
       element("span", { text: signed(edited - baseline) }))));
 }
 
+function replacementVisual(detail) {
+  const [left, right] = detail.conditions;
+  const cell = (tag, text, attributes = {}) => element(tag, { text, ...attributes });
+  const row = (label, a, b) => element("tr", { className: a.matched !== b.matched ? "different" : "" },
+    cell("th", label, { scope: "row" }), ...[a, b].map((arm) => element("td", {},
+      element("span", { text: arm.matched + " / " + arm.attempted }),
+      arm.answer == null ? null : element("code", { className: "arm-answer", text: JSON.stringify(arm.answer) }))));
+  function wording(condition, label) {
+    const edits = condition.edits;
+    const same = edits.every((edit) => edit.replacement === edits[0].replacement);
+    return element("div", {}, element("strong", { text: label }),
+      ...((same ? edits.slice(0, 1) : edits).map((edit) =>
+        element("p", { text: (same ? "" : edit.id + " · ") + (edit.replacement || "(Removed text)") }))));
+  }
+  return element("div", { className: "replacement" },
+    element("div", { className: "comparison" }, wording(left, "Wording A"), wording(right, "Wording B")),
+    element("table", {}, element("thead", {}, element("tr", {}, cell("th", "Edit", { scope: "col" }),
+      cell("th", "Wording A", { scope: "col" }), cell("th", "Wording B", { scope: "col" }))),
+      element("tbody", {}, row("Original", left.baseline, right.baseline),
+        ...left.edits.map((edit, index) => row(edit.id, edit, right.edits[index])),
+        left.joint ? row("Both sources", left.joint, right.joint) : null)));
+}
+
 function visual(kind, detail, rows = []) {
-  const [label, body] = kind === "conflict" ? ["Captured declarations", sourceCells(detail.sources, detail.values)] :
+  const [label, body] = kind === "replacement" ? ["Trials matching the recorded outcome", replacementVisual(detail)] :
+    kind === "conflict" ? ["Captured declarations", sourceCells(detail.sources, detail.values)] :
     kind === "replay" || kind === "shadow" ? ["Matches by trial arm", replayTrials(detail)] :
     kind === "candidate" ? [detail.alternatives.map((entry) => entry.id).join(" vs ") + " at a fixed prefix", candidateVisual(detail)] :
     kind === "token" ? ["Change in output-token log probability", tokenVisual(detail.landmark)] :
@@ -109,6 +133,15 @@ function visual(kind, detail, rows = []) {
 }
 
 function findingTitle(kind, detail) {
+  if (kind === "replacement") {
+    const [left, right] = detail.conditions;
+    const changed = left.edits.filter((edit, i) => edit.matched !== right.edits[i].matched);
+    if (changed.length === 1 && left.joint?.matched === right.joint?.matched) {
+      const source = detail.sources.find((s) => s.id === changed[0].id);
+      return "Match counts for " + (source ? sourceName(source) : changed[0].id) + " differed by wording";
+    }
+    return "Match counts differed across replacement texts";
+  }
   if (kind === "conflict") return "Conflicting values for " + detail.rule.replaceAll("_", " ");
   if (kind === "duplicate" && detail.dialogue_only) return "The same dialogue appears at " + plural(detail.copies, "message location");
   if (kind === "duplicate") return "The same input appears " + detail.copies + " times";
@@ -128,6 +161,7 @@ function findingTitle(kind, detail) {
 }
 
 function findingDetail(kind, detail) {
+  if (kind === "replacement") return detail.outcome + " · " + detail.model + " · " + plural(detail.wordings, "tested wording");
   if (kind === "conflict") return detail.rule + " · " + detail.scope + " scope";
   if (kind === "duplicate") return "Captured input text matches exactly.";
   const sources = detail.sources.map(sourceName).join(" and ");
@@ -157,14 +191,25 @@ function impactPanel(impact) {
       element("p", { text: "A source edit changed a score or an outcome in a test linked to these conversations." })));
 }
 
-function factorRow(factor) {
-  const signals = { joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
+function factorRow(factor, featured = false) {
+  const signals = { replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  return element("a", { className: "factor-row", href: url({ factor: factor.id }) },
-    element("div", {}, element("strong", { text: factorName(factor.sources) }),
-      element("span", { className: "row-extra", text: [factor.org, plural(factor.conversations, "identified conversation"),
-        plural(factor.requests, "request"), plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ") })),
+  const step = { replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
+    flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
+    shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
+    score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
+    duplicate: "Check whether one copy can be removed", dialogue: "Check the repeated message positions",
+    equal: "Review the equal match rates" };
+  const name = factorName(factor.sources);
+  const counts = [factor.org, plural(factor.conversations, "identified conversation"), plural(factor.requests, "request"),
+    plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ");
+  return element("a", { className: featured ? "factor-row featured" : "factor-row", href: url({ factor: factor.id }) },
+    element("div", {},
+      featured ? element("span", { className: "first-step", text: "Recommended next step" }) : null,
+      element("strong", { text: featured ? step[factor.signal] : name }),
+      featured ? element("span", { className: "source-names", text: name }) : null,
+      element("span", { className: "row-extra", text: counts })),
     element("span", { className: ["conflict", "duplicate", "dialogue"].includes(factor.signal) ? "basis" : "basis measured",
       text: signals[factor.signal] }),
     element("span", { className: "arrow", "aria-hidden": "true", text: "→" }));
@@ -285,6 +330,12 @@ function recommendationContext(kind, detail) {
       element("details", {}, element("summary", { text: "Tested replacements" }),
         ...detail.single_edits.map((arm) => element("p", { text: arm.id + " · " + (arm.replacement || "(Removed text)") }))));
   }
+  if (kind === "replacement") {
+    return element("div", {}, detail.wordings > 2 ? element("p", { text: "Showing two of " + detail.wordings + " tested wordings. " +
+      plural(detail.wordings - detail.consistent_wordings, "wording") + " had inconsistent counts across repeats." }) : null,
+      element("details", {}, element("summary", { text: "Scoring rule and runner" }),
+        element("p", { text: detail.runner }), element("pre", { text: JSON.stringify(detail.match_rule, null, 2) })));
+  }
   if (kind === "shadow") {
     return element("details", {}, element("summary", { text: "Show expected proposal" }),
       element("pre", { text: JSON.stringify(detail.outcome, null, 2) }));
@@ -295,17 +346,19 @@ function recommendationContext(kind, detail) {
 function recommendationDetail(kind, detail, action, rows = []) {
   const interval = detail.measurement?.interval || detail.measurement?.difference_95_interval_pp;
   const uncertainty = interval ? "95% interval for the difference: " + interval.lower + " to " + interval.upper + " percentage points." :
-    ({ replay: "The supplied trials have no estimated interval for this comparison.",
+    ({ replacement: "These counts come from one request. Sampling variation can also change the observed counts.",
+       replay: "The supplied trials have no estimated interval for this comparison.",
        shadow: "The supplied proposal trials have no estimated interval for this comparison.",
        candidate: "These scores compare two specified alternatives on one request.",
        token: "This comparison holds the output prefix fixed at each position.",
        conflict: "The disagreement is visible in the inputs. Its effect on the answer still needs a test.",
        duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
   return panel(findingTitle(kind, detail), tag(kind),
-    element("p", { className: "label", text: action.basis }), visual(kind, detail, rows),
+    kind === "replacement" ? element("p", { className: "label", text: detail.model + " · " + plural(detail.conditions[0].baseline.attempted, "trial") + " per condition" }) : element("p", { className: "label", text: action.basis }), visual(kind, detail, rows),
     recommendationContext(kind, detail), element("p", { className: "uncertainty", text: uncertainty }),
     element("details", {}, element("summary", { text: "How this was measured" }),
       element("p", { text: ({
+        replacement: "The sidecar compared two replay reports with the same recorded decision, runner, request, edit locations, scoring rule, sampling design and baseline counts. The reports used different replacement texts.",
         candidate: "A model runner scored two fixed continuations from the same prefix. This can run before inference or in a later experiment. The sidecar verifies the request and edit. The runner supplies the timing.",
         shadow: "A model runner proposed answers or tool calls for the baseline and edited requests. The sidecar checked the request and recomputed the match rates.",
         token: "An instrumented model runner replaced a source and swapped decoder-block activations on a fixed output path. This view shows where the original token’s score moved under those interventions.",
@@ -319,6 +372,16 @@ function recommendationDetail(kind, detail, action, rows = []) {
       element("pre", { text: detail.replacement || "(Removed text)" })));
 }
 
+function replacementLinks(detail, traceId, callId) {
+  const [left, right] = detail.conditions;
+  const changed = left.edits.find((edit, i) => edit.matched !== right.edits[i].matched);
+  return detail.conditions.map((condition, i) => {
+    const measurement = { location: { decision_id: detail.decision_id }, replay_id: condition.report_id, context_id: changed?.id };
+    return link("Open wording " + (i === 0 ? "A" : "B") + " trials",
+      advancedHref({ id: traceId }, { id: callId }, { detail: { measurement } }));
+  });
+}
+
 function review(card, occurrences) {
   const { trace_id, call_id, detail } = card.evidence;
   byId("title").textContent = "Recommendation";
@@ -326,6 +389,7 @@ function review(card, occurrences) {
   const traceLink = url({ view: "traces", trace: trace_id, call: call_id, finding: card.id });
   const evidence = element("details", { className: "panel" }, element("summary", { text: "Underlying evidence" }),
     link("Open original span", traceLink),
+    ...(card.kind === "replacement" ? replacementLinks(detail, trace_id, call_id) : []),
     card.kind === "replay" ? link("Open trial comparison", advancedHref({ id: trace_id }, { id: call_id }, { detail })) : null);
   return element("div", { className: "feed" },
     link("Back to source factor", url({ factor: factorId || detail.factor })),
@@ -471,7 +535,7 @@ async function render(refresh = false) {
       byId("content").dataset.signature = signature;
       body = element("div", { className: "overview" }, impactPanel(impact),
         element("section", { className: "factors" }, element("h2", { text: "Source factors" }),
-          factors.rows.length ? listing(factors.rows, factorRow) :
+          factors.rows.length ? listing(factors.rows, (factor) => factorRow(factor, !pageOffset && factor === factors.rows[0])) :
             element("p", { className: "empty", text: "No recommendations in this scope." })));
       pagination(factors.next_offset);
     }
