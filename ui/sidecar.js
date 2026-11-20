@@ -76,12 +76,12 @@ function replayTrials(detail) {
   const proposals = [detail.response_pair?.edited, ...(detail.single_edits || []).map(arm => arm.proposal)].filter(Boolean);
   const sameAnswerLabel = original?.kind === "model_output" && proposals.every(p => p.kind === original.kind && p.label === original.label);
   const proposalText = p => p && (sameAnswerLabel ? p.outcome_preview : [p.kind, p.label, p.outcome_preview].join(" · "));
-  const singles = (detail.single_edits || []).map(arm => ["Edit " + arm.id, arm.summary, proposalText(arm.proposal)]);
+  const singles = (detail.single_edits || []).map(arm => ["Edit " + arm.id, arm.summary, proposalText(arm.proposal), arm.id]);
   const pair = detail.edit === "joint" && detail.response_pair;
   const arms = [["Baseline", m.baseline, pair ? proposalText(pair.original) : detail.baseline_answer], ...singles,
     [detail.edit === "joint" ? "Joint edit" : "Source edit", m.variant, pair ? proposalText(pair.edited) : detail.edited_answer], ["Control edit", m.control]];
-  return element("div", { className: "comparison" }, ...arms.filter(([, data]) => data).map(([label, data, answer]) =>
-    element("div", {}, element("strong", { text: label }),
+  return element("div", { className: "comparison" }, ...arms.filter(([, data]) => data).map(([label, data, answer, id]) =>
+    element("div", id ? {"data-replay-arm":id} : {}, element("strong", { text: label }),
       element("span", { text: data.matched + " / " + data.attempted + " matched" }),
       answer == null ? null : element("code", { className: "arm-answer", text: JSON.stringify(answer) }),
       element("meter", { min: 0, max: Math.max(1, data.attempted), value: data.matched, "aria-label": label + " matched trials out of attempted trials" }),
@@ -274,7 +274,9 @@ const outcomeLevels = [
 const outcomeLevel = Number(query.get("level"));
 const outcomeCategory = outcomeLevels[outcomeLevel - 1];
 const cohortFactor = query.get("cohort_factor");
-const outcomeGrouping = query.get("by") === "source" ? "source" : "conversation";
+const editedSources = outcomeLevel === 1 && query.get("by") === "edit";
+const outcomeGrouping = editedSources ? "edit" : query.get("by") === "source" ? "source" : "conversation";
+const cohortMode = editedSources ? {by:"edit"} : {};
 
 function impactPanel(impact) {
   return element("section", { className: "impact", "aria-label": "Conversation impact" },
@@ -284,7 +286,7 @@ function impactPanel(impact) {
     element("div", { className: "impact-breakdown" },
       element("p", {text:"Strongest evidence per conversation"}),
       ...outcomeLevels.flatMap(({key, title}, index) => impact.evidence_counts[key] ? [
-        element("a", {className:"impact-outcome", href:url({level:index + 1, by:"source"})},
+        element("a", {className:"impact-outcome", href:url({level:index + 1, by:index === 0 ? "edit" : "source"})},
           element("strong", {text:impact.evidence_counts[key]}), element("span", {text:title}),
           element("span", {"aria-hidden":"true",text:"→"}))] : []),
       replayCoverage(impact)));
@@ -344,18 +346,27 @@ function factorRow(factor, featured = false) {
 
 function cohortNavigation() {
   return element("nav", {className:"cohort-navigation", "aria-label":"Group evidence"},
-    link("By source", url({level:outcomeLevel, by:"source"}), null, outcomeGrouping === "source" && !cohortFactor),
+    outcomeLevel === 1 ? link("By edited source", url({level:1, by:"edit"}), null, editedSources && !cohortFactor) : null,
+    outcomeLevel !== 1 || outcomeGrouping === "source" ? link("By source", url({level:outcomeLevel, by:"source"}), null, outcomeGrouping === "source" && !cohortFactor) : null,
     link("By conversation", url({level:outcomeLevel}), null, outcomeGrouping === "conversation" && !cohortFactor),
     link("All source factors", url({}), "cohort-home"));
 }
 
 function cohortRow(row) {
-  const subtitle = [row.org, plural(row.requests, "request")].filter(Boolean).join(" · ");
-  return element("a", {className:"cohort-row", href:url({level:outcomeLevel, cohort_factor:row.factor})},
+  const subtitle = [editedSources && (row.sources.length > 1 ? "Edited together" : "Edited individually"), row.org, plural(row.requests, "request")].filter(Boolean).join(" · ");
+  return element("a", {className:"cohort-row", href:url({level:outcomeLevel, ...cohortMode, cohort_factor:row.factor})},
     element("div", {}, element("strong", {text:factorName(row.sources)}), element("span", {className:"row-extra", text:subtitle})),
     element("div", {className:"cohort-reach"}, element("span", {text:row.conversations + " of " + plural(row.cohort_size, "conversation")}),
       element("meter", {min:0, max:row.cohort_size, value:row.conversations, "aria-hidden":"true"})),
     element("span", {className:"arrow", "aria-hidden":"true", text:"→"}));
+}
+
+function witnessAnchor(witness) {
+  if (witness?.arm) return "#" + new URLSearchParams({arm:witness.arm});
+  if (witness?.generation) return "#" + new URLSearchParams({generation:witness.generation});
+  if (witness?.setup != null) return "#routing-setup-" + witness.setup;
+  if (witness?.check) return "#proposal-check=" + new URLSearchParams({report:witness.check, context:witness.sources[0].id});
+  return "";
 }
 
 function positionTrialTable(result, selection) {
@@ -869,7 +880,7 @@ function proposalComparisons(probe) {
   return element("details", {}, element("summary", { text: "Compare generated proposals" }),
     ...checks.map((check) => {
       const edit = probe.ranked.find((row) => row.context_id === check.context_id);
-      return element("section", {}, element("h3", { text: (edit.source || edit.context_id) +
+      return element("section", {"data-proposal-check":check.report, "data-context":check.context_id}, element("h3", { text: (edit.source || edit.context_id) +
         (check.changed ? " · proposal changed" : " · same proposal") }),
         element("div", { className: "comparison" },
           element("div", {}, element("strong", { text: "Original proposal" }), element("code", { text: proposal(check.original) })),
@@ -1106,32 +1117,34 @@ async function render(refresh = false) {
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) {
         body = review(cards.rows[0], occurrences);
-        if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel, cohort_factor:cohortFactor})));
+        if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel, ...cohortMode, cohort_factor:cohortFactor})));
       }
-      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, ...measuredExample });
+      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, ...cohortMode, cohort_factor:cohortFactor, ...measuredExample });
     } else if (outcomeCategory) {
       byId("title").textContent = outcomeCategory.title;
       byId("summary").textContent = outcomeCategory.description;
-      if (outcomeGrouping === "source" && !cohortFactor) {
-        const data = await api("outcome-factors", {...scope, level:outcomeLevel, offset:pageOffset});
+      if (outcomeGrouping !== "conversation" && !cohortFactor) {
+        const data = await api("outcome-factors", {...scope, ...cohortMode, level:outcomeLevel, offset:pageOffset});
         body = element("div", {className:"feed"}, cohortNavigation(),
           data.rows.length ? element("section", {className:"cohort-list"},
-            element("h2", {text:"Sources in " + plural(data.rows[0].cohort_size, "conversation")}),
-            element("p", {text:"Each group lists the sources in a finding. A conversation can appear in more than one group."}), listing(data.rows, cohortRow)) :
+            element("h2", {text:(editedSources ? "Edits that changed a proposal" : "Sources in " + plural(data.rows[0].cohort_size, "conversation"))}),
+            element("p", {text:editedSources ? "Each row counts conversations where that edit changed a generated answer or tool proposal in at least one completed comparison. A conversation can appear in several rows." : "Each group lists the sources in a finding. A conversation can appear in more than one group."}), listing(data.rows, cohortRow)) :
             element("p", {className:"empty", text:"No source groups have this evidence level in the current scope."}));
-        pagination(data.next_offset, {level:outcomeLevel, by:"source"});
+        pagination(data.next_offset, {level:outcomeLevel, by:outcomeGrouping});
       } else {
-        const filters = {...scope, level:outcomeLevel, offset:pageOffset};
+        const filters = {...scope, ...cohortMode, level:outcomeLevel, offset:pageOffset};
         if (cohortFactor) filters.cohort_factor = cohortFactor;
         const data = await api("conversation-outcomes", filters);
         body = element("div", {className:"feed"}, cohortNavigation(),
           cohortFactor && data.rows.length ? element("h2", {text:factorName(data.rows[0].sources)}) : null,
           data.rows.length ? listing(data.rows, row => rowLink(row.thread,
-            [!cohortFactor && factorName(row.sources), kindLabels[row.kind], row.level === 3 && (row.unchanged_pair ? "Paired proposals stayed the same" : "Score evidence only for this finding"), row.user, fullDate(row.observed)].filter(Boolean).join(" · "),
-            url({level:outcomeLevel, cohort_factor:cohortFactor, factor:row.factor, recommendation:row.group, trace:row.trace, call:row.call,
-              decision:row.decision, report:row.report, replay:row.replay, context:row.context}))) :
+            [!cohortFactor && factorName(row.sources), row.witness?.tool_changed == null ? kindLabels[row.kind] :
+              (row.witness.tool_changed ? "Tool selection changed" : "Proposal changed with the same tool selection"),
+              row.level === 3 && (row.unchanged_pair ? "Paired proposals stayed the same" : "Score evidence only for this finding"), row.user, fullDate(row.observed)].filter(Boolean).join(" · "),
+            url({level:outcomeLevel, ...cohortMode, cohort_factor:cohortFactor, factor:row.factor, recommendation:row.group, trace:row.trace, call:row.call,
+              decision:row.decision, report:row.report, replay:row.replay, context:row.context}) + witnessAnchor(row.witness))) :
             element("p", {className:"empty", text:"No conversations have this evidence level in the current scope."}));
-        pagination(data.next_offset, {level:outcomeLevel, cohort_factor:cohortFactor});
+        pagination(data.next_offset, {level:outcomeLevel, ...cohortMode, cohort_factor:cohortFactor});
       }
     } else if (factorId && query.has("variation")) {
       const data = await api("replay-variations", { ...scope, factor: factorId, ...positionDesign, offset: pageOffset });
@@ -1261,6 +1274,23 @@ async function main() {
   if (scope.meta_key && !health.metadata_keys.includes(scope.meta_key)) meta.add(element("option", { value: scope.meta_key, text: scope.meta_key }));
   for (const [key, value] of Object.entries(scope)) form.elements.namedItem(key).value = value;
   await render();
+  if (hash.has("arm") && measuredExample.replay) {
+    const arm = [...byId("content").querySelectorAll("[data-replay-arm]")].find(node => node.dataset.replayArm === hash.get("arm"));
+    if (arm) {
+      arm.tabIndex = -1;
+      arm.focus();
+    }
+  }
+  if (location.hash.startsWith("#proposal-check=") && measuredExample.trace && measuredExample.call) {
+    const target = new URLSearchParams(location.hash.slice("#proposal-check=".length));
+    const check = [...byId("content").querySelectorAll("[data-proposal-check]")].find(node =>
+      node.dataset.proposalCheck === target.get("report") && node.dataset.context === target.get("context"));
+    if (check) {
+      check.closest("details").open = true;
+      check.tabIndex = -1;
+      check.focus();
+    }
+  }
   const setup = /^#routing-setup-([0-3])$/.exec(location.hash);
   if (setup && measuredExample.trace && measuredExample.call) {
     const row = byId("content").querySelector('[data-routing-setup="' + setup[1] + '"]');

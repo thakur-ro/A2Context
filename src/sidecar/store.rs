@@ -240,10 +240,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 14 {
+        if version == 15 {
             return Ok(());
         }
-        if !(0..14).contains(&version) {
+        if !(0..15).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -251,7 +251,8 @@ impl Store {
             let ids = {
                 let mut stmt = self.0.prepare(
                     "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL AND
-                      (?2<8 OR (?2<13 AND EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='activation-reports'))
+                      (?2<8 OR EXISTS (SELECT 1 FROM observations o WHERE o.trace_id=traces.id AND o.kind IN ('token','shadow','prefill'))
+                       OR (?2<13 AND EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='activation-reports'))
                        OR (?2<12 AND instr(run,'shadow_probes')>0) OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='replay-reports') OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
                        OR (?2 IN (9,10) AND (instr(raw,'routing_test')>0 OR instr(run,'routing_test')>0)))
                       ORDER BY id LIMIT 16",
@@ -287,7 +288,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 14)?;
+        self.0.pragma_update(None, "user_version", 15)?;
         Ok(())
     }
 
@@ -586,7 +587,7 @@ impl Store {
             sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,t.user,json_extract(o.detail,'$.factor') AS factor,
                 CASE WHEN o.kind IN ('candidate','token','shadow') OR (o.kind='prefill' AND json_extract(o.detail,'$.shifted')=1) OR
                     (o.kind='replay' AND json_extract(o.detail,'$.effect_pp') != 0) THEN 1 ELSE 0 END AS changed,
-                CASE WHEN json_extract(o.detail,'$.response_pair.changed')=1 OR json_extract(o.detail,'$.joint_pattern')='single_only'
+                CASE WHEN json_array_length(o.detail,'$.changed_edits')>0
                      THEN 1 ELSE 0 END AS proposal_changed
                 FROM observations o JOIN selected t ON t.id=o.trace_id WHERE 1");
             for (key, field) in [
@@ -654,6 +655,12 @@ impl Store {
         }
         let cohort = view == "outcome-factors"
             || (view == "conversation-outcomes" && filters.contains_key("level"));
+        let edited = filters.get("by").is_some_and(|s| s == "edit");
+        if edited && (!cohort || filters.get("level").is_none_or(|level| level != "1")) {
+            return Err("edited source groups require proposal evidence (level=1)".into());
+        }
+        let members = view == "outcome-factors"
+            || (cohort && (edited || filters.contains_key("cohort_factor")));
         if cohort {
             let level = super::required(filters, "level")?;
             if !matches!(level, "1" | "2" | "3" | "4" | "5") {
@@ -661,24 +668,39 @@ impl Store {
             }
             sql.push_str(super::outcomes::COHORT);
             args.push(level.to_owned());
+            if members {
+                sql.push_str(if edited {
+                    super::outcomes::EDIT_MEMBERS
+                } else {
+                    super::outcomes::SOURCE_MEMBERS
+                });
+            }
         }
         match view {
             "outcome-factors" => sql.push_str(super::outcomes::FACTORS),
             "conversation-outcomes" => {
-                sql.push_str(", ranked AS (
-                    SELECT *,row_number() OVER (PARTITION BY thread_key ORDER BY level,observed DESC,trace_id,call_id,n) AS choice FROM ");
-                sql.push_str(if cohort { "cohort" } else { "classified" });
+                sql.push_str(", ranked AS (SELECT *,row_number() OVER (
+                    PARTITION BY thread_key ORDER BY level,observed DESC,trace_id,call_id,n");
+                sql.push_str(if members { ",member_id) AS choice FROM members" } else if cohort {
+                    ") AS choice FROM cohort"
+                } else { ") AS choice FROM classified" });
                 if let Some(factor) = filters.get("cohort_factor") {
                     if !cohort {
                         return Err("select an evidence level before a cohort factor".into());
                     }
-                    sql.push_str(" WHERE factor=?");
+                    sql.push_str(" WHERE member_id=?");
                     args.push(factor.clone());
                 }
                 sql.push_str("), page AS (SELECT * FROM ranked WHERE choice=1");
                 sql.push_str(" ORDER BY level,observed DESC,thread_key LIMIT ? OFFSET ?)
                     SELECT json_object('thread',t.thread,'user',t.user,'org',t.org,'level',p.level,
-                        'kind',o.kind,'sources',json_extract(detail,'$.sources'),'observed',p.observed,
+                        'kind',o.kind,");
+                if members {
+                    sql.push_str("'witness',json(p.witness),'sources',json(p.member_sources),");
+                } else {
+                    sql.push_str("'sources',json_extract(detail,'$.sources'),");
+                }
+                sql.push_str("'observed',p.observed,
                         'factor',json_extract(detail,'$.factor'),'group',o.group_id,'trace',p.trace_id,'call',p.call_id,
                         'replay',json_extract(detail,'$.measurement.replay_id'),'report',json_extract(detail,'$.report_id'),
                         'context',json_extract(detail,'$.measurement.context_id'),'decision',json_extract(detail,'$.measurement.location.decision_id'),
@@ -738,7 +760,7 @@ impl Store {
                     count(DISTINCT group_id) + (factor IN (SELECT factor FROM pairs)) + (factor IN (SELECT factor FROM variations)) AS recommendations,max(observed) AS latest,
                     CASE WHEN factor IN (SELECT factor FROM disputed) THEN -6 WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -4 ELSE
                     min(CASE WHEN kind='replacement' THEN -3 WHEN json_extract(detail,'$.joint_pattern')='joint_only' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
-                        WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' OR proposal_changed=1 THEN 2 WHEN kind='token' THEN 3
+                        WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' OR (kind='replay' AND proposal_changed=1) THEN 2 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
                         WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
@@ -1054,6 +1076,10 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     let mut insert = tx.prepare("INSERT INTO observations VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
     for (index, mut observation) in observations.into_iter().enumerate() {
         observation.detail["factor"] = findings::factor_id(run, &observation).into();
+        let edits = super::outcomes::changed_edits(run, &observation);
+        if !edits.is_empty() {
+            observation.detail["changed_edits"] = edits.into();
+        }
         insert.execute(params![
             run.id,
             index,

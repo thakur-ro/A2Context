@@ -280,7 +280,7 @@ try {
     }
     await device.goto(base);
     await device.getByRole("link", {name:/Generated proposal changed/}).click();
-    await device.getByRole("heading", {name:"Sources in 13 conversations"}).waitFor();
+    await device.getByRole("heading", {name:"Edits that changed a proposal"}).waitFor();
     const faq = device.locator(".cohort-row").filter({hasText:"journal-faq"}).filter({hasNotText:"journal-policy"});
     assert.match(await faq.innerText(), /2 of 13 conversations/);
     if (device === page && process.env.OUTCOME_SOURCES_SCREENSHOT) await device.screenshot({path:process.env.OUTCOME_SOURCES_SCREENSHOT});
@@ -294,6 +294,19 @@ try {
     await device.getByRole("link", {name:/journal-policy-support/}).waitFor();
     assert.ok(new URL(device.url()).searchParams.get("cohort_factor"));
     assert.equal(await device.locator("#content .list li").count(), 2);
+    await device.goto(base + "/?level=1&by=edit&org=retail-south");
+    const instructionEdit = device.locator(".cohort-row").filter({hasText:"request-type"});
+    assert.match(await instructionEdit.innerText(), /Edited individually/);
+    assert.equal(await device.locator(".cohort-row").filter({hasText:"store-name"}).count(), 0);
+    await instructionEdit.click();
+    await device.getByRole("link", {name:/routing-holdout-73.*Proposal changed with the same tool selection/}).waitFor();
+    await device.getByRole("link", {name:/routing-holdout-28/}).click();
+    await device.locator('tr.changed[data-routing-setup="1"]:focus').waitFor();
+    await device.goto(base + "/?level=1&by=edit");
+    await device.locator(".cohort-row").filter({hasText:"returns-policy"}).click();
+    await device.locator("#content .list a").first().click();
+    await device.locator("details[open] summary:focus").filter({hasText:"Inspect edit to returns-policy"}).waitFor();
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await device.goto(base + "/?org=retail-south");
     await device.getByRole("link", {name:/Model score shifted/}).click();
     await device.getByRole("link", {name:"By conversation"}).click();

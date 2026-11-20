@@ -366,9 +366,15 @@ pub fn token_measurements(
         else {
             continue;
         };
+        let changed: Vec<_> = activation::output_scores::changed_output_sources(report).into_iter()
+            .filter_map(|id| call.context.iter().find(|item| item.id == id))
+            .map(|item| {
+                let sources = [findings::source(item)];
+                json!({"id":findings::source_set_id(run,&sources,None),"sources":sources,"generation":item.id})
+            }).collect();
         findings.push(findings::occurrence("token", json!(["token", run.id, call.id, report.id()]), call, json!({
             "report_id": report.id(), "sources": [findings::source(item)], "location": report.location(),
-            "landmark": landmark,
+            "landmark": landmark, "changed_edits":changed,
         })));
     }
 }

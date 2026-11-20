@@ -388,6 +388,16 @@ def check_joint_proposals(base):
     assert get(base, "impact", group=group)["replay_outcomes"]["equal_only"] == 1
     record("same-thread", [[changed], [held], [changed]])
     record("another-thread", [[changed], [held], [held]], owner="second")
+    edit_scope = dict(org="joint-check", level=1, by="edit")
+    only_single, = get(base, "outcome-factors", user="second", **edit_scope)["rows"]
+    assert len(only_single["sources"]) == 1
+    joint_scope = dict(user="second", group=group, **edit_scope)
+    assert get(base, "outcome-factors", **joint_scope)["rows"] == [only_single]
+    one, = get(base, "conversation-outcomes", **joint_scope, cohort_factor=only_single["factor"])["rows"]
+    assert one["witness"]["arm"] == only_single["sources"][0]["id"]
+    only_joint, = get(base, "outcome-factors", trace=first["location"]["run_id"], **edit_scope)["rows"]
+    assert len(only_joint["sources"]) == 2
+    assert not get(base, "conversation-outcomes", user="second", cohort_factor=only_joint["factor"], **edit_scope)["rows"]
     record("same-thread", [[held], [held], [held]])
     uncertain = record("mixed", [[held, changed], [held, held], [changed, changed]], samples=2)
     rows = joint(group=group)["joint_patterns"]
@@ -613,6 +623,14 @@ def check_activation(base, producer_python):
     edits = {e["source"]["source"]: e for e in page["edits"]}
     assert edits["returns-policy"]["peak"]["token"] == 5 and edits["refund-policy"]["peak"]["token"] == 13
     assert not edits["store-name"]["output_changed"] and edits["returns-policy"]["output_changed"]
+    scope = dict(org="qwen-demo-org", level=1, by="edit", kind="token")
+    groups = get(base, "outcome-factors", **scope)["rows"]
+    assert {r["sources"][0]["source"] for r in groups} == {"returns-policy", "refund-policy"}
+    for row in groups:
+        member, = get(base, "conversation-outcomes", **scope, cohort_factor=row["factor"])["rows"]
+        original = edits[row["sources"][0]["source"]]
+        assert member["witness"]["generation"] == original["context_id"] and original["generated_choice_changed"]
+        assert member["report"] == finding["report_id"] and member["call"] == location["call_id"]
     assert get(base, "token-path", **query, offset=15)["tokens"] == page["tokens"][-1:]
     for mismatch in ({"org":"absent"}, {"decision":"absent"}, {"factor":"absent"}, {"group":"absent"}, {"before":"2000-01-01"}):
         send(base, "/api/sidecar/token-path?" + urlencode({**query, **mismatch}), expected=400)
@@ -780,6 +798,8 @@ def measure_token_pages(binary):
     """Time warm loopback reads, including client-side JSON decoding."""
     with server(binary, None) as base:
         pages = []
+        edit_groups = get(base, "outcome-factors", level=1, by="edit", kind="token")["rows"]
+        assert {r["sources"][0]["source"] for r in edit_groups} == {"returns-policy","refund-policy","request-type","product-id"}
         for card in get(base, "findings", kind="token")["rows"]:
             detail = card["evidence"]["detail"]
             location = detail["location"]

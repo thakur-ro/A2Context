@@ -18,6 +18,7 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 | GET route under `/api/sidecar/` | Use |
 | --- | --- |
 | `impact` | Get distinct identified conversations, counts by evidence category (`evidence_counts`), requests without conversation IDs and source factors. |
+| `outcome-factors?level=1&by=edit` | Group changed proposals by the versioned sources actually edited. Use the returned `factor` as `cohort_factor` with the same `level` and `by` on the conversation endpoint. The selected row’s `witness` identifies the comparison and its parent `factor` opens the original finding. |
 | `outcome-factors?level=1` | Rank the source groups with findings at the strongest evidence level for these conversations. Each row returns its `factor`, distinct conversation count, distinct model call count (`requests`) and the number of conversations at that level in scope (`cohort_size`). A trace can contain multiple calls. |
 | `conversation-outcomes?level=1` | Page through conversations in one category. Levels 1 to 5 correspond to `proposal`, `rate`, `score`, `tested` and `inputs`. Omit the level for all categories. With a level selected, pass `cohort_factor` to choose conversations with supporting evidence from that source group. Each row identifies the finding, trace, call and measured comparison. |
 | `factors` | List versioned source sets, the strongest signal associated with each set (including differing results across comparable replacement texts), and the counts in scope. Select the opaque `id` of a factor. |
@@ -33,11 +34,11 @@ Expand **Scored replays** on the overview or a source factor to see how many con
 
 ### Find recurring sources within an outcome
 
-Select **Generated proposal changed** on the overview. In the demo, tests of the dispatch guide and routing note together contributed changed proposals in four of the 13 conversations. Choose that source group to open its four conversations. Choose **By conversation** to see the full set of 13. Organization, user, workflow, metadata and time filters apply in both views. [Open the grouped view](http://127.0.0.1:8040/?level=1&by=source)
+Select **Generated proposal changed**. Filter to `retail-south`, open **request-type**, and choose a conversation. On item 28 the edit switched the proposed tool from `stock` to `price`. On item 73 it changed the answer text with the same tool selection. Both links open the measured pair in the relevant routing setup. The store name also appeared in the first-token tests. Its presence alone gives it no credit for either change. [Open the two routing conversations](http://127.0.0.1:8040/?level=1&by=edit&org=retail-south&cohort_factor=6b94e71fcf1ba0bd63252e19ac47ede2674751f1abd4d92e0860293bd2143855)
 
-![Versioned source groups ranked by the number of conversations with a changed proposal.](media/outcome-sources.png)
+![Edits ranked by the number of conversations in which the generated proposal changed.](media/outcome-sources.png)
 
-A group lists sources involved in a finding. A controlled comparison can include a comparison source whose edit left the proposal unchanged. Open the measurement for the effect of each edit. A conversation can have qualifying evidence in more than one group, so the row counts can add up to more than the category total.
+A source pair appears as **Edited together** when the joint edit changed the proposal. A conversation may appear under several qualifying edits. **By conversation** lists each conversation once. The earlier source-group view still lists all sources involved in a finding, including comparison sources. [Open the original source groups](http://127.0.0.1:8040/?level=1&by=source)
 
 ### See what happened when two sources changed together
 

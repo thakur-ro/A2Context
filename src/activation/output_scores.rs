@@ -247,6 +247,20 @@ fn generated_choice_changed(report: &TimelineReport, source: &super::Source<Stri
     }
 }
 
+/// Source edits whose free generation changed the answer or parsed tool proposal.
+/// Fixed-prefix token scores do not enter this comparison.
+pub fn changed_output_sources(entry: &Report) -> Vec<&str> {
+    let Report::Timeline(report) = entry else {
+        return vec![];
+    };
+    report
+        .sources
+        .iter()
+        .filter(|source| generated_choice_changed(report, source))
+        .map(|source| source.context_id.as_str())
+        .collect()
+}
+
 /// The strongest measured source-edit effect on a token in the fixed output path.
 #[derive(Serialize)]
 pub struct Landmark<'a> {

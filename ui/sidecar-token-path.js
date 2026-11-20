@@ -13,6 +13,7 @@ function tokenPath(card) {
   const result = element("div", {"aria-live":"polite", text:"Loading token measurements…"});
   region.append(title, result);
   let currentRequest = 0;
+  let linkedGeneration = new URLSearchParams(location.hash.slice(1)).get("generation");
 
   async function load(index, focus = false) {
     const request = ++currentRequest;
@@ -57,7 +58,7 @@ function tokenPath(card) {
             text:"Go to this source’s largest shift · token " + (edit.peak.token + 1)}) : null;
           if (jump) jump.addEventListener("click", () => goTo(edit.peak.token));
           ranks.append(element("li", {}, measure,
-            element("details", {}, element("summary", {text:"Inspect edit to " + name}),
+            element("details", {"data-generation":edit.context_id}, element("summary", {text:"Inspect edit to " + name}),
               element("p", {text:JSON.stringify(excerpt(edit.before)) + " → " + JSON.stringify(excerpt(edit.after))}),
               edit.tool_selection_changed == null ? null : element("p", {text:edit.tool_selection_changed ? "The proposed tool selection changed." :
                 edit.generated_choice_changed ? "The proposed tool stayed the same and its arguments changed." : "The proposed tool and arguments stayed the same."}),
@@ -89,7 +90,14 @@ function tokenPath(card) {
           readout.append(comparison);
         }
         const share = new URL(window.location.href);
-        share.hash = "output-token-" + (row.output_token + 1);
+        const generation = linkedGeneration && [...ranks.querySelectorAll("details")].find(node => node.dataset.generation === linkedGeneration);
+        linkedGeneration = null;
+        if (generation) {
+          generation.open = true;
+          generation.querySelector("summary").focus();
+        } else {
+          share.hash = "output-token-" + (row.output_token + 1);
+        }
         history.replaceState(null, "", share);
       }
       tokens.append(...buttons);

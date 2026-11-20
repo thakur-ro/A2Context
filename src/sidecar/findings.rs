@@ -23,6 +23,13 @@ pub(super) fn factor_id(run: &Run, observation: &Observation) -> String {
     let sources = observation.detail["sources"]
         .as_array()
         .expect("finding sources");
+    // The repeat preview shows only the first two sources, so preserve its full group identity.
+    let full_repeat = (observation.detail["copies"].as_u64().unwrap_or(0) > 2)
+        .then_some(observation.group.as_str());
+    source_set_id(run, sources, full_repeat)
+}
+
+pub(super) fn source_set_id(run: &Run, sources: &[Value], full_repeat: Option<&str>) -> String {
     let mut identities: Vec<_> = sources
         .iter()
         .map(|source| {
@@ -35,9 +42,6 @@ pub(super) fn factor_id(run: &Run, observation: &Observation) -> String {
         })
         .collect();
     identities.sort_unstable();
-    // The repeat preview shows only the first two sources, so preserve its full group identity.
-    let full_repeat =
-        (observation.detail["copies"].as_u64().unwrap_or(0) > 2).then_some(&observation.group);
     digest(json!([run.source, run.organization_id, identities, full_repeat]).to_string())
 }
 
@@ -211,9 +215,11 @@ pub fn derive(
                 .collect();
             let report = by_location[&(item.location, item.replay_id)];
             let single_edits: Vec<_> = report.variants.iter().filter(|_| edit == "joint").map(|arm| {
+                let proposal = super::outcomes::consistent(&arm.trials);
                 json!({"id":arm.intervention.context_id,"replacement":arm.intervention.replacement.chars().take(200).collect::<String>(),
                     "summary":arm.summary,"difference_pp":arm.difference_pp,
-                    "proposal":super::outcomes::consistent(&arm.trials).map(super::outcomes::preview)})
+                    "changed":proposal.zip(super::outcomes::consistent(&report.baseline)).map(|(edited,base)| edited!=base),
+                    "proposal":proposal.map(super::outcomes::preview)})
             }).collect();
             let joint_only = edit == "joint"
                 && effect != 0.0

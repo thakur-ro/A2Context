@@ -1,5 +1,6 @@
 //! Classify source-edit findings by the outcome actually measured on a captured call.
-use nexusweave::replay;
+use super::findings::{source_set_id, Observation};
+use nexusweave::{replay, Run};
 use serde_json::{json, Value};
 
 pub(super) fn preview(choice: &replay::Choice) -> Value {
@@ -52,12 +53,62 @@ pub(super) fn joint_pattern(report: &replay::Replay) -> Option<&'static str> {
     })
 }
 
+/// Keep only edit arms with a completed, changed proposal and an inspectable witness.
+pub(super) fn changed_edits(run: &Run, observation: &Observation) -> Vec<Value> {
+    let detail = &observation.detail;
+    let sources = detail["sources"].as_array().expect("finding sources");
+    if detail["response_pair"]["changed"] == true {
+        return vec![json!({"id":detail["factor"],"sources":sources})];
+    }
+    // The joint comparison can qualify through a changed single arm while the joint edit held.
+    if detail["joint_pattern"] == "single_only" {
+        return detail["single_edits"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|arm| arm["changed"] == true)
+            .filter_map(|arm| sources.iter().find(|source| source["id"] == arm["id"]))
+            .map(|source| {
+                let edited = std::slice::from_ref(source);
+                json!({"id":source_set_id(run,edited,None),"sources":edited,"arm":source["id"]})
+            })
+            .collect();
+    }
+    if observation.kind != "prefill" {
+        return vec![];
+    }
+    let routing = &detail["routing_test"];
+    let mut edits = Vec::new();
+    for source in sources {
+        let setup = routing["cells"].as_array().and_then(|cells| {
+            cells
+                .iter()
+                .position(|cell| routing["context_id"] == source["id"] && cell["changed"] == true)
+        });
+        let check = detail["proposal_checks"]
+            .as_array()
+            .and_then(|checks| {
+                checks
+                    .iter()
+                    .find(|check| check["context_id"] == source["id"] && check["changed"] == true)
+            })
+            .and_then(|check| check["report"].as_str());
+        if setup.is_some() || check.is_some() {
+            let edited = std::slice::from_ref(source);
+            let tool_changed = setup.and_then(|i| routing["cells"][i]["tool_changed"].as_bool());
+            edits.push(
+                json!({"id":source_set_id(run,edited,None),"sources":edited,"setup":setup,
+                "tool_changed":tool_changed,"check":check}),
+            );
+        }
+    }
+    edits
+}
+
 // Keep the sort keys small. Load the selected finding's detail after pagination.
 pub(super) const CLASSIFIED: &str = ", classified AS (
     SELECT thread_key,trace_id,call_id,n,observed,factor,
-      CASE WHEN proposal_changed=1 OR (kind='token' AND json_extract(detail,'$.landmark.generated_choice_changed')=1) THEN 1
-           WHEN kind='prefill' AND (EXISTS (SELECT 1 FROM json_each(e.detail,'$.proposal_checks') c WHERE json_extract(c.value,'$.changed')=1)
-                 OR EXISTS (SELECT 1 FROM json_each(e.detail,'$.routing_test.cells') c WHERE json_extract(c.value,'$.changed')=1)) THEN 1
+      CASE WHEN proposal_changed=1 THEN 1
            WHEN kind='replacement' OR (kind IN ('replay','shadow') AND json_extract(detail,'$.effect_pp')!=0) THEN 2
            WHEN kind IN ('candidate','token') OR (kind='prefill' AND json_extract(detail,'$.shifted')=1) THEN 3
            WHEN kind IN ('replay','shadow','prefill') THEN 4
@@ -73,13 +124,21 @@ pub(super) const COHORT: &str = ", cohort AS (
     ) WHERE level=strongest AND strongest=CAST(? AS INTEGER)
 )";
 
-pub(super) const FACTORS: &str = " SELECT json_object('factor',c.factor,
-    'sources',json(min(json_extract(o.detail,'$.sources'))),'org',t.org,
+pub(super) const SOURCE_MEMBERS: &str = ", members AS (
+    SELECT c.*,c.factor AS member_id,json_extract(o.detail,'$.sources') AS member_sources,NULL AS witness
+    FROM cohort c JOIN observations o ON (o.trace_id,o.n)=(c.trace_id,c.n))";
+
+pub(super) const EDIT_MEMBERS: &str = ", members AS (
+    SELECT c.*,json_extract(a.value,'$.id') AS member_id,json_extract(a.value,'$.sources') AS member_sources,a.value AS witness
+    FROM cohort c JOIN observations o ON (o.trace_id,o.n)=(c.trace_id,c.n)
+    JOIN json_each(o.detail,'$.changed_edits') a)";
+
+pub(super) const FACTORS: &str = " SELECT json_object('factor',c.member_id,
+    'sources',json(min(c.member_sources)),'org',t.org,
     'conversations',count(DISTINCT c.thread_key),'requests',count(DISTINCT json_array(c.trace_id,c.call_id)),
     'cohort_size',(SELECT count(DISTINCT thread_key) FROM cohort))
-    FROM cohort c JOIN observations o ON (o.trace_id,o.n)=(c.trace_id,c.n)
-    JOIN traces t ON t.id=c.trace_id GROUP BY c.factor,t.org
-    ORDER BY count(DISTINCT c.thread_key) DESC,count(DISTINCT json_array(c.trace_id,c.call_id)) DESC,c.factor LIMIT ? OFFSET ?";
+    FROM members c JOIN traces t ON t.id=c.trace_id GROUP BY c.member_id,t.org
+    ORDER BY count(DISTINCT c.thread_key) DESC,count(DISTINCT json_array(c.trace_id,c.call_id)) DESC,c.member_id LIMIT ? OFFSET ?";
 
 #[cfg(test)]
 mod tests {

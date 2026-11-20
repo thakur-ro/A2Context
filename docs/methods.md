@@ -32,7 +32,7 @@ The overview assigns each conversation to the first category supported by a find
 
 | Category | Required evidence |
 | --- | --- |
-| Generated proposal changed | In a verified edit comparison, all original trials completed with the same proposal, all edited trials completed with the same proposal, and the two proposals differ. The comparison checks kind, label and full outcome before shortening the displayed text. A changed pair in a first-token or routing experiment also qualifies. For a token finding, the sidecar compares the free generations for the edit with the largest measured token shift. For tool proposals it compares the parsed name and arguments. |
+| Generated proposal changed | In a verified edit comparison, all original trials completed with the same proposal, all edited trials completed with the same proposal, and the two proposals differ. The comparison checks kind, label and full outcome before shortening the displayed text. A changed pair in a first-token or routing experiment also qualifies. For an instrumented token finding, the sidecar checks the free generation for each tested source edit. The largest fixed-prefix token shift can belong to a different source. For tool proposals it compares the parsed name and arguments. |
 | Replay match rate changed | Two tested conditions produced different fractions of answers or proposals meeting the scoring rule. Individual trials may vary within a condition. |
 | Model score shifted | A first-token distribution, candidate preference or output-token score shifted under a source edit. Open the example to check whether the runner also generated paired proposals. |
 | Tested without a measured shift | A scored comparison returned equal match rates or equal measured first-token distributions. Two different answers can meet the same scoring rule. |
@@ -41,6 +41,8 @@ The overview assigns each conversation to the first category supported by a find
 This ordering describes the outcome an engineer can inspect. One changed answer in a single pair supplies no estimate of how often the effect will recur. The counts cover findings on individual calls. Source-position experiments that compare multiple requests appear under the source factor.
 
 Within a category, the source view keeps every finding at the strongest level for each identified conversation. It groups those findings by versioned source set and counts distinct conversations and requests. Groups with the most conversations appear first. Request count and the stable group ID break ties. Selecting a group returns the latest qualifying finding from that group for each member. Selecting another group cannot move a conversation into a weaker category.
+
+For changed proposals, the dashboard groups by the sources edited in a qualifying comparison. A single edit and a joint edit have separate rows. A routing comparison contributes only the source edited within a setup. Each instrumented generation contributes its own edited source. An edit needs at least one observed change in the selected scope. Other trials on the same input can disagree. The counts describe the reach of the observed changes across conversations. Estimating the probability of another change would require comparable repeated trials.
 
 ## Grouping and ranking
 

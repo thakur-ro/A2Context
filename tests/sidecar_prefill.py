@@ -89,11 +89,26 @@ def check_recurrence(binary, folder, sdk_python):
         assert [(r["signature"],r["tool_signature"],r["inputs"]) for r in profiles] == [
             ("0000","0000",2), ("0101","0001",1), ("0101","0101",1)]
         assert card["routing_conversations"] == 4
+        scope = dict(org="retail-south", level=1, by="edit")
+        edited, = get(base, "outcome-factors", **scope)["rows"]
+        assert [s["source"] for s in edited["sources"]] == ["request-type"]
+        assert (edited["conversations"], edited["cohort_size"]) == (2, 2)
+        members = get(base, "conversation-outcomes", **scope, cohort_factor=edited["factor"])["rows"]
+        for member in members:
+            detail = recommendation(base, group=member["group"], trace=member["trace"], call=member["call"])[0]["evidence"]["detail"]
+            assert member["factor"] != edited["factor"]
+            assert detail["routing_test"]["cells"][member["witness"]["setup"]]["changed"] is True
         for row in profiles:
             one, = recommendation(base, group=card["id"], **row["example"])
             assert one["routing_profiles"] == [{**row,"inputs":1}]
             assert one["routing_conversations"] == 1
         assert not recommendation(base, org="other")
+    with sqlite3.connect(archive) as connection:
+        connection.execute("UPDATE observations SET detail=json_remove(detail,'$.changed_edits')")
+        connection.execute("PRAGMA user_version=14")
+    with server(binary, archive, "--capture-content") as base:
+        assert get(base, "outcome-factors", **scope)["rows"] == [edited]
+        assert get(base, "conversation-outcomes", **scope, cohort_factor=edited["factor"])["rows"] == members
     with sqlite3.connect(archive) as connection:
         connection.execute("UPDATE observations SET detail=json_remove(detail,'$.routing_test.design') WHERE kind='prefill'")
         connection.execute("PRAGMA user_version=10")
