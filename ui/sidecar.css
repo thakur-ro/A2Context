@@ -26,7 +26,6 @@ p, li, dd, td, th { overflow-wrap: anywhere; }
 .header { border-bottom: 1px solid var(--line); background: #fbfaf5; }
 .masthead { min-height: 73px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-size: 21px; font-weight: 750; text-decoration: none; letter-spacing: -.04em; }
-.brand-mark { font-size: 25px; color: #fff; background: #b04423; border-radius: 7px; padding: 4px 6px; line-height: 1; }
 #environment { color: var(--muted); font-size: 13px; }
 #navigation { display: flex; gap: 26px; }
 #navigation a { padding: 9px 1px 13px; text-decoration: none; color: var(--muted); font-weight: 650; border-bottom: 2px solid transparent; }

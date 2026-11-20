@@ -801,6 +801,7 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
 
 fn browser_asset(path: &str) -> Option<(u16, &'static str, &'static [u8])> {
     Some(match path {
+        "/nexusweave.svg" => (200, "image/svg+xml", include_bytes!("../ui/nexusweave.svg")),
         "/app.js" => (
             200,
             "text/javascript; charset=utf-8",
