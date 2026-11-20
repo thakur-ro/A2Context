@@ -1,0 +1,127 @@
+{
+  "previous_results_sha256": "25d07c46cf1aeea1d3b037fa5024097c2854c509ce80385ccc81841f73b4f5ce",
+  "protocol_sha256": "95547079edf4cf12f7e920367e00c18395647124096100c8ba7efc4e7ab07b14",
+  "renderers_sha256": "b41cbbe51434041f30693dc5f2c8a16b2f54a49d1b066aefdcbd38954ac7eb30",
+  "pairs": [
+    {
+      "case": "kettle-hold",
+      "consent_arm": "original",
+      "effective_tools_sha256": "3de85bbe4303662b314bbf8d82e3c40ba7049c9202bda9b8a881b92872e70fd7",
+      "nous": {
+        "prompt_sha256": "143296a96ba8a7bc09e6dec5f7341ccca51369ba81c93c0016a8c8128b2bf4ac",
+        "prompt_tokens_sha256": "299568b535b36eea201fdf2dd8163064ab002be6d45c09f0e9d80d8b918d8337",
+        "input_tokens": 454
+      },
+      "tokenizer": {
+        "prompt_sha256": "e49893521481e86322544a264d5fa63ecf71ab933a824f8f1dbd7b6142d3c0b2",
+        "prompt_tokens_sha256": "d7a87cac4d1baa8fd3460ba9fd8e0cc66c4c730b3e6c190a41b6e40553f41f69",
+        "input_tokens": 456
+      }
+    },
+    {
+      "case": "kettle-hold",
+      "consent_arm": "repair",
+      "effective_tools_sha256": "3de85bbe4303662b314bbf8d82e3c40ba7049c9202bda9b8a881b92872e70fd7",
+      "nous": {
+        "prompt_sha256": "bd7596d61c38a3b327b25958fe44d7955d64482bef379ac1bcb50e52318394dd",
+        "prompt_tokens_sha256": "15affee0490fb0e8f1909cdd80a9da5e5040f069fc8a82b5b08e727314605e9c",
+        "input_tokens": 455
+      },
+      "tokenizer": {
+        "prompt_sha256": "a26ccff3d2b704a91091d7ba7f4fb4127fbe2a5abf630ba1c57ae515836da9f2",
+        "prompt_tokens_sha256": "a0c6f38b9ef250e0ffba3cf7b6ec1b64b911a64367b85dd95e067839573052d7",
+        "input_tokens": 457
+      }
+    },
+    {
+      "case": "fan-approved",
+      "consent_arm": "original",
+      "effective_tools_sha256": "3de85bbe4303662b314bbf8d82e3c40ba7049c9202bda9b8a881b92872e70fd7",
+      "nous": {
+        "prompt_sha256": "f92027638ba159f5c429e5443759e8c8b593701d174f2f8434ae0bfaff2b72c9",
+        "prompt_tokens_sha256": "617e296a8191ddced5cedda3ea87ec091e564b0fabdb5cd3428ba79ebe042bbd",
+        "input_tokens": 448
+      },
+      "tokenizer": {
+        "prompt_sha256": "87c0e0b4c7bbc5c101a63e6aca44dc32d73bc681fc56cc3a57dfad9f862b0444",
+        "prompt_tokens_sha256": "92d9ea3386e462ee3e1d1eea37243253b5de21d178782f555c7fd6f955313ad1",
+        "input_tokens": 450
+      }
+    },
+    {
+      "case": "fan-approved",
+      "consent_arm": "repair",
+      "effective_tools_sha256": "3de85bbe4303662b314bbf8d82e3c40ba7049c9202bda9b8a881b92872e70fd7",
+      "nous": {
+        "prompt_sha256": "68ab589bef72dd168d578d12047d0a3e902b8a35a99017fd38cbea37c6f4ad2e",
+        "prompt_tokens_sha256": "aeabb8f94dfd41f80af586d7eb3f6fe51a6c83fc17b5c95e507a7d65f7fbd4a1",
+        "input_tokens": 447
+      },
+      "tokenizer": {
+        "prompt_sha256": "3d2c76fe1e61cf486055a325d806fefa88d004549360edcffcae63b8d01ad874",
+        "prompt_tokens_sha256": "d28055882a6c0920f430c5b328cbc213d80949115067c43b112b83346e8a070c",
+        "input_tokens": 449
+      }
+    },
+    {
+      "case": "grinder-approved",
+      "consent_arm": "original",
+      "effective_tools_sha256": "3de85bbe4303662b314bbf8d82e3c40ba7049c9202bda9b8a881b92872e70fd7",
+      "nous": {
+        "prompt_sha256": "1111fb42cf475833dce433107a5a85de985520872493026884d430b5fdf21056",
+        "prompt_tokens_sha256": "df072cdbde990caadb7d831f2b52f1f6c9aeb904c3882c18479b04f6c516e4ca",
+        "input_tokens": 451
+      },
+      "tokenizer": {
+        "prompt_sha256": "c231970845d4bf4ef5961d1e52d1b2174c045e8c505907eb5f4c9175a1bc7115",
+        "prompt_tokens_sha256": "ecaa9a6b1e2aba7ad5af4a797bb1d87831e9e17513ffd98f271f844ec7fdb541",
+        "input_tokens": 453
+      }
+    },
+    {
+      "case": "grinder-approved",
+      "consent_arm": "repair",
+      "effective_tools_sha256": "3de85bbe4303662b314bbf8d82e3c40ba7049c9202bda9b8a881b92872e70fd7",
+      "nous": {
+        "prompt_sha256": "16d9162359262eddfa84c29f493e35067b81dc13cc351db897e425dec29d997d",
+        "prompt_tokens_sha256": "b70080806a001156812d4f21e0ccfeff2f4bd7369aa64f81f39e3bc67bdb1fbd",
+        "input_tokens": 450
+      },
+      "tokenizer": {
+        "prompt_sha256": "dcb5fcff5421635d50744a07421ba8272327692310ddb703cb9150ad52805db6",
+        "prompt_tokens_sha256": "078cb5ec47cf257896a6ce31166f4c0b2efd32db9bc9bd9dc61df3555d68e232",
+        "input_tokens": 452
+      }
+    },
+    {
+      "case": "tent-hold",
+      "consent_arm": "original",
+      "effective_tools_sha256": "3de85bbe4303662b314bbf8d82e3c40ba7049c9202bda9b8a881b92872e70fd7",
+      "nous": {
+        "prompt_sha256": "1b3e25e3cff915e428dd12f3027086690ad32729cfc244595834d7414913c052",
+        "prompt_tokens_sha256": "2f995242e6cc32eb7bcd00881f988b4cdcd806fb2dbd3e567a4c17c9cd392cd8",
+        "input_tokens": 450
+      },
+      "tokenizer": {
+        "prompt_sha256": "e1537a7221b6e53b3d39a3b7e1d8412fc8ad5a8c684e4df471e187cd496eb697",
+        "prompt_tokens_sha256": "14a32e91344e3516185c5b6090ac915039d9e1d9ee9b41e02b04304f13a42a3d",
+        "input_tokens": 452
+      }
+    },
+    {
+      "case": "tent-hold",
+      "consent_arm": "repair",
+      "effective_tools_sha256": "3de85bbe4303662b314bbf8d82e3c40ba7049c9202bda9b8a881b92872e70fd7",
+      "nous": {
+        "prompt_sha256": "b496dcb54b0770adfe608af3cad8a4541ea3ec3dea58405dcb7da2d5b817fb7f",
+        "prompt_tokens_sha256": "9579526bb92b5eca28669b23b206bfca7747fbc5d2526ca1cc4592ea4cf33b37",
+        "input_tokens": 451
+      },
+      "tokenizer": {
+        "prompt_sha256": "b123e9d5a1e305afd6a7fb5306561336467a2f4d1386fe381371f9382137f85b",
+        "prompt_tokens_sha256": "b4535cc542693389c8503a2d7616de750e45c6739a855aa178287158ed7dabe7",
+        "input_tokens": 453
+      }
+    }
+  ]
+}
