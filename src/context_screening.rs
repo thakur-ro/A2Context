@@ -419,13 +419,21 @@ pub enum Verification<'a> {
     Unverified { issue: String },
 }
 
+impl CapturedReport {
+    /// Return the supplied report if it matches the context captured on this call.
+    pub fn verified(&self, call: &Call) -> Result<&Report, String> {
+        let report = self
+            .report
+            .as_ref()
+            .ok_or_else(|| "The workflow supplied an unreadable context screen.".to_owned())?;
+        validate_report(report, call)?;
+        Ok(report)
+    }
+}
+
 pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<Recorded<'a>> {
     let captured = call.context_screening.as_ref()?;
-    let result = captured
-        .report
-        .as_ref()
-        .ok_or_else(|| "The workflow supplied an unreadable context screen.".to_owned())
-        .and_then(|report| validate_report(report, call).map(|()| report));
+    let result = captured.verified(call);
     Some(Recorded {
         run_id,
         call_id: &call.id,

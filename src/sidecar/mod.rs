@@ -1,3 +1,4 @@
+mod capture;
 mod findings;
 mod history;
 mod order;
@@ -326,6 +327,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/traces"
                 | "/api/sidecar/threads"
                 | "/api/sidecar/impact"
+                | "/api/sidecar/conversations-without-findings"
                 | "/api/sidecar/outcome-factors"
                 | "/api/sidecar/conversation-outcomes"
                 | "/api/sidecar/proposal-conversations"
@@ -371,6 +373,15 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 }
                 "/api/sidecar/preview-example" => {
                     let fixture = match fields.get("scenario").map(String::as_str) {
+                        Some("screen") => {
+                            let sample: serde_json::Value = serde_json::from_str(include_str!(
+                                "../../examples/context-screening/evidence.json"
+                            ))?;
+                            json!({
+                                "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/context-screening/request.json"))?,
+                                "screening":sample[0]["calls"][0]["context_screening"]["report"]
+                            })
+                        }
                         Some("warranty") => {
                             serde_json::from_str::<serde_json::Value>(include_str!(
                                 "../../examples/redundant-routing/warranty-probe-results.json"

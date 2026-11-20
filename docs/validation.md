@@ -51,14 +51,29 @@ The edited-source check uses two instrumented reports with three tested sources 
 
 The routing checks verify that a completed comparison credits just the edited source, restore the same links from a version-14 database, and open the changed routing setup on desktop and mobile. In a separate four-arm replay, a single edit changed the proposal while the joint edit restored the original. Only the individual edit qualifies in that conversation. [Routing checks](../tests/sidecar_prefill.py) · [Replay checks](../scripts/check_sidecar.py)
 
+The capture-population check covers a trace crossing midnight, a late finding, redacted input, stale screen digests, and rebuilding the call index from a version 16 database. The live journal check verifies that the captured conversation moves from a classifier suggestion to a measured policy edit when the report arrives. Redelivery preserves the same count. The desktop and mobile tests follow the source pair into the replay planner and open the classifier result before inference.
+
+On 256 synthetic, single-call conversations, 128 had declared conflicts and 128 had no finding. The overview and the first 15 conversations without a finding took 1.662 ms median and 2.022 ms p95 across 20 warm pairs of HTTP reads. All 128 distinct conversations appeared across the pages. The release sidecar and Python client shared one Linux container capped at 1 vCPU and 512 MiB. The cgroup peaked at 27.6 MiB with zero OOM events. Run `python3 scripts/check_sidecar.py --population-cost` after building the release binary to repeat this workload.
+
 ## What the public traces support
 
 The pinned Exgentic retail sample contains eight conversations and 99 model calls. On the unannotated import, the sidecar found 101 exact repetitions across 83 calls in all eight conversations. Every repetition was dialogue from unnamed assistant or user messages. The normalized calls had no declared rules, bound experiment reports or replay-ready request bodies. The traces support locating those repetitions. A causal change in the historical model's answer remains unmeasured.
 
+Replaying prefixes of each saved conversation shows when repetition first became visible. Each row uses the first calls in dataset order and the same SQLite queries as the dashboard.
+
+| Calls retained per conversation | Captured calls | Conversations with findings | Conversations with comparable proposals |
+| --- | ---: | ---: | ---: |
+| First call | 8 | 0/8 | 0/8 |
+| First two | 16 | 0/8 | 0/8 |
+| First four | 32 | 8/8 | 0/8 |
+| Full conversation | 99 | 8/8 | 0/8 |
+
+These eight sessions were selected for linked tool results. Their counts describe this sample. Repeated dialogue alone gives no measurement of its influence on any answer.
+
 This result exposed a problem with recommending removal whenever two texts match. The factor list now labels these cases **Repeated dialogue** and places them after named input repetitions. Its recommendation asks whether a workflow inserted a copy. Genuine conversation history may repeat naturally. To reproduce, import the pinned sample, then run the optional check from the repository root.
 
 ```sh
-cargo test --locked public_retail_recommendations -- --ignored
+cargo test --locked --bin nexusweave public_retail_recommendations -- --ignored --nocapture
 ```
 
 [Sample and import instructions](guide.md#import-public-retail-traces) · [Pinned sample manifest](../examples/retail-sample.manifest.json)

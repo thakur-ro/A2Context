@@ -16,6 +16,7 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
   await page.getByRole("heading", { name: "Conversations with findings" }).waitFor();
+  await page.getByText("of 22 captured conversations", {exact:true}).waitFor();
   assert.equal(await page.locator(".impact-number").innerText(), "21");
   assert.deepEqual(await page.locator(".impact-outcome strong").allTextContents(), ["13", "2", "6"]);
   assert.ok(await page.locator(".brand img").evaluate(img => img.complete && img.naturalWidth > 0));
@@ -216,6 +217,21 @@ try {
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
   mobile.on("pageerror", (error) => errors.push(error.message));
   for (const device of [page, mobile]) {
+    await device.goto(base);
+    await device.getByRole("link", {name:/1 conversation without a finding.*1 with a flagged source pair/}).click();
+    const screen = device.locator(".panel").filter({hasText:"Possible conflict between two sources"});
+    assert.match(await screen.innerText(), /30 days/);
+    assert.match(await screen.innerText(), /60 days/);
+    await screen.getByText("Classifier and coverage").click();
+    await screen.getByText(/first to second 0.922.*second to first 0.991/).waitFor();
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (device === page && process.env.CAPTURE_SCREENSHOT) await screen.screenshot({path:process.env.CAPTURE_SCREENSHOT});
+    await screen.getByRole("link", {name:"Inspect the pair and its replay options"}).click();
+    const pair = device.locator("details.finding[open][data-screen-pair]");
+    await pair.getByRole("button", {name:"Prepare replay for this pair"}).click();
+    await device.getByRole("dialog").getByText("Prepare controlled replay", {exact:true}).waitFor();
+    await device.goto(base + "/?view=preview&scenario=screen");
+    await device.getByRole("heading", {name:"Possible conflict between two sources"}).waitFor();
     await device.goto(base + "/?view=preview&scenario=checked-history");
     const result = device.locator(".prior-edits");
     await result.getByRole("heading", {name:"The proposal stayed the same after editing dispatch-guide"}).waitFor();

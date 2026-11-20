@@ -337,5 +337,27 @@ mod tests {
             ),
             (99, 101, 83, 8)
         );
+        // Reconstruct what the dashboard could show after the same number of calls per session.
+        let mut store = super::super::Store::open(std::path::Path::new(":memory:")).unwrap();
+        for (depth, expected) in [(1, 0), (2, 0), (4, 8), (usize::MAX, 8)] {
+            let mut prefix = runs.clone();
+            for run in &mut prefix {
+                run.calls.truncate(depth);
+            }
+            store.seed(&prefix, &[], &[], &[], 1).unwrap();
+            let scope = BTreeMap::new();
+            let impact = store.list("impact", &scope).unwrap();
+            let gaps = store
+                .list("conversations-without-findings", &scope)
+                .unwrap();
+            let findings = impact["conversations"].as_u64().unwrap();
+            assert_eq!(findings, expected);
+            assert_eq!(impact["captured_conversations"], 8);
+            assert_eq!(impact["without_findings"], 8 - findings);
+            assert_eq!(gaps["rows"].as_array().unwrap().len() as u64, 8 - findings);
+            assert_eq!(impact["proposal_outcomes"]["no_pair"], findings);
+            eprintln!("{} captured calls, {findings}/8 conversations with findings, 0/8 with comparable proposals",
+                prefix.iter().map(|r| r.calls.len()).sum::<usize>());
+        }
     }
 }

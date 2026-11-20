@@ -148,6 +148,8 @@ def check_capture(binary, folder, producer_python=None):
         send(base, "/v1/traces", export(child))
         send(base, "/v1/traces", export(child))
         assert not get(base, "findings")["rows"]
+        gap, = get(base, "conversations-without-findings")["rows"]
+        assert gap["trace"] == trace_id and gap["calls"] == 1 and gap["with_text"] == 0
         assert get(base, "health")["coverage"] == {"traces": 1, "inference_spans": 1, "with_inputs": 0, "with_request": 0, "with_rules": 0}
         rows = get(base, "traces", workflow="policy-workflow", meta_key="deployment.environment.name", meta_value="validation")["rows"]
         assert [row["id"] for row in rows] == [trace_id]
@@ -171,6 +173,95 @@ def check_capture(binary, folder, producer_python=None):
         sql.execute("UPDATE traces SET seen=? WHERE id=?", (int(time.time()) - 8 * 86400, trace_id))
     with server(binary, db, *flags) as base:
         assert trace_id not in [row["id"] for row in get(base, "traces")["rows"]]
+        assert get(base, "impact", org="heldout")["captured_conversations"] == 0
+
+
+def check_conversation_population(binary, db):
+    org = "population"
+    early = case_span("clear", "undeclared", org=org)
+    later = case_span("rules", "conflict", org=org, shift=86400)
+    later.update(traceId=early["traceId"], spanId="3333333333333333")
+    quiet = case_span("second", "undeclared", org=org, number=1)
+    flags = ("--capture-content", "--metadata", "deployment.environment.name")
+    with server(binary, db, *flags) as base:
+        send_traces(base, export(early, quiet))
+        send_traces(base, export(later))
+        send_traces(base, export(early, quiet, later))
+        def counts(**filters):
+            impact = get(base, "impact", org=org, **filters)
+            return tuple(impact[key] for key in ("captured_conversations", "conversations", "without_findings"))
+        assert counts() == (2, 1, 1)
+        assert counts(before="2026-10-13") == (1, 0, 1)
+        assert counts(after="2026-10-13", before="2026-10-14") == (2, 1, 1)
+        assert counts(after="2026-10-14") == (0, 0, 0)
+        assert counts(user="other") == counts(meta_key="deployment.environment.name", meta_value="other") == (0, 0, 0)
+        assert counts(trace="otlp:" + early["traceId"], call=early["spanId"]) == (1, 0, 1)
+        page = get(base, "conversations-without-findings", org=org)
+        row, = page["rows"]
+        assert row["trace"] == "otlp:" + quiet["traceId"] and row["call"] == quiet["spanId"]
+        assert row["calls"] == row["with_text"] == 1
+        first, = get(base, "conversations-without-findings", org=org, before="2026-10-13")["rows"]
+        assert first["trace"] == "otlp:" + early["traceId"] and first["call"] == early["spanId"]
+    with sqlite3.connect(db) as sql:
+        sql.execute("DROP TABLE captured_calls")
+        sql.execute("PRAGMA user_version=16")
+    with server(binary, db, *flags) as base:
+        assert get(base, "conversations-without-findings", org=org) == page
+        assert get(base, "impact", org=org)["captured_conversations"] == 2
+
+
+def check_screen_suggestions(binary, folder):
+    fixtures = ROOT / "examples/context-screening"
+    request = json.loads((fixtures / "request.json").read_text())
+    screen = json.loads((fixtures / "evidence.json").read_text())[0]["calls"][0]["context_screening"]["report"]
+    # Reuse the two directional scores saved for each pair, with the same two texts and roles.
+    cases = []
+    for index, kind in [(2, "possible_overlap"), (3, "possible_conflict")]:
+        messages = request["attributes"]["gen_ai.input.messages"]
+        selected = [messages[0], messages[index]]
+        pair = next(p for p in screen["pairs"] if p["sources"] == [0, index])
+        report = {**screen, "total_pairs": 1, "pairs": [{**pair, "sources": [0, 1]}],
+                  "sources": [screen["sources"][0], {**screen["sources"][index], "context_id": "input:1:0"}]}
+        child = case_span(kind, "undeclared", number=index)
+        child["attributes"] = attrs({"gen_ai.operation.name":"chat", "gen_ai.request.model":"support-demo",
+            "gen_ai.conversation.id":kind, "gen_ai.input.messages":json.dumps(selected),
+            "nexusweave.context_screening":json.dumps(report)})
+        cases.append((child, selected, report, kind))
+    for capture in (False, True):
+        with server(binary, folder / f"screen-{capture}.sqlite", *(["--capture-content"] if capture else [])) as base:
+            for child, messages, report, kind in cases:
+                send_traces(base, export(child))
+                row, = get(base, "conversations-without-findings", trace="otlp:" + child["traceId"])["rows"]
+                assert bool(row["screen"]) == capture
+                if capture:
+                    assert row["screen"]["suggestion"] == kind and row["screen"]["flagged_pairs"] == 1
+                    assert [s["text"] for s in row["screen"]["sources"]] == [m["parts"][0]["content"] for m in messages]
+                pending = {"version":1, "attributes":{"gen_ai.input.messages":messages}}
+                envelope = {"request":pending, "screening":report}
+                preview = send(base, "/api/sidecar/preview", envelope)[1]
+                assert preview["screen_suggestion"]["suggestion"] == kind and preview["total"] == 0
+                stale = deepcopy(envelope)
+                stale["screening"]["sources"][0]["text_sha256"] = "0" * 64
+                rejected = send(base, "/api/sidecar/preview", stale)[1]
+                assert rejected["screen_suggestion"] is None and rejected["unverified_probes"]
+            population = get(base, "impact")
+            assert population["without_findings"] == 2
+            assert population["without_findings_with_screen_suggestion"] == (2 if capture else 0)
+
+    sys.path.insert(0, str(ROOT / "examples"))
+    from send_otlp_replay import prepare
+    with server(binary, folder / "followup.sqlite", "--capture-content") as base:
+        trace, report = prepare("journal-return-followup", followup=True)
+        send_traces(base, trace)
+        gap, = get(base, "conversations-without-findings")["rows"]
+        assert [s["source"] for s in gap["screen"]["sources"]] == ["journal-policy", "journal-faq"]
+        send(base, "/api/replay-reports", report, expected=201)
+        send(base, "/api/replay-reports", report)
+        impact = get(base, "impact")
+        assert impact["captured_conversations"] == impact["evidence_counts"]["proposal"] == 1
+        assert impact["without_findings"] == 0
+        edits = get(base, "outcome-factors", level=1, by="edit")["rows"]
+        assert [row["sources"][0]["source"] for row in edits if len(row["sources"]) == 1] == ["journal-policy"]
 
 
 def check_replay(base, send_trace=send_traces):
@@ -180,11 +271,14 @@ def check_replay(base, send_trace=send_traces):
     trace, report = prepare_replay("held-out-experiment")
     path = "/api/replay-reports"
     send_trace(base, trace)
+    uncovered, = get(base, "conversations-without-findings", trace=report["location"]["run_id"])["rows"]
+    assert uncovered["screen"]["suggestion"] == "possible_conflict"
     tampered = deepcopy(report)
     tampered["baseline_request_sha256"] = "0" * 64
     send(base, path, tampered, expected=400)
     send(base, path, report, expected=201)
     send(base, path, report)
+    assert not get(base, "conversations-without-findings", trace=report["location"]["run_id"])["rows"]
     incomplete = deepcopy(report)
     incomplete["id"] += "-incomplete"
     variant = incomplete["variants"][0]
@@ -934,6 +1028,7 @@ def load(base, clients, batches, batch_size, payload_bytes):
         factors = get(base, "factors", org=org)
         reads.append(1000 * (time.monotonic() - start))
         assert impact == {"conversations": batch_size, "changed": 0, "unlinked_requests": 0, "factors": batches,
+                          "captured_conversations": batch_size, "without_findings": 0, "without_findings_with_screen_suggestion": 0,
                           "evidence_counts": {"proposal": 0, "rate": 0, "score": 0, "tested": 0, "inputs": batch_size},
                           "proposal_outcomes": {"both": 0, "held_only": 0, "changed_only": 0, "no_pair": batch_size},
                           "replay_outcomes": {"mixed": 0, "changed_only": 0, "equal_only": 0, "unmeasured": batch_size}}
@@ -980,6 +1075,30 @@ def measure_token_pages(binary):
             "median_ms": round(median(timings), 3), "p95_ms": round(sorted(timings)[ceil(0.95 * len(timings)) - 1], 3)}
 
 
+def measure_population(binary):
+    timings = []
+    with tempfile.TemporaryDirectory() as directory, server(binary, Path(directory) / "population.sqlite", "--capture-content") as base:
+        for start in range(0, 256, 16):
+            spans = [case_span("population-cost", "conflict" if i % 2 else "undeclared", i) for i in range(start, start + 16)]
+            send_traces(base, export(*spans))
+        for iteration in range(21):
+            start = time.perf_counter()
+            impact = get(base, "impact")
+            page = get(base, "conversations-without-findings")
+            elapsed = (time.perf_counter() - start) * 1000
+            assert impact["captured_conversations"] == 256 and impact["without_findings"] == impact["conversations"] == 128
+            assert len(page["rows"]) == page["next_offset"] == 15
+            if iteration:
+                timings.append(elapsed)
+        threads = [r["thread"] for r in page["rows"]]
+        while page["next_offset"] is not None:
+            page = get(base, "conversations-without-findings", offset=page["next_offset"])
+            threads.extend(r["thread"] for r in page["rows"])
+        assert len(threads) == len(set(threads)) == 128
+    return {"captured":256, "without_findings":128, "warm_read_pairs":len(timings),
+            "median_ms":round(median(timings), 3), "p95_ms":round(sorted(timings)[ceil(len(timings) * .95) - 1], 3)}
+
+
 def measure_history_preview(binary):
     folder = ROOT / "examples/redundant-routing"
     request = json.loads((folder / "candidate-checks/ash-routing-note.json").read_text())["request"]
@@ -1007,12 +1126,16 @@ def main():
     parser.add_argument("--sdk-python", help="Interpreter with OpenTelemetry SDK and OTLP/HTTP exporter installed")
     parser.add_argument("--overload-url", help="Run load only against an isolated persistent sidecar")
     parser.add_argument("--token-page-cost", action="store_true", help="Measure warm reads of the two instrumented demo answers")
+    parser.add_argument("--population-cost", action="store_true", help="Time the overview and first page of conversations without a finding")
     parser.add_argument("--history-cost", action="store_true", help="Time the pending Ash request with and without its saved trial")
     parser.add_argument("--clients", type=int, default=24)
     parser.add_argument("--batches", type=int, default=192)
     parser.add_argument("--batch-size", type=int, default=12)
     parser.add_argument("--payload-bytes", type=int, default=4096)
     args = parser.parse_args()
+    if args.population_cost:
+        print(json.dumps(measure_population(args.binary)))
+        return
     if args.history_cost:
         print(json.dumps(measure_history_preview(args.binary), indent=2))
         return
@@ -1025,6 +1148,8 @@ def main():
     with tempfile.TemporaryDirectory() as directory:
         folder = Path(directory)
         check_capture(args.binary, folder, args.sdk_python)
+        check_screen_suggestions(args.binary, folder)
+        check_conversation_population(args.binary, folder / "population.sqlite")
         check_external_batch(args.binary, folder)
         check_current_history_test(args.binary)
         check_proposal_coverage(args.binary, folder / "proposal-coverage.sqlite")

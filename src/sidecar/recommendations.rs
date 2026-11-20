@@ -249,6 +249,7 @@ pub fn preview(
     {
         super::history::current_tests(experiment, call, &shadow, prefill.as_ref());
     }
+    let screen = super::capture::screen_candidate(call);
     let unverified = replay::candidates::recorded("pending", call)
         .into_iter()
         .filter_map(|probe| match probe.verification {
@@ -263,9 +264,11 @@ pub fn preview(
                     _ => None,
                 }),
         )
+        .chain(screen.as_ref().err().cloned())
         .take(10)
         .collect::<Vec<_>>();
     Ok(json!({
+        "screen_suggestion":screen.ok().flatten(),
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))

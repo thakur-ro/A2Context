@@ -58,6 +58,7 @@ impl Store {
                  PRIMARY KEY(trace_id,kind,call_id,decision_id,id)
              );",
         )?;
+        db.execute_batch(super::capture::SCHEMA)?;
         Ok(Self(db))
     }
 
@@ -240,12 +241,37 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 16 {
+        if version == 17 {
             return Ok(());
         }
-        if !(0..16).contains(&version) {
+        if !(0..17).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
+        if version < 16 {
+            self.upgrade_legacy_observations(version)?;
+        }
+        let mut after = String::new();
+        loop {
+            let tx = self.0.transaction()?;
+            let mut stmt = tx.prepare(
+                "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL ORDER BY id LIMIT 16",
+            )?;
+            let ids = stmt
+                .query_map([&after], |r| r.get::<_, String>(0))?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            drop(stmt);
+            let Some(last) = ids.last() else { break };
+            for id in &ids {
+                super::capture::replace(&tx, id, load_run(&tx, id)?.as_ref())?;
+            }
+            tx.commit()?;
+            after.clone_from(last);
+        }
+        self.0.pragma_update(None, "user_version", 17)?;
+        Ok(())
+    }
+
+    fn upgrade_legacy_observations(&mut self, version: i64) -> Result<()> {
         let mut after = String::new();
         loop {
             let ids = {
@@ -566,6 +592,7 @@ impl Store {
             "findings"
                 | "factors"
                 | "impact"
+                | "conversations-without-findings"
                 | "outcome-factors"
                 | "conversation-outcomes"
                 | "proposal-conversations"
@@ -642,8 +669,23 @@ impl Store {
         if matches!(view, "impact" | "outcome-factors" | "conversation-outcomes") {
             sql.push_str(super::outcomes::CLASSIFIED);
         }
-        if matches!(view, "impact" | "proposal-conversations") {
+        if matches!(
+            view,
+            "impact" | "proposal-conversations" | "conversations-without-findings"
+        ) {
             sql.push_str(super::outcomes::THREAD_OUTCOMES);
+        }
+        if matches!(view, "impact" | "conversations-without-findings") {
+            sql.push_str(", scoped_calls AS (SELECT t.thread_key,c.trace_id,c.call_id,c.started,c.with_text,c.screen IS NOT NULL AS flagged
+                FROM selected t JOIN captured_calls c ON c.trace_id=t.id WHERE t.thread_key IS NOT NULL");
+            for (key, column) in [("trace", "c.trace_id"), ("call", "c.call_id")] {
+                if let Some(value) = filters.get(key).filter(|s| !s.is_empty()) {
+                    sql.push_str(&format!(" AND {column}=?"));
+                    args.push(value.clone());
+                }
+            }
+            append_window(&mut sql, &mut args, "c.started", filters)?;
+            sql.push_str(super::capture::BY_CONVERSATION);
         }
         let cohort = view == "outcome-factors"
             || (view == "conversation-outcomes" && filters.contains_key("level"));
@@ -669,6 +711,7 @@ impl Store {
             }
         }
         match view {
+            "conversations-without-findings" => sql.push_str(super::capture::PAGE),
             "proposal-conversations" => {
                 let result = super::required(filters, "result")?;
                 if !matches!(result, "changed_only" | "held_only" | "both" | "no_pair") {
@@ -715,6 +758,9 @@ impl Store {
                 ORDER BY differs DESC,factor,design LIMIT ? OFFSET ?"),
             "impact" => {
                 sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
+                    'captured_conversations',(SELECT count(*) FROM captured_threads),
+                    'without_findings',(SELECT count(*) FROM without_findings),
+                    'without_findings_with_screen_suggestion',(SELECT count(*) FROM without_findings WHERE flagged),
                     'changed',count(DISTINCT CASE WHEN changed=1 OR proposal_changed=1 THEN thread_key END),
                     'evidence_counts',(SELECT json_object('proposal',count(*) FILTER (WHERE level=1),'rate',count(*) FILTER (WHERE level=2),
                         'score',count(*) FILTER (WHERE level=3),'tested',count(*) FILTER (WHERE level=4),'inputs',count(*) FILTER (WHERE level=5))
@@ -947,7 +993,7 @@ fn append_window(
     Ok(())
 }
 
-fn at(value: Option<&str>) -> Option<i64> {
+pub(super) fn at(value: Option<&str>) -> Option<i64> {
     value
         .and_then(|value| OffsetDateTime::parse(value, &Rfc3339).ok())
         .map(OffsetDateTime::unix_timestamp)
@@ -1022,6 +1068,7 @@ fn save_trace(
         params![id, seen, start, run.and_then(|run| run.organization_id.as_deref()), run.and_then(|run| run.user_id.as_deref()),
                 run.and_then(|run| run.conversation_id.as_deref()), key, metadata.get("service.name"), run.map(|run| &run.source),
                 serde_json::to_string(metadata)?, raw.map(|(_, stored)| stored), run.map(serde_json::to_string).transpose()?, calls, with_inputs, with_request, with_rules])?;
+    super::capture::replace(tx, id, run)?;
     tx.execute("DELETE FROM metadata WHERE trace_id=?1", [id])?;
     for (key, value) in metadata {
         tx.execute(

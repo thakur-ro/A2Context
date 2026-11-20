@@ -12,6 +12,7 @@ const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
+const withoutFindings = query.get("coverage") === "without-findings";
 const traceId = query.get("trace");
 const measuredExample = Object.fromEntries(["trace", "call", "decision", "replay", "context", "routing_design", "routing_input", "report"]
   .filter((key) => recommendationId && query.has(key)).map((key) => [key, query.get(key)]));
@@ -310,6 +311,10 @@ function impactPanel(impact) {
   return element("section", { className: "impact", "aria-label": "Conversation impact" },
     element("div", {}, element("h2", { text: "Conversations with findings" }),
       element("strong", { className: "impact-number", text: impact.conversations }),
+      element("p", {className:"impact-total", text:"of " + plural(impact.captured_conversations, "captured conversation")}),
+      impact.without_findings ? link(plural(impact.without_findings, "conversation") + " without a finding" +
+        (impact.without_findings_with_screen_suggestion ? " · " + impact.without_findings_with_screen_suggestion + " with a flagged source pair" : ""),
+        url({coverage:"without-findings"}), "coverage-link") : null,
       element("p", { text: plural(impact.factors, "source factor") + (impact.unlinked_requests ? " · " + plural(impact.unlinked_requests, "additional request") + " without a conversation ID" : "") })),
     element("div", { className: "impact-breakdown" },
       element("p", {text:"Strongest evidence per conversation"}),
@@ -323,6 +328,36 @@ function impactPanel(impact) {
 function positionLink(factor, test) {
   return url({ factor, variation: 1, pair: test.pair, group: test.group,
     baseline_trials: test.baseline_trials, edit_trials: test.edit_trials });
+}
+
+function captureReview(row) {
+  const screen = row.screen;
+  const sample = new URLSearchParams({v:1, view:"conversation", run:row.trace, call:row.call});
+  const captured = "Input text captured on " + row.with_text + " of " + plural(row.calls, "call") + ".";
+  const metadata = [row.org, row.user, row.latest && "Last call " + fullDate(row.latest)].filter(Boolean);
+  const path = "/details?" + new URLSearchParams({run:row.trace}) + "#";
+  if (!screen) return panel(row.thread, element("p", {className:"label", text:metadata.join(" · ")}), element("p", {text:captured}),
+    row.with_text ? link("Review a captured exchange", path + sample) :
+      link("Inspect a call with missing input text", url({view:"traces", trace:row.trace, call:row.call})));
+  sample.set("screen_pair", JSON.stringify(screen.sources.flatMap(s => [s.id,s.digest])));
+  if (screen.decision) sample.set("decision", screen.decision);
+  return screenReview(screen, element("p", {className:"label", text:[row.thread, ...metadata].join(" · ")}),
+    link(screen.decision ? "Inspect the pair and its replay options" : "Inspect the source pair", path + sample, "action"), captured);
+}
+
+function screenReview(screen, subtitle = null, action = null, captured = "") {
+  const conflict = screen.suggestion === "possible_conflict";
+  const score = conflict ? "contradiction" : "entailment";
+  return panel(conflict ? "Possible conflict between two sources" : "Possible overlap between two sources", subtitle,
+    element("div", {className:"comparison"}, ...screen.sources.map(s => element("div", {},
+      element("strong", {text:sourceName(s) + version(s.version)}), element("p", {text:s.text + (s.truncated ? "…" : "")})))),
+    element("p", {text:"A text classifier flagged this pair. Test each source edit against the answer or tool call to measure its effect."}),
+    action,
+    element("details", {}, element("summary", {text:"Classifier and coverage"}),
+      element("p", {text:[screen.scorer.model_id,screen.scorer.revision,screen.scorer.runtime].join(" · ")}),
+      element("p", {text:score + " score · first to second " + screen.left_to_right[score].toFixed(3) +
+        " · second to first " + screen.right_to_left[score].toFixed(3)}),
+      element("p", {text:[plural(screen.flagged_pairs,"flagged pair") + " among " + screen.examined_pairs + " examined of " + screen.total_pairs + " possible.", captured].filter(Boolean).join(" ")})));
 }
 
 function positionReadout(result) {
@@ -1049,9 +1084,9 @@ function pendingPreview() {
         report.prefill ? routingComparison(report.prefill) : null,
         checked ? history : null,
         report.prefill && !(testedTop && report.prefill.ranked.length === 1) ? firstTokenPreview(report.prefill, false, testedTop) : null,
-        ...current, checked ? null : history, followUp, ...findings,
+        ...current, report.screen_suggestion ? screenReview(report.screen_suggestion) : null, checked ? null : history, followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
-        !report.total && !report.prefill && !checked ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
+        !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
       if (currentLoad === sequence) output.textContent = error.message;
     }
@@ -1071,7 +1106,8 @@ function pendingPreview() {
     });
   });
   const policy = element("button", { type: "button", text: "Try a policy conflict" });
-  policy.addEventListener("click", () => show(() => api("preview-example", { scenario: "policy" })));
+  policy.addEventListener("click", () => show(() => api("preview-example", { scenario: "policy" }),
+    link("Compare instructions using a text classifier", url({view:"preview", scenario:"screen"}), "action")));
   const routing = element("button", { type: "button", text: "Try a measured tool choice" });
   const prefillLink = link("Check the same edits before the first token", url({ view: "preview", scenario: "prefill" }), "action");
   const routingLinks = element("div", {className:"actions"}, prefillLink,
@@ -1085,7 +1121,7 @@ function pendingPreview() {
       link("See the tested edit on this request", url({view:"preview",scenario:"checked-history"})), scores));
   });
   const scenario = query.get("scenario");
-  if (["scored-history", "checked-history", "warranty", "routing", "policy", "history", "prefill", "routing-test"].includes(scenario)) {
+  if (["screen", "scored-history", "checked-history", "warranty", "routing", "policy", "history", "prefill", "routing-test"].includes(scenario)) {
     const next = scenario === "prefill" ? link("Compare the measured tool proposals", url({ view: "preview", scenario: "routing" }), "action") :
       scenario === "routing" ? routingLinks : scenario === "checked-history" ?
         link("Compare the two source edits on this request", url({view:"preview",scenario:"scored-history"}), "action") : null;
@@ -1190,6 +1226,13 @@ async function render(refresh = false) {
         if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel, ...cohortMode, cohort_factor:cohortFactor})));
       }
       pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, ...cohortMode, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, ...measuredExample });
+    } else if (withoutFindings) {
+      byId("title").textContent = "Conversations without a finding";
+      byId("summary").textContent = "These conversations have captured calls. When a text classifier flags a source pair, you can inspect the texts and prepare an experiment here.";
+      const data = await api("conversations-without-findings", {...scope, offset:pageOffset});
+      body = element("div", {className:"feed"}, link("Back to recommendations", url({})),
+        ...data.rows.map(captureReview), data.rows.length ? null : element("p", {className:"empty", text:"No conversations match this filter."}));
+      pagination(data.next_offset, {coverage:"without-findings"});
     } else if (Object.hasOwn(comparisonLabels, comparisonResult)) {
       const selection = {proposal_result:comparisonResult, coverage_factor:comparisonScope};
       const filters = {...scope, result:comparisonResult, offset:pageOffset};
@@ -1354,7 +1397,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, ...measuredExample }, values);
+      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
@@ -1401,7 +1444,7 @@ async function main() {
       row.focus();
     }
   }
-  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !outcomeCategory && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
     }

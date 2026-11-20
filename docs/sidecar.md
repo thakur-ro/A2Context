@@ -17,7 +17,8 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 
 | GET route under `/api/sidecar/` | Use |
 | --- | --- |
-| `impact` | Get distinct identified conversations, counts by evidence category (`evidence_counts`), requests without conversation IDs and source factors. |
+| `impact` | Compare identified conversations with findings (`conversations`) against all identified conversations with a normalized call in scope (`captured_conversations`). Read `evidence_counts` for the strongest finding per conversation. |
+| `conversations-without-findings` | Page through the remainder. Each row identifies a call and counts how many calls in scope include input text. The optional `screen` contains a classifier suggestion with excerpts, source digests and scores in both directions. |
 | `proposal-conversations?result=both` | List conversations with changed and matching complete proposals. Other values are `changed_only`, `held_only` and `no_pair`. Each row returns one recent evidence link per represented outcome, or one finding for a conversation without a pair. Accepts the same scope, factor and date filters as `impact`. |
 | `outcome-factors?level=1&by=edit` | Group changed proposals by the versioned sources actually edited. Use the returned `factor` as `cohort_factor` with the same `level` and `by` on the conversation endpoint. The selected row’s `witness` identifies the comparison and its parent `factor` opens the original finding. |
 | `outcome-factors?level=1` | Rank the source groups with findings at the strongest evidence level for these conversations. Each row returns its `factor`, distinct conversation count, distinct model call count (`requests`) and the number of conversations at that level in scope (`cohort_size`). A trace can contain multiple calls. |
@@ -36,6 +37,18 @@ Expand **Answers or tool calls compared** on the overview or a source factor. Se
 Within that panel, **Scored replays** gives the separate match-rate counts in `impact.replay_outcomes`. Two different answers can pass the same scoring rule. A single trial per arm can also give equal rates. Open the recommendation for the complete proposal comparison and trial counts.
 
 ![Fifteen of the 21 demo conversations have comparable proposals. The expanded panel links to changed, unchanged and missing evidence.](media/proposal-coverage.png)
+
+### Review a flagged pair before a replay exists
+
+The demo opens with findings in 21 of 22 captured conversations. Select **1 conversation without a finding**. In the remaining conversation, the policy and FAQ give different return windows. **Classifier and coverage** shows which model flagged the texts and how many pairs it examined. Open **Inspect the pair and its replay options** to prepare a test of those sources.
+
+![The journal policy and FAQ give different return windows. The card shows the two excerpts and the classifier scores.](media/screened-conversation.png)
+
+An identified conversation enters the denominator when a normalized call matches the selected user, workflow, metadata and time window. Dates use the call start, even for traces that span midnight. A missing conversation ID prevents grouping by conversation. A missing timestamp excludes the call from a dated query. Finding-specific filters narrow the numerator. With content capture disabled, a call can count toward coverage with zero available excerpts.
+
+Each card shows one screened pair per conversation. The sidecar prefers a call with a flagged pair, then a call with text. Within a call it selects the first flagged conflict, falling back to the first flagged overlap in report order. It checks the report against the captured source versions, text digests and score contract. The scores come from the supplied classifier. Once verified replay evidence arrives, the dashboard updates the conversation’s evidence category. [Test the same pair on the follow-up question](guide.md#test-the-pair-on-a-follow-up-question)
+
+For assembled requests, send an optional `screening` report in the `POST /api/sidecar/preview` envelope. Read `screen_suggestion` for the pair. A stale report returns no pair and an issue in `unverified_probes`. Previewing leaves the stored conversation counts intact. [Open the before-inference example](http://127.0.0.1:8040/?view=preview&scenario=screen)
 
 ### Find recurring sources within an outcome
 

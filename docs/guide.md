@@ -158,6 +158,25 @@ cargo run --locked -- replay examples/context-screening/replay/evidence.json \
   python3 scripts/propose_qwen.py "$qwen_dir" --model-id Qwen/Qwen2.5-0.5B-Instruct
 ```
 
+### Test the pair on a follow-up question
+
+The policy and FAQ stayed the same when the user asked “I am returning my journal. How many days do I have to return it?” The model originally answered `30`. The classifier scores for this pair are identical to those in the earlier conversation. The question changed which individual edit affected Qwen’s answer.
+
+| Request | Earlier question | Follow-up question |
+| --- | ---: | ---: |
+| Original | 60 | 30 |
+| Replace the 30-day policy | 60 | 120 |
+| Replace the 60-day FAQ | 30 | 30 |
+| Replace both | 10 | 10 |
+
+Both cases used the same model revision, greedy decoding, and the replacement “The return period from this source is unavailable.” Two fresh executions of the four follow-up conditions produced byte-identical reports. This measures sensitivity to that wording on these requests. The experiment did not establish where `120` came from. [Earlier case](../examples/context-screening/replay/case.json) · [Follow-up case](../examples/context-screening/replay/case-followup.json) · [Follow-up trials](../examples/context-screening/replay/report-followup.json)
+
+To run the follow-up with local weights, use the replay command above with `case-followup.json`. To see the result on a live dashboard, start a sidecar with `--db` and `--capture-content`, then run the following producer. It sends the saved inference with its classifier scores, attaches the measured replay, and prints a link to the policy edit. The read-only demo shows the earlier stage with the screen attached.
+
+```sh
+python3 examples/send_otlp_replay.py --followup --conversation-id journal-return-followup
+```
+
 ### Find recurring screened pairs
 
 ```sh

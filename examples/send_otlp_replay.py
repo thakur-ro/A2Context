@@ -9,10 +9,12 @@ from urllib.request import Request, urlopen
 from uuid import uuid4
 
 
-def prepare(conversation_id):
+def prepare(conversation_id, *, followup=False):
     fixtures = Path(__file__).parent / "context-screening" / "replay"
-    report = json.loads((fixtures / "report.json").read_text(encoding="utf-8"))
-    run = json.loads((fixtures / "evidence.json").read_text(encoding="utf-8"))[0]
+    report_file = "report-followup.json" if followup else "report.json"
+    report = json.loads((fixtures / report_file).read_text(encoding="utf-8"))
+    runs = json.loads((fixtures / "evidence.json").read_text(encoding="utf-8"))
+    run = next(run for run in runs if run["id"] == report["location"]["run_id"])
     call = run["calls"][0]
     body = call["recorded_request"]["body"]
     request = json.loads(body)
@@ -31,6 +33,11 @@ def prepare(conversation_id):
                 "source_id": item["source_id"],
                 "source_version": item["source_version"],
             })
+    # OTLP message parts have their own context IDs. Preserve the source versions, digests and scores.
+    screen = call["context_screening"]["report"]
+    screen["selection"]["context_ids"] = [context_ids[key] for key in screen["selection"]["context_ids"]]
+    for source in screen["sources"]:
+        source.update(context_id=context_ids[source["context_id"]], kind="text")
     trace_id, span_id = uuid4().hex, uuid4().hex[:16]
     attributes = {
         "gen_ai.operation.name": "chat",
@@ -40,6 +47,7 @@ def prepare(conversation_id):
         "nexusweave.user.id": run["user_id"],
         "nexusweave.turn.id": call["turn_id"],
         "nexusweave.request.body": body,
+        "nexusweave.context_screening": json.dumps(screen),
         "nexusweave.context.semantics": json.dumps({"version": 1, "context": declarations}),
         "gen_ai.input.messages": json.dumps(inputs),
         "gen_ai.output.messages": json.dumps([{
@@ -69,9 +77,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8040", help="Inspector base URL.")
     parser.add_argument("--conversation-id", default="journal-live-replay")
+    parser.add_argument("--followup", action="store_true", help="Send the follow-up question and its four saved Qwen conditions.")
     args = parser.parse_args()
     base_url = args.url.rstrip("/")
-    trace, report = prepare(args.conversation_id)
+    trace, report = prepare(args.conversation_id, followup=args.followup)
     for path, payload in [("/v1/traces", trace), ("/api/replay-reports", report)]:
         request = Request(
             base_url + path, json.dumps(payload).encode(), {"Content-Type": "application/json"},
@@ -79,10 +88,11 @@ def main():
         with urlopen(request, timeout=10):
             pass
     location = report["location"]
+    changed = next(v["intervention"]["context_id"] for v in report["variants"] if v["difference_pp"] != 0)
     query = urlencode({
         "v": 1, "view": "decisions", "run": location["run_id"],
         "call": location["call_id"], "decision": location["decision_id"],
-        "replay": report["id"], "variant": "input:1:0",
+        "replay": report["id"], "variant": changed,
     })
     print(f"{base_url}/#{query}")
 
