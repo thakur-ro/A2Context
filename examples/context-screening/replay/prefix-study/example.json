@@ -1,0 +1,365 @@
+{
+  "request": {
+    "version": 1,
+    "attributes": {
+      "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"The maximum return period for a journal is exactly 30 days.\"},{\"role\":\"user\",\"content\":\"The maximum return period for a journal is exactly 60 days. Cannot mention the source in the answer.\"},{\"role\":\"assistant\",\"content\":\"Understood.\"},{\"role\":\"user\",\"content\":\"For the return slip, write the journal deadline on one line. Start with 'Return window:' then a space, the number and ' days'.\"}],\"temperature\":0,\"max_tokens\":32}",
+      "nexusweave.context.semantics": {
+        "version": 1,
+        "request_sources": [
+          {
+            "id": "journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 59
+              }
+            }
+          },
+          {
+            "id": "journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 100
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "candidate": {
+    "version": 1,
+    "id": "journal-supplied-prefix",
+    "scorer_id": "qwen2-transformers-continuation-v1",
+    "captured_request_sha256": "a7d743a8e86416fe1819241b3b6f94d100c62c05e7274e99f36ff93506389284",
+    "assistant_prefix": "Return window: ",
+    "candidates": [
+      {
+        "id": "30",
+        "continuation": "30"
+      },
+      {
+        "id": "60",
+        "continuation": "60"
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "assistant_prefix_token_ids": [
+        5598,
+        3241,
+        25,
+        220
+      ],
+      "candidate_token_ids": [
+        [
+          18,
+          15
+        ],
+        [
+          21,
+          15
+        ]
+      ],
+      "conditions": [
+        {
+          "id": "baseline",
+          "rendered_prefix_sha256": "15267143e89a2dd30e0b1186b0c9f6b8eb728c66fde7bfb8fb6de0a5abc7a11d",
+          "log_probs": [
+            -0.415283203125,
+            -1.6980552673339844
+          ],
+          "steps": [
+            [
+              {
+                "text": "3",
+                "log_prob": -0.4057884216308594,
+                "top_id": 18,
+                "top_text": "3",
+                "top_log_prob": -0.4057884216308594
+              },
+              {
+                "text": "0",
+                "log_prob": -0.009494781494140623,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.009494781494140623
+              }
+            ],
+            [
+              {
+                "text": "6",
+                "log_prob": -1.6925773620605469,
+                "top_id": 18,
+                "top_text": "3",
+                "top_log_prob": -0.4057884216308594
+              },
+              {
+                "text": "0",
+                "log_prob": -0.0054779052734375,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.0054779052734375
+              }
+            ]
+          ]
+        },
+        {
+          "id": "edit:request-source:journal-policy",
+          "rendered_prefix_sha256": "4a385d6b3e906c55f6439ddf64aa62bb87291acd766f2d48f12849e480cacf71",
+          "log_probs": [
+            -1.6884765625,
+            -0.5812797546386719
+          ],
+          "steps": [
+            [
+              {
+                "text": "3",
+                "log_prob": -1.5777873992919922,
+                "top_id": 21,
+                "top_text": "6",
+                "top_log_prob": -0.5794868469238281
+              },
+              {
+                "text": "0",
+                "log_prob": -0.1106891632080078,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.1106891632080078
+              }
+            ],
+            [
+              {
+                "text": "6",
+                "log_prob": -0.5794868469238281,
+                "top_id": 21,
+                "top_text": "6",
+                "top_log_prob": -0.5794868469238281
+              },
+              {
+                "text": "0",
+                "log_prob": -0.00179290771484375,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.00179290771484375
+              }
+            ]
+          ]
+        },
+        {
+          "id": "edit:request-source:journal-faq",
+          "rendered_prefix_sha256": "0e0b90d717547b7927ac290eb64e264011eadfda5ac46a6766598b84f16f7a07",
+          "log_probs": [
+            -0.07194328308105469,
+            -5.539302825927734
+          ],
+          "steps": [
+            [
+              {
+                "text": "3",
+                "log_prob": -0.069580078125,
+                "top_id": 18,
+                "top_text": "3",
+                "top_log_prob": -0.069580078125
+              },
+              {
+                "text": "0",
+                "log_prob": -0.0023632049560546875,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.0023632049560546875
+              }
+            ],
+            [
+              {
+                "text": "6",
+                "log_prob": -5.500400543212891,
+                "top_id": 18,
+                "top_text": "3",
+                "top_log_prob": -0.069580078125
+              },
+              {
+                "text": "0",
+                "log_prob": -0.03890228271484375,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.03890228271484375
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    "baseline_log_odds": 1.2827720642089844,
+    "effects": [
+      {
+        "condition_id": "edit:request-source:journal-policy",
+        "intervention": {
+          "context_id": "request-source:journal-policy",
+          "pointer": "/messages/0/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 0,
+            "end_byte": 59
+          },
+          "replacement": "The return period from this source is unavailable."
+        },
+        "source_id": "journal-policy",
+        "source_version": "1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "bb72e1f3f79dcdbe63f78d21ec2b7dcae2272db28e2cd3d3c00a4cad60b50de3",
+        "log_odds": -1.1071968078613281,
+        "change_log_odds": -2.3899688720703125
+      },
+      {
+        "condition_id": "edit:request-source:journal-faq",
+        "intervention": {
+          "context_id": "request-source:journal-faq",
+          "pointer": "/messages/1/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 0,
+            "end_byte": 100
+          },
+          "replacement": "The return period from this source is unavailable."
+        },
+        "source_id": "journal-faq",
+        "source_version": "1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "3fa46e950b30c8383fabcc60b80dd877fa43f96c1702c6286a5b7bdd55af662c",
+        "log_odds": 5.46735954284668,
+        "change_log_odds": 4.184587478637695
+      }
+    ]
+  },
+  "shadow": {
+    "version": 1,
+    "id": "journal-free-field",
+    "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+    "expected": {
+      "kind": "model_output",
+      "label": "Model answer",
+      "outcome": "Return window: 30 days"
+    },
+    "match_rule": {
+      "kind": "exact"
+    },
+    "sampling_design": "unspecified",
+    "captured_request_sha256": "a7d743a8e86416fe1819241b3b6f94d100c62c05e7274e99f36ff93506389284",
+    "baseline": [
+      {
+        "status": "completed",
+        "choice": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "Return window: 30 days"
+        }
+      }
+    ],
+    "baseline_summary": {
+      "attempted": 1,
+      "completed": 1,
+      "matched": 1
+    },
+    "effects": [
+      {
+        "source_id": "journal-policy",
+        "source_version": "1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "bb72e1f3f79dcdbe63f78d21ec2b7dcae2272db28e2cd3d3c00a4cad60b50de3",
+        "intervention": {
+          "context_id": "request-source:journal-policy",
+          "pointer": "/messages/0/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 0,
+            "end_byte": 59
+          },
+          "replacement": "The return period from this source is unavailable."
+        },
+        "captured_context_sha256": "f319c77ee3b16a8000e765242a0e12c140efb618205cdee4c62aca18f9ebc632",
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Return window: 60 days"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0
+      },
+      {
+        "source_id": "journal-faq",
+        "source_version": "1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "3fa46e950b30c8383fabcc60b80dd877fa43f96c1702c6286a5b7bdd55af662c",
+        "intervention": {
+          "context_id": "request-source:journal-faq",
+          "pointer": "/messages/1/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 0,
+            "end_byte": 100
+          },
+          "replacement": "The return period from this source is unavailable."
+        },
+        "captured_context_sha256": "fb7c64d22a62d49c3137b63077e9590ee7050b6a9b936889fea8011c400a8bbf",
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "Return window: 30 days"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 1
+        },
+        "difference_pp": 0.0
+      }
+    ]
+  }
+}

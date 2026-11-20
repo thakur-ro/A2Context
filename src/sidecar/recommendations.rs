@@ -280,6 +280,7 @@ pub fn preview(
     let target_checks = super::targets::checks(call, &shadow);
     let screen = super::capture::screen_candidate(call);
     let candidates = replay::candidates::recorded("pending", call);
+    let prefix_reviews = replay::candidates::prefix_reviews(&candidates, &shadow);
     let paths: Vec<Value> = candidates
         .iter()
         .filter_map(|probe| {
@@ -311,7 +312,7 @@ pub fn preview(
         .take(10)
         .collect::<Vec<_>>();
     Ok(json!({
-        "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths,
+        "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths, "prefix_reviews":prefix_reviews,
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))

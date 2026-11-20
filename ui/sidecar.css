@@ -284,3 +284,8 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 .coverage-options a { padding: .45rem .7rem; border: 1px solid var(--line); border-radius: 6px; }
 .coverage-options a[aria-current="page"] { background: var(--accent); color: white; text-decoration: none; }
 .card .action + a { display: block; margin-top: .6rem; }
+
+.prefix-review meter { display: block; max-width: 7rem; height: .6rem; }
+.prefix-review code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.prefix-review > .action { margin-block: .5rem 1rem; }
+.prefix-review > .panel { margin-block: 1rem; }

@@ -218,6 +218,35 @@ The dashboard resource check reused those eight request bodies across 128 synthe
 
 Run `python3 tests/sidecar_opening_study.py target/release/nexusweave --measure` with a release build under the same CPU and memory limits. [Benchmark driver](../tests/sidecar_opening_study.py)
 
+### Can a supplied answer prefix identify a source worth testing?
+
+Eight fresh receipt and support questions specified how the journal answer should begin. We froze the questions, the two candidate strings (`30`, `60`), the source edits, the 32-token generation limit and the scoring rule before measuring. For each question we scored both strings at the answer boundary and after the requested prefix, under the original request and each edit. We then let Qwen generate three complete answers from the answer boundary. The field evaluator accepted an answer only when it contained exactly one standalone integer and that integer was 30 or 60. [Frozen protocol](https://github.com/thakur-ro/NexusWeave/blob/5c59b6d0ca5ab2b5452b4bdbc90d2a03e109b65a/examples/context-screening/replay/prefix-study/protocol.json) · [All scores and answers](../examples/context-screening/replay/prefix-study/results.json)
+
+For each condition, the preference margin is the difference between the two sequence log probabilities. A positive margin favors the first candidate. A negative margin favors the second. The selector recommends testing a source when it is the only single edit that strictly reverses the original preference. A tie supplies no reversal. All four rules selected on all eight questions, and all selected comparisons had a resolved field.
+
+| Rule for choosing one edit before generation | Selected edit changed the generated number |
+| --- | ---: |
+| Unique preference reversal after the supplied prefix | 8/8 |
+| Unique preference reversal at the answer boundary | 6/8 |
+| Always edit the policy | 8/8 |
+| Always edit the FAQ | 0/8 |
+
+The policy edit changed the number on every question. The supplied-prefix rule equaled that fixed baseline. This design leaves open whether scoring helps when the influential source varies. Across the sixteen individual edits, the empty-prefix signal flagged two edits that preserved the field and missed two that changed it. The supplied-prefix signal made neither error on these examples.
+
+All 24 generated texts began with the requested prefix. In 21, a candidate number followed immediately. On question four, all three outputs inserted a quotation mark before the number. The dashboard reports literal continuation matches for arbitrary workflows. The study’s numeric field evaluator can also resolve those three answers. [Evaluation script](../examples/context-screening/replay/prefix-study/study.py)
+
+On the first question, scoring after `"Return window: "` gave `30` a probability of 66.0% and `60` a probability of 18.3%. Replacing the policy moved these to 18.5% and 55.9%. Each value is the conditional probability of the complete candidate token sequence. It measures neither the probability that this prefix will be generated nor confidence in an explanation. [Inspect the example](sidecar.md#compare-source-edits-at-a-supplied-answer-prefix)
+
+The two full CPU runs produced byte-identical results. To repeat them with the pinned checkpoint, run the following from the checkout.
+
+```sh
+study=examples/context-screening/replay/prefix-study
+python3 "$study/study.py" --model "$qwen_dir" --results /tmp/prefix-results.json
+cmp "$study/results.json" /tmp/prefix-results.json
+python3 "$study/study.py" --model "$qwen_dir" --example /tmp/prefix-example.json
+cmp "$study/example.json" /tmp/prefix-example.json
+```
+
 ### What do model scores add before generation?
 
 We gave the local Qwen scorer the pending dispatch request, two source edits and two continuations taken from the task: the specified bay code and `UNKNOWN`. At the empty assistant prefix it summed the conditional log probabilities of the tokens in each continuation. Subtracting the second sum from the first gives the preference margin. The sidecar checks the request and edit bindings. Within one probe, it lists edits that reverse the preference first, then orders by absolute change in margin. A tied margin supplies no reversal.

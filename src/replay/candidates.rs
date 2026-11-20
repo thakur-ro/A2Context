@@ -5,6 +5,8 @@
 
 use super::{edited_requests, prepare_edits, sha256, Intervention};
 pub mod patterns;
+mod prefix;
+pub use prefix::prefix_reviews;
 mod recorded;
 mod target;
 pub use target::{continuation_path, target_path, TargetCondition, TargetPath};

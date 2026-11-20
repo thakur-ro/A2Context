@@ -381,6 +381,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                     let sources = findings::derive(&run, &reports, &activations)?;
                     let mut prefill_issues = BTreeMap::new();
                     let mut target_checks = BTreeMap::new();
+                    let mut prefix_reviews = BTreeMap::new();
                     for call in &mut run.calls {
                         if call.prefill_probe.is_some()
                             && !sources
@@ -393,8 +394,15 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                                 prefill_issues.insert(call.id.clone(), issue);
                             }
                         }
-                        if call.shadow_probes.is_some() {
+                        if call.shadow_probes.is_some() || call.candidate_probes.is_some() {
                             let probes = replay::shadow::recorded(id, call);
+                            let reviews = replay::candidates::prefix_reviews(
+                                &replay::candidates::recorded(id, call),
+                                &probes,
+                            );
+                            if !reviews.is_empty() {
+                                prefix_reviews.insert(call.id.clone(), reviews);
+                            }
                             let checks = targets::checks(call, &probes);
                             if !checks.is_empty() {
                                 target_checks.insert(call.id.clone(), checks);
@@ -403,7 +411,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                         call.prefill_probe = None;
                         call.recorded_request = None;
                     }
-                    json!({"trace":run, "target_checks":target_checks, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
+                    json!({"trace":run, "prefix_reviews":prefix_reviews, "target_checks":target_checks, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
                         "replay_reports": reports.len()})
                 }
                 "/api/sidecar/preview-example" => {
@@ -412,12 +420,18 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             scenario @ ("window-earlier" | "window-followup" | "window-unopened"
                             | "window-fresh"),
                         ) => journal_example(scenario.trim_start_matches("window-"))?,
-                        Some(scenario @ ("opening-before" | "opening-checked")) => {
-                            let mut example: serde_json::Value =
-                                serde_json::from_str(include_str!(
-                                    "../../examples/context-screening/replay/opening-followup.json"
-                                ))?;
-                            if scenario == "opening-before" {
+                        Some(
+                            scenario @ ("opening-before" | "opening-checked" | "prefix-before"
+                            | "prefix-checked"),
+                        ) => {
+                            let mut example: serde_json::Value = serde_json::from_str(
+                                if scenario.starts_with("prefix-") {
+                                    include_str!("../../examples/context-screening/replay/prefix-study/example.json")
+                                } else {
+                                    include_str!("../../examples/context-screening/replay/opening-followup.json")
+                                },
+                            )?;
+                            if scenario.ends_with("-before") {
                                 example
                                     .as_object_mut()
                                     .expect("saved envelope")
@@ -558,6 +572,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
     }
     if request.method() == &Method::Get {
         let asset: Option<(&str, &[u8])> = match path {
+            "/sidecar-prefix.js" => Some((
+                "text/javascript; charset=utf-8",
+                include_bytes!("../../ui/sidecar-prefix.js"),
+            )),
             "/sidecar-token-path.js" => Some((
                 "text/javascript; charset=utf-8",
                 include_bytes!("../../ui/sidecar-token-path.js"),

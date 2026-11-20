@@ -629,6 +629,28 @@ impl Store {
             })))
     }
 
+    fn prefix_review(&self, evidence: &Value) -> Result<Option<Value>> {
+        let id = evidence["trace_id"]
+            .as_str()
+            .ok_or("missing evidence trace")?;
+        let Some(run) = self.trace(id)? else {
+            return Ok(None);
+        };
+        let Some(call) = run.calls.iter().find(|c| c.id == evidence["call_id"]) else {
+            return Ok(None);
+        };
+        let detail = &evidence["detail"];
+        let candidates = replay::candidates::recorded(id, call);
+        let reports: Vec<_> = candidates
+            .into_iter()
+            .filter(|p| p.report_id == detail["report_id"].as_str())
+            .collect();
+        if reports.len() != 1 {
+            return Ok(None);
+        }
+        Ok(replay::candidates::prefix_reviews(&reports, &replay::shadow::recorded(id, call)).pop())
+    }
+
     pub fn list(&self, view: &str, filters: &BTreeMap<String, String>) -> Result<Value> {
         // A selected conflict reads its observation, source fields and trial examples across
         // statements. A late span or attached report must appear in all of them together.
@@ -1179,12 +1201,20 @@ impl Store {
         rows.truncate(PAGE);
         if view == "findings" {
             for row in &mut rows {
-                if row["kind"] == "conflict"
-                    && filters
-                        .get("group")
-                        .is_some_and(|group| row["id"] == group.as_str())
+                if filters
+                    .get("group")
+                    .is_some_and(|group| row["id"] == group.as_str())
                 {
-                    row["conflict_test"] = super::conflict::followup(&self.0, &row["evidence"])?;
+                    if row["kind"] == "conflict" {
+                        row["conflict_test"] =
+                            super::conflict::followup(&self.0, &row["evidence"])?;
+                    } else if row["kind"] == "candidate"
+                        && row["evidence"]["detail"]["prefix"]
+                            .as_str()
+                            .is_some_and(|s| !s.is_empty())
+                    {
+                        row["prefix_review"] = json!(self.prefix_review(&row["evidence"])?);
+                    }
                 }
                 let kind = row["kind"].as_str().ok_or("finding kind missing")?;
                 row["action"] = serde_json::to_value(

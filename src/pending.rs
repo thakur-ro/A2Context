@@ -66,16 +66,19 @@ pub fn inspect(input: Request) -> Result<Value, String> {
         .as_ref()
         .map(|body| replay::request_field_matches(&call, body))
         .transpose()?;
+    let candidates = replay::candidates::recorded("pending", &call);
+    let shadows = replay::shadow::recorded("pending", &call);
     Ok(json!({
         "version": 1, "prefill":prefill,
+        "prefix_reviews":replay::candidates::prefix_reviews(&candidates, &shadows),
         "model": call.model,
         "context": call.context,
         "request_fields": fields,
         "preflight": preflight,
         "scope": scope,
         "screening": screen::recorded("pending", &call),
-        "candidate_probes": replay::candidates::recorded("pending", &call),
-        "shadow_probes": replay::shadow::recorded("pending", &call),
+        "candidate_probes": candidates,
+        "shadow_probes": shadows,
     }))
 }
 

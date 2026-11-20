@@ -1186,7 +1186,7 @@ function findingReview(card, occurrences) {
   return element("div", { className: "feed" },
     link("Back to source factor", url({ factor: factorId || detail.factor })),
     card.kind === "token" ? tokenPath(card) : null,
-    card.kind === "token" ? element("details", {className:"panel"}, element("summary", {text:"Peak score change and block swap"}),
+    card.prefix_review ? prefixReview(card.prefix_review) : card.kind === "token" ? element("details", {className:"panel"}, element("summary", {text:"Peak score change and block swap"}),
       recommendationDetail(card.kind, detail, card.action, card.trend)) : recommendationDetail(card.kind, detail, card.action, card.trend, card.conflict_test?.sources.some(s => s.comparisons.length)),
     conflictTest(card),
     card.kind === "conflict" && card.threads > 1 && factorId ? link("Review test coverage across conversations",
@@ -1198,6 +1198,7 @@ function findingReview(card, occurrences) {
       element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + fullDate(row.observed) }),
       element("p", { text: findingTitle(row.kind, row.detail) }), visual(row.kind, row.detail),
       element("div", { className: "actions" },
+        card.prefix_review && link("Inspect the prefix scores on this call", url({recommendation:card.id,factor:detail.factor,trace:row.trace,call:row.call,report:row.detail.report_id})),
         row.thread_key ? link("Open conversation", url({ view: "threads", thread: row.thread_key, focus_trace:row.trace, focus_call:row.call })) : null,
         link("Open span " + row.call, url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))))));
 }
@@ -1770,6 +1771,9 @@ function pendingPreview() {
       if (currentLoad !== sequence) return;
       const current = [], findings = [], probes = new Map();
       const targets = report.target_checks || [];
+      const prefixReviews = report.prefix_reviews || [];
+      const prefixReports = new Set(prefixReviews.map(r => r.report));
+      const prefixTrials = new Set(prefixReviews.flatMap(r => r.runs.map(run => run.report)));
       const linked = new Set(targets.flatMap(c => (c.token_paths || []).map(p => p.report)));
       const standalone = (report.continuation_paths || []).filter(paths => !linked.has(paths[0].report));
       const experiment = report.history?.experiment;
@@ -1778,7 +1782,7 @@ function pendingPreview() {
             experiment.interventions[0].context_id === detail.sources[0].id &&
             experiment.proposal_tests.some(test => test.report === detail.report_id && test.runner === detail.runner)) continue;
         const card = recommendationDetail(kind, detail, action);
-        if (kind === "candidate" && (linked.has(detail.report_id) || standalone.some(paths => paths[0].report === detail.report_id))) {
+        if (kind === "candidate" && (prefixReports.has(detail.report_id) || linked.has(detail.report_id) || standalone.some(paths => paths[0].report === detail.report_id))) {
           findings.push(element("details", {},element("summary",{text:"Compare candidate margins for " + sourceName(detail.sources[0])}),card));
         } else if (kind === "candidate") {
           if (!probes.has(detail.report_id)) {
@@ -1802,14 +1806,16 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
+        ...prefixReviews.map((r,i) => prefixReview(r,report.example_question,i === 0 ? followUp : null)),
         opening && openingComparison(report.prefill, report.example_question),
-        ...targets.map(check => opening ? element("details", {className:"panel"}, element("summary", {text:"Review the declared target"}),
-          declaredTarget(check,report.example_question)) : declaredTarget(check, report.example_question)), ...standalone.map(pendingTokenScores),
+        ...targets.map(check => opening || prefixTrials.has(check.report_id) ? element("details", {className:"panel"}, element("summary", {text:"Review the declared target"}),
+          declaredTarget(check,report.example_question)) : declaredTarget(check, report.example_question)), ...standalone.map(paths => prefixReports.has(paths[0].report) ?
+          element("details", {className:"panel"},element("summary",{text:"Inspect individual token probabilities"}),pendingTokenScores(paths)) : pendingTokenScores(paths)),
         ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
         report.prefill ? routingComparison(report.prefill) : null,
         checked ? history : null,
         report.prefill && !opening && !(testedTop && report.prefill.ranked.length === 1) ? firstTokenPreview(report.prefill, false, testedTop) : null,
-        ...current, report.screen_suggestion ? screenReview(report.screen_suggestion) : null, checked ? null : history, followUp, ...findings,
+        ...current, report.screen_suggestion ? screenReview(report.screen_suggestion) : null, checked ? null : history, prefixReviews.length ? null : followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
         !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
@@ -1832,7 +1838,9 @@ function pendingPreview() {
   });
   const policy = element("button", { type: "button", text: "Try a policy conflict" });
   policy.addEventListener("click", () => show(() => api("preview-example", { scenario: "policy" }),
-    link("Compare instructions using a text classifier", url({view:"preview", scenario:"screen"}), "action")));
+    element("div", {className:"actions"},
+      link("Compare edits at a supplied answer prefix", url({view:"preview", scenario:"prefix-before"}), "action"),
+      link("Compare instructions using a text classifier", url({view:"preview", scenario:"screen"})))));
   const routing = element("button", { type: "button", text: "Try a measured tool choice" });
   const prefillLink = link("Check the same edits before the first token", url({ view: "preview", scenario: "prefill" }), "action");
   const routingLinks = element("div", {className:"actions"}, prefillLink,
@@ -1850,7 +1858,11 @@ function pendingPreview() {
   const questions = element("nav", {className:"actions", "aria-label":"Journal questions"},
     ...windowQuestions.map(([key, label]) => key === scenario ? element("strong", {text:label, "aria-current":"page"}) :
       link(label, url({view:"preview", scenario:key}))));
-  if (scenario === "opening-before" || scenario === "opening-checked") {
+  if (scenario === "prefix-before" || scenario === "prefix-checked") {
+    const before = scenario === "prefix-before";
+    show(() => api("preview-example", {scenario}), link(before ? "Compare with freely generated answers" : "See the scores before generation",
+      url({view:"preview",scenario:before ? "prefix-checked" : "prefix-before"}),"action"));
+  } else if (scenario === "opening-before" || scenario === "opening-checked") {
     show(() => api("preview-example", {scenario}), scenario === "opening-before"
       ? link("Check the complete proposals",url({view:"preview",scenario:"opening-checked"}),"action")
       : link("See the pre-generation evidence",url({view:"preview",scenario:"opening-before"})));
@@ -1872,7 +1884,7 @@ function pendingPreview() {
     element("div", { className: "actions" }, history, routing, policy)), output);
 }
 
-function traceDetail({ trace, findings, activation_reports, prefill_issues = {}, target_checks = {} }) {
+function traceDetail({ trace, findings, activation_reports, prefill_issues = {}, target_checks = {}, prefix_reviews = {} }) {
   const selectedCall = query.get("call");
   const selectedSpan = query.get("span");
   const spans = new Map((trace.spans || []).map((span) => [span.id, span]));
@@ -1930,7 +1942,7 @@ function traceDetail({ trace, findings, activation_reports, prefill_issues = {},
     rowLink("↳ ".repeat(Math.min(depth, 6)) + (row.name || entry?.model || row.id),
       entry ? (entry.turn_id ? "Turn " + entry.turn_id : "Captured call") : "Parent span",
       url({ view, trace: trace.id, ...(entry ? { call: entry.id } : { span: row.id }) }), entry?.id === initial || row.id === initial))),
-  element("div", { className: "feed" }, ...(target_checks[call?.id] || []).map(check => declaredTarget(check)), ...evidence, focus ? compareForm(focus.group) : null, detail));
+  element("div", { className: "feed" }, ...(prefix_reviews[call?.id] || []).map(review => prefixReview(review)), ...(target_checks[call?.id] || []).map(check => declaredTarget(check)), ...evidence, focus ? compareForm(focus.group) : null, detail));
 }
 
 async function render(refresh = false) {

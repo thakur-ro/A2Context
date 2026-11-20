@@ -1,0 +1,341 @@
+{
+  "protocol_sha256": "f6c2f22deefa196390a734418283123f71c55d58dd2ba66944b1cafc93542ec4",
+  "cases": [
+    {
+      "request_sha256": {
+        "baseline": "a7d743a8e86416fe1819241b3b6f94d100c62c05e7274e99f36ff93506389284",
+        "journal-policy": "bb72e1f3f79dcdbe63f78d21ec2b7dcae2272db28e2cd3d3c00a4cad60b50de3",
+        "journal-faq": "3fa46e950b30c8383fabcc60b80dd877fa43f96c1702c6286a5b7bdd55af662c"
+      },
+      "log_probs": {
+        "empty": {
+          "baseline": [
+            -10.37929630279541,
+            -10.626240730285645
+          ],
+          "journal-policy": [
+            -12.1837739944458,
+            -11.29312515258789
+          ],
+          "journal-faq": [
+            -11.019647598266602,
+            -12.235065460205078
+          ]
+        },
+        "supplied": {
+          "baseline": [
+            -0.415283203125,
+            -1.6980552673339844
+          ],
+          "journal-policy": [
+            -1.6884765625,
+            -0.5812797546386719
+          ],
+          "journal-faq": [
+            -0.07194328308105469,
+            -5.539302825927734
+          ]
+        }
+      },
+      "answers": {
+        "baseline": "Return window: 30 days",
+        "journal-policy": "Return window: 60 days",
+        "journal-faq": "Return window: 30 days"
+      }
+    },
+    {
+      "request_sha256": {
+        "baseline": "2b10723a7a80156541a1476078488f6ca6e5290547485fa7b56c226e39413a39",
+        "journal-policy": "e3f36d4169b7aefe7080d6d0a944fbe476e5f45c2420d6fb4c9b333f57cd82ed",
+        "journal-faq": "41e8b5f29dfe437e60aa8ae55c839658abf1a150c40dd71fde060d89a309e757"
+      },
+      "log_probs": {
+        "empty": {
+          "baseline": [
+            -12.524843215942383,
+            -12.247825622558594
+          ],
+          "journal-policy": [
+            -14.223504066467285,
+            -13.040367126464844
+          ],
+          "journal-faq": [
+            -13.615274429321289,
+            -14.618749618530273
+          ]
+        },
+        "supplied": {
+          "baseline": [
+            -0.702423095703125,
+            -1.5703792572021484
+          ],
+          "journal-policy": [
+            -2.2242774963378906,
+            -0.2998371124267578
+          ],
+          "journal-faq": [
+            -0.1765155792236328,
+            -4.220098495483398
+          ]
+        }
+      },
+      "answers": {
+        "baseline": "You can return it within 30 days.",
+        "journal-policy": "You can return it within 60 days.",
+        "journal-faq": "You can return it within 30 days."
+      }
+    },
+    {
+      "request_sha256": {
+        "baseline": "16db44f1014284f1be274409f7e3c43ac7ae9a89cce5d6c12cf9ba105db849e6",
+        "journal-policy": "81c6f9d76cc4939f1fd246907bb14909ae75e5b96a1d490afed7f9ad79982d2c",
+        "journal-faq": "ddf20aa4f6fd43c62b4f8fa7164b0e4879d26615a3f6f9cfb57b88eb6d5a8b10"
+      },
+      "log_probs": {
+        "empty": {
+          "baseline": [
+            -3.742748260498047,
+            -5.33671760559082
+          ],
+          "journal-policy": [
+            -4.427186965942383,
+            -4.371177673339844
+          ],
+          "journal-faq": [
+            -4.056205749511719,
+            -6.871163368225098
+          ]
+        },
+        "supplied": {
+          "baseline": [
+            -0.22340774536132812,
+            -1.6625690460205078
+          ],
+          "journal-policy": [
+            -6.156171798706055,
+            -0.0043659210205078125
+          ],
+          "journal-faq": [
+            -0.0051422119140625,
+            -8.442487716674805
+          ]
+        }
+      },
+      "answers": {
+        "baseline": "DAY LIMIT = 30",
+        "journal-policy": "DAY LIMIT = 60",
+        "journal-faq": "DAY LIMIT = 30"
+      }
+    },
+    {
+      "request_sha256": {
+        "baseline": "9cdd6b8601c8695b2b3568c9d6b7e66745fd882ab2be27cec5ff82b2bdcac44c",
+        "journal-policy": "c1a028261e7ae68b033b177dea9b2cb5a630fd6efe56d69856155003e389145c",
+        "journal-faq": "e431c38c6b02429426838d3e9b75da7d1104496061cac8ec32ab72b953e4c25e"
+      },
+      "log_probs": {
+        "empty": {
+          "baseline": [
+            -7.342805862426758,
+            -7.970894813537598
+          ],
+          "journal-policy": [
+            -8.578758239746094,
+            -7.737405776977539
+          ],
+          "journal-faq": [
+            -8.696516036987305,
+            -10.472366333007812
+          ]
+        },
+        "supplied": {
+          "baseline": [
+            -0.4598197937011719,
+            -1.30157470703125
+          ],
+          "journal-policy": [
+            -2.6880054473876953,
+            -0.19804954528808594
+          ],
+          "journal-faq": [
+            -0.042453765869140625,
+            -6.037309646606445
+          ]
+        }
+      },
+      "answers": {
+        "baseline": "Our journal policy allows '30 days' and the deadline in digits.",
+        "journal-policy": "Our journal policy allows '60 days.",
+        "journal-faq": "Our journal policy allows '30 days."
+      }
+    },
+    {
+      "request_sha256": {
+        "baseline": "c330ac3e18aedfaab01561f64ab6cc25002b08a03a56e877a7788631c085ebff",
+        "journal-policy": "a62dcab5ea0b56f5cdeb174c8e779dd0c72319040b1b0e6ee1e67e5276a225e1",
+        "journal-faq": "e9aef203b46ed8d7112accf3769a946d34c28a1ac9c8c13a9fcce7a9656c8cc6"
+      },
+      "log_probs": {
+        "empty": {
+          "baseline": [
+            -8.699474334716797,
+            -9.281900405883789
+          ],
+          "journal-policy": [
+            -8.326289176940918,
+            -8.221173286437988
+          ],
+          "journal-faq": [
+            -9.55029010772705,
+            -10.117920875549316
+          ]
+        },
+        "supplied": {
+          "baseline": [
+            -0.6432628631591797,
+            -1.2225570678710938
+          ],
+          "journal-policy": [
+            -2.2694625854492188,
+            -0.2592945098876953
+          ],
+          "journal-faq": [
+            -0.1341552734375,
+            -5.22368049621582
+          ]
+        }
+      },
+      "answers": {
+        "baseline": "Please return within 30 days.",
+        "journal-policy": "Please return within 60 days.",
+        "journal-faq": "Please return within 30 days."
+      }
+    },
+    {
+      "request_sha256": {
+        "baseline": "07ffabbed99652473055f91aec7512e7fe65ecae2068a51f8a392d5b8836645a",
+        "journal-policy": "985dde7747b1a4cd2405d8b096e0b9c350cefbe4388a83a184357e78e21161a2",
+        "journal-faq": "c7dba99e587f11d28b25a8c65c5368c0b424974f1d59e672d2ab151b784bf853"
+      },
+      "log_probs": {
+        "empty": {
+          "baseline": [
+            -3.5561904907226562,
+            -4.455022811889648
+          ],
+          "journal-policy": [
+            -5.7687835693359375,
+            -4.207466125488281
+          ],
+          "journal-faq": [
+            -3.8391342163085938,
+            -7.329276084899902
+          ]
+        },
+        "supplied": {
+          "baseline": [
+            -0.7280559539794922,
+            -1.0538101196289062
+          ],
+          "journal-policy": [
+            -3.8128795623779297,
+            -0.05001258850097656
+          ],
+          "journal-faq": [
+            -0.05542755126953125,
+            -5.2212066650390625
+          ]
+        }
+      },
+      "answers": {
+        "baseline": "Deadline (days): 30",
+        "journal-policy": "Deadline (days): 60",
+        "journal-faq": "Deadline (days): 30"
+      }
+    },
+    {
+      "request_sha256": {
+        "baseline": "aba756b1b9190f9a3628bc89b85c07d6ad2501a95e5351dee141624ae0bbfa98",
+        "journal-policy": "58ba7883e777d965b2341a1ac0fd30c5e1bb96880ab4c012afd609e4f7b2631c",
+        "journal-faq": "567d4307852eb6fb7f864ab831b68119cd79d04cc4121f7727e5f6f5e2606dd6"
+      },
+      "log_probs": {
+        "empty": {
+          "baseline": [
+            -8.007841110229492,
+            -8.29630184173584
+          ],
+          "journal-policy": [
+            -8.26237964630127,
+            -7.406352996826172
+          ],
+          "journal-faq": [
+            -9.061420440673828,
+            -9.807147979736328
+          ]
+        },
+        "supplied": {
+          "baseline": [
+            -0.3377361297607422,
+            -1.4485797882080078
+          ],
+          "journal-policy": [
+            -4.271060943603516,
+            -0.04327964782714844
+          ],
+          "journal-faq": [
+            -0.019809722900390625,
+            -6.845523834228516
+          ]
+        }
+      },
+      "answers": {
+        "baseline": "Allowed days: 30",
+        "journal-policy": "Allowed days: 60",
+        "journal-faq": "Allowed days: 30"
+      }
+    },
+    {
+      "request_sha256": {
+        "baseline": "36825349aabf921f9e41ca19bebfca7adb1618f5934e93403c9e1e98ea5b7907",
+        "journal-policy": "a149e77f775266781ed2ec4e6a221c4e196d6ca55bd0a24596ec5268d4f01abe",
+        "journal-faq": "914ed2452be2a2f930613b2157945ceb58dc474fb8c7ca3f1f31fc3b6a32bccd"
+      },
+      "log_probs": {
+        "empty": {
+          "baseline": [
+            -7.465126037597656,
+            -7.342179298400879
+          ],
+          "journal-policy": [
+            -8.176209449768066,
+            -7.144471168518066
+          ],
+          "journal-faq": [
+            -7.813255310058594,
+            -7.881964683532715
+          ]
+        },
+        "supplied": {
+          "baseline": [
+            -0.6564579010009766,
+            -1.6346168518066406
+          ],
+          "journal-policy": [
+            -2.142183303833008,
+            -0.4444141387939453
+          ],
+          "journal-faq": [
+            -0.20184898376464844,
+            -4.444339752197266
+          ]
+        }
+      },
+      "answers": {
+        "baseline": "Time allowed is 30 days",
+        "journal-policy": "Time allowed is 60 days.",
+        "journal-faq": "Time allowed is 30 days"
+      }
+    }
+  ]
+}

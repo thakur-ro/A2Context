@@ -14,7 +14,8 @@ from check_sidecar import attrs, case_span, export, get, sdk_sender, send, send_
 
 def experiment(name, fixture, thread=None, modify=None, scores=False):
     folder = ROOT / "examples/context-screening/replay"
-    path = folder / ("fresh-target-tokens.json" if fixture == "fresh" else fixture + "-target.json")
+    filename = {"fresh":"fresh-target-tokens.json", "prefix":"prefix-study/example.json"}.get(fixture, fixture + "-target.json")
+    path = folder / filename
     envelope = json.loads(path.read_text())
     report = envelope["shadow"]
     fields = envelope["request"]["attributes"]
@@ -114,6 +115,27 @@ def check(binary, db, sdk=None):
         assert not get(base,"target-examples",design=design)["rows"]
 
 
+def check_prefixes(binary, folder, sdk):
+    first = experiment("prefix-a", "prefix", "first", scores=True)
+    second = experiment("prefix-b", "prefix", "second", scores=True)
+    db = folder / "prefix.sqlite"
+    with server(binary, db, "--capture-content") as base:
+        send_traces(base, export(first))
+        (sdk_sender(sdk) if sdk else send_traces)(base, export(second))
+        cards = get(base, "findings", org="journal", kind="candidate")["rows"]
+        assert cards and all(card["threads"] == 2 for card in cards)
+        location = {"group":cards[0]["id"], "trace":"otlp:" + second["traceId"], "call":second["spanId"]}
+        card, = get(base, "findings", org="journal", **location)["rows"]
+        review = card["prefix_review"]
+        assert review["conditions"][review["reversals"][0]]["label"] == "journal-policy"
+        assert review["runs"][0]["rows"][1]["example"] == "Return window: 60 days"
+        assert review == get(base, "trace", id=location["trace"])["prefix_reviews"][location["call"]][0]
+        assert not get(base, "findings", org="absent", **location)["rows"]
+    with server(binary, folder / "redacted-prefix.sqlite") as base:
+        send_traces(base, export(first))
+        assert not get(base, "trace", id="otlp:" + first["traceId"])["prefix_reviews"]
+
+
 def cost(binary, db):
     from statistics import median
     spans = [experiment(str(i),"earlier" if i % 4 == 0 else "unopened",str(i),scores=True) for i in range(128)]
@@ -145,4 +167,5 @@ if __name__ == "__main__":
             print(json.dumps(cost(args.binary, db)))
         else:
             check(args.binary, db, args.sdk_python)
+            check_prefixes(args.binary, Path(directory), args.sdk_python)
             print("Verified recurring target misses, incomplete and varying experiments, scoped trial access, retries, migration, retention and redaction.")

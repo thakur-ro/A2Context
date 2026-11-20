@@ -148,7 +148,8 @@ try {
   await measured.getByRole("link", { name: "Review recommendation" }).click();
   await page.getByText("stock favored", { exact: true }).first().waitFor();
   await page.getByText("price favored", { exact: true }).first().waitFor();
-  await page.getByText(/store-name.*-0\.089/).waitFor();
+  await page.getByRole("region",{name:"Source edits at a supplied prefix"}).getByText("Scoring conditions").click();
+  await page.getByText(/store-name.*-0\.089/).first().waitFor();
   await page.goto(base);
   await page.locator(".factor-row").filter({hasText:"refund-policy"}).filter({hasText:"Token score shifted"}).click();
   await page.locator(".card").filter({ hasText: "Token measurements" }).getByRole("link", { name: "Review recommendation" }).click();
@@ -568,6 +569,24 @@ try {
       await device.getByRole("link",{name:/QA 1000/}).click();
       await device.getByText("The effect of the top edit on the completed proposal is unmeasured.").waitFor();
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+  }
+  if (process.env.PREFIX_STUDY_URL) {
+    for (const device of [page,mobile]) {
+      await device.goto(new URL("?view=preview&scenario=prefix-before",process.env.PREFIX_STUDY_URL).href);
+      const card = device.getByRole("region",{name:"Source edits at a supplied prefix"});
+      await card.getByRole("heading",{name:"Editing journal-policy switched the preferred continuation"}).waitFor();
+      assert.equal(await card.getByRole("meter").count(),9);
+      assert.equal(await card.getByRole("heading",{name:"What did the runner generate?"}).count(),0);
+      assert.match(await card.innerText(),/66.0?%|66%/);
+      await card.getByRole("link",{name:"Compare with freely generated answers"}).click();
+      await card.getByRole("heading",{name:"What did the runner generate?"}).waitFor();
+      await card.getByText("Return window: 60 days",{exact:true}).waitFor();
+      assert.equal(await card.getByText("Return window: 30 days",{exact:true}).count(),2);
+      if (device === page && process.env.PREFIX_SCREENSHOT) await card.screenshot({path:process.env.PREFIX_SCREENSHOT});
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      await card.getByRole("link",{name:"See the scores before generation"}).click();
+      await card.getByRole("link",{name:"Compare with freely generated answers"}).waitFor();
     }
   }
   if (process.env.OPENING_STUDY_URL) {

@@ -312,3 +312,42 @@ fn attaches_otlp_pending_requests_by_source_version_and_exact_fragment() {
     );
     assert_eq!(view["rows"][0]["source_id"], "request-type");
 }
+
+#[test]
+fn prefix_review_requires_verified_matching_edits_and_counts_free_answers() {
+    let envelope: Value = serde_json::from_str(include_str!(
+        "../examples/context-screening/replay/prefix-study/example.json"
+    ))
+    .unwrap();
+    let review = |input: Value| {
+        let report = nexusweave::pending::inspect(serde_json::from_value(input).unwrap()).unwrap();
+        report["prefix_reviews"].clone()
+    };
+    let original = review(envelope.clone());
+    let result = &original[0];
+    assert_eq!(result["prefix"], "Return window: ");
+    assert_eq!(result["reversals"], json!([1]));
+    assert_eq!(result["conditions"][1]["label"], "journal-policy");
+    let rows = &result["runs"][0]["rows"];
+    assert_eq!(rows[0]["starts"], json!([1, 0]));
+    assert_eq!(rows[1]["starts"], json!([0, 1]));
+    assert_eq!(rows[2]["starts"], json!([1, 0]));
+
+    let mut partial = envelope.clone();
+    partial["shadow"]["effects"]
+        .as_array_mut()
+        .unwrap()
+        .remove(0);
+    let partial = review(partial);
+    assert_eq!(partial[0]["runs"][0]["rows"][1], Value::Null);
+    assert_eq!(partial[0]["runs"][0]["rows"][2], rows[2]);
+
+    let mut stale = envelope.clone();
+    stale["shadow"]["captured_request_sha256"] = json!("f".repeat(64));
+    let stale = review(stale);
+    assert_eq!(stale[0]["runs"], json!([]));
+    assert_eq!(stale[0]["reversals"], result["reversals"]);
+    let mut invalid = envelope;
+    invalid["candidate"]["scores"]["conditions"][0]["log_probs"][0] = json!(1.0);
+    assert_eq!(review(invalid), json!([]));
+}

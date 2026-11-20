@@ -228,6 +228,16 @@ In **Before inference**, the table shows which edits changed the most likely ope
 
 Other model adapters can implement the same batch interface. On stdin, version 1 supplies `baseline`, its `baseline_request_sha256`, and 1–32 single `edits` with exact request bodies, source IDs, versions and digests. The adapter returns version 1, model ID and revision, runtime, tokenizer hash, baseline digest and one effect per edit in input order. Each effect echoes the context ID, source ID, version and request digest, and adds `js_bits` in [0, 1]. Declare byte ranges when equal text occurs in multiple fields. Full-vocabulary access is required by this metric. [Reference adapter](../scripts/score_qwen_prefill.py) · [Algorithm and interpretation](methods.md#which-source-would-you-test-without-candidate-answers)
 
+### Compare source edits at a supplied answer prefix
+
+A workflow engineer can score a specific part of an answer before the model generates it. In the demo, choose **Before inference**, **Try a policy conflict**, then **Compare edits at a supplied answer prefix**. The user asked for a receipt starting with “Return window: ”. The policy edit switches which of the two deadlines scores higher. **Compare with freely generated answers** shows whether the runner actually used that opening and which deadline came next. [Open the scores](http://127.0.0.1:8040/?view=preview&scenario=prefix-before) · [Compare the generated answers](http://127.0.0.1:8040/?view=preview&scenario=prefix-checked)
+
+![The policy edit switches the preferred continuation to 60. The three independent generated answers appear below the scores.](media/supplied-prefix.png)
+
+For your own workflow, set `assistant_prefix` and both literal continuations in a candidate case. Include the exact spaces and punctuation. Run `probe-candidates` with your scorer, then load its report and pending request in **Before inference**. The card shows the sequence probabilities for each single edit, including the probability outside the two candidates. A proposal-only shadow report adds separate trial counts for each matching edit. The card reads saved measurements. Your adapter runs the optional model calls. [Candidate probe format](guide.md#measure-candidate-preference-before-a-decision) · [Runnable saved envelope](../examples/context-screening/replay/prefix-study/example.json)
+
+With content capture enabled, the selected candidate recommendation and the corresponding call also show this comparison for instrumented OTLP traffic. The report must match the exact captured request. Joining shadow trials additionally checks the model ID, source ID and version, intervention and edited request digest. A missing arm appears as untested. Multiple reports retain their runner identities. [Eight-question study and baselines](methods.md#can-a-supplied-answer-prefix-identify-a-source-worth-testing)
+
 ### Find answers that changed after the same opening
 
 Open **Recommendations** and select **Review 3 conversations where the top opening token held and the proposal changed**. Choose `journal-policy`, then the sentence-completion question. The original and edited answers agree for seven tokens. At token eight the policy edit changes the first digit of the return window. **See this call in its conversation** brings up the surrounding dialogue.
