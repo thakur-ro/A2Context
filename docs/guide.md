@@ -80,6 +80,18 @@ curl -fsS -H 'Content-Type: application/json' \
 
 The endpoint accepts up to 1 MiB and returns HTTP `200` for a completed check, including when findings are present. Invalid requests return `400`. The endpoint discards the request after returning its report. Reuse the same source IDs and versions in your recorded trace to investigate those sources after the run. [How preflight, trace analysis, and replay fit together](architecture.md)
 
+### Check alternative sources before dispatch
+
+A workflow can declare several ways to supply the inputs for one operation. In the exchange example the request builder expects either the confirmation cache **and** latest customer message, or a verified consent event. Run the check against the assembled request in staging.
+
+```sh
+nexusweave preflight examples/exchange-approval/pending.json | jq -e '.source_coverage.matched'
+```
+
+Set the `nexusweave.required_sources` attribute to an object or its JSON encoding. For example, `{"name":"Exchange authorization","any_of":[["confirmation-cache","latest-customer-message"],["verified-consent-event"]]}` names two alternatives. Each inner list requires all its exact source IDs. Preflight counts an included declaration with a validated fragment in the original request body. The response lists each alternative's required and unconfirmed IDs. The dashboard shows the same result in **Before inference** when you load the request.
+
+An unconfirmed ID means the capture lacks that anchor. The text may still be present. A complete set establishes capture coverage only. Currency, revision, the meaning of the text and approval at dispatch require their own checks. This optional staging check applies to the submitted request. The recorded rule receipt continues to verify the request body and its scoped rule declarations. [Example request](../examples/exchange-approval/pending.json)
+
 ### Show preflight alongside the recorded answer
 
 When the check includes `nexusweave.request.body`, the response includes a `receipt`. Attach it to the same inference call as `nexusweave.preflight`. For OTLP, serialize the receipt as a JSON string span attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `nexusweave.span.id` to the inference run's exact `id`.

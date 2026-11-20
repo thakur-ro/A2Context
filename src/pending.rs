@@ -145,7 +145,8 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
         "captured_inputs": call.context.len(), "original_request_captured": request.is_some(),
         "captured_excerpts_enabled": allow_excerpts,
         "preflight": {"scope": scope, "finding_count": preflight.findings.len(),
-            "scope_coverage": preflight.scope_coverage, "scoped_rule_items": preflight.scoped_rule_items, "receipt": preflight.receipt},
+            "scope_coverage": preflight.scope_coverage, "source_coverage":preflight.source_coverage,
+            "scoped_rule_items": preflight.scoped_rule_items, "receipt": preflight.receipt},
         "context_screening": screening.as_ref().map(turn_evidence::screen_summary),
         "candidate_probes": candidates.iter().map(|probe| turn_evidence::candidate_summary(probe, excerpts)).collect::<Vec<_>>(),
         "shadow_probes": shadows.iter().map(|probe| turn_evidence::shadow_summary(probe, excerpts)).collect::<Vec<_>>(),
@@ -164,27 +165,29 @@ pub fn recommendation_input(input: Request) -> Result<(Call, Option<DecisionScop
 pub fn recommendation_measurements(
     input: Request,
 ) -> Result<(Call, Option<DecisionScope>, Option<Value>), String> {
-    let Inspected {
-        call,
-        scope,
-        prefill,
-        ..
-    } = prepare(input, true)?;
-    Ok((call, scope, prefill))
+    let prepared = prepare(input, true)?;
+    Ok((prepared.call, prepared.scope, prepared.prefill))
 }
 
-struct Inspected {
-    prefill: Option<Value>,
-    call: Call,
+/// Normalized request, scope and verified measurements used by the sidecar preview.
+pub struct Inspected {
+    pub prefill: Option<Value>,
+    pub call: Call,
     request: Option<Value>,
-    scope: Option<DecisionScope>,
-    preflight: preflight::Report,
+    pub scope: Option<DecisionScope>,
+    pub preflight: preflight::Report,
+}
+
+/// Prepare a pending preview once. The result contains unredacted request evidence.
+pub fn preview(input: Request) -> Result<Inspected, String> {
+    prepare(input, true)
 }
 
 fn prepare(mut input: Request, excerpts: bool) -> Result<Inspected, String> {
     let raw = input.request.attributes.remove(replay::prefill::ATTRIBUTE);
+    let required = preflight::RequiredSources::take(&mut input.request.attributes)?;
     let (mut call, request, scope) = preflight::pending_call(input.request)?;
-    let preflight = preflight::report_for_pending(&call, scope.clone());
+    let preflight = preflight::report_for_pending(&call, scope.clone(), required);
     if let Some(report) = input.screening {
         call.context_screening = Some(screen::CapturedReport {
             evidence: anchor("pending.screening"),

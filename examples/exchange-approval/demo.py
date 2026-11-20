@@ -73,20 +73,26 @@ def pending(case):
     }}
 
 
-def sandbox(choice, approved, *, enforce):
+def sandbox(choice, approved, *, enforce, checkpoint=None, expected_arguments=None):
     """Apply one strictly validated proposal to an isolated checkpoint."""
+    if checkpoint is None:
+        checkpoint = CHECKPOINT
+    if expected_arguments is None:
+        expected_arguments = PUZZLE
+    if expected_arguments["order_id"] not in checkpoint:
+        raise ValueError("The expected order must exist in the sandbox checkpoint.")
     with closing(sqlite3.connect(":memory:")) as db:
         db.execute("CREATE TABLE orders (id TEXT PRIMARY KEY, status TEXT NOT NULL)")
-        db.executemany("INSERT INTO orders VALUES (?,?)", CHECKPOINT.items())
+        db.executemany("INSERT INTO orders VALUES (?,?)", checkpoint.items())
         write = choice.get("kind") == "tool_call" and choice.get("label") == WRITE
         if not write:
             dispatch = "no_write"
-        elif choice["outcome"] != PUZZLE:
+        elif choice["outcome"] != expected_arguments:
             dispatch = "invalid_arguments"
         elif enforce and not approved:
             dispatch = "blocked"
         else:
-            db.execute("UPDATE orders SET status='exchange_requested' WHERE id=?", [PUZZLE["order_id"]])
+            db.execute("UPDATE orders SET status='exchange_requested' WHERE id=?", [expected_arguments["order_id"]])
             dispatch = "written"
         states = dict(db.execute("SELECT id,status FROM orders ORDER BY id"))
     return {"dispatch":dispatch,"orders":states}

@@ -1993,11 +1993,18 @@ function pendingPreview() {
         report.prefill.ranked[0].request_sha256 === experiment.edited_request_sha256;
       const history = priorEdits(report.history, current.length > 0 || Boolean(report.prefill));
       const coverage = report.scope_coverage;
+      const sources = report.source_coverage;
       const gap = coverage && (!coverage.declarations || coverage.known_values < coverage.declarations);
       const opening = report.prefill?.ranked[0]?.opening_changed !== undefined;
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
-          " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
+          " · " + plural(report.total, "comparison finding") + (report.prefill ? " · First-token test attached" : "") }),
+        sources && element("section",{className:"panel","aria-label":"Required source coverage"},
+          element("h2",{text:(sources.matched ? "Sources captured for " : "Check sources for ") + sources.name}),
+          element("ul",{},...sources.alternatives.map(group => element("li",{
+            text:group.required.join(" + ") + (group.unconfirmed.length ? " · Still unconfirmed: " + group.unconfirmed.join(", ") : " · All anchored in the request")
+          }))),
+          !sources.matched && element("p",{text:"Check the request builder and capture declarations for one complete alternative."})),
         gap && element("section",{className:"panel","aria-label":"Rule capture gap"},
           element("h2",{text:"Check capture for " + coverage.scope.key}),
           element("p",{text:coverage.declarations ? coverage.known_values + " of " + coverage.declarations +

@@ -252,10 +252,20 @@ try {
   assert.equal(new URL(page.url()).searchParams.get("view"), "preview");
   const missingRule = JSON.parse(await readFile(new URL("../examples/preflight-returns.json",import.meta.url),"utf8"));
   missingRule.scope.scope = "holiday";
+  missingRule.attributes["nexusweave.required_sources"] = {name:"Holiday eligibility",
+    any_of:[["retail/returns-policy","retail/holiday-calendar"],["retail/holiday-policy"]]};
   await page.locator('input[type="file"]').setInputFiles({name:"coverage.json",mimeType:"application/json",
     buffer:Buffer.from(JSON.stringify({request:missingRule}))});
   const captureGap = page.getByRole("region",{name:"Rule capture gap"});
   await captureGap.getByText(/No captured declaration matched scope.*holiday/).waitFor();
+  const required = page.getByRole("region",{name:"Required source coverage"});
+  await required.getByRole("heading",{name:"Check sources for Holiday eligibility"}).waitFor();
+  assert.equal(await required.getByText(/Still unconfirmed/).count(),2);
+  missingRule.attributes["nexusweave.required_sources"].any_of.push(["retail/returns-policy"]);
+  await page.locator('input[type="file"]').setInputFiles({name:"fallback.json",mimeType:"application/json",
+    buffer:Buffer.from(JSON.stringify({request:missingRule}))});
+  await required.getByRole("heading",{name:"Sources captured for Holiday eligibility"}).waitFor();
+  assert.equal(await required.getByText(/All anchored in the request/).count(),1);
   const demoFixture = name => readFile(new URL("../examples/redundant-routing/" + name, import.meta.url), "utf8").then(JSON.parse);
   const {request} = await demoFixture("candidate-checks/ash-routing-note.json");
   const {shadow} = await demoFixture("ash-history-check.json");

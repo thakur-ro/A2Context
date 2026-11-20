@@ -48,13 +48,14 @@ class TransformersRuntime:
         generated.pop()
         return self.tokenizer.decode(generated, skip_special_tokens=False), generated
 
-    def parse_proposal(self, answer, tools):
+    @staticmethod
+    def parse_proposal(answer, tools, *, normalize_template_braces=True):
         payload, position = tool_payload(answer, "<tool_call>", "</tool_call>")
         if payload is None:
             return None, None
         payload = payload.strip()
         # Qwen2.5's tool template example wraps its JSON object in an extra brace pair.
-        if payload.startswith("{{") and payload.endswith("}}"):
+        if normalize_template_braces and payload.startswith("{{") and payload.endswith("}}"):
             payload = payload[1:-1]
         try:
             proposal = json.loads(payload)

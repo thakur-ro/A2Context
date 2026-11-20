@@ -1,13 +1,13 @@
 IMAGE ?= nexusweave:local
 PYTHON ?= python3
 
-.PHONY: demo check check-qa check-ui image verify-image
+.PHONY: demo check check-qa check-dispatch-study check-ui image verify-image
 
 demo:
 	cargo build --locked
 	$(PYTHON) examples/exchange-approval/demo.py
 
-check: check-qa
+check: check-qa check-dispatch-study
 	$(PYTHON) scripts/check_doc_links.py
 	cargo fmt --all --check
 	cargo clippy --locked --all-targets -- -D warnings
@@ -28,6 +28,9 @@ check-qa:
 	$(PYTHON) examples/public-qa/support-review/compare.py
 	$(PYTHON) examples/public-qa/support-review/transfer/squad.py --check examples/public-qa/support-review/transfer/scores.json
 	$(PYTHON) examples/public-qa/support-review/witness-edits/generate.py --check examples/public-qa/support-review/witness-edits/answers.json
+
+check-dispatch-study:
+	$(PYTHON) examples/exchange-approval/dispatch-study/compare_parsers.py --check
 
 check-ui:
 	cargo build --locked

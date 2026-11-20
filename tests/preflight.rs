@@ -99,6 +99,71 @@ fn explicit_scope_distinguishes_missing_capture_from_a_measured_count() {
 }
 
 #[test]
+fn required_sources_match_complete_alternatives_at_validated_request_fragments() {
+    let mut input: Value = serde_json::from_str(EXAMPLE).unwrap();
+    let required = "nexusweave.required_sources";
+    let any = json!({"name":"Return eligibility","any_of":[
+        ["retail/returns-policy", "order/receipt"], ["retail/archive-faq"]
+    ]});
+    input["attributes"][required] = any.clone();
+    let initial = check(input.clone()).unwrap().source_coverage.unwrap();
+    assert!(initial.matched);
+    assert_eq!(initial.alternatives[0].unconfirmed, ["order/receipt"]);
+    assert!(initial.alternatives[1].unconfirmed.is_empty());
+    let mcp = nexusweave::pending::evidence(
+        serde_json::from_value(json!({
+            "input":{"request":input}
+        }))
+        .unwrap(),
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        mcp["preflight"]["source_coverage"],
+        serde_json::to_value(initial).unwrap()
+    );
+
+    input["attributes"][SEMANTICS]["request_sources"]
+        .as_array_mut()
+        .unwrap()
+        .pop();
+    input["attributes"][required] = json!(any.to_string());
+    let after = check(input.clone()).unwrap().source_coverage.unwrap();
+    assert!(!after.matched);
+    assert_eq!(after.alternatives[1].unconfirmed, ["retail/archive-faq"]);
+    // The body still contains the FAQ's words. Only its source declaration disappeared.
+    input["attributes"][SEMANTICS]["request_sources"][0]["request_fragment"]["text_range"]
+        ["end_byte"] = json!(10000);
+    assert!(check(input).is_err());
+}
+
+#[test]
+fn a_source_name_in_unanchored_text_cannot_satisfy_a_capture_requirement() {
+    let report = check(json!({"version":1,"attributes":{
+        "gen_ai.input.messages":[{"role":"user","parts":[{"type":"text","content":"confirmed-consent"}]}],
+        "nexusweave.required_sources":{"name":"Approval","any_of":[["confirmed-consent"]]}
+    }})).unwrap();
+    let coverage = report.source_coverage.unwrap();
+    assert!(!coverage.matched);
+    assert_eq!(coverage.alternatives[0].unconfirmed, ["confirmed-consent"]);
+}
+
+#[test]
+fn empty_requirements_cannot_pass_vacuously() {
+    let mut input: Value = serde_json::from_str(EXAMPLE).unwrap();
+    for groups in [json!([]), json!([[]]), json!([[" "]])] {
+        input["attributes"]["nexusweave.required_sources"] =
+            json!({"name":"Policy", "any_of":groups});
+        assert!(check(input.clone()).is_err());
+    }
+    input["attributes"]
+        .as_object_mut()
+        .unwrap()
+        .remove("nexusweave.required_sources");
+    assert!(check(input).unwrap().source_coverage.is_none());
+}
+
+#[test]
 fn carries_the_same_source_identities_into_a_recorded_decision() {
     let input: Value = serde_json::from_str(EXAMPLE).unwrap();
     let before = check(input).unwrap();

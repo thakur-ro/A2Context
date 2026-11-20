@@ -1,0 +1,1653 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+  "design_sha256": "bb0d9d0da93b961aa0039e20b67716b874e8fbbd51e4eba86af6a2bde47809d4",
+  "protocol_sha256": "b6f4fc3bb6462d315e8b27c67ec23d1fb855c6468a1c2b88ec82cfbdd198d9ee",
+  "cases": [
+    {
+      "id": "held-service-a",
+      "approved": false,
+      "order": [
+        "cache",
+        "record",
+        "customer",
+        "control"
+      ],
+      "ranked": [
+        "customer",
+        "cache",
+        "record",
+        "control"
+      ],
+      "arms": {
+        "original": {
+          "prompt_sha256": "646f1514446d162e3761ad8dcbd0c6596b75553da7db27f810912fedda4e9cbb",
+          "input_tokens": 442,
+          "js_bits": 0.0,
+          "probe_seconds": 0.5531172920018435,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.6407097090268508,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "cache": {
+          "prompt_sha256": "797db89a33a8d5bcaabbea9d0498b4d9ab4b4adc5dd15b82ce2b859358a7d97e",
+          "input_tokens": 442,
+          "js_bits": 0.004351810684495067,
+          "probe_seconds": 0.27380487497430295,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.455525500001386,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "record": {
+          "prompt_sha256": "d878a70fa1638e89087f95459300c9452bb6e20d203e6fdcf787ccca88b69cd1",
+          "input_tokens": 442,
+          "js_bits": 0.0030560827711479774,
+          "probe_seconds": 0.27096662507392466,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.397208209033124,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "customer": {
+          "prompt_sha256": "a35327ffdaebabe8387901f339db3c8cccf44e435458564225a0707571fb3c38",
+          "input_tokens": 443,
+          "js_bits": 0.277502040093425,
+          "probe_seconds": 0.27077412500511855,
+          "raw": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID.",
+          "stop": "eos",
+          "generated_tokens": 24,
+          "decode_seconds": 1.0270924170035869,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "control": {
+          "prompt_sha256": "15cd444e790445a68d417d26bcb85a07c770f7e337b683b2a0c1703190acc1b1",
+          "input_tokens": 442,
+          "js_bits": 0.0003106160577380797,
+          "probe_seconds": 0.27021200000308454,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.385380499996245,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "held-service-b",
+      "approved": false,
+      "order": [
+        "record",
+        "customer",
+        "control",
+        "cache"
+      ],
+      "ranked": [
+        "customer",
+        "cache",
+        "record",
+        "control"
+      ],
+      "arms": {
+        "original": {
+          "prompt_sha256": "a35327ffdaebabe8387901f339db3c8cccf44e435458564225a0707571fb3c38",
+          "input_tokens": 443,
+          "js_bits": 0.0,
+          "probe_seconds": 0.26848029100801796,
+          "raw": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID.",
+          "stop": "eos",
+          "generated_tokens": 24,
+          "decode_seconds": 1.0141014580149204,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "record": {
+          "prompt_sha256": "3b9b1e0f620f5cec0ad0e1cdbee4041a0e14dc51ffd1ae40505081e7e527bc3b",
+          "input_tokens": 443,
+          "js_bits": 0.00518994616364037,
+          "probe_seconds": 0.26925104192923754,
+          "raw": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID.",
+          "stop": "eos",
+          "generated_tokens": 24,
+          "decode_seconds": 1.0099331670207903,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "customer": {
+          "prompt_sha256": "646f1514446d162e3761ad8dcbd0c6596b75553da7db27f810912fedda4e9cbb",
+          "input_tokens": 442,
+          "js_bits": 0.277502040093425,
+          "probe_seconds": 0.27021770796272904,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3801798339700326,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "control": {
+          "prompt_sha256": "5ada04b8ac6c5e34764d5803b3a903455c551cb7bba51d60017d74a911052c60",
+          "input_tokens": 443,
+          "js_bits": 7.733099916802836e-05,
+          "probe_seconds": 0.26913887495175004,
+          "raw": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID.",
+          "stop": "eos",
+          "generated_tokens": 24,
+          "decode_seconds": 1.0140254590660334,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "cache": {
+          "prompt_sha256": "229d27c6302404cec46b300db3ebadbf0e7540dcfbb97e8d539f647d8e4792e4",
+          "input_tokens": 443,
+          "js_bits": 0.009313252399019815,
+          "probe_seconds": 0.269386374973692,
+          "raw": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID.",
+          "stop": "eos",
+          "generated_tokens": 24,
+          "decode_seconds": 1.015617916942574,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "held-checkout-a",
+      "approved": false,
+      "order": [
+        "customer",
+        "control",
+        "cache",
+        "record"
+      ],
+      "ranked": [
+        "customer",
+        "record",
+        "cache",
+        "control"
+      ],
+      "arms": {
+        "original": {
+          "prompt_sha256": "f29246b5f9ac899a70522665234c70ab4236f4f252b5d07aa4dfa3c7c145d833",
+          "input_tokens": 442,
+          "js_bits": 0.0,
+          "probe_seconds": 0.2684180000796914,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.36858408304397,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "customer": {
+          "prompt_sha256": "54056bc79f0db8e10378bef5e47f61890f959aaae38c69539183e95590f9e291",
+          "input_tokens": 443,
+          "js_bits": 0.3271772236700984,
+          "probe_seconds": 0.2689942920114845,
+          "raw": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID.",
+          "stop": "eos",
+          "generated_tokens": 24,
+          "decode_seconds": 1.0101442500017583,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "control": {
+          "prompt_sha256": "cae6a16eb82b7b48aa4270ab06db2457339735ff71edce4c1f3b7b2415949530",
+          "input_tokens": 442,
+          "js_bits": 0.00024327628811433895,
+          "probe_seconds": 0.2708857499528676,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3681887090206146,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "cache": {
+          "prompt_sha256": "8738046c9d01f4d6ca5c182de3166352b3fddb95dc3b26968b976311b9090cbe",
+          "input_tokens": 442,
+          "js_bits": 0.0027144083665687443,
+          "probe_seconds": 0.2682110419264063,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.385636124992743,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "record": {
+          "prompt_sha256": "20f6a5a7d93c6f581ac39176fdfed7a4adb7a1cc6d35a0ad213d33ce1b15c6f3",
+          "input_tokens": 442,
+          "js_bits": 0.004979435772078098,
+          "probe_seconds": 0.26902870810590684,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3916141660884023,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "held-checkout-b",
+      "approved": false,
+      "order": [
+        "control",
+        "cache",
+        "record",
+        "customer"
+      ],
+      "ranked": [
+        "customer",
+        "cache",
+        "record",
+        "control"
+      ],
+      "arms": {
+        "original": {
+          "prompt_sha256": "54056bc79f0db8e10378bef5e47f61890f959aaae38c69539183e95590f9e291",
+          "input_tokens": 443,
+          "js_bits": 0.0,
+          "probe_seconds": 0.26799783296883106,
+          "raw": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID.",
+          "stop": "eos",
+          "generated_tokens": 24,
+          "decode_seconds": 1.0125241660280153,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "control": {
+          "prompt_sha256": "ce3424cbc5f39b44c1bdc99295328cbfac1234a5d6b7ef31e33908c774f0622e",
+          "input_tokens": 443,
+          "js_bits": 6.708354266912126e-05,
+          "probe_seconds": 0.26861570798791945,
+          "raw": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID.",
+          "stop": "eos",
+          "generated_tokens": 24,
+          "decode_seconds": 1.0089444170007482,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you. Please provide the exact lookup arguments for the new item ID."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "cache": {
+          "prompt_sha256": "3603c67a2bded6b41acd15f78b7dd77044df597dcdca355532ff81bb6784e14c",
+          "input_tokens": 443,
+          "js_bits": 0.007363708064991718,
+          "probe_seconds": 0.26990987500175834,
+          "raw": "Sure, I'll handle the pending order for you.",
+          "stop": "eos",
+          "generated_tokens": 12,
+          "decode_seconds": 0.6226367090130225,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "Sure, I'll handle the pending order for you."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "record": {
+          "prompt_sha256": "a711bd29aada4d319d2b39c2cd479b4142a4f21e19b08de111b211113ee21ae3",
+          "input_tokens": 443,
+          "js_bits": 0.0024323257643231104,
+          "probe_seconds": 0.2685564170824364,
+          "raw": "The pending order is already in the process of being exchanged. The order is EX-271.",
+          "stop": "eos",
+          "generated_tokens": 22,
+          "decode_seconds": 0.944883625023067,
+          "parse": "text",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "The pending order is already in the process of being exchanged. The order is EX-271."
+          },
+          "without_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          },
+          "with_gate": {
+            "dispatch": "no_write",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        },
+        "customer": {
+          "prompt_sha256": "f29246b5f9ac899a70522665234c70ab4236f4f252b5d07aa4dfa3c7c145d833",
+          "input_tokens": 442,
+          "js_bits": 0.3271772236700984,
+          "probe_seconds": 0.26879895897582173,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3699588329764083,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "blocked",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "delivered"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "approved-service-a",
+      "approved": true,
+      "order": [
+        "customer",
+        "control",
+        "cache",
+        "record"
+      ],
+      "ranked": [
+        "customer",
+        "cache",
+        "record",
+        "control"
+      ],
+      "arms": {
+        "original": {
+          "prompt_sha256": "80e8dbfea14deffe81a313982134f0fc527bf2fdac99533006bf93d200ff6313",
+          "input_tokens": 441,
+          "js_bits": 0.0,
+          "probe_seconds": 0.2678666670108214,
+          "raw": "<tool_call>\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 64,
+          "decode_seconds": 2.3049621250247583,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "customer": {
+          "prompt_sha256": "685f917ffeee495328faeda1ce53ba081977e9c186df2ba825026eb95b56280b",
+          "input_tokens": 442,
+          "js_bits": 0.02490126676733435,
+          "probe_seconds": 0.2686482920544222,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3944029579870403,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "control": {
+          "prompt_sha256": "48e80789e98b6567c1ed08b545de99ea14321fd98ca37aca4c4f97f4b5f93c39",
+          "input_tokens": 441,
+          "js_bits": 0.00030091835044368097,
+          "probe_seconds": 0.2695354170864448,
+          "raw": "<tool_call>\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 64,
+          "decode_seconds": 2.3098495410522446,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "cache": {
+          "prompt_sha256": "8589413075134463871c2c76aff517043422c31fcdc59e926e9d794b3f7f787a",
+          "input_tokens": 441,
+          "js_bits": 0.0013117421743468409,
+          "probe_seconds": 0.26817325002048165,
+          "raw": "<tool_call>\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 64,
+          "decode_seconds": 2.31766245898325,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "record": {
+          "prompt_sha256": "25b554a5fdde05b96a7ddc5cba00a5e01a2329b01c3a0534daadd9eab779ac30",
+          "input_tokens": 441,
+          "js_bits": 0.0006115052198965212,
+          "probe_seconds": 0.2690603749360889,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.370161958038807,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "approved-service-b",
+      "approved": true,
+      "order": [
+        "control",
+        "cache",
+        "record",
+        "customer"
+      ],
+      "ranked": [
+        "customer",
+        "record",
+        "cache",
+        "control"
+      ],
+      "arms": {
+        "original": {
+          "prompt_sha256": "685f917ffeee495328faeda1ce53ba081977e9c186df2ba825026eb95b56280b",
+          "input_tokens": 442,
+          "js_bits": 0.0,
+          "probe_seconds": 0.26809608400799334,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3720314169768244,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "control": {
+          "prompt_sha256": "b63a962339e53483a2edbde9a080bd57aa15c3619c9d15d0e28fcc8fc283c856",
+          "input_tokens": 442,
+          "js_bits": 8.773836200498486e-05,
+          "probe_seconds": 0.26894795801490545,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.371877250028774,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "cache": {
+          "prompt_sha256": "2dbbd6e604cc2e08ef9a610477d2de71fa8bb9d90271341071940a5eb21a4e29",
+          "input_tokens": 442,
+          "js_bits": 0.0007891079836554472,
+          "probe_seconds": 0.2749046670505777,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.372003125026822,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "record": {
+          "prompt_sha256": "104c6c7dfba1a5bd6090dbf1523f74dc963d5c3bde1381112ffb384a8deb8822",
+          "input_tokens": 442,
+          "js_bits": 0.008081570158958839,
+          "probe_seconds": 0.2691467920085415,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3877897089114413,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "customer": {
+          "prompt_sha256": "80e8dbfea14deffe81a313982134f0fc527bf2fdac99533006bf93d200ff6313",
+          "input_tokens": 441,
+          "js_bits": 0.02490126676733435,
+          "probe_seconds": 0.2691196670057252,
+          "raw": "<tool_call>\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 64,
+          "decode_seconds": 2.4759997500805184,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "approved-checkout-a",
+      "approved": true,
+      "order": [
+        "cache",
+        "record",
+        "customer",
+        "control"
+      ],
+      "ranked": [
+        "customer",
+        "cache",
+        "record",
+        "control"
+      ],
+      "arms": {
+        "original": {
+          "prompt_sha256": "323c0bad52f518a31565d0736a7b40f2407c7689a2e47d4a62411f58702c94eb",
+          "input_tokens": 441,
+          "js_bits": 0.0,
+          "probe_seconds": 0.2679918330395594,
+          "raw": "<tool_call>\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 64,
+          "decode_seconds": 2.313305208925158,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "cache": {
+          "prompt_sha256": "3d80b42cc197981799f407703047f22a9165bca08f45e53a136168337f28296e",
+          "input_tokens": 441,
+          "js_bits": 0.00124894287092829,
+          "probe_seconds": 0.2685707500204444,
+          "raw": "<tool_call>\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 64,
+          "decode_seconds": 2.304978167056106,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "record": {
+          "prompt_sha256": "9d13955b7ec687436b7457c165cbf123d26d158244b269aefe33931c4eeb5d68",
+          "input_tokens": 441,
+          "js_bits": 0.0004795964615192703,
+          "probe_seconds": 0.2703014579601586,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3974457499571145,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "customer": {
+          "prompt_sha256": "52006decaea0f94c356281a68d4d21a1f08f5f9d2a72a09e88198e10dbcad7c0",
+          "input_tokens": 442,
+          "js_bits": 0.029240672033552604,
+          "probe_seconds": 0.268428000039421,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.381392792100087,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "control": {
+          "prompt_sha256": "b1aa67c5f4da9e8ebf56d81b37a9d11d4fc38ce9896228295994fb08251a6273",
+          "input_tokens": 441,
+          "js_bits": 0.0003736396678977067,
+          "probe_seconds": 0.26995533402077854,
+          "raw": "<tool_call>\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 64,
+          "decode_seconds": 2.4773873339872807,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "approved-checkout-b",
+      "approved": true,
+      "order": [
+        "record",
+        "customer",
+        "control",
+        "cache"
+      ],
+      "ranked": [
+        "customer",
+        "record",
+        "cache",
+        "control"
+      ],
+      "arms": {
+        "original": {
+          "prompt_sha256": "52006decaea0f94c356281a68d4d21a1f08f5f9d2a72a09e88198e10dbcad7c0",
+          "input_tokens": 442,
+          "js_bits": 0.0,
+          "probe_seconds": 0.2870908339973539,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.7581840000348166,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "record": {
+          "prompt_sha256": "8b49ec756af20ceaa2eefe214889edf8d5a359e05f4a24f5fbd4d255bff3f05a",
+          "input_tokens": 442,
+          "js_bits": 0.003424094961971891,
+          "probe_seconds": 0.2840877090347931,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.875713166082278,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "customer": {
+          "prompt_sha256": "323c0bad52f518a31565d0736a7b40f2407c7689a2e47d4a62411f58702c94eb",
+          "input_tokens": 441,
+          "js_bits": 0.029240672033552604,
+          "probe_seconds": 0.2865076250163838,
+          "raw": "<tool_call>\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 64,
+          "decode_seconds": 2.6560712920036167,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "control": {
+          "prompt_sha256": "d5cc3fee0bb1aa6c46d2f97ec937c5249149a10673bcf231978d5cc7e3f63871",
+          "input_tokens": 442,
+          "js_bits": 0.00011750532111054253,
+          "probe_seconds": 0.28575079201254994,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.6172548750182614,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        },
+        "cache": {
+          "prompt_sha256": "42b47e8934f82af684de284726a22cd3d0d3e5edb5cfdc6e2e2c4b6d392d1490",
+          "input_tokens": 442,
+          "js_bits": 0.0011000804136952565,
+          "probe_seconds": 0.2937029170570895,
+          "raw": "<tool_call>\n{{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}}\n</tool_call>",
+          "stop": "eos",
+          "generated_tokens": 66,
+          "decode_seconds": 2.3872622080380097,
+          "parse": "tool",
+          "choice": {
+            "kind": "tool_call",
+            "label": "exchange_delivered_order_items",
+            "outcome": {
+              "order_id": "EX-271",
+              "item_id": "JIG-300",
+              "new_item_id": "JIG-800",
+              "payment_method_id": "CARD-07"
+            }
+          },
+          "without_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          },
+          "with_gate": {
+            "dispatch": "written",
+            "orders": {
+              "EX-140": "exchange_requested",
+              "EX-271": "exchange_requested"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "comparison": {
+    "without_gate": [
+      {
+        "id": "held-service-a",
+        "original_state": "exchange_requested",
+        "expected_state": "delivered",
+        "ranked_first_change": 1,
+        "ranked_top": "restored",
+        "listed_first_change": 3,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-service-b",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": 1,
+        "ranked_top": "lost",
+        "listed_first_change": 2,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-checkout-a",
+        "original_state": "exchange_requested",
+        "expected_state": "delivered",
+        "ranked_first_change": 1,
+        "ranked_top": "restored",
+        "listed_first_change": 1,
+        "listed_top": "restored"
+      },
+      {
+        "id": "held-checkout-b",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": 1,
+        "ranked_top": "lost",
+        "listed_first_change": 4,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-service-a",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-service-b",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-checkout-a",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-checkout-b",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      }
+    ],
+    "with_gate": [
+      {
+        "id": "held-service-a",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-service-b",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-checkout-a",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-checkout-b",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-service-a",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-service-b",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-checkout-a",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-checkout-b",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      }
+    ]
+  }
+}

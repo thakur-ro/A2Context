@@ -15,6 +15,10 @@ use std::collections::BTreeMap;
 
 const VERSION: u32 = 1;
 
+mod required_sources;
+pub(crate) use required_sources::RequiredSources;
+pub use required_sources::{Alternative, SourceCoverage};
+
 /// The context about to be sent for one inference request.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -38,6 +42,9 @@ pub struct Report {
     /// Present when the caller asked for a specific rule. Counts captured declarations only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope_coverage: Option<ScopeCoverage>,
+    /// Coverage of caller-specified alternatives in this pending request.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_coverage: Option<SourceCoverage>,
     pub findings: Vec<Finding>,
     /// Attach to the resulting inference span as `nexusweave.preflight`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -97,7 +104,7 @@ pub struct RecordedCheck<'a> {
 #[derive(Debug, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum Verification {
-    Matched { report: Report },
+    Matched { report: Box<Report> },
     Unverified { issue: &'static str },
 }
 
@@ -146,13 +153,19 @@ pub struct Source {
 ///
 /// Rejects unsupported versions, output attributes, invalid declarations, and
 /// request fragments that do not match the captured body.
-pub fn check(request: Request) -> Result<Report, String> {
+pub fn check(mut request: Request) -> Result<Report, String> {
+    let required = RequiredSources::take(&mut request.attributes)?;
     let (call, _, scope) = pending_call(request)?;
-    Ok(report_for_pending(&call, scope))
+    Ok(report_for_pending(&call, scope, required))
 }
 
-pub(crate) fn report_for_pending(call: &Call, scope: Option<DecisionScope>) -> Report {
+pub(crate) fn report_for_pending(
+    call: &Call,
+    scope: Option<DecisionScope>,
+    required: Option<RequiredSources>,
+) -> Report {
     let mut report = compare(call, scope.as_ref());
+    report.source_coverage = required.map(|r| r.evaluate(call));
     if let Some(fingerprint) = fingerprint(call, scope.as_ref()) {
         report.receipt = Some(Receipt {
             version: VERSION,
@@ -227,7 +240,7 @@ pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<RecordedCh
         .and_then(|receipt| receipt.scope.as_ref());
     let verification = match verify(call, captured) {
         Ok(_) => Verification::Matched {
-            report: compare(call, scope),
+            report: Box::new(compare(call, scope)),
         },
         Err(issue) => Verification::Unverified { issue },
     };
@@ -349,6 +362,7 @@ fn compare(call: &Call, scope: Option<&DecisionScope>) -> Report {
         captured_items: call.context.len(),
         scoped_rule_items,
         scope_coverage: scope.map(|s| scope_coverage(call, s)),
+        source_coverage: None,
         findings,
         receipt: None,
     }

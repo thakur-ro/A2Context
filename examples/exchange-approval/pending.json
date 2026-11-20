@@ -1,6 +1,10 @@
 {
   "version": 1,
   "attributes": {
+    "nexusweave.required_sources": {
+      "name": "Exchange authorization",
+      "any_of": [["confirmation-cache", "latest-customer-message"], ["verified-consent-event"]]
+    },
     "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
     "nexusweave.organization.id": "exchange-demo",
     "service.name": "exchange-agent",

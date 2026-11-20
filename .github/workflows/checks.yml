@@ -50,7 +50,7 @@ jobs:
       - name: Verify saved public QA rankings and passage-order comparison
         if: runner.os == 'Linux'
         run: |
-          make check-qa
+          make check-qa check-dispatch-study
           python3 examples/context-screening/replay/prefix-study/study.py
           python3 examples/context-screening/replay/prefix-transfer/study.py
           python3 examples/context-screening/replay/prefix-indirect/study.py

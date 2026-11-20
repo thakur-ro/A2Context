@@ -35,9 +35,17 @@ We used the reviewed evidence sets to choose the smallest group of passages whos
 
 One evidence edit only changed quotation marks. Only two original answers contained a reference alias. An automatic recommendation based on a text difference would give punctuation the same weight as a change of answer. The current actionable results are the *specific observed edits*, with their original outputs and controls available for review.
 
-## Next experiment
+## Does a pre-answer source ranking find a change in business state?
 
-Test a workflow with a machine-checkable outcome such as an exchange that should be held before dispatch. Register the expected tool arguments or state transition first. Include equivalent wordings, alternate sources of approval, and a matched unrelated edit. Measure whether selecting a source by the pre-answer probe helps find a changed business outcome sooner than starting with the first source. Keep the evaluation requests separate from those used to build the ranking. A staging pilot still needs an independently instrumented workflow and an engineer who can try the recommendation unaided.
+In eight new synthetic exchange requests, the pre-answer divergence ranking selected the latest customer wording every time. Before enforcing approval, the selected edit changed the pending order on four requests. The first listed edit did so on one. Two wording edits restored the requested hold and the reverse edits lost it. Choosing the latest customer message directly would have selected the same eight edits at zero scoring cost. With the example adapter and an approval check at dispatch, all 32 edits preserved the final order state. These eight requests are paired wordings of one workflow. [Registered design, local measurements and reproduction](../examples/exchange-approval/dispatch-study/README.md)
+
+Changing only the tool parser changed which four requests the top edit affected. The example adapter accepted 30 of 40 generations as executable tool calls. Requiring the inner payload to parse as JSON accepted eight. Applying the same approval gate still left twelve final states that differed between parsers. A production replay therefore needs the actual parser and dispatch policy as well as the model and prompt. [Per-arm evidence](../examples/exchange-approval/dispatch-study/results.json) · [Offline parser replay](../examples/exchange-approval/dispatch-study/compare_parsers.py)
+
+For a known staging requirement, preflight now checks whether at least one complete set of named source fragments is anchored in the request. An exchange can be configured to require the cache and latest customer message together, or an independent consent event. A successful check establishes that the configured IDs are present. The live authorization decision still belongs at dispatch. [Check alternative sources](guide.md#check-alternative-sources-before-dispatch)
+
+## Next validation
+
+Use an independently instrumented staging workflow with its actual tool parser, retries and dispatcher. Before enabling recommendations, choose a business invariant and register the source edits and comparison order. Include the latest-message selector in the comparison. Have a workflow engineer investigate an affected request without guidance and record which evidence they opened, time to identify the failed stage, and whether the recommended edit restored the invariant on a fresh request. The current fixtures supply no independent usability result.
 
 ## Release scope
 

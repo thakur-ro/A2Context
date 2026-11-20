@@ -234,8 +234,13 @@ pub fn preview(
     input: pending::Request,
 ) -> Result<Value, (u16, String)> {
     let history_scope = super::history::Scope::read(&input.request.attributes);
-    let (call, scope, mut prefill) =
-        pending::recommendation_measurements(input).map_err(|message| (400, message))?;
+    let pending::Inspected {
+        call,
+        scope,
+        mut prefill,
+        preflight,
+        ..
+    } = pending::preview(input).map_err(|message| (400, message))?;
     let mut history = match history_scope {
         Ok(history_scope) => history_scope
             .lookup(store, &call, scope.as_ref())
@@ -329,7 +334,7 @@ pub fn preview(
     Ok(json!({
         "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths, "prefix_reviews":prefix_reviews,
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
-        "scope_coverage": scope.as_ref().map(|s| nexusweave::preflight::scope_coverage(call, s)),
+        "scope_coverage": preflight.scope_coverage, "source_coverage": preflight.source_coverage,
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))
 }
