@@ -149,6 +149,11 @@ def trial(pkt, schemas, cls, tracer, *, runtime=None, tokenizer=None, saved=None
         return transport.distribution, transport.receipts[0]
     if saved is not None and len(saved) != len(transport.receipts):
         raise ValueError("The native control/replay consumed a different number of outputs.")
+    row = workflow_score(pkt, cls, sim, events, stop)
+    return {**row, "generations": transport.receipts}, audit
+
+
+def workflow_score(pkt, cls, sim, events, stop):
     valid = [e for e in events if e["status"] == "executed"]
     reference = new_sim(cls, pkt["state"])
     outputs = [getattr(reference, n)(**a) for n, a in pkt["ref"]]
@@ -156,9 +161,9 @@ def trial(pkt, schemas, cls, tracer, *, runtime=None, tokenizer=None, saved=None
                                   [(n, digest(a)) for n, a in pkt["ref"]])
     results_ok = not (Counter(map(digest, outputs)) - Counter(e["response_sha256"] for e in valid))
     state_ok = sim == reference
-    return {"id": pkt["id"], "stop": stop, "calls": events, "generations": transport.receipts,
+    return {"id": pkt["id"], "stop": stop, "calls": events,
             "state_sha256": digest(public_state(sim)), "state_match": state_ok, "required_actions": actions_ok,
-            "required_responses": results_ok, "usable": stop == "normal" and state_ok and actions_ok and results_ok}, audit
+            "required_responses": results_ok, "usable": stop == "normal" and state_ok and actions_ok and results_ok}
 
 
 def control(pkt, schemas, cls, tracer):

@@ -15,6 +15,8 @@ Task 155 shows why the gate checks more than a database snapshot. Qwen produced 
 
 We subsequently tested whether supplying airport codes before generation would repair these calls. The prompt edit changed one proposed booking relative to a withheld-value control. Both proposals failed validation. [Pre-inference directory experiment](airport-context/README.md)
 
+The independent LFM/MLX runner also missed all six complete action sequences. On one read-only task it changed simulator state after a failed fare lookup. [Second-runner calibration](mlx/README.md)
+
 ## Checkpoints and scoring
 
 The public V4 base dataset contains 200 multi-turn tasks. Thirteen use only the in-memory TravelAPI. We removed three whose first-turn reference involved identity verification that depends on today's date, then took the first three reference turns that changed public state and the first three that preserved it. All six started from distinct public-state digests. The state includes booking and account records. BFCL's TravelAPI equality omits its private flight-price cache and random generator. Each tuple of task, turn, schema set, initial state and reference action was frozen before any local model output. [Selection](selection.json) · [Protocol](protocol.md)
