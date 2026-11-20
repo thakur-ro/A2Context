@@ -66,6 +66,7 @@ check-qwen-agent:
 	$(PYTHON) examples/exchange-approval/dispatch-study/framework/retry.py --check
 	$(PYTHON) examples/exchange-approval/dispatch-study/prospective/run.py --check examples/exchange-approval/dispatch-study/prospective/results.json
 	$(PYTHON) examples/exchange-approval/dispatch-study/rendering/measure.py --check examples/exchange-approval/dispatch-study/rendering/results.json
+	$(PYTHON) examples/exchange-approval/dispatch-study/prefill-tool/measure.py --check examples/exchange-approval/dispatch-study/prefill-tool/results.json
 	$(PYTHON) examples/exchange-approval/dispatch-study/framework/check_sidecar_export.py
 
 check-ui:

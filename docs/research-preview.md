@@ -92,6 +92,20 @@ On the desk fan order, the assistant promised to submit the exchange in both con
 
 Changing the tool-call example by two braces changed two of eight replies, both on the desk fan order. One renderer made the assistant name the right tool in prose. Across both renderers the native parser received zero calls in 16 completed generations. Neither rendering changed a database outcome. The two cache states of one order are paired measurements. [Frozen renderer comparison and reproduction](../examples/exchange-approval/dispatch-study/rendering/README.md)
 
+## What happened when we supplied the first two assistant tokens?
+
+We gave the same model the opening tool-call tag and a newline. It generated the rest freely, including the tool name, four argument values and closing tag. All eight previously uncalled requests produced a valid exchange call. Only the four approved requests called the right tool. The two cache settings yielded identical output tokens for each order.
+
+![Without a dispatch check the forced opener restored four expected states and lost four. With the check it restored four, and four stayed correct.](media/exchange-prefix-states.png)
+
+The overall ungated state score stayed at four of eight. Every approved request improved, and every held request got worse. The dispatch check blocked the four incorrect writes and allowed the four correct ones. A recommendation based on the count of valid tool calls alone would have missed every incorrect write. Supplying the first two tokens tests a specific intervention on previously observed failures. Recovering the arguments under that intervention leaves open why free generation originally chose prose. [Frozen design, repeat and parser receipts](../examples/exchange-approval/dispatch-study/prefill-tool/README.md) · [Figure from saved results](../examples/exchange-approval/dispatch-study/plot_prefix_states.py)
+
+## Which experiment would justify a pre-deployment recommendation?
+
+Use an independently maintained simulator with a recorded expected action and final state. BFCL V3 is one candidate. First verify that the unedited runner can complete examples that require a write and examples that require leaving state alone. Save the parser version, exact request and database or simulator checkpoint for each case.
+
+Before viewing the held-out completions, freeze one source-selection rule, a cheap baseline such as choosing the latest message, and the allowed edits. Score whether each selected edit restores or loses the expected action and state. Keep failures to finish and mismatches on the unchanged input visible. If the selectors choose the same sources, the study cannot establish an advantage for model scoring. The result that would justify a recommendation is more correct downstream outcomes on new workflows at a measured cost. [Earlier source-ranking result](../examples/exchange-approval/dispatch-study/README.md) · [BFCL V3 evaluation](https://gorilla.cs.berkeley.edu/blogs/13_bfcl_v3_multi_turn.html)
+
 ## Release scope
 
 A source preview can ship the deterministic checks, trace adapters, UI and reproducible experiments. The sidecar and browser journeys have scripted fixture coverage. The release still needs a completed hosted CI run. GitHub declined to start the runners for the last validation push. The public QA examples now include upstream data notices and an article index for the 62 questions used in the passage studies. The SQuAD transfer example ships identifiers, labels, hashes and measurements, with the full text downloaded separately for reproduction. [QA data credits](../examples/public-qa/data-credits.md) · [SQuAD source and license](https://rajpurkar.github.io/SQuAD-explorer/)
