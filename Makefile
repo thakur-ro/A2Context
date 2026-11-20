@@ -53,6 +53,7 @@ check-qa:
 	$(PYTHON) examples/public-qa/support-review/witness-edits/generate.py --check examples/public-qa/support-review/witness-edits/answers.json
 
 check-dispatch-study:
+	$(PYTHON) examples/bfcl-transfer/airport-context/check.py
 	$(PYTHON) examples/context-screening/replay/prefix-study/study.py
 	$(PYTHON) examples/context-screening/replay/prefix-transfer/study.py
 	$(PYTHON) examples/context-screening/replay/prefix-indirect/study.py

@@ -13,6 +13,8 @@ On six first-turn tasks from Berkeley’s Function Calling Leaderboard, local Qw
 
 Task 155 shows why the gate checks more than a database snapshot. Qwen produced the right booking and the simulator ended in the reference state. The published first turn also called for checking the fare first. Of the nine required calls across the six tasks, the exact booking on 155 was the only one completed with the reference arguments. On three read-only tasks, a plain text response with no call would also have left the correct public state. [Native replay diagnoses](diagnostics.json)
 
+We subsequently tested whether supplying airport codes before generation would repair these calls. The prompt edit changed one proposed booking relative to a withheld-value control. Both proposals failed validation. [Pre-inference directory experiment](airport-context/README.md)
+
 ## Checkpoints and scoring
 
 The public V4 base dataset contains 200 multi-turn tasks. Thirteen use only the in-memory TravelAPI. We removed three whose first-turn reference involved identity verification that depends on today's date, then took the first three reference turns that changed public state and the first three that preserved it. All six started from distinct public-state digests. The state includes booking and account records. BFCL's TravelAPI equality omits its private flight-price cache and random generator. Each tuple of task, turn, schema set, initial state and reference action was frozen before any local model output. [Selection](selection.json) · [Protocol](protocol.md)

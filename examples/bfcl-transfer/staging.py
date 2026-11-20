@@ -123,7 +123,7 @@ def contains_ordered(actual, required):
 
 
 def trial(pkt, schemas, cls, tracer, *, runtime=None, tokenizer=None, saved=None, source=None, probe=False,
-          observations=None):
+          observations=None, system_message=SYSTEM):
     sim = new_sim(cls, pkt["state"])
     events, audit = [], []
     schema_list = deepcopy(schemas)
@@ -135,7 +135,7 @@ def trial(pkt, schemas, cls, tracer, *, runtime=None, tokenizer=None, saved=None
         messages[0]["content"] = MARKER
     transport = Transport(runtime, tracer, pkt["id"], audit, saved, tokenizer, probe)
     bot = TravelAgent(events, function_list=[TravelTool(s, sim, events, observations) for s in schema_list],
-                      llm=transport, system_message=MARKER if source == "system" else SYSTEM)
+                      llm=transport, system_message=MARKER if source == "system" else system_message)
     stop = "normal"
     try:
         with closing(bot.run(messages)) as stream:
