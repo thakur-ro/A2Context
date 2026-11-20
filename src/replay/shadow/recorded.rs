@@ -78,7 +78,8 @@ pub struct RecordedPair<'a> {
     pub interaction_95_interval_pp: Option<ReplayInterval>,
 }
 
-pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Vec<RecordedProbe<'a>> {
+/// Verify captured probes on one call against their request and source edits.
+pub fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Vec<RecordedProbe<'a>> {
     let Some(capture) = &call.shadow_probes else {
         return Vec::new();
     };

@@ -1,6 +1,6 @@
 # Contributing to NexusWeave
 
-Run `cargo run --locked -- sidecar --demo` from the repository root. The same Findings UI exercises rule conflicts, exact repeats, and saved controlled edits across synthetic threads. [Open Findings](http://127.0.0.1:8040)
+Run `cargo run --locked -- sidecar --demo` from the repository root. The demo runs the same Recommendations UI with saved candidate scores, token measurements, and conflicts across synthetic threads. [Open Recommendations](http://127.0.0.1:8040)
 
 ## Run the checks
 

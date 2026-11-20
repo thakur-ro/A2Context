@@ -1,4 +1,5 @@
 mod findings;
+mod recommendations;
 mod store;
 
 use crate::{
@@ -120,6 +121,7 @@ pub fn serve(args: &[&str]) -> Result<()> {
     let mut writer = Store::open(&db_path)?;
     writer.bind_policy(options.content || options.demo, &options.metadata)?;
     writer.purge(now() - options.retention * 86_400)?;
+    writer.upgrade_observations()?;
     if options.demo {
         seed(&mut writer)?;
     }
@@ -159,10 +161,13 @@ pub fn serve(args: &[&str]) -> Result<()> {
         if request.method() == &Method::Post
             && matches!(
                 request.url(),
-                "/v1/traces" | "/api/replay-reports" | "/api/activation-reports"
+                "/v1/traces"
+                    | "/api/replay-reports"
+                    | "/api/activation-reports"
+                    | "/api/sidecar/preview"
             )
         {
-            if options.demo {
+            if options.demo && request.url() != "/api/sidecar/preview" {
                 respond(
                     request,
                     405,
@@ -238,6 +243,20 @@ fn work(
             metrics
                 .lag_ms
                 .store(enqueued.elapsed().as_millis() as usize, Relaxed);
+        } else if request.url() == "/api/sidecar/preview" {
+            let reply = replay_http::read_json(&mut request, LIMIT).and_then(|input| {
+                recommendations::preview(input).map_err(|message| (400, message))
+            });
+            let (status, body) = match reply {
+                Ok(body) => (200, body),
+                Err((status, message)) => (status, json!({"message": message})),
+            };
+            respond(
+                request,
+                status,
+                "application/json",
+                body.to_string().into_bytes(),
+            );
         } else {
             let reply = if request.url() == "/api/replay-reports" {
                 replay_http::read_json::<replay::Replay>(&mut request, LIMIT)
@@ -302,12 +321,26 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                         return Ok(None);
                     };
                     let reports = store.replays(id)?;
-                    let sources = findings::derive(&run, &reports)?;
+                    let activations = store.activations(id)?;
+                    let sources = findings::derive(&run, &reports, &activations)?;
                     for call in &mut run.calls {
                         call.recorded_request = None;
                     }
-                    json!({"trace":run, "findings":sources, "activation_reports": store.activations(id)?.len(),
+                    json!({"trace":run, "findings":sources, "activation_reports": activations.len(),
                         "replay_reports": reports.len()})
+                }
+                "/api/sidecar/preview-example" => {
+                    let fixture = match fields.get("scenario").map(String::as_str) {
+                        Some("routing") => json!({
+                            "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/request.json"))?,
+                            "candidate": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/report.json"))?,
+                            "shadow": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/shadow-report.json"))?,
+                        }),
+                        _ => json!({
+                            "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/preflight-returns.json"))?,
+                        }),
+                    };
+                    recommendations::preview(serde_json::from_value(fixture)?)?
                 }
                 "/api/inspection" => {
                     let details = detail_scope(store, &fields)?;
@@ -497,5 +530,25 @@ fn seed(store: &mut Store) -> Result<()> {
             "../../examples/context-screening/replay/report-policy.json"
         ))?,
     ];
-    store.seed(&runs, &reports, now())
+    let pending = include_str!("../../examples/runtime-comparison/pending-routing/trace.json");
+    runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
+        pending,
+    )?)?);
+    let pending_shadow =
+        include_str!("../../examples/runtime-comparison/pending-routing/shadow-trace.json");
+    runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
+        pending_shadow,
+    )?)?);
+    let activation: activation::Report = serde_json::from_str(include_str!(
+        "../../examples/runtime-comparison/generation-branches-transformers.json"
+    ))?;
+    let measured_runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../../examples/runtime-comparison/evidence.json"
+    ))?;
+    runs.extend(
+        measured_runs
+            .into_iter()
+            .filter(|run| run.id == activation.location().run_id),
+    );
+    store.seed(&runs, &reports, &activation, now())
 }

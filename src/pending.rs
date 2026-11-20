@@ -148,6 +148,13 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
     }))
 }
 
+/// Normalize a pending request and its supplied probes for recommendation logic.
+/// The call retains captured input and must be treated as sensitive.
+pub fn recommendation_input(input: Request) -> Result<(Call, Option<DecisionScope>), String> {
+    let Inspected { call, scope, .. } = prepare(input)?;
+    Ok((call, scope))
+}
+
 struct Inspected {
     call: Call,
     request: Option<Value>,

@@ -1,4 +1,4 @@
-use super::findings;
+use super::{findings, recommendations};
 use crate::{report_store::Report, Result};
 use nexusweave::{activation, otlp, replay, Run};
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension, Transaction};
@@ -134,7 +134,13 @@ impl Store {
         tx.commit().map_err(storage)
     }
 
-    pub fn seed(&mut self, runs: &[Run], reports: &[replay::Replay], now: i64) -> Result<()> {
+    pub fn seed(
+        &mut self,
+        runs: &[Run],
+        reports: &[replay::Replay],
+        activation: &activation::Report,
+        now: i64,
+    ) -> Result<()> {
         let tx = self.0.transaction()?;
         for run in runs {
             nexusweave::validate(run)?;
@@ -151,6 +157,8 @@ impl Store {
             replay::validate_report(report, runs)?;
             save_report(&tx, report)?;
         }
+        activation.validate(runs)?;
+        save_report(&tx, activation)?;
         for run in runs {
             refresh_findings(&tx, run)?;
         }
@@ -205,11 +213,42 @@ impl Store {
             params![run.id, now],
         )
         .map_err(storage)?;
-        if T::DIRECTORY == replay::Replay::DIRECTORY {
-            refresh_findings(&tx, &run).map_err(storage)?;
-        }
+        refresh_findings(&tx, &run).map_err(storage)?;
         tx.commit().map_err(storage)?;
         Ok(true)
+    }
+
+    pub fn upgrade_observations(&mut self) -> Result<()> {
+        let version: i64 = self
+            .0
+            .pragma_query_value(None, "user_version", |row| row.get(0))?;
+        if version == 1 {
+            return Ok(());
+        }
+        if version != 0 {
+            return Err("unsupported sidecar database version".into());
+        }
+        let mut after = String::new();
+        loop {
+            let ids = {
+                let mut stmt = self.0.prepare(
+                    "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL ORDER BY id LIMIT 16",
+                )?;
+                let rows = stmt.query_map([&after], |row| row.get::<_, String>(0))?;
+                rows.collect::<rusqlite::Result<Vec<_>>>()?
+            };
+            let Some(last) = ids.last() else { break };
+            let tx = self.0.transaction()?;
+            for id in &ids {
+                if let Some(run) = load_run(&tx, id)? {
+                    refresh_findings(&tx, &run)?;
+                }
+            }
+            tx.commit()?;
+            after.clone_from(last);
+        }
+        self.0.pragma_update(None, "user_version", 1)?;
+        Ok(())
     }
 
     pub fn trace(&self, id: &str) -> Result<Option<Run>> {
@@ -290,6 +329,9 @@ impl Store {
                     SELECT group_id,kind,count(*) AS hits,count(DISTINCT trace_id) AS traces,
                            count(DISTINCT thread_key) AS threads,max(observed) AS latest,
                            CASE
+                             WHEN kind='candidate' AND min(json_extract(detail,'$.baseline')*json_extract(detail,'$.edited'))<0 THEN -3
+                             WHEN kind IN ('shadow','token') THEN -2
+                             WHEN kind='candidate' THEN -1
                              WHEN kind='conflict' AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
                              WHEN kind='conflict' THEN 2
@@ -302,7 +344,10 @@ impl Store {
                      'threads',g.threads,'latest',g.latest,'priority',g.priority,
                      'evidence',json((SELECT json_object('trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail))
                        FROM events e WHERE e.group_id=g.group_id
-                       ORDER BY CASE WHEN e.kind='replay' AND abs(json_extract(e.detail,'$.effect_pp'))>0 THEN 0 ELSE 1 END,
+                       ORDER BY CASE
+                                  WHEN e.kind='candidate' AND json_extract(e.detail,'$.baseline')*json_extract(e.detail,'$.edited')<0 THEN 0
+                                  WHEN e.kind='replay' AND abs(json_extract(e.detail,'$.effect_pp'))>0 THEN 0
+                                  ELSE 1 END,
                                 e.observed DESC,e.trace_id,e.call_id,e.n LIMIT 1)),
                      'trend',json((SELECT json_group_array(json_object('day',day,'count',hits)) FROM
                        (SELECT date(observed,'unixepoch') AS day,count(*) AS hits FROM events e
@@ -332,6 +377,12 @@ impl Store {
             .collect::<Result<_>>()?;
         let next = (rows.len() > PAGE).then(|| offset.saturating_add(PAGE as u32));
         rows.truncate(PAGE);
+        if view == "findings" {
+            for row in &mut rows {
+                let kind = row["kind"].as_str().ok_or("finding kind missing")?;
+                row["action"] = serde_json::to_value(recommendations::action(kind))?;
+            }
+        }
         Ok(json!({"rows":rows,"next_offset":next}))
     }
 }
@@ -501,7 +552,8 @@ fn load_reports<T: Report>(db: &Connection, id: &str) -> Result<Vec<T>> {
 fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     tx.execute("DELETE FROM observations WHERE trace_id=?1", [&run.id])?;
     let reports = load_reports(tx, &run.id)?;
-    let observations = findings::derive(run, &reports)?;
+    let activations = load_reports(tx, &run.id)?;
+    let observations = findings::derive(run, &reports, &activations)?;
     let mut insert = tx.prepare("INSERT INTO observations VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
     for (index, observation) in observations.iter().enumerate() {
         insert.execute(params![

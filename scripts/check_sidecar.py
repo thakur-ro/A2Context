@@ -225,11 +225,52 @@ def check_replay_representative(base):
     assert card["evidence"]["detail"]["effect_pp"] == -100.0
 
 
+def check_predecision_recommendations(base):
+    fixture = ROOT / "examples/runtime-comparison/pending-routing"
+    read = lambda name: json.loads((fixture / name).read_text())
+    request, candidate, shadow = read("request.json"), read("report.json"), read("shadow-report.json")
+    preview_path = "/api/sidecar/preview"
+    before = get(base, "health")["coverage"]
+    recommendation = send(base, preview_path, {"request": request, "candidate": candidate, "shadow": shadow})[1]
+    result = recommendation["recommendations"]
+    assert not recommendation["unverified_probes"]
+    route = next(item for item in result if item["kind"] == "candidate" and item["detail"]["sources"][0]["source"] == "request-type")
+    assert route["detail"]["baseline"] > 0 > route["detail"]["edited"]
+    assert route["detail"]["other_edits"][0]["source"] == "store-name"
+    assert abs(route["detail"]["other_edits"][0]["change"]) < 0.1
+    assert any(item["kind"] == "shadow" and item["detail"]["effect_pp"] == 100 for item in result)
+    assert get(base, "health")["coverage"] == before
+
+    tampered = deepcopy(candidate)
+    tampered["captured_request_sha256"] = "0" * 64
+    rejected = send(base, preview_path, {"request": request, "candidate": tampered})[1]
+    assert rejected["unverified_probes"] and not any(item["kind"] == "candidate" for item in rejected["recommendations"])
+
+    observed = case_span("measured-routing", "undeclared", org="candidate-validation")
+    body = json.loads(request["attributes"]["nexusweave.request.body"])
+    messages = [{"role": item["role"], "parts": [{"type": "text", "content": item["content"]}]}
+                for item in body["messages"]]
+    observed["attributes"] = attrs({
+        "gen_ai.operation.name": "chat",
+        "nexusweave.organization.id": "candidate-validation",
+        "nexusweave.candidate_probes": json.dumps([candidate]),
+        "gen_ai.input.messages": json.dumps(messages),
+        **{key: value if isinstance(value, str) else json.dumps(value) for key, value in request["attributes"].items()},
+    })
+    send_traces(base, export(observed))
+    published = get(base, "findings", kind="candidate", org="candidate-validation")["rows"]
+    assert published[0]["action"]["basis"] == "Measured preference at a fixed prefix"
+    assert published[0]["evidence"]["detail"]["baseline"] > 0 > published[0]["evidence"]["detail"]["edited"]
+    assert not get(base, "findings", kind="duplicate", org="candidate-validation")["rows"]
+
+
 def check_activation(base, producer_python):
     output = subprocess.check_output([producer_python, str(ROOT / "examples/send_otlp_activation.py"), "--url", base], text=True)
     linked = parse_qs(urlsplit(output.strip()).fragment)
     trace = linked["run"][0]
     assert get(base, "trace", id=trace)["activation_reports"] == 1
+    token = get(base, "findings", kind="token")["rows"][0]
+    assert token["evidence"]["trace_id"] == trace and len(token["evidence"]["detail"]["landmark"]["positions"]) > 1
     details = send(base, "/api/inspection?" + urlencode({"run": trace}))[1]
     assert details["activation_reports"][0]["location"]["run_id"] == trace
 
@@ -382,10 +423,17 @@ def main():
             fidelity = check_replay(base)
             development = rank(base, "development")
             heldout = rank(base, "heldout")
+            check_predecision_recommendations(base)
             if args.sdk_python:
                 check_activation(base, args.sdk_python)
+        with sqlite3.connect(captured) as sql:
+            sql.execute("PRAGMA user_version = 0")
+            sql.execute("DELETE FROM observations WHERE kind IN ('candidate','token')")
         with server(args.binary, captured, "--capture-content") as base:
-            assert any(card["kind"] == "replay" for card in get(base, "findings")["rows"])
+            assert get(base, "findings", kind="replay")["rows"]
+            assert get(base, "findings", kind="candidate")["rows"]
+            if args.sdk_python:
+                assert get(base, "findings", kind="token")["rows"]
         with server(args.binary, folder / "representative.sqlite", "--capture-content") as base:
             check_replay_representative(base)
         if args.sdk_python:

@@ -7,7 +7,7 @@ use super::{prepare_edit, sha256, Intervention};
 pub mod patterns;
 mod recorded;
 
-pub(crate) use recorded::recorded;
+pub use recorded::recorded;
 pub use recorded::{CapturedReports, Measurement, RecordedEffect, RecordedProbe, Verification};
 
 use crate::{preflight, Evidence};

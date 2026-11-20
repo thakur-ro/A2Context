@@ -23,7 +23,9 @@ CHROME_BINARY=/path/to/chrome \
 node tests/sidecar-browser.mjs
 ```
 
-The checks cover the conflict-to-span link, cross-user recurrence with filter persistence, the replay comparison, a legacy evidence link, and horizontal layout at widths of 1280 and 390 pixels. Set `FINDINGS_SCREENSHOT` to regenerate the [README preview](media/findings.png).
+The checks cover the native recommendations, the request preview before inference, cross-user recurrence with filter persistence, the original span and replay links, and horizontal layout at widths of 1280 and 390 pixels. Set `FINDINGS_SCREENSHOT` to regenerate the [README preview](media/findings.png).
+
+The preview and live-path tests verify a candidate flip, its smaller comparison edit, the report’s binding to the captured request, and a token-level recommendation from an attached activation report. A stale request hash yields an unverified probe and no measured card. Restarting a retained database from the earlier schema version regenerates the recommendation projections.
 
 ## Ranking
 

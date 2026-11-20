@@ -2,11 +2,13 @@
 
 const byId = (id) => document.getElementById(id);
 const query = new URLSearchParams(location.search);
-const view = ["traces", "threads"].includes(query.get("view")) ? query.get("view") : "findings";
+const view = ["traces", "threads", "preview"].includes(query.get("view")) ? query.get("view") : "findings";
 const filterNames = { after: "From", before: "Before", org: "Organization", user: "User",
   workflow: "Workflow", meta_key: "Metadata key", meta_value: "Metadata value" };
 const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
-const kindLabels = { conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay" };
+const kindLabels = { conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
+  candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
+const recommendationId = query.get("recommendation");
 const traceId = query.get("trace");
 const threadId = query.get("thread");
 const pageOffset = Number(query.get("offset")) || 0;
@@ -70,9 +72,32 @@ function replayTrials(detail) {
       data.unscored || data.completed < data.attempted ? element("div", { className: "label", text: plural(data.unscored || 0, "unscored trial") + " · " + data.completed + " completed" }) : null)));
 }
 
+const signed = (number) => (number > 0 ? "+" : "") + Number(number.toFixed(3));
+
+function candidateVisual(detail) {
+  const alternatives = detail.alternatives.map((entry) => entry.id);
+  const readout = (label, margin) => element("div", {},
+    element("strong", { text: label }),
+    element("span", { text: margin === 0 ? "Tied" : alternatives[margin > 0 ? 0 : 1] + " favored" }),
+    element("p", { className: "label", text: signed(margin) + " log odds" }));
+  return element("div", { className: "comparison" }, readout("Original request", detail.baseline), readout("One source edited", detail.edited));
+}
+
+function tokenVisual(landmark) {
+  const max = Math.max(...landmark.positions.map(({ baseline, edited }) => Math.abs(edited - baseline)));
+  return element("ol", { className: "trend tokens" }, ...landmark.positions.map(({ token, fragment, baseline, edited }) =>
+    element("li", { ...(token === landmark.token && { className: "selected-token" }) },
+      element("code", { text: JSON.stringify(fragment), title: "Output token " + (token + 1) }),
+      element("meter", { min: 0, max, value: Math.abs(edited - baseline),
+        "aria-label": "Output token " + (token + 1) + " · change " + signed(edited - baseline) }),
+      element("span", { text: signed(edited - baseline) }))));
+}
+
 function visual(kind, detail, rows = []) {
   const [label, body] = kind === "conflict" ? ["Captured declarations", sourceCells(detail.sources, detail.values)] :
-    kind === "replay" ? ["Matches by trial arm", replayTrials(detail)] :
+    kind === "replay" || kind === "shadow" ? ["Matches by trial arm", replayTrials(detail)] :
+    kind === "candidate" ? [detail.alternatives.map((entry) => entry.id).join(" vs ") + " at a fixed prefix", candidateVisual(detail)] :
+    kind === "token" ? ["Change in output-token log probability", tokenVisual(detail.landmark)] :
     rows.length ? ["Occurrences by day (UTC)", trend(rows)] : ["Repeated sources", sourceCells(detail.sources)];
   return element("div", { className: "visual" }, element("span", { className: "label", text: label }), body);
 }
@@ -80,6 +105,12 @@ function visual(kind, detail, rows = []) {
 function findingTitle(kind, detail) {
   if (kind === "conflict") return "Conflicting values for " + detail.rule.replaceAll("_", " ");
   if (kind === "duplicate") return "The same input appears " + detail.copies + " times";
+  if (kind === "candidate") {
+    const id = sourceName(detail.sources[0]);
+    if (detail.baseline * detail.edited < 0) return "Editing " + id + " switched the preferred alternative";
+    return "Editing " + id + " shifted candidate scores";
+  }
+  if (kind === "token") return "Editing " + sourceName(detail.sources[0]) + " changed a token score";
   const amount = Math.abs(detail.effect_pp);
   const points = amount < 0.01 ? "less than 0.01 percentage points" :
     plural(Number(amount.toFixed(2)), "percentage point");
@@ -92,6 +123,9 @@ function findingDetail(kind, detail) {
   if (kind === "conflict") return detail.rule + " · " + detail.scope + " scope";
   if (kind === "duplicate") return "Captured input text matches exactly.";
   const sources = detail.sources.map(sourceName).join(" and ");
+  if (kind === "candidate") return signed(detail.change) + " change in log odds · " + detail.model;
+  if (kind === "token") return "Output token " + (detail.landmark.token + 1) + " of " + detail.landmark.total_tokens + " · " + detail.landmark.model;
+  if (kind === "shadow") return detail.outcome.label + " · Proposal-only test of " + sources;
   return detail.outcome + " · " + (detail.edit === "joint" ? "Joint edit of " : "Tested edit of ") + sources;
 }
 
@@ -102,14 +136,15 @@ function tag(kind) {
 function findingCard(card) {
   const { kind, evidence } = card;
   const { detail } = evidence;
-  const href = url({ view: "traces", trace: evidence.trace_id, call: evidence.call_id, finding: card.id });
+  const href = url({ recommendation: card.id, offset: pageOffset || null });
   return element("article", { className: "card" }, element("div", {}, tag(kind),
     element("h2", { text: findingTitle(kind, detail) }),
     element("p", { text: findingDetail(kind, detail) }),
-    element("p", { text: [plural(card.occurrences, "observation"), plural(card.traces, "trace"),
+    element("p", { className: "recommendation-action", text: card.action.title }),
+    element("p", { text: [plural(card.occurrences, "observation"), plural(card.traces, "request"),
       card.threads ? plural(card.threads, "identified thread") : "Thread IDs unavailable"].join(" · ") }),
     evidence.observed == null ? null : element("p", { className: "label", text: "Evidence from " + fullDate(evidence.observed) }),
-    link("Open evidence", href, "action")), visual(kind, detail, card.trend));
+    link("Review recommendation", href, "action")), visual(kind, detail, card.trend));
 }
 
 function panel(title, ...children) {
@@ -142,7 +177,7 @@ function traceRows(rows) {
 function advancedHref(trace, call, item) {
   const m = item?.detail.measurement;
   const hash = new URLSearchParams({ v: "1", view: "decisions", run: trace.id, call: call.id });
-  const decision = m?.location.decision_id || call.decisions[0]?.id;
+  const decision = m?.location?.decision_id || call.decisions?.[0]?.id;
   if (decision) hash.set("decision", decision);
   if (m) {
     hash.set("replay", m.replay_id);
@@ -188,6 +223,97 @@ function compareForm(group) {
   return element("details", { className: "panel" }, element("summary", { text: "Compare recurrence" }), form, result);
 }
 
+function recommendationContext(kind, detail) {
+  if (kind === "candidate") {
+    const other = detail.other_edits.map((edit) => element("li", { text: sourceName(edit) + " · " +
+      signed(edit.change) + " change in log odds" }));
+    return element("div", {}, element("p", { text: "Both alternatives were scored from the same assistant prefix." }),
+      element("pre", { text: detail.prefix || "(Empty assistant prefix)" }),
+      other.length ? element("h3", { text: "Other edits in this test" }) : null,
+      other.length ? element("ul", {}, ...other) : null);
+  }
+  if (kind === "token") {
+    const point = detail.landmark;
+    const selected = point.positions.find((position) => position.token === point.token);
+    const percent = new Intl.NumberFormat(undefined, { style: "percent", maximumSignificantDigits: 4 });
+    return element("div", {},
+      element("p", { text: "For the original token " + JSON.stringify(selected.fragment) + ", the probability changed from " +
+        percent.format(Math.exp(selected.baseline)) + " to " + percent.format(Math.exp(selected.edited)) +
+        " after editing the source. Both scores use the original output prefix." }),
+      element("p", { text: "At this token, the largest tested decoder-block swap was at block " +
+        point.block + " (" + signed(point.block_delta) + " log probability)." }));
+  }
+  if (kind === "shadow") {
+    return element("details", {}, element("summary", { text: "Show expected proposal" }),
+      element("pre", { text: JSON.stringify(detail.outcome, null, 2) }));
+  }
+  return null;
+}
+
+function recommendationDetail(kind, detail, action, rows = []) {
+  return panel(findingTitle(kind, detail), tag(kind),
+    element("p", { className: "label", text: action.basis }), visual(kind, detail, rows),
+    recommendationContext(kind, detail),
+    element("h3", { text: action.title }), element("p", { text: action.next }),
+    detail.replacement == null ? null : element("details", {}, element("summary", { text: "Show tested replacement" }),
+      element("pre", { text: detail.replacement || "(Removed text)" })));
+}
+
+function review(card) {
+  const { trace_id, call_id, detail } = card.evidence;
+  byId("title").textContent = "Recommendation";
+  byId("summary").textContent = card.action.basis;
+  const traceLink = url({ view: "traces", trace: trace_id, call: call_id, finding: card.id });
+  const evidence = element("details", { className: "panel" }, element("summary", { text: "Underlying evidence" }),
+    link("Open original span", traceLink),
+    card.kind === "replay" ? link("Open trial comparison", advancedHref({ id: trace_id }, { id: call_id }, { detail })) : null);
+  return element("div", { className: "feed" },
+    link("Back to recommendations", url({ offset: pageOffset || null })),
+    recommendationDetail(card.kind, detail, card.action, card.trend),
+    card.threads > 1 ? compareForm(card.id) : null, evidence);
+}
+
+function pendingPreview() {
+  const output = element("section", { className: "feed", "aria-live": "polite" });
+  const input = element("input", { type: "file", accept: "application/json,.json" });
+  async function show(load) {
+    output.textContent = "Checking the request…";
+    try {
+      const report = await load();
+      output.replaceChildren(
+        element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
+          " · " + plural(report.total, "recommendation") }),
+        ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
+        ...report.recommendations.map(({ kind, detail, action }) => recommendationDetail(kind, detail, action)),
+        report.total ? element("p", { className: "label", text: report.total > 15 ? "Showing the first 15 recommendations." : "" }) :
+          element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }));
+    } catch (error) {
+      output.textContent = error.message;
+    }
+  }
+  input.addEventListener("change", () => {
+    const file = input.files[0];
+    if (!file) return;
+    show(async () => {
+      if (file.size > 2 * 1024 * 1024) throw new Error("Choose a JSON request under 2 MiB.");
+      const submitted = JSON.parse(await file.text());
+      const envelope = submitted.attributes ? { request: submitted } : submitted;
+      const response = await fetch("/api/sidecar/preview", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(envelope) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+      return result;
+    });
+  });
+  const policy = element("button", { type: "button", text: "Try a policy conflict" });
+  policy.addEventListener("click", () => show(() => api("preview-example", { scenario: "policy" })));
+  const routing = element("button", { type: "button", text: "Try a measured tool choice" });
+  routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" })));
+  return element("div", { className: "feed" }, panel("Review an assembled request",
+    element("label", { text: "Load a preflight request or a request bundled with probe results" }, input),
+    element("div", { className: "actions" }, policy, routing)), output);
+}
+
 function traceDetail({ trace, findings, activation_reports }) {
   const selectedCall = query.get("call");
   const selectedSpan = query.get("span");
@@ -225,7 +351,8 @@ function traceDetail({ trace, findings, activation_reports }) {
   const evidence = detailItems.map((item) => panel(findingTitle(item.kind, item.detail),
     tag(item.kind), element("p", { text: findingDetail(item.kind, item.detail) }), visual(item.kind, item.detail),
     element("p", { className: "label", text: "Evidence at " + (call.span_id || call.id) }),
-    item.kind === "replay" ? link("Open trial comparison", advancedHref(trace, call, item), "action") : prepareEdit(trace, call, item)));
+    item.kind === "replay" ? link("Open trial comparison", advancedHref(trace, call, item), "action") :
+      item.kind === "conflict" || item.kind === "duplicate" ? prepareEdit(trace, call, item) : null));
   const capture = call?.context.filter((item) => item.availability === "included") || [];
   const unavailable = call ? call.context.length - capture.length : 0;
   const inputs = (call?.context || []).map((item) => element("details", {}, element("summary", { text: sourceName(item) + version(item.source_version) }),
@@ -258,9 +385,10 @@ async function render(refresh = false) {
     body = data.rows.length ? traceRows(data.rows) : null;
     pagination(data.next_offset, { thread: threadId });
   } else {
-    const data = await api(view, { ...scope, offset: pageOffset });
+    const data = await api(view, { ...scope, ...(recommendationId ? { group: recommendationId } : { offset: pageOffset }) });
     if (data.rows.length) {
-      if (view === "findings") {
+      if (view === "findings" && recommendationId) body = review(data.rows[0]);
+      else if (view === "findings") {
         const signature = JSON.stringify(data);
         if (refresh && byId("content").dataset.signature === signature) return;
         byId("content").dataset.signature = signature;
@@ -270,10 +398,10 @@ async function render(refresh = false) {
         [item.org, item.user, plural(item.trace_count, "trace"), fullDate(item.start)].filter(Boolean).join(" · "),
         url({ view, thread: item.id })));
     }
-    pagination(data.next_offset);
+    if (!recommendationId) pagination(data.next_offset);
   }
   byId("content").replaceChildren(body || element("p", { className: "empty", text: view === "findings" ?
-    "No findings in this scope. Findings appear as supported evidence arrives." : "No captured records in this scope." }));
+    "No recommendations in this scope. Cards appear as supported evidence arrives." : "No captured records in this scope." }));
 }
 
 async function status() {
@@ -303,12 +431,18 @@ async function main() {
     location.replace("/details?" + params + location.hash);
     return;
   }
-  const views = { findings: "Findings", traces: "Traces", threads: "Threads" };
+  const views = { findings: "Recommendations", preview: "Before inference", traces: "Traces", threads: "Threads" };
   byId("navigation").replaceChildren(...Object.entries(views).map(([key, label]) => link(label, url({ view: key }), null, view === key)));
   byId("title").textContent = views[view];
-  byId("summary").textContent = { findings: "Investigate context conflicts, repetition, and tested edits.",
+  byId("summary").textContent = { findings: "See which inputs shifted a choice and which edits to test.",
+    preview: "Check an assembled request and any supplied tests before committing a decision.",
     traces: "Open a trace to inspect its spans and captured sources.",
     threads: "Browse traces grouped by their recorded conversation." }[view];
+  if (view === "preview") {
+    byId("filters").hidden = true;
+    byId("content").replaceChildren(pendingPreview());
+    return;
+  }
   const form = byId("filter-form");
   byId("reset").href = url({ view }, {});
   byId("filter-count").textContent = Object.keys(scope).length ? " · " + Object.keys(scope).length : "";
@@ -321,7 +455,7 @@ async function main() {
       delete values.meta_value;
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
-      span: query.get("span"), finding: query.get("finding") }, values);
+      span: query.get("span"), finding: query.get("finding"), recommendation: recommendationId }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
@@ -329,7 +463,7 @@ async function main() {
   if (scope.meta_key && !health.metadata_keys.includes(scope.meta_key)) meta.add(element("option", { value: scope.meta_key, text: scope.meta_key }));
   for (const [key, value] of Object.entries(scope)) form.elements.namedItem(key).value = value;
   await render();
-  if (view === "findings" && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !recommendationId && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("status").textContent = error.message; });
     }

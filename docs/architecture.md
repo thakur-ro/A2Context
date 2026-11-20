@@ -32,11 +32,11 @@ flowchart LR
     B --> D[Existing observability backend]
     C --> E[Normalize and evaluate captured evidence]
     E --> F[(SQLite trace and finding records)]
-    F --> G[Findings, Traces, Threads]
+    F --> G[Recommendations, Traces, Threads]
     H[Explicit replay experiment] --> E
 ```
 
-The sidecar evaluates captured data as exports arrive. Use a preflight check when the workflow needs a result before inference. [Deployment](sidecar.md) · [Sidecar methods](methods.md)
+The sidecar updates recommendations as evidence arrives. Use the request preview to compare inputs and verified probes before the original inference request is sent. [Deployment](sidecar.md) · [Sidecar methods](methods.md)
 
 ## What the algorithms measure
 

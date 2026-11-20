@@ -1,24 +1,26 @@
 # NexusWeave
 
-**Catch conflicting instructions. Find repeated context. Test which edits change an LLM’s answer or tool call.**
+**See which inputs shifted a model’s choice and what to test next.**
 
-NexusWeave turns captured workflow inputs and controlled experiments into findings you can trace back to a specific span. It runs alongside your inference workflow and takes telemetry over OpenTelemetry.
+NexusWeave recommends what to change or test when instructions conflict, an input repeats, or a controlled source edit changes a model’s behavior. Review an assembled request before inference, or let the Rust sidecar surface new evidence as it arrives over OpenTelemetry.
 
-![NexusWeave Findings demo showing conflicting returns instructions and baseline versus edited replay trials](docs/media/findings.png)
+![NexusWeave Recommendations shows that editing the request type shifts model preference from the stock tool to the price tool](docs/media/findings.png)
 
 [Quickstart](#try-the-demo) · [Deploy a sidecar](docs/sidecar.md) · [Methods](docs/methods.md) · [Research review](docs/research-review.md) · [Rust API](docs/rust-api.md)
 
 ## Try the demo
 
-From the checkout, run with a stable Rust toolchain and open [Findings](http://127.0.0.1:8040).
+From the checkout, run with a stable Rust toolchain and open [Recommendations](http://127.0.0.1:8040).
 
 ```sh
 cargo run --locked -- sidecar --demo
 ```
 
-1. **Catch a conflict.** Open the return-window finding to see the two declared values and the span that carried them.
-2. **Find it across sessions.** Filter by organization `demo-retail` and user `user-042`. Open the finding and use **Compare recurrence** with `user-077`.
-3. **Test an edit.** Reset the filters, open a verified replay, and select **Open trial comparison**. The demo includes saved local-model trials on synthetic inputs. It makes zero model calls.
+1. **See what shifted a tool choice.** Open **Before inference** and try the measured tool choice. The request-type edit flips preference from stock to price. Editing the store name barely changes the score in the same test.
+2. **Locate the effect along an answer.** Open the refund-policy token recommendation to see which output token changed most under the source edit and what the decoder-block swap measured.
+3. **Test what to change.** Try a policy conflict before inference. Filter Recommendations by organization `demo-retail` and user `user-042` to compare recurrence with `user-077`.
+
+The demo uses saved local-model measurements on synthetic inputs and makes zero model calls.
 
 ## Connect a workflow
 

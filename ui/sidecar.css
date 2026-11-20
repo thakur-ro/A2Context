@@ -99,3 +99,15 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
   .card, .detail { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .card { padding: 16px; }
 }
+
+.recommendation-action { font-weight: 650; margin-block: 5px; }
+.tokens li { grid-template-columns: minmax(45px, 95px) 1fr minmax(45px, auto); }
+.tokens code { overflow: hidden; text-overflow: ellipsis; padding-inline: 4px; white-space: pre; }
+.tokens .selected-token { background: var(--mist); border-radius: 4px; }
+#content > .feed > a { justify-self: start; }
+.panel .actions { margin-top: 13px; }
+@media (max-width: 640px) {
+  #navigation { gap: clamp(8px, 3vw, 17px); overflow-x: auto; }
+  #navigation a { white-space: nowrap; }
+  h1 { font-size: clamp(34px, 9vw, 52px); overflow-wrap: anywhere; }
+}

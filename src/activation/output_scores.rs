@@ -185,3 +185,83 @@ pub fn for_decision(
         _ => None,
     }).collect()
 }
+
+/// The strongest measured source-edit effect on a token in the fixed output path.
+#[derive(Serialize)]
+pub struct Landmark<'a> {
+    pub context_id: &'a str,
+    pub model: &'a str,
+    pub revision: &'a str,
+    pub runtime: &'a str,
+    pub token: usize,
+    pub total_tokens: usize,
+    pub block: usize,
+    pub block_delta: f64,
+    pub positions: Vec<LandmarkPosition<'a>>,
+}
+
+#[derive(Serialize)]
+pub struct LandmarkPosition<'a> {
+    pub token: usize,
+    pub fragment: &'a str,
+    pub baseline: f64,
+    pub edited: f64,
+}
+
+/// Summarize an already validated instrumented report. The window follows a
+/// fixed output path. It measures token scores under interventions.
+pub fn landmark(entry: &Report) -> Option<Landmark<'_>> {
+    let Report::Timeline(report) = entry else {
+        return None;
+    };
+    let scores = report.output_scores.as_ref()?;
+    let (context_id, source, token, _) = scores
+        .sources
+        .iter()
+        .flat_map(|(id, source)| {
+            source
+                .edited_log_probs
+                .iter()
+                .zip(&scores.baseline_log_probs)
+                .enumerate()
+                .map(move |(token, (edited, baseline))| {
+                    (id, source, token, (edited - baseline).abs())
+                })
+        })
+        .filter(|(_, _, _, change)| *change > 0.0)
+        .max_by(|left, right| left.3.total_cmp(&right.3))?;
+    let baseline = *scores.baseline_log_probs.get(token)?;
+    let (block, block_delta) = source
+        .block_log_probs
+        .iter()
+        .enumerate()
+        .filter_map(|(block, row)| Some((block, row.get(token)? - baseline)))
+        .max_by(|left, right| left.1.abs().total_cmp(&right.1.abs()))?;
+    let total = scores
+        .fragments
+        .len()
+        .min(source.edited_log_probs.len())
+        .min(scores.baseline_log_probs.len());
+    if token >= total {
+        return None;
+    }
+    let positions = (token.saturating_sub(2)..(token + 3).min(total))
+        .map(|position| LandmarkPosition {
+            token: position,
+            fragment: &scores.fragments[position],
+            baseline: scores.baseline_log_probs[position],
+            edited: source.edited_log_probs[position],
+        })
+        .collect();
+    Some(Landmark {
+        context_id,
+        model: &report.model_id,
+        revision: &report.model_revision,
+        runtime: &report.runtime,
+        token,
+        total_tokens: total,
+        block,
+        block_delta,
+        positions,
+    })
+}

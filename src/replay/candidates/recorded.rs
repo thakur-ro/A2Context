@@ -47,6 +47,8 @@ pub struct Measurement<'a> {
     pub model_id: &'a str,
     pub model_revision: &'a str,
     pub runtime: &'a str,
+    #[serde(skip)]
+    pub tokenizer_sha256: &'a str,
     pub assistant_prefix: &'a str,
     pub candidates: &'a [Candidate; 2],
     pub baseline_log_odds: f64,
@@ -72,7 +74,8 @@ pub struct RecordedEffect<'a> {
     pub change_log_odds: f64,
 }
 
-pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Vec<RecordedProbe<'a>> {
+/// Verify captured probes on one call against their request and source edits.
+pub fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Vec<RecordedProbe<'a>> {
     let Some(capture) = &call.candidate_probes else {
         return Vec::new();
     };
@@ -214,6 +217,7 @@ fn verify<'a>(
         model_id: &report.scores.model_id,
         model_revision: &report.scores.model_revision,
         runtime: &report.scores.runtime,
+        tokenizer_sha256: &report.scores.tokenizer_sha256,
         assistant_prefix: &report.assistant_prefix,
         candidates: &report.candidates,
         baseline_log_odds: baseline,
