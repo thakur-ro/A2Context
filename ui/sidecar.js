@@ -2111,7 +2111,10 @@ async function render(refresh = false) {
         pageOffset ? Promise.resolve({rows:[]}) : api("screened-pairs", scope),
         pageOffset ? Promise.resolve({rows:[]}) : api("target-patterns", scope),
         pageOffset ? Promise.resolve({rows:[]}) : api("prefix-groups",scope)]);
-      const signature = JSON.stringify([impact, factors, screens, targets, prefixes]);
+      const cohort = prefixes.rows[0];
+      const comparisons = cohort?.matched_questions > 1 ? await api("prefix-reference-pairs",{...scope,design:cohort.design}) : {rows:[]};
+      const comparison = comparisons.rows[0];
+      const signature = JSON.stringify([impact, factors, screens, targets, prefixes, comparison]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
       const losses = !pageOffset && impact.ranked_reference_losses;
@@ -2119,9 +2122,8 @@ async function render(refresh = false) {
       const lower = !pageOffset && impact.lower_edit_changes;
       const pattern = !pageOffset && impact.conflict_pattern;
       const gap = !pageOffset && impact.conflict_gap;
-      const cohort = prefixes.rows[0];
       const measuredFactor = factors.rows.some(f => ["routing_repeats","routing","order","replacement","joint_proposal","joint","variation","replay","shadow"].includes(f.signal));
-      const prefixLead = cohort && (cohort.restored || cohort.lost || (cohort.needs_trial && !measuredFactor) || (cohort.conversations > 1 && (cohort.exceptions || cohort.confirmed))) &&
+      const prefixLead = cohort && (comparison || cohort.restored || cohort.lost || (cohort.needs_trial && !measuredFactor) || (cohort.conversations > 1 && (cohort.exceptions || cohort.confirmed))) &&
         !losses && !opening && !lower && !pattern && !gap;
       const featured = !prefixLead && !losses && !opening && !lower && !pattern && !gap && !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
@@ -2143,7 +2145,7 @@ async function render(refresh = false) {
           element("a",{className:"featured",href:url({recommendation:gap.group,factor:gap.factor,conflict_coverage:gap.untested ? "untested" : "partial"})},
             element("div",{},element("h3",{text:"Compare the conflicting sources in " + plural(gap.untested+gap.partial,"conversation")}),
               element("p",{text:factorName(gap.conflict.sources) + " · " + gap.complete + " of " + plural(gap.conversations,"conversation") + " with both source edits compared at every conflicting call."})))) :
-        prefixLead ? prefixInvestigation(cohort) :
+        prefixLead ? prefixInvestigation(cohort,comparison) :
         featured ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}), factorRow(featured, true)) : null,
         cohort && !prefixLead ? element("details", {className:"panel"},element("summary",{text:"Source edits at supplied prefixes"}),
           listing([cohort],prefixGroupRow),link("All scored prefixes",url({prefixes:1}))) : null,
@@ -2220,7 +2222,9 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      ...(prefixCohorts ? {prefixes:1,design:query.get("design"),reference:query.get("reference"),ref_set:query.get("ref_set"),ref_outcome:query.get("ref_outcome"),ref_prediction:query.get("ref_prediction"),needs_trial:query.get("needs_trial"),verdict:query.get("verdict"),source:query.get("source"),unnamed:query.get("unnamed"),report:query.get("report")} : {}),
+      ...(prefixCohorts && {prefixes:1,...Object.fromEntries(["design","compare_refs","matched","pair_setup","ref_edit",
+        "edit_index","edit_outcome","reference","ref_set","ref_outcome","ref_prediction","needs_trial","verdict","source","unnamed","report"]
+        .filter(k => query.has(k)).map(k => [k,query.get(k)]))}),
       opening:openingStudy ? 1 : null,slot:openingSlot,opening_context:query.get("opening_context"),ranking, quality, review, conflict_design:conflictDesign, conflict_coverage:conflictCoverage,from_coverage:query.get("from_coverage"),pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();

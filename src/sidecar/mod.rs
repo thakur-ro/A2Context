@@ -353,6 +353,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/conflict-coverage"
                 | "/api/sidecar/conflict-conversations"
                 | "/api/sidecar/conversations-without-findings"
+                | "/api/sidecar/prefix-reference-pairs"
                 | "/api/sidecar/prefix-contrasts"
                 | "/api/sidecar/prefix-groups"
                 | "/api/sidecar/prefix-sources"

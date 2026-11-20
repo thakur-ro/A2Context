@@ -32,6 +32,88 @@ def expected(before, after):
     return "restored" if after else "missed"
 
 
+def check_reference_pairs(base, scope):
+    pairs = get(base, "prefix-reference-pairs", **scope)["rows"]
+    expected = {"atlas-calendar": ["Booking 3", "Booking 4"], "birch-calendar": ["Booking 13", "Booking 14"]}
+    assert {pair["source"]: [r["thread"] for r in pair["examples"]] for pair in pairs} == expected
+    for pair in pairs:
+        restored, lost = pair["examples"]
+        assert [restored["outcome"], lost["outcome"]] == ["restored", "lost"]
+        assert [restored["expected"], lost["expected"]] == ["60", "30"]
+        for row in pair["examples"]:
+            where = dict(scope, **{key: row[key] for key in ("trace", "call", "report")},
+                         ref_set=pair["reference_set"], ref_edit=pair["edit"], pair_setup=pair["setup"],
+                         edit_index=row["index"], edit_outcome=row["outcome"])
+            checked = get(base, "prefix-check", **where)["review"]
+            assert checked["conditions"][row["index"]]["label"] == pair["source"]
+            assert checked["reference"]["edits"][row["index"] - 1] == row["outcome"]
+            trials = checked["runs"][0]["rows"]
+            for index, label in [(0, "original"), (row["index"], "edited")]:
+                assert trials[index]["example"] == checked["prefix"] + row[label]
+            for field, value in [("ref_edit", "other"), ("edit_index", "0"), ("pair_setup", "other"),
+                                 ("edit_outcome", "kept"), ("ref_set", "other"), ("user", "other")]:
+                send(base, "/api/sidecar/prefix-check?" + urlencode(dict(where, **{field: value})), expected=404)
+    assert not get(base, "prefix-reference-pairs", **scope, user="other")["rows"]
+
+
+def check_pair_controls(base, cases):
+    def publish(org, case, index, set_name=None, flip_target=False):
+        trace = trace_for(case, index, org=org, reference=True)
+        record = span(trace)
+        record["traceId"] = f"{index:032x}"
+        field = next(a["value"] for a in record["attributes"] if a["key"] == "nexusweave.candidate_probes")
+        reports = json.loads(field["stringValue"])
+        target = reports[0]["reference_target"]
+        if set_name:
+            target["set"] = set_name
+        if flip_target:
+            target["candidate_id"] = "60" if target["candidate_id"] == "30" else "30"
+        field["stringValue"] = json.dumps(reports)
+        send_traces(base, trace)
+
+    def pairs(org):
+        group, = get(base, "prefix-groups", org=org)["rows"]
+        return get(base, "prefix-reference-pairs", org=org, design=group["design"])["rows"]
+
+    org = "paired-controls"
+    left, right = cases[12:14]
+    publish(org, left, 101)
+    publish(org, right, 102, set_name="other-reference")
+    assert not pairs(org)
+    different_runner = deepcopy(right)
+    different_runner["envelope"]["shadow"]["runner_id"] += "-other"
+    publish(org, different_runner, 103)
+    assert not pairs(org)
+    different_version = deepcopy(right)
+    envelope = different_version["envelope"]
+    source = envelope["request"]["attributes"]["nexusweave.context.semantics"]["request_sources"][0]
+    source["source_version"] += "-revised"
+    for report in (envelope["candidate"], envelope["shadow"]):
+        report["effects"][0]["source_version"] = source["source_version"]
+    publish(org, different_version, 106)
+    group, = get(base, "prefix-groups", org=org)["rows"]
+    versioned, = get(base, "prefix-cases", org=org, design=group["design"],
+                     trace="otlp:" + f"{106:032x}", ref_outcome="lost")["rows"]
+    assert versioned["thread"] == "Booking 106"
+    assert not pairs(org)
+    # A tested edit can supply the comparison even when the scorer prefers
+    # the same continuation under every edit. These scores are a test fixture.
+    abstention = deepcopy(right)
+    candidate = abstention["envelope"]["candidate"]
+    for condition, effect in zip(candidate["scores"]["conditions"][1:], candidate["effects"]):
+        condition["log_probs"] = candidate["scores"]["conditions"][0]["log_probs"]
+        effect.update(log_odds=candidate["baseline_log_odds"], change_log_odds=0)
+    publish(org, abstention, 104)
+    pair, = pairs(org)
+    witness = pair["examples"][1]
+    group, = get(base, "prefix-groups", org=org)["rows"]
+    review = get(base, "prefix-check", org=org, design=group["design"],
+                 **{key: witness[key] for key in ("trace", "call", "report")})["review"]
+    assert not review["reversals"] and review["reference"]["edits"][witness["index"] - 1] == "lost"
+    publish(org, left, 105, flip_target=True)
+    assert not pairs(org)
+
+
 def check(binary, folder, cases):
     db = folder / "references.sqlite"
     org = "labeled-activities"
@@ -43,6 +125,8 @@ def check(binary, folder, cases):
         group, = get(base,"prefix-groups",org=org)["rows"]
         scope = {"org":org,"design":group["design"]}
         assert (group["referenced"],group["restored"],group["lost"],group["forecast_restore"]) == (16,4,7,0)
+        check_reference_pairs(base, scope)
+        check_pair_controls(base, cases)
         rows = get(base,"prefix-references",**scope)["rows"]
         assert sum(r["conversations"] for r in rows if r["outcome"]=="unselected")==5
         effects = Counter()
@@ -81,6 +165,7 @@ def check(binary, folder, cases):
                 send_traces(base,trace_for(case,i,org=trace_org,reference=reference,scores_only=reference))
             g, = get(base,"prefix-groups",org=trace_org)["rows"]
             assert (g["restored"],g["lost"]) == (0,0)
+            assert not get(base, "prefix-reference-pairs", org=trace_org, design=g["design"])["rows"]
             if reference:
                 assert (g["forecast_restore"],g["needs_trial"]) == (4,11)
                 s=dict(org=trace_org,design=g["design"],needs_trial="1",ref_prediction="restored")
@@ -99,7 +184,13 @@ def check(binary, folder, cases):
         conn.execute("UPDATE prefix_checks SET choices=json_remove(choices,'$.reference_set','$.reference_outcome','$.reference_prediction')")
         conn.execute("PRAGMA user_version=28")
     with server(binary,db,"--capture-content") as base:
+        check_reference_pairs(base, scope)
         assert get(base,"prefix-groups",**scope)["rows"] == [group]
+    with sqlite3.connect(db) as conn:
+        conn.execute("UPDATE prefix_checks SET choices=json_remove(choices,'$.reference_edits','$.expected','$.baseline_start')")
+        conn.execute("PRAGMA user_version=29")
+    with server(binary, db, "--capture-content") as base:
+        check_reference_pairs(base, scope)
     with server(binary, folder / "redacted.sqlite") as base:
         send_traces(base, trace_for(cases[0], 1, org=org, reference=True))
         assert get(base, "prefix-groups", org=org)["rows"] == []
@@ -129,9 +220,10 @@ def measure(binary, folder, cases):
             send_traces(base,trace)
         g, = get(base,"prefix-groups")["rows"]
         assert (g["restored"],g["lost"],g["inputs"])==(32,56,16)
-        for route in ["prefix-groups","prefix-references","prefix-cases"]:
+        assert len(get(base, "prefix-reference-pairs", design=g["design"])["rows"]) == 2
+        for route in ["prefix-groups","prefix-references","prefix-cases","prefix-reference-pairs"]:
             params={"design":g["design"]}
-            if route!="prefix-groups":
+            if route in ("prefix-references", "prefix-cases"):
                 params["ref_outcome"]="restored"
             time_reads(base,route,params)
 

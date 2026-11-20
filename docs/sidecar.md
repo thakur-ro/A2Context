@@ -294,13 +294,23 @@ python3 examples/view_calendar_prefixes.py --indirect --scores-only --reference
 python3 examples/view_calendar_prefixes.py --indirect --reference
 ```
 
-[Open the forecasts](http://127.0.0.1:8040/?org=activity-prefix-study-scored-reference). Four edits shifted the model's preference toward the requested duration before any trial results were available. [Open the tested edits](http://127.0.0.1:8040/?org=activity-prefix-study-reference). Four suggested edits restored the reference, seven lost it, and five questions had no single suggested edit. Select **Restored**, **birch-calendar**, then **Booking 16**. The musicians asked about rehearsal time. Removing the greenhouse duration changed the answer from 30 to 60 minutes. Expand **Compare the other source edits** to see what happened when the rehearsal record was edited instead.
+[Open the forecasts](http://127.0.0.1:8040/?org=activity-prefix-study-scored-reference). Four edits shifted the model's preference toward the requested duration before any trial results were available. [Open the tested edits](http://127.0.0.1:8040/?org=activity-prefix-study-reference). Four suggested edits restored the reference, seven lost it, and five questions had no single suggested edit. From the matched comparison open **See all reference results**, **Restored**, **birch-calendar**, then **Booking 16**. The musicians asked about rehearsal time. Removing the greenhouse duration changed the answer from 30 to 60 minutes. Expand **Compare the other source edits** to see what happened when the rehearsal record was edited instead.
 
 ![The rehearsal question, its expected beginning, the greenhouse calendar edit, and both generated answers](media/reference-source-outcome.png)
 
 `GET /api/sidecar/prefix-references` groups results by scoring design, suggested source, reference set, and observed outcome. Use the returned set and outcome as `ref_set` and `ref_outcome` on `prefix-cases` to retrieve the supporting conversations. With no reference, the dashboard still reports whether a predicted change occurred. [Reference definition](guide.md#grade-a-source-edit-against-a-known-continuation) · [Study limits](methods.md#does-the-suggested-edit-follow-the-question-when-source-order-changes)
 
 On 128 synthetic conversations drawn from these 16 inputs, p95 loopback reads took 0.88 ms for the group, 0.53 ms for restored results by source, and 0.99 ms for the corresponding conversation page (30 warm reads each). The release container, including the Python driver, peaked at 32.0 MiB with one CPU and a 512 MiB limit. The run indexed saved reports. It did not measure model scoring or production inference latency. [Benchmark driver](../tests/sidecar_prefix_reference.py)
+
+### When the same edit helps and hurts
+
+In the [loaded activity study](http://127.0.0.1:8040/?org=activity-prefix-study-reference), open **Compare two questions**. Removing the rehearsal duration from the Birch calendar changed the answer from 30 to 60 minutes twice. For the greenhouse question that restored the requested duration. For the rehearsal question it lost the correct answer. The selector shows a second matched comparison for Atlas. Choose **Inspect this edit** on either question to see the captured source, its replacement, the runner, and the generated answers.
+
+![Two booking questions with the same earlier request and calendar edit. Both answers changed to 60 minutes. Only the greenhouse booking called for 60.](media/matched-reference-edits.png)
+
+The sidecar compares every individually tested edit in a complete, labeled experiment, including edits the scorer did not select. Each pair shares the request settings and earlier messages, scoring design, source content and versions, replacements, runner, sampling design, trial counts and reference set. The final user question differs. A question with conflicting results or labels among comparable repeats cannot supply a witness. The view shows one example in each direction per matched setup and edit. These counts describe the captured experiments. They do not estimate the frequency of harm in production. Read the pairs using `GET /api/sidecar/prefix-reference-pairs?design=…` with the usual scope filters. [Integration test](../tests/sidecar_prefix_reference.py)
+
+With 128 synthetic conversations repeating these 16 requests, the matched-pair query returned two comparisons. Its p95 loopback latency was 4.13 ms over 30 warm reads on a one-CPU Linux release build. The container peaked at 53.2 MiB including the driver, with a 512 MiB limit. This measures reads over saved trial results. [Benchmark driver](../tests/sidecar_prefix_reference.py)
 
 ### Find answers that changed after the same opening
 

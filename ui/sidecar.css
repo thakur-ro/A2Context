@@ -292,6 +292,7 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 
 .prefix-contrast .question-contrast { margin-top: 1rem; }
 .question-contrast article { min-width: 0; border-inline-start: 3px solid var(--accent); background: var(--mist); padding: .8rem 1rem; }
+.question-contrast .reference-lost { border-color: #995136; background: #faf0e9; }
 .question-contrast blockquote { margin: .45rem 0 .8rem; }
 .question-contrast p { font-variant-numeric: tabular-nums; }
 .prefix-contrast label { display:block; margin-top:.65rem; }

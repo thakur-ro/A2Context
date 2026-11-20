@@ -78,8 +78,26 @@ pub(super) fn index(tx: &Transaction, run: &Run, call: &Call) -> rusqlite::Resul
                     .to_string(),
                 )
             });
-            let choices = json!({"reference_set":r["reference"]["set"],"reference_outcome":r["reference"]["outcome"],"reference_prediction":r["reference"]["prediction"],"trial_key":trial_key,"alternatives":r["alternatives"],"model":r["model"],"revision":r["revision"],"runtime":r["runtime"],"scorer":r["scorer"],
+            let setup = matched_setup(call, &r);
+            let mut choices = json!({"reference_set":r["reference"]["set"],"reference_outcome":r["reference"]["outcome"],"reference_prediction":r["reference"]["prediction"],"trial_key":trial_key,"alternatives":r["alternatives"],"model":r["model"],"revision":r["revision"],"runtime":r["runtime"],"scorer":r["scorer"],
                 "original":preferred(&r["conditions"][0]),"edited":selection.and_then(preferred)});
+            if setup.is_some() {
+                if let Some(grades) = r["reference"]["edits"].as_array() {
+                    let rows = &r["runs"][0]["rows"];
+                    choices["baseline_start"] = rows[0]["unanimous_start"].clone();
+                    let edits: Vec<_> = grades
+                        .iter()
+                        .enumerate()
+                        .map(|(i, outcome)| {
+                            let condition = &r["conditions"][i + 1];
+                            json!({"key":digest(json!(source_edit(condition)).to_string()),
+                            "source":condition["source"], "outcome":outcome, "start":rows[i + 1]["unanimous_start"]})
+                        })
+                        .collect();
+                    choices["reference_edits"] = json!(edits);
+                    choices["expected"] = r["reference"]["continuation"].clone();
+                }
+            }
             insert.execute(params![
                 run.id,
                 call.id,
@@ -89,7 +107,7 @@ pub(super) fn index(tx: &Transaction, run: &Run, call: &Call) -> rusqlite::Resul
                 selection.and_then(|s| s["source"].as_str()),
                 r["verdict"].as_str(),
                 raw.captured_request_sha256,
-                matched_setup(call, &r),
+                setup,
                 super::capture::last_user_message(call)
                     .and_then(|c| c.text.as_deref())
                     .map(digest),
@@ -160,6 +178,15 @@ pub(super) fn trials<'a>(
     trials
 }
 
+fn source_edit(condition: &Value) -> [&Value; 4] {
+    [
+        &condition["source"],
+        &condition["version"],
+        &condition["original_sha256"],
+        &condition["edit"],
+    ]
+}
+
 // Require one complete source-edit design with a single identified runner.
 // Individual outcomes can still disagree or be unresolved under this design.
 fn matched_setup(call: &Call, review: &Value) -> Option<String> {
@@ -170,16 +197,10 @@ fn matched_setup(call: &Call, review: &Value) -> Option<String> {
     let rows = run["rows"].as_array()?;
     let mut edits = Vec::new();
     for (c, row) in conditions.iter().zip(rows).skip(1) {
-        edits.push(
-            json!([
-                c["source"].as_str()?,
-                c["version"],
-                c["original_sha256"],
-                c["edit"],
-                row["attempted"].as_u64()?
-            ])
-            .to_string(),
-        );
+        c["source"].as_str()?;
+        let [source, version, original, edit] = source_edit(c);
+        edits
+            .push(json!([source, version, original, edit, row["attempted"].as_u64()?]).to_string());
     }
     edits.sort_unstable();
     Some(digest(
@@ -211,6 +232,7 @@ pub(super) const GROUPS: &str = " SELECT json_object('design',design,'prefix',pr
     'exceptions',count(DISTINCT thread_key) FILTER (WHERE verdict IN ('disagreed','unselected_change','mixed')),
     'confirmed',count(DISTINCT thread_key) FILTER (WHERE verdict='confirmed'),
     'referenced',count(DISTINCT thread_key) FILTER (WHERE choices->>'reference_set' IS NOT NULL),
+    'matched_questions',count(DISTINCT question_hash) FILTER (WHERE setup IS NOT NULL AND choices->>'reference_set' IS NOT NULL),
     'restored',count(DISTINCT thread_key) FILTER (WHERE choices->>'reference_outcome'='restored'),
     'lost',count(DISTINCT thread_key) FILTER (WHERE choices->>'reference_outcome'='lost'),
     'forecast_restore',count(DISTINCT thread_key) FILTER (WHERE needs_trial AND choices->>'reference_prediction'='restored'),
@@ -259,3 +281,28 @@ pub(super) const CONTRASTS: &str = ", comparable AS (
 ) SELECT json_object('setup',setup,'examples',json_array(
     json(max(evidence) FILTER(WHERE side=1)),json(max(evidence) FILTER(WHERE side=2))))
     FROM examples GROUP BY setup HAVING count(*)>=2 ORDER BY max(started) DESC,setup LIMIT ? OFFSET ?";
+
+// Resolve repeated captures of each question before comparing different questions.
+// Keep one witness per direction, with the same complete setup and exact edit.
+pub(super) const REFERENCE_PAIRS: &str = ", edits AS (
+    SELECT p.trace_id,p.call_id,p.report,p.setup,p.question_hash,p.started,p.thread,
+        p.choices->>'reference_set' AS ref_set,p.choices->>'expected' AS expected,
+        e.key+1 AS edit_index,p.choices->'alternatives'->>(p.choices->>'baseline_start') AS original,
+        p.choices->'alternatives'->>(e.value->>'start') AS edited,e.value->>'key' AS edit_key,e.value->>'source' AS edit_source,e.value->>'outcome' AS outcome
+    FROM checks p JOIN json_each(p.choices,'$.reference_edits') e
+    WHERE p.setup IS NOT NULL AND p.question_hash IS NOT NULL
+), repeated AS (
+    SELECT *,row_number() OVER (w ORDER BY started DESC,trace_id,call_id,report,edit_index) AS witness,
+        min(outcome) OVER w AS lo,max(outcome) OVER w AS hi,min(expected) OVER w AS first_target,max(expected) OVER w AS last_target
+    FROM edits WINDOW w AS (PARTITION BY setup,ref_set,edit_key,question_hash)
+), ranked AS (
+    SELECT *,row_number() OVER (PARTITION BY setup,ref_set,edit_key,outcome ORDER BY started DESC,trace_id,call_id,report) AS example
+    FROM repeated WHERE witness=1 AND lo=hi AND first_target=last_target AND outcome IN ('restored','lost')
+), sides AS (
+    SELECT r.*,json_object('outcome',outcome,'expected',expected,'question',c.preview->>'$.user.text',
+        'original',original,'edited',edited,'thread',r.thread,'trace',r.trace_id,'call',r.call_id,'report',r.report,'index',edit_index) AS evidence
+    FROM ranked r JOIN conversation_calls c USING(trace_id,call_id) WHERE example=1
+) SELECT json_object('setup',setup,'edit',edit_key,'source',edit_source,'reference_set',ref_set,
+        'examples',json_array(json(max(evidence) FILTER (WHERE outcome='restored')),json(max(evidence) FILTER (WHERE outcome='lost'))))
+    FROM sides GROUP BY setup,ref_set,edit_key HAVING count(*)=2
+    ORDER BY max(started) DESC,setup,ref_set,edit_key LIMIT ? OFFSET ?";

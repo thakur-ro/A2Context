@@ -247,10 +247,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 29 {
+        if version == 30 {
             return Ok(());
         }
-        if !(0..29).contains(&version) {
+        if !(0..30).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -308,7 +308,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 29)?;
+        self.0.pragma_update(None, "user_version", 30)?;
         Ok(())
     }
 
@@ -809,6 +809,7 @@ impl Store {
                 | "prefix-sources"
                 | "prefix-references"
                 | "prefix-cases"
+                | "prefix-reference-pairs"
                 | "prefix-contrasts"
         ) {
             sql.push_str(super::prefix_patterns::SCOPED);
@@ -844,6 +845,18 @@ impl Store {
                 }
             }
             if view == "prefix-cases" {
+                if let Some(key) = filters.get("ref_edit") {
+                    sql.push_str(" AND p.setup=? AND EXISTS (SELECT 1 FROM json_each(p.choices,'$.reference_edits') e
+                        WHERE e.value->>'key'=? AND e.value->>'outcome'=? AND e.key+1=CAST(? AS INTEGER))");
+                    args.extend([
+                        super::required(filters, "pair_setup")?.to_owned(),
+                        key.clone(),
+                        super::required(filters, "edit_outcome")?.to_owned(),
+                        super::required(filters, "edit_index")?
+                            .parse::<usize>()?
+                            .to_string(),
+                    ]);
+                }
                 if filters.get("reference").is_some_and(|v| v == "1") {
                     sql.push_str(" AND p.choices->>'reference_set' IS NOT NULL");
                 }
@@ -959,6 +972,7 @@ impl Store {
             "prefix-references" => sql.push_str(super::prefix_patterns::REFERENCES),
             "prefix-sources" => sql.push_str(super::prefix_patterns::BREAKDOWN),
             "prefix-cases" => sql.push_str(super::prefix_patterns::CASES),
+            "prefix-reference-pairs" => sql.push_str(super::prefix_patterns::REFERENCE_PAIRS),
             "prefix-contrasts" => sql.push_str(super::prefix_patterns::CONTRASTS),
             "target-patterns" => {
                 args.push(if filters.contains_key("design") {"0"} else {"2"}.into());

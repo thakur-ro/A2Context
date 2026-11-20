@@ -335,8 +335,10 @@ fn count_starts(trials: &[Trial], prefix: &str, alternatives: &[Candidate; 2]) -
         }
         _ => None,
     };
-    json!({"example":example,"attempted":trials.len(),"text":text,"followed":followed,"starts":starts,
-        "other_outputs":other_outputs,"failed":failed})
+    let mut row = json!({"example":example,"attempted":trials.len(),"text":text,"followed":followed,"starts":starts,
+        "other_outputs":other_outputs,"failed":failed});
+    row["unanimous_start"] = json!(unanimous_start(&row));
+    row
 }
 
 #[cfg(test)]
@@ -400,7 +402,7 @@ mod tests {
         let result = count_starts(&trials, "Limit: ", &choices);
         assert_eq!(
             result,
-            json!({"example":null,"attempted":6,"text":4,"followed":3,"starts":[1,0],"other_outputs":1,"failed":1})
+            json!({"example":null,"attempted":6,"text":4,"followed":3,"starts":[1,0],"other_outputs":1,"failed":1,"unanimous_start":null})
         );
     }
 }
