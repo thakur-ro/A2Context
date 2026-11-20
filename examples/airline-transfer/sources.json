@@ -1,0 +1,43 @@
+{
+  "airline-run.json": {
+    "url": "https://sierra-tau-bench-public.s3.amazonaws.com/submissions/claude-opus-4-5_sierra_2026-02-26/trajectories/claude-opus-4-5_high_airline_gpt-5.2_4trials.json",
+    "sha256": "babe71cb463bca64030a91df24431cc6e1df799292dec6b8981618f286f2dc5c"
+  },
+  "tasks.json": {
+    "url": "https://raw.githubusercontent.com/sierra-research/tau2-bench/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/data/tau2/domains/airline/tasks.json",
+    "sha256": "ccd8ba737b4cc371415af70151187788f728d6108d0916e73bb4317b40542052"
+  },
+  "split_tasks.json": {
+    "url": "https://raw.githubusercontent.com/sierra-research/tau2-bench/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/data/tau2/domains/airline/split_tasks.json",
+    "sha256": "b22ced4d9a9850ac9aea31c53bdcb6d6009058140bd9acc7db37c1d36222ba8b"
+  },
+  "tools.py": {
+    "url": "https://raw.githubusercontent.com/sierra-research/tau2-bench/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/src/tau2/domains/airline/tools.py",
+    "sha256": "6ec01c8c362ab0242eff658fc79547cf9519b93422ab113b6930cb627d202779"
+  },
+  "train-00020-of-00039.parquet": {
+    "url": "https://huggingface.co/datasets/Exgentic/agent-llm-traces/resolve/70036b93a04e61b0ea2706a68b962f4f26774587/data/train-00020-of-00039.parquet",
+    "sha256": "4208d674e2de5edc8513877e54613a6109c97f1b99ed7be6d397513e038941b1",
+    "census_only": true
+  },
+  "train-00021-of-00039.parquet": {
+    "url": "https://huggingface.co/datasets/Exgentic/agent-llm-traces/resolve/70036b93a04e61b0ea2706a68b962f4f26774587/data/train-00021-of-00039.parquet",
+    "sha256": "2ee63b04c6bc9343d270f4f6de075f262cc0aa33727802137fdccbab72fae017",
+    "census_only": true
+  },
+  "train-00022-of-00039.parquet": {
+    "url": "https://huggingface.co/datasets/Exgentic/agent-llm-traces/resolve/70036b93a04e61b0ea2706a68b962f4f26774587/data/train-00022-of-00039.parquet",
+    "sha256": "38bd8d57ceb882de7d2afb7354fec558687dbc67621c2293e92a3f9ce4d3351a",
+    "census_only": true
+  },
+  "train-00023-of-00039.parquet": {
+    "url": "https://huggingface.co/datasets/Exgentic/agent-llm-traces/resolve/70036b93a04e61b0ea2706a68b962f4f26774587/data/train-00023-of-00039.parquet",
+    "sha256": "2f5f9ed450e6ea618ab2ea31d9904f067e177278f333be50f1ec4f585c3de61a",
+    "census_only": true
+  },
+  "train-00024-of-00039.parquet": {
+    "url": "https://huggingface.co/datasets/Exgentic/agent-llm-traces/resolve/70036b93a04e61b0ea2706a68b962f4f26774587/data/train-00024-of-00039.parquet",
+    "sha256": "f6ca483def33a83fc5855115c6bba4ce5a06eae8eac6f683659e8a32c0656bff",
+    "census_only": true
+  }
+}
