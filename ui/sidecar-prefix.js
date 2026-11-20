@@ -6,11 +6,12 @@ function prefixReview(review, question, action) {
   const headline = selected ? "Editing " + selected.label + " switched the preferred continuation" :
     reversals.length ? "Several edits switched the preferred continuation" : "No edit switched the preferred continuation";
   const percent = new Intl.NumberFormat(undefined, {style:"percent", maximumSignificantDigits:3});
-  const rows = conditions.map(row => {
+  const scored = review.joint ? [...conditions, review.joint] : conditions;
+  const rows = scored.map(row => {
     const source = row.edit ? element("details", {}, element("summary", {text:row.label}),
       element("small", {text:[row.version && "Version " + row.version, row.edit.pointer].filter(Boolean).join(" · ")}),
       row.original != null && element("small", {text:"Captured: " + JSON.stringify(row.original)}),
-      element("small", {text:row.edit.operation === "remove_json" ? "Removed" : "Replacement: " + JSON.stringify(row.edit.replacement)})) : "Original";
+      element("small", {text:row.edit.operation === "remove_json" ? "Removed" : "Replacement: " + JSON.stringify(row.edit.replacement)})) : row.label;
     return element("tr", {}, element("th", {scope:"row"}, source),
       ...[...row.probabilities, row.outside].map((p,i) => element("td", {},
         element("span", {text:percent.format(p)}),
@@ -18,9 +19,13 @@ function prefixReview(review, question, action) {
         i === row.preferred && element("small", {text:review.labels[i] + " favored"}))));
   });
   const trials = runs.map(run => panel("What did the runner generate?",
-    comparisonTable(["Request","Generated answer"], run.rows.map((row,i) =>
-      element("tr", {}, element("th", {scope:"row",text:conditions[i].label}),
-        element("td", {}, row?.example != null && element("code", {text:row.example}), prefixTrialResult(row, alternatives))))),
+    comparisonTable(["Request","Generated output"], scored.map((condition,i) => {
+      const row = i < conditions.length ? run.rows[i] : run.joint;
+      return element("tr", {}, element("th", {scope:"row",text:condition.label}),
+        element("td", {}, row?.tool_proposal ? element("div", {className:"prefix-proposal"},
+          element("strong", {text:row.tool_proposal.name}), element("code", {text:row.tool_proposal.arguments})) :
+          row?.example != null && element("code", {text:row.example}), prefixTrialResult(row, alternatives)));
+    })),
     element("small", {text:(run.origin === "sidecar.prefix_trials" ? "Attached trial · " : "Runner · ") + run.runner + " · " + run.report})));
   return element("section", {className:"panel target-check prefix-review", "aria-label":"Source edits at a supplied prefix"},
     element("p", {className:"label",text:"Scores at a supplied prefix"}), element("h2", {text:headline}),
@@ -37,13 +42,14 @@ function prefixReview(review, question, action) {
     review.reference?.issue && element("p",{text:review.reference.issue}),
     action, ...trials,
     element("details", {}, element("summary", {text:"Scoring conditions"}),
-      ...conditions.slice(1).map(c => element("p", {text:c.label + " · " + signed(c.change_log_odds) + " change in log odds"})),
+      ...scored.slice(1).map(c => element("p", {text:c.label + " · " + signed(c.change_log_odds) + " change in log odds"})),
       element("p", {text:[review.model, review.revision, review.runtime, review.report].join(" · ")}),
       element("p", {text:"Each probability covers a token sequence beginning immediately after the supplied prefix. Other continuations retain the remaining probability."})));
 }
 
 function prefixTrialResult(row, alternatives) {
   if (!row) return "Edit untested in this report";
+  if (row.tool_proposal) return element("small", {text:"1 completed proposal trial"});
   const counts = row.starts.map((n,i) => n && n + " began with the prefix and " + JSON.stringify(alternatives[i]));
   const other = row.followed - row.starts[0] - row.starts[1];
   const missed = row.text - row.followed;
@@ -167,11 +173,15 @@ function blockInvestigation(entries) {
       const original = baseline.margin, edited = effect.donor.margin;
       const margins = effect.swaps[site.value];
       const crossing = margins.findIndex(m => Math.sign(original) !== 0 && Math.sign(m) === -Math.sign(original));
+      const furthest = margins.reduce((best, margin, index) =>
+        Math.abs(margin - original) > Math.abs(margins[best] - original) ? index : best, 0);
       const heading = crossing < 0 ? "No strict reversal in the sweep" :
         "First reversal at block " + crossing + (crossing === margins.length - 1 ? " (end control)" : "");
       const [from,to] = [baseline,effect.donor].map(row => row.positions[site.value].index);
       return element("article", {className:"block-plot"}, label && element("p", {className:"label",text:label}),
         element("h3", {text:heading}), blockChart(margins,original,edited,extent,crossing),
+        element("p", {className:"row-extra",text:"Largest shift from the original score: " +
+          signed(margins[furthest] - original) + " log odds at block " + furthest + "."}),
         element("div", {className:"block-legend"},
           element("span", {className:"block-original",text:"Original " + signed(original)}),
           element("span", {className:"block-edited",text:"Full edit " + signed(edited)}),
@@ -190,7 +200,7 @@ function blockInvestigation(entries) {
   source?.addEventListener("change",draw);
   draw();
   return element("section", {className:"panel block-investigation", "aria-label":"Decoder-block intervention"},
-    element("h2", {text:"Where did the next-token preference change?"}),
+    element("h2", {text:"How did decoder-block swaps move the score?"}),
     element("p", {text:"In a separate model replay, each point copies one vector from the edited prompt into the original run. " +
       "The supplied prefix stays fixed at " + JSON.stringify(review.prefix) + "."}),
     element("div", {className:"block-options"}, element("label", {}, "Swap site ",site),

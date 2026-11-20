@@ -16,6 +16,37 @@ try {
       if (new URL(request.url()).origin !== base.origin) externalRequests.push(request.url());
     });
     await page.goto(new URL("/?workflow=exchange-agent", base).href);
+    await page.getByRole("heading",{name:"2 recommendations",exact:true}).waitFor();
+    const cards = page.getByRole("region",{name:"Recommendation cards"});
+    assert.equal(await cards.getByRole("article").count(),2);
+    const firstCard = await cards.getByRole("article").first().boundingBox();
+    assert.ok(firstCard.y < viewport.height);
+    if (process.env.CANVAS_CAPTURE) await page.screenshot({path:process.env.CANVAS_CAPTURE+"-home-"+viewport.width+".png"});
+    await page.getByRole("button",{name:"Which instructions disagreed?"}).click();
+    const canvas = page.getByRole("region",{name:"Answer canvas"});
+    await canvas.getByText('"hold"',{exact:true}).waitFor();
+    await canvas.getByText('"approved"',{exact:true}).waitFor();
+    const question = page.getByRole("textbox",{name:"Question about workflow evidence"});
+    const submit = async text => {await question.fill(text); await question.press("Enter");};
+    await submit("Where else did that repeat?");
+    await canvas.getByRole("heading",{name:"Where this repeats"}).waitFor();
+    await canvas.getByRole("meter").waitFor();
+    await canvas.getByRole("link",{name:"Wait on the second exchange"}).waitFor();
+    assert.equal(await canvas.locator(".canvas-examples a").count(),2);
+    await submit("Which result did the dispatch check change?");
+    await canvas.getByText("exchange requested",{exact:true}).waitFor();
+    assert.equal(await canvas.locator("a2ui-card").count(),2);
+    if (process.env.CANVAS_CAPTURE) await page.screenshot({path:process.env.CANVAS_CAPTURE+"-map-"+viewport.width+".png"});
+    const receipt = new URL(await canvas.getByRole("link",{name:"Open exact evidence →"}).getAttribute("href"),base);
+    for (const key of ["trace","call","report","recommendation","workflow"]) assert.ok(receipt.searchParams.get(key));
+    await submit("Unicorn weather forecast?");
+    await canvas.getByText(/couldn’t match/).waitFor();
+    await canvas.getByText("Choose different evidence").click();
+    await canvas.getByRole("button",{name:"Check current approval before dispatch"}).click();
+    await submit("Unicorn weather forecast?");
+    await canvas.getByText("exchange requested",{exact:true}).waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+    await page.getByRole("link",{name:"Explore evidence by source"}).click();
     const lead = page.getByRole("link", { name: /See what changed at dispatch/ });
     await lead.getByRole("heading", { name: "See what changed at dispatch", exact: true }).waitFor();
     assert.equal(await lead.locator("a2ui-surface").evaluate(surface => surface.surface.protocolVersion), "1.0");
@@ -33,6 +64,7 @@ try {
     await page.getByRole("link", { name:"Back to dispatch outcomes", exact:true }).click();
     await page.getByRole("link", { name:"Back to dispatch comparisons", exact:true }).click();
     await page.getByRole("link", { name:"Back to recommendations", exact:true }).click();
+    await page.getByRole("link",{name:"Explore evidence by source"}).click();
     await lead.click();
     await page.getByRole("link", { name: "Review recommendation", exact: true }).click();
     const comparison = page.getByRole("region", { name: "Sandbox dispatch comparison" }).first();
@@ -45,6 +77,22 @@ try {
     await earlier.getByText(/2 distinct earlier inputs/).waitFor();
     await page.getByRole("heading", { name: "Conflicting values for exchange authorization", exact: true }).waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.getByRole("link", { name:"Inspect saved tool-name scores and proposals" }).click();
+    const scores = page.getByRole("region", { name:"Source edits at a supplied prefix" });
+    await scores.getByRole("heading", { name:"No edit switched the preferred continuation" }).waitFor();
+    assert.equal(await scores.getByRole("row").filter({hasText:"Both edits"}).count(),2);
+    assert.equal(await scores.locator(".prefix-proposal strong").count(),4);
+    assert.equal(await scores.locator(".prefix-proposal code").filter({hasText:'"new_item_id":"#W8353027"'}).count(),2);
+    const blocks = page.getByRole("region",{name:"Decoder-block intervention"});
+    await blocks.getByText(/Largest shift.*block 22/).waitFor();
+    await blocks.getByLabel("Activation position").selectOption("last_user_token");
+    await blocks.getByText(/Largest shift.*block 13/).waitFor();
+    await blocks.getByLabel("Activation position").selectOption("last_prefix_token");
+    await blocks.getByLabel("Source intervention").selectOption("1");
+    await blocks.getByText(/Largest shift.*block 21/).waitFor();
+    await comparison.waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.getByRole("link", { name:"Back to pending request" }).click();
     await earlier.getByRole("button", { name:"Open earlier sandbox comparison" }).press("Enter");
     await comparison.waitFor();
     const params = new URL(page.url()).searchParams;
@@ -53,6 +101,26 @@ try {
     assert.deepEqual(errors, []);
     assert.deepEqual(externalRequests, []);
     await page.close();
+  }
+  if (process.env.CHAT_MODEL) {
+    const page = await browser.newPage();
+    await page.goto(new URL("/?workflow=exchange-agent",base).href);
+    await page.getByLabel("Analysis partner").selectOption(process.env.CHAT_MODEL);
+    const input = page.getByLabel("Question about workflow evidence");
+    const answer = page.getByRole("region",{name:"Answer canvas"});
+    for (const [question,expected] of [
+      ["Which source supplied the value hold for the second order?",'"hold"'],
+      ["What changed at dispatch?","exchange requested"],
+      ["Where else did that repeat?","Wait on the second exchange"],
+    ]) {
+      await input.fill(question);
+      await input.press("Enter");
+      await answer.getByText(question,{exact:true}).waitFor({timeout:65000});
+      await answer.getByText(expected,{exact:true}).waitFor();
+      assert.equal(await answer.locator(".partner-name").innerText(), question.includes("dispatch") ? "Sandbox replay" : process.env.CHAT_MODEL);
+    }
+    await page.close();
+    console.log("Verified the live partner journey and the measured dispatch receipt.");
   }
   console.log("Verified A2UI rendering and exact evidence navigation on desktop and mobile.");
 } finally {

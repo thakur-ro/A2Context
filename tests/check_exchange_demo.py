@@ -17,6 +17,7 @@ spec.loader.exec_module(demo)
 
 saved = json.loads((EXAMPLE / "results.json").read_text())
 pending = json.loads((EXAMPLE / "pending.json").read_text())
+pending_measurement = json.loads((EXAMPLE / "pending-measurement.json").read_text())
 for case in demo.SCENARIO["cases"]:
     result = saved[case["id"]]
     for arm, choice in result["trials"].items():
@@ -42,17 +43,32 @@ assert demo.sandbox(valid,True,enforce=True)["dispatch"] == "written"
 assert demo.sandbox(valid,False,enforce=True)["dispatch"] == "blocked"
 wrong = dict(valid,outcome=dict(demo.PUZZLE,new_item_id="wrong-item"))
 assert demo.sandbox(wrong,True,enforce=True)["dispatch"] == "invalid_arguments"
+controls = pending_measurement["dispatch_controls"]
+for key, approved in [("still_on_hold",False),("approved_after_request",True)]:
+    row = controls[key]
+    assert row == {"unchecked":demo.sandbox(valid,approved,enforce=False),
+                   "request_snapshot":demo.sandbox(valid,False,enforce=True),
+                   "current_approval":demo.sandbox(valid,approved,enforce=True)}
+    assert row["request_snapshot"]["orders"][demo.PUZZLE["order_id"]] == "delivered"
+    assert row["current_approval"]["orders"][demo.PUZZLE["order_id"]] == ("exchange_requested" if approved else "delivered")
+    for result in row.values():
+        assert result["orders"][demo.BOOTS["order_id"]] == "exchange_requested"
 with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"exchange.sqlite","--capture-content") as base:
     demo.export(base)
     scope = {"workflow":"exchange-agent"}
     impact = get(base,"impact",**scope)
     assert (impact["conversations"],impact["captured_conversations"],impact["evidence_counts"]["tested"]) == (2,3,2)
+    assert impact["recommendations"] == 2
+    assert get(base,"impact",workflow="unrelated")["recommendations"] == 0
     assert impact["sandbox_dispatch_conversations"] == 2
     assert impact["sandbox_tested_conversations"] == 2
     factor = get(base,"factors",**scope)["rows"][0]
     assert factor["signal"] == "sandbox_dispatch" and factor["sandbox_conversations"] == 2
     cards = {card["kind"]:card for card in get(base,"findings",**scope)["rows"]}
     assert cards["conflict"]["threads"] == cards["shadow"]["threads"] == 2
+    by_source = get(base,"findings",terms="latest-customer-message",**scope)["rows"]
+    assert [(row["id"],row["threads"]) for row in by_source] == [(cards["conflict"]["id"],2)]
+    assert get(base,"findings",terms="latest-customer-message",workflow="unrelated")["rows"] == []
     evidence = cards["shadow"]["evidence"]
     pair = evidence["detail"]["response_pair"]
     assert pair["changed"] is False and pair["original"]["label"] == demo.WRITE
@@ -86,6 +102,24 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     witness = earlier["example"]
     match, = get(base,"findings",**{k:witness[k] for k in ("group","factor","trace","call","report")})["rows"]
     assert match["evidence"]["detail"]["sandbox_dispatch"]["protected"]
+
+    fresh = get(base,"preview-example",scenario="exchange-measured")
+    assert fresh["unverified_probes"] == [] and fresh["history"]["dispatch"]["rows"] == history
+    review, = fresh["prefix_reviews"]
+    assert review["reversals"] == [] and all(row["preferred"] == 0 for row in [*review["conditions"],review["joint"]])
+    assert review["block_probe"]["status"] == "matched"
+    probe = review["block_probe"]["probe"]
+    assert probe["blocks"] == 24 and len(probe["effects"]) == 2
+    for effect in probe["effects"]:
+        assert all(value > 0 for sweep in effect["swaps"].values() for value in sweep)
+    run, = review["runs"]
+    proposals = [row["tool_proposal"] for row in [*run["rows"],run["joint"]]]
+    assert all(proposal["name"] == demo.WRITE for proposal in proposals)
+    assert proposals[0] == proposals[1] and proposals[2] == proposals[3]
+    assert json.loads(proposals[1]["arguments"]) == demo.PUZZLE
+    assert json.loads(proposals[2]["arguments"])["new_item_id"] == demo.PUZZLE["order_id"]
+    dispatch, = [item["detail"]["sandbox_dispatch"] for item in fresh["recommendations"] if "sandbox_dispatch" in item["detail"]]
+    assert dispatch["outcome"] == "matched_with_check" and dispatch["protected"]
     assert get(base,"impact",**scope) == impact
 
     # Historical evidence must match both ownership and the declared inputs.

@@ -513,7 +513,7 @@ function cohortNavigation() {
     outcomeLevel === 1 ? link("By edited source", url({level:1, by:"edit"}), null, editedSources && !cohortFactor) : null,
     outcomeLevel !== 1 || outcomeGrouping === "source" ? link("By source", url({level:outcomeLevel, by:"source"}), null, outcomeGrouping === "source" && !cohortFactor) : null,
     link("By conversation", url({level:outcomeLevel}), null, outcomeGrouping === "conversation" && !cohortFactor),
-    link("All source factors", url({}), "cohort-home"));
+    link("All source factors", url({explore:1}), "cohort-home"));
 }
 
 function cohortRow(row) {
@@ -1353,11 +1353,12 @@ function findingReview(card, occurrences, dispatchSummary) {
         link("Open span " + row.call, url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))))));
 }
 
-function priorDispatch(history) {
+function priorDispatch(history, hasCurrentDispatch) {
   const rows = history?.dispatch?.rows;
   if (!rows?.length) return null;
   const [first] = rows;
-  const heading = first.regressed || first.mixed ? "Review earlier dispatch results before using the check" :
+  const heading = hasCurrentDispatch ? "Compare earlier dispatch replays" :
+    first.regressed || first.mixed ? "Review earlier dispatch results before using the check" :
     first.helped ? "Test the dispatch check on this request" : "Compare earlier dispatch outcomes";
   const evidence = row => {
     const e = row.example;
@@ -1369,7 +1370,8 @@ function priorDispatch(history) {
   return element("section", {className:"panel", "aria-label":"Earlier dispatch replays"},
     NexusWeaveA2UI.recommendation("earlier-dispatch", {
       title:heading, heading:"h2", label:"Evidence from earlier requests",
-      description:"Earlier requests shared the workflow, model, request layout and declared rule values. Run a fresh sandbox test to check what happens on this request.",
+      description:"Earlier requests shared the workflow, model, request layout and declared rule values." +
+        (hasCurrentDispatch ? "" : " Run a fresh sandbox test to check what happens on this request."),
       detail:history.dispatch.truncated ? "The lookup used the latest 128 matching observations." : null,
       evidence:rows.map(row => ({title:"Open earlier sandbox comparison",
         summary:plural(row.inputs,"distinct earlier input") + " · " + countText(row) +
@@ -1952,6 +1954,8 @@ function pendingPreview() {
       const linked = new Set(targets.flatMap(c => (c.token_paths || []).map(p => p.report)));
       const standalone = (report.continuation_paths || []).filter(paths => !linked.has(paths[0].report));
       const experiment = report.history?.experiment;
+      const dispatchCards = report.recommendations.flatMap(({detail}) => detail.sandbox_dispatch ? [sandboxDispatch(detail.sandbox_dispatch)] : []);
+      const dispatchHistory = priorDispatch(report.history, dispatchCards.length > 0);
       for (const { kind, detail, action } of report.recommendations) {
         if (kind === "shadow" && experiment?.status === "ready" && experiment.edited_request_sha256 === detail.edited_request_sha256 &&
             experiment.interventions[0].context_id === detail.sources[0].id &&
@@ -1981,9 +1985,10 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
-        priorDispatch(report.history),
+        !prefixReviews.length && dispatchHistory,
         ...prefixReviews.flatMap((r,i) => [prefixReview(r,report.example_question,i === 0 ? followUp : null),
           blockInvestigation([{review:r,index:r.reversals[0] || 1}])]),
+        ...dispatchCards,
         opening && openingComparison(report.prefill, report.example_question),
         ...targets.map(check => opening || prefixTrials.has(check.report_id) ? element("details", {className:"panel"}, element("summary", {text:"Review the declared target"}),
           declaredTarget(check,report.example_question)) : declaredTarget(check, report.example_question)), ...standalone.map(paths => prefixReports.has(paths[0].report) ?
@@ -1992,7 +1997,8 @@ function pendingPreview() {
         report.prefill ? routingComparison(report.prefill) : null,
         checked ? history : null,
         report.prefill && !opening && !(testedTop && report.prefill.ranked.length === 1) ? firstTokenPreview(report.prefill, false, testedTop) : null,
-        ...current, report.screen_suggestion ? screenReview(report.screen_suggestion) : null, checked ? null : history, prefixReviews.length ? null : followUp, ...findings,
+        ...current, prefixReviews.length && dispatchHistory, report.screen_suggestion ? screenReview(report.screen_suggestion) : null,
+        checked ? null : history, prefixReviews.length ? null : followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
         !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
@@ -2037,10 +2043,13 @@ function pendingPreview() {
   const questions = element("nav", {className:"actions", "aria-label":"Journal questions"},
     ...windowQuestions.map(([key, label]) => key === scenario ? element("strong", {text:label, "aria-current":"page"}) :
       link(label, url({view:"preview", scenario:key}))));
-  if (scenario === "exchange-approval") {
-    show(() => api("preview-example",{scenario}));
+  if (["exchange-approval", "exchange-measured"].includes(scenario)) {
+    const measured = scenario === "exchange-measured";
+    show(() => api("preview-example",{scenario}), measured ? null :
+      link("Inspect saved tool-name scores and proposals", url({view:"preview",scenario:"exchange-measured"}), "action"));
     return element("div", {className:"feed"}, output,
-      link("Check another request", url({view:"preview"})));
+      link(measured ? "Back to pending request" : "Check another request",
+        url({view:"preview",scenario:measured ? "exchange-approval" : null})));
   } else if (scenario === "prefix-before" || scenario === "prefix-checked") {
     const before = scenario === "prefix-before";
     show(() => api("preview-example", {scenario}), link(before ? "Compare with freely generated answers" : "See the scores before generation",
@@ -2290,13 +2299,29 @@ async function render(refresh = false) {
       const test = factors.rows[0]?.position_test;
       byId("title").textContent = data.rows.length ? factorName(data.rows[0].evidence.detail.sources) : "Source factor";
       byId("summary").textContent = "Each recommendation below uses its own comparison and outcome.";
-      body = element("div", { className: "feed" }, link("All source factors", url({})),
+      body = element("div", { className: "feed" }, link("All source factors", url({explore:1})),
         data.rows.length ? proposalCoverage(impact, factorId) : null,
         test ? link("Review the source-position test", positionLink(factorId, test), "action") : null,
         variations.rows.length ? link("Compare where the edit mattered", url({ factor: factorId, variation: 1 }), "action") : null,
         orders.rows.length ? link("Compare the two source orders", url({ factor: factorId, order: 1 }), "action") : null,
         ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
       pagination(data.next_offset, { factor: factorId });
+    } else if (query.has("cards")) {
+      const data = await api("findings", {...scope,offset:pageOffset});
+      body = element("div",{className:"feed"},link("Back to recommendations",url({})), ...data.rows.map(findingCard));
+      pagination(data.next_offset,{cards:1});
+    } else if (!query.has("explore") && !pageOffset && location.hash !== "#proposal-coverage") {
+      const [impact, cards] = await Promise.all([api("impact", scope), api("findings", scope)]);
+      const signature = JSON.stringify([impact,cards]);
+      if (refresh && byId("content").dataset.signature === signature) return;
+      byId("content").dataset.signature = signature;
+      const existing = byId("content").querySelector(".canvas-home");
+      if (existing) {
+        existing.updateEvidence(impact, cards);
+        return;
+      }
+      const partners = await api("chat-config");
+      body = investigationCanvas(impact, cards, partners.models);
     } else {
       const [impact, factors, screens, targets, prefixes] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset }),
         pageOffset ? Promise.resolve({rows:[]}) : api("screened-pairs", scope),
@@ -2408,7 +2433,7 @@ async function main() {
       delete values.meta_key;
       delete values.meta_value;
     }
-    location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
+    location.href = url({ view, explore:query.get("explore"), cards:query.get("cards"), trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
       dispatches:dispatchOverview ? 1 : null,
       ...dispatchSelection,

@@ -35,6 +35,28 @@ export function recommendation(surfaceId, { title, heading = "h3", label, descri
     destinations.set(button, row.href);
     children.push(button);
   }
+  return surface(surfaceId, components, destinations);
+}
+
+// Each branch shares the same declared rule or experimental starting condition.
+export function branches(surfaceId, { root, arms }) {
+  const components = [
+    { id: "root", component: "Column", children: ["origin", "fork"] },
+    { id: "origin", component: "Text", text: literal(root) },
+    { id: "fork", component: "Row", children: arms.map((_, i) => "arm" + i) },
+  ];
+  for (const [i, arm] of arms.entries()) {
+    components.push(
+      { id: "arm" + i, component: "Card", child: "node" + i },
+      { id: "node" + i, component: "Column", children: ["name" + i, "value" + i] },
+      { id: "name" + i, component: "Text", variant: "caption", text: literal(arm.label) },
+      { id: "value" + i, component: "Text", text: literal(arm.value) },
+    );
+  }
+  return surface(surfaceId, components);
+}
+
+function surface(surfaceId, components, destinations = new Map()) {
   const processor = new MessageProcessor([basicCatalog], ({ name, sourceComponentId }) => {
     const destination = destinations.get(sourceComponentId);
     if (name === "openEvidence" && destination?.startsWith("?")) location.assign(destination);

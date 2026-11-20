@@ -2,17 +2,17 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 
-const [base, output] = process.argv.slice(2);
-if (!base || !output) throw new Error("Usage: node scripts/record_demo.mjs SIDECAR_URL OUTPUT.mp4");
+const [base, output, model] = process.argv.slice(2);
+if (!base || !output) throw new Error("Usage: node scripts/record_demo.mjs SIDECAR_URL OUTPUT.mp4 [MODEL]");
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({ executablePath: process.env.CHROME_BINARY });
-const fps = 24;
-const viewport = { width: 1152, height: 648 };
+const fps = 30;
+const viewport = { width: 1280, height: 720 };
 let pointer = { x: 943, y: 150 };
 
 try {
-  const page = await browser.newPage({ viewport, deviceScaleFactor: 5 / 3, reducedMotion: "reduce" });
-  page.setDefaultTimeout(8000);
+  const page = await browser.newPage({ viewport, deviceScaleFactor: 1.5, reducedMotion: "reduce" });
+  page.setDefaultTimeout(model ? 60000 : 8000);
   // A browser screenshot does not include the system pointer. Draw one at the real click coordinates.
   await page.addInitScript(() => {
     window.addEventListener("DOMContentLoaded", () => {
@@ -20,22 +20,22 @@ try {
       overlay.setAttribute("aria-hidden", "true");
       overlay.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:1000";
       const arrow = document.createElement("div");
-      arrow.style.cssText = "position:absolute;width:26px;height:32px;filter:drop-shadow(0 1px 2px #17202c99)";
+      arrow.style.cssText = "position:absolute;width:12px;height:17px;filter:drop-shadow(0 1px 1px #17202c66)";
       const shape = "polygon(0 0, 95% 58%, 58% 65%, 74% 91%, 58% 100%, 39% 73%, 12% 96%)";
-      for (const [inset, color] of [["0", "white"], ["2px", "#18212c"]]) {
+      for (const [inset, color] of [["0", "white"], ["1px", "#18212c"]]) {
         const layer = document.createElement("span");
         layer.style.cssText = `position:absolute;inset:${inset};background:${color};clip-path:${shape}`;
         arrow.append(layer);
       }
       const ring = document.createElement("div");
-      ring.style.cssText = "position:absolute;width:26px;height:26px;border:2px solid #2353a3;border-radius:50%;display:none";
+      ring.style.cssText = "position:absolute;width:16px;height:16px;border:1px solid #778da7;border-radius:50%;display:none";
       const caption = document.createElement("div");
-      caption.style.cssText = "position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:max-content;max-width:90%;padding:9px 16px;border-radius:6px;background:#1b2636;color:white;font:600 17px/1.35 system-ui;text-align:center";
+      caption.style.cssText = "position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:max-content;max-width:90%;padding:9px 16px;border-radius:6px;background:#1b2636;color:white;font:500 15px/1.35 system-ui;text-align:center";
       overlay.append(ring, arrow, caption);
       document.body.append(overlay);
       window.demoOverlay = ({ x, y }, text, pressed) => {
         arrow.style.transform = `translate(${x}px,${y}px)`;
-        ring.style.transform = `translate(${x - 13}px,${y - 13}px)`;
+        ring.style.transform = `translate(${x - 8}px,${y - 8}px)`;
         ring.style.display = pressed ? "block" : "none";
         caption.textContent = text;
         caption.hidden = !text;
@@ -43,8 +43,7 @@ try {
     });
   });
   await page.goto(new URL("/?workflow=exchange-agent", base).href);
-  const lead = page.getByRole("link", { name: /See what changed at dispatch/ });
-  await lead.waitFor();
+  await page.getByRole("heading",{name:"2 recommendations",exact:true}).waitFor();
 
   const encoder = spawn(process.env.FFMPEG || "ffmpeg", [
     "-hide_banner", "-loglevel", "error", "-n", "-f", "image2pipe", "-framerate", String(fps),
@@ -71,8 +70,9 @@ try {
     if (!force && motion.top > 14 && motion.bottom < viewport.height - 64) return;
     const end = Math.max(0, await page.evaluate(y => Math.min(y, document.documentElement.scrollHeight - innerHeight), motion.to));
     if (Math.abs(end - motion.from) < 5) return;
-    for (let i = 1; i <= 12; i++) {
-      const t = i / 12;
+    const steps = Math.max(8, Math.ceil(Math.abs(end - motion.from) / 540 * fps));
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
       const y = motion.from + (end - motion.from) * (t * t * (3 - 2 * t));
       await page.evaluate(y => scrollTo(0, y), y);
       await frame();
@@ -85,9 +85,10 @@ try {
     if (!box) throw new Error("The control disappeared before its click.");
     const target = { x: box.x + Math.min(box.width / 2, 170), y: box.y + Math.min(box.height / 2, 24) };
     const start = pointer;
-    for (let i = 1; i <= 12; i++) {
-      const t = i / 12;
-      const ease = t * t * (3 - 2 * t);
+    const steps = Math.max(8, Math.ceil(Math.hypot(target.x-start.x,target.y-start.y) / 690 * fps));
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const ease = t - Math.sin(2 * Math.PI * t) * .045;
       pointer = { x: start.x + (target.x - start.x) * ease, y: start.y + (target.y - start.y) * ease + 12 * Math.sin(t * Math.PI) };
       await page.mouse.move(pointer.x, pointer.y);
       await frame();
@@ -104,21 +105,41 @@ try {
   }
 
   try {
-    await read("A customer paused the second exchange. The agent still proposed it.", 3.4);
-    await click(lead);
-    const review = page.getByRole("link", { name: "Review recommendation", exact: true });
-    await click(review);
-    const proposals = page.locator("details.response-pair");
-    await click(proposals.getByText("Compare the matching proposals", { exact: true }));
-    await read("Refreshing the approval cache left the proposed tool call unchanged.", 4.6, proposals, 112);
-    const dispatch = page.getByRole("region", { name: "Sandbox dispatch comparison" }).first();
-    await read("The same proposal ran twice. Only the dispatch check kept the puzzle order on hold.", 5.8, dispatch, 74);
-    await click(page.getByRole("link", { name: "Before inference", exact: true }));
-    await click(page.getByRole("link", { name: "Check the next exchange", exact: true }));
-    const earlier = page.getByRole("region", { name: "Earlier dispatch replays" });
-    await read("The next request surfaces both earlier results before it calls the model.", 5, earlier, 93);
-    await click(earlier.getByRole("button", { name:"Open earlier sandbox comparison" }));
-    await read("The recommendation opens the exact sandbox comparison behind it.", 3.5, dispatch, 74);
+    await read("One exchange was approved. Then the customer put the second order on hold.", 3.8);
+    if (model) {
+      const picker = page.getByLabel("Analysis partner");
+      await click(picker);
+      await picker.press("Escape");
+      await picker.selectOption(model);
+      await read("Ask " + model + " about the evidence captured for this workflow.", 2);
+    }
+    await click(page.getByRole("button",{name:"Which instructions disagreed?"}));
+    const canvas = page.getByRole("region",{name:"Answer canvas"});
+    await canvas.getByText('"hold"',{exact:true}).waitFor();
+    await read("The confirmation cache still said approved. The latest customer message said hold.", 4.5);
+    const question = page.getByRole("textbox",{name:"Question about workflow evidence"});
+    await click(question);
+    caption = "";
+    for (const char of "What changed at dispatch?") {
+      await question.pressSequentially(char);
+      await frame(2);
+    }
+    await click(page.getByRole("button",{name:"Ask question",exact:true}));
+    await canvas.getByText("exchange requested",{exact:true}).waitFor();
+    await read("Same proposal, same starting state. Checking approval prevented the second write.", 4.8);
+    await click(question);
+    caption = "";
+    for (const char of "Where else did that repeat?") {
+      await question.pressSequentially(char);
+      await frame(2);
+    }
+    await question.press("Enter");
+    await canvas.getByRole("heading",{name:"Where this repeats"}).waitFor();
+    await canvas.getByRole("link",{name:"Wait on the second exchange"}).waitFor();
+    await read("Two conversations had this finding. Open the affected requests to inspect either one.", 3.8);
+    await click(canvas.getByRole("link",{name:"See affected requests →"}));
+    const dispatch = page.getByRole("region",{name:"Sandbox dispatch comparison"}).first();
+    await read("The replay receipt shows that the first exchange stayed in place in both runs.", 4.4, dispatch, 115);
   } finally {
     encoder.stdin.end();
     const [status] = await done;

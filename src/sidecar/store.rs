@@ -1152,6 +1152,7 @@ impl Store {
                 sql.push_str(" WHERE conversations>=2 AND (complete+partial)>0 AND (untested+partial)>0
                     ORDER BY untested DESC,partial DESC,conversations DESC,latest DESC,group_id,factor LIMIT 1)),
                     'conversations',count(DISTINCT thread_key),
+                    'recommendations',count(DISTINCT group_id),
                     'ranked_calls',count(*) FILTER (WHERE kind='prefill' AND json_type(detail,'$.selector_check')='object'),
                     'lower_edit_changes',count(*) FILTER (WHERE kind='prefill' AND json_extract(detail,'$.selector_check.rank_review.status')='lower_changed'),
                     'lower_edit_conversations',count(DISTINCT thread_key) FILTER (WHERE kind='prefill' AND json_extract(detail,'$.selector_check.rank_review.status')='lower_changed'),
@@ -1235,8 +1236,24 @@ impl Store {
                 'thread_key',thread_key,'observed',observed,'kind',kind,'detail',json(detail)) FROM events
                 ORDER BY observed DESC,trace_id,call_id,n LIMIT ? OFFSET ?"),
             "findings" => {
-                sql.push_str(", groups AS (
-                    SELECT group_id,kind,count(*) AS hits,count(DISTINCT trace_id) AS traces,
+                sql.push_str(", groups AS (SELECT ");
+                let terms = filters.get("terms").map(|text| {
+                    text.split_whitespace()
+                        .filter(|word| (2..=80).contains(&word.len()))
+                        .take(8)
+                        .map(str::to_lowercase)
+                        .collect::<Vec<_>>()
+                });
+                if let Some(terms) = terms.as_ref() {
+                    // Rank groups by a matching observation while counting every scoped observation.
+                    sql.push_str("max((SELECT count(*) FROM json_each(?) term WHERE instr(lower(
+                        kind || ' ' || coalesce(thread,'') || ' ' || coalesce(json_extract(detail,'$.rule'),'') ||
+                        ' ' || coalesce(json_extract(detail,'$.sandbox_dispatch.tool'),'') ||
+                        ' ' || coalesce((SELECT group_concat(coalesce(json_extract(s.value,'$.source'),json_extract(s.value,'$.id')),' ')
+                            FROM json_each(detail,'$.sources') s),'')),term.value)>0)) AS relevance,");
+                    args.push(serde_json::to_string(terms)?);
+                }
+                sql.push_str("group_id,kind,count(*) AS hits,count(DISTINCT trace_id) AS traces,
                            count(DISTINCT thread_key) AS threads,max(observed) AS latest,
                            CASE
                              WHEN kind='prefill' AND max(json_extract(detail,'$.routing_test') IS NOT NULL) THEN -4
@@ -1254,10 +1271,13 @@ impl Store {
                              WHEN kind='duplicate' AND min(coalesce(json_extract(detail,'$.dialogue_only'),0))=1 THEN 5
                              WHEN kind='duplicate' THEN 3
                              ELSE 4 END AS priority
-                    FROM events GROUP BY group_id,kind
-                    ORDER BY priority,threads DESC,traces DESC,latest DESC,group_id LIMIT ? OFFSET ?
-                 )
-                 ");
+                    FROM events GROUP BY group_id,kind ");
+                if terms.is_some() {
+                    sql.push_str("HAVING relevance > 0 ORDER BY relevance DESC,");
+                } else {
+                    sql.push_str("ORDER BY ");
+                }
+                sql.push_str("priority,threads DESC,traces DESC,latest DESC,group_id LIMIT ? OFFSET ?)");
                 sql.push_str(super::prefill::SCOPED_COUNTS);
                 super::prefill::append_routing(&mut sql, true);
                 sql.push_str("                 SELECT json_object('id',g.group_id,'kind',g.kind,'occurrences',g.hits,'traces',g.traces,
@@ -1310,7 +1330,11 @@ impl Store {
                        WHEN json_extract(chosen.detail,'$.sandbox_dispatch.protected')=1 THEN 0
                        WHEN chosen.kind IN ('shadow','replay','source_mask') AND (chosen.changed OR chosen.proposal_changed) THEN 0 ELSE 1 END,
                        d.completed DESC,d.inputs DESC,chosen.observed DESC,chosen.trace_id,chosen.call_id,chosen.n LIMIT 1)
-                 ORDER BY priority,threads DESC,traces DESC,latest DESC,g.group_id");
+                 ORDER BY ");
+                if terms.is_some() {
+                    sql.push_str("g.relevance DESC,");
+                }
+                sql.push_str("priority,threads DESC,traces DESC,latest DESC,g.group_id");
             }
             "thread-calls" => {
                 if super::required(filters, "thread")?.is_empty() {

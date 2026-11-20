@@ -2,11 +2,11 @@
 
 **Find which context edits change an LLM’s answer or tool call.**
 
-Ship NexusWeave as a small Rust service beside your LLM workflow. When a policy, retrieved passage, or tool description gives a surprising result, start with the affected conversations. Follow a recommendation to the exact source, the edit someone tested, and the answers it changed.
+Ship NexusWeave as a small Rust service beside your LLM workflow. Open the recommendation cards and ask which instructions disagreed, where the problem recurred, or what a source edit changed. Each answer can open the underlying call or replay. [Use the chat canvas with your model](docs/chat-canvas.md)
 
-https://github.com/user-attachments/assets/5553d284-dadc-41a9-9c4f-712b637319ed
+https://github.com/user-attachments/assets/6e09e1e3-2f3c-477c-8ab9-32cdf60c2122
 
-A customer pauses the second of two exchanges. The agent still proposes it after its confirmation cache is refreshed. Compare what the proposal did in the sandbox, then see what NexusWeave recommends before the next call. [Run the walkthrough](docs/demo.md)
+A customer pauses the second of two exchanges. The agent still proposes it after its confirmation cache is refreshed. Ask which instructions disagreed. Then compare what the same proposal did with and without an approval check at dispatch. [Run the walkthrough](docs/demo.md)
 
 ## What can I learn?
 

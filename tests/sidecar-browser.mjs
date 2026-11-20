@@ -17,6 +17,11 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 950 } });
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
+  const question = page.getByLabel("Question about workflow evidence");
+  await question.fill("What changed when product-id was edited?");
+  await question.press("Enter");
+  await page.getByRole("region",{name:"Answer canvas"}).getByRole("heading",{name:/product-id/}).waitFor();
+  await page.goto(base + "/?explore=1");
   await page.getByRole("heading", { name: "Conversations with findings" }).waitFor();
   await page.getByText("of 26 captured conversations", {exact:true}).waitFor();
   assert.equal(await page.locator(".impact-number").innerText(), "25");
@@ -48,7 +53,7 @@ try {
   await trialTab.goto(new URL(originalTrial, base).href);
   await trialTab.locator('[data-replay-id="order-birch-dispatch-guide-2"] [data-context-id="dispatch-guide"]:focus').waitFor();
   await trialTab.close();
-  await page.goto(base);
+  await page.goto(base + "/?explore=1");
 
   await factor(page, "Results varied across wordings").click();
   await proposals.locator(":scope > summary").click();
@@ -104,6 +109,7 @@ try {
   await page.getByLabel("Organization").fill("demo-retail");
   await page.getByLabel("User", { exact: true }).fill("user-042");
   await page.getByRole("button", { name: "Apply filters" }).click();
+  await page.getByRole("link",{name:"Explore evidence by source"}).click();
   await factor(page, "Conflicting rules").click();
   await conflictCard(page).getByRole("link", { name: "Review recommendation" }).click();
   await page.getByRole("heading", { name: "Recommendation", exact: true }).waitFor();
@@ -128,7 +134,7 @@ try {
   assert.equal(new URL(page.url()).searchParams.get("focus_call"),selected.searchParams.get("call"));
   assert.equal(new URL(page.url()).searchParams.get("user"), "user-042");
 
-  await page.goto(base);
+  await page.goto(base + "/?explore=1");
   await factor(page, "Replay outcome shifted").click();
   const replay = page.locator(".card").filter({ hasText: "Verified replay" }).first();
   await replay.getByRole("link", { name: "Review recommendation" }).click();
@@ -144,7 +150,7 @@ try {
   await page.waitForURL("**/details?**");
   await selectedReport.getByText("Baseline matched the recorded decision in 1 of 1 completed trials", { exact: true }).waitFor();
 
-  await page.goto(base);
+  await page.goto(base + "/?explore=1");
   await page.locator(".factor-row").filter({hasText:"Choice flipped"}).filter({hasText:"request-type"}).click();
   const measured = page.locator(".card").filter({ hasText: "switched the preferred alternative" });
   await measured.getByRole("link", { name: "Review recommendation" }).click();
@@ -152,7 +158,7 @@ try {
   await page.getByText("price favored", { exact: true }).first().waitFor();
   await page.getByRole("region",{name:"Source edits at a supplied prefix"}).getByText("Scoring conditions").click();
   await page.getByText(/store-name.*-0\.089/).first().waitFor();
-  await page.goto(base);
+  await page.goto(base + "/?explore=1");
   await page.locator(".factor-row").filter({hasText:"refund-policy"}).filter({hasText:"Token score shifted"}).click();
   await page.locator(".card").filter({ hasText: "Token measurements" }).getByRole("link", { name: "Review recommendation" }).click();
   const tokenRecommendation = page.url();
@@ -246,7 +252,7 @@ try {
     await device.locator("a").filter({hasText:"jacket-return-trace"}).waitFor();
   }
   for (const device of [page, mobile]) {
-    await device.goto(base);
+    await device.goto(base + "/?explore=1");
     await device.getByRole("link", {name:/3 flagged conversations · 2 with a completed single-source comparison/}).click();
     const screenGroup = device.url();
     const calls = device.locator("#content .feed > .feed > section.panel");
@@ -268,7 +274,7 @@ try {
     assert.equal(await calls.count(), 1);
     await device.getByRole("link", {name:"Back to flagged pairs"}).click();
     await device.getByRole("link", {name:/1 flagged conversation · 0 with a completed single-source comparison/}).waitFor();
-    await device.goto(base);
+    await device.goto(base + "/?explore=1");
     await device.getByRole("link", {name:/1 conversation without a finding.*1 with a flagged source pair/}).click();
     const screen = device.locator(".panel").filter({hasText:"Possible conflict between two sources"});
     assert.match(await screen.innerText(), /30 days/);
@@ -327,7 +333,7 @@ try {
   await toolPath.getByRole("button", {name:/Token 5 ·/}).click();
   await toolPath.getByText("All tested edits left this token’s measured probability unchanged.").waitFor();
   assert.deepEqual(await toolPath.locator(".edit-delta").allTextContents(), ["0 log p","0 log p","0 log p"]);
-  await mobile.goto(base);
+  await mobile.goto(base + "/?explore=1");
   await factor(mobile, "Conflicting rules").waitFor();
   assert.ok(await mobile.locator("h1").evaluate(node => node.clientHeight < 1.5 * parseFloat(getComputedStyle(node).lineHeight)));
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
@@ -335,12 +341,13 @@ try {
   await factor(mobile, "Results varied with source order").click();
   await mobile.getByText(/in 2 of 4 matched comparisons/).waitFor();
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
-  await mobile.goto(base);
+  await mobile.goto(base + "/?explore=1");
   await factor(mobile, "Results varied across wordings").click();
   await mobile.locator(".card").filter({ hasText: "Replacement comparison" }).getByRole("link").click();
   await mobile.locator(".panel").first().locator("tr.different").waitFor();
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
   await mobile.getByRole("link", { name: "Recommendations", exact: true }).click();
+  await mobile.getByRole("link",{name:"Explore evidence by source"}).click();
   await factor(mobile, "Conflicting rules").click();
   await conflictCard(mobile).getByRole("link", { name: "Review recommendation" }).click();
   await mobile.getByRole("heading", { name: "Recommendation", exact: true }).waitFor();
@@ -350,7 +357,7 @@ try {
   await mobile.getByRole("heading", { name: "Check which other answers are plausible" }).waitFor();
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
   for (const device of [page, mobile]) {
-    await device.goto(base + "/?org=journal-window-study");
+    await device.goto(base + "/?explore=1&org=journal-window-study");
     await device.getByRole("link", {name:/Every trial missed the target in 3 conversations/}).click();
     await device.getByRole("heading", {name:"Did any condition reach the target?"}).waitFor();
     assert.deepEqual(await device.locator(".target-counts dd").allTextContents(), ["3","1","0","0"]);
@@ -428,7 +435,7 @@ try {
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   }
   for (const device of [page, mobile]) {
-    await device.goto(base + "/?org=routing-sampling");
+    await device.goto(base + "/?explore=1&org=routing-sampling");
     await factor(device, "Repeats disagreed").click();
     await device.getByRole("heading", {name:"Repeat trials on one input"}).waitFor();
     const votes = device.getByRole("region", {name:"Repeat counts by setup"});
@@ -450,7 +457,7 @@ try {
       await device.goto(witnessUrl);
       await toolWitness.locator("summary").click();
     }
-    await device.goto(base);
+    await device.goto(base + "/?explore=1");
     await device.getByRole("link", {name:/Generated proposal changed/}).click();
     await device.getByRole("heading", {name:"Edits that changed a proposal"}).waitFor();
     const faq = device.locator(".cohort-row").filter({hasText:"journal-faq (1)"}).filter({hasNotText:"journal-policy"});
@@ -479,7 +486,7 @@ try {
     await device.locator("#content .list a").first().click();
     await device.locator("details[open] summary:focus").filter({hasText:"Inspect edit to returns-policy"}).waitFor();
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    await device.goto(base + "/?org=retail-south");
+    await device.goto(base + "/?explore=1&org=retail-south");
     await device.getByRole("link", {name:/Model score shifted/}).click();
     await device.getByRole("link", {name:"By conversation"}).click();
     assert.equal(new URL(device.url()).searchParams.get("org"), "retail-south");

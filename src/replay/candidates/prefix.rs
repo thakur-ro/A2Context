@@ -1,5 +1,8 @@
 //! Compare a pair of continuations after a supplied assistant prefix with free generations.
-use super::{margin, Candidate, Measurement, RecordedProbe, Verification};
+use super::{
+    margin, target::joint_matches, Candidate, ConditionScore, Measurement, RecordedProbe,
+    Verification,
+};
 use crate::{
     preflight,
     replay::{shadow, Choice, MatchRule, Trial},
@@ -38,14 +41,16 @@ pub fn prefix_reviews(
             if reverses(baseline_margin, margin) {
                 reversals.push(index);
             }
-            conditions.push(json!({
-                "label": name, "source":edit.and_then(|e|e.source_id),
-                "original":edit.and_then(|e| e.context.text.as_deref()).map(excerpt), "edit": index.checked_sub(1).map(|i| &report.effects[i].intervention),
-                "original_sha256":edit.map(|e| &e.captured_context_sha256),
-                "version": edit.and_then(|e| e.source_version), "change_log_odds":margin - baseline_margin,
-                "probabilities": row.log_probs.map(f64::exp), "outside": row.outside_pair_probability(),
-                "preferred": if margin > 0.0 { Some(0) } else if margin < 0.0 { Some(1) } else { None }
-            }));
+            let mut condition = score_condition(name, row, baseline_margin);
+            condition["source"] = json!(edit.and_then(|e| e.source_id));
+            condition["original"] =
+                json!(edit.and_then(|e| e.context.text.as_deref()).map(excerpt));
+            condition["edit"] = json!(index
+                .checked_sub(1)
+                .map(|i| &report.effects[i].intervention));
+            condition["original_sha256"] = json!(edit.map(|e| &e.captured_context_sha256));
+            condition["version"] = json!(edit.and_then(|e| e.source_version));
+            conditions.push(condition);
         }
         let runs: Vec<_> = shadows
             .iter()
@@ -65,15 +70,29 @@ pub fn prefix_reviews(
             .reference_target
             .as_ref()
             .map(|raw| reference_check(raw, measurement, &reversals, &runs));
+        let joint = report.joint_request_sha256.as_ref().map(|_| {
+            score_condition(
+                "Both edits",
+                &measurement.scores.conditions[conditions.len()],
+                baseline_margin,
+            )
+        });
         reviews.push(json!({"report":report.id, "reference":reference, "prefix":measurement.assistant_prefix,
             "block_probe":super::blocks::review(report),
             "verdict":verdict, "scorer":measurement.scorer_id, "tokenizer_sha256":measurement.tokenizer_sha256,
             "labels":measurement.candidates.each_ref().map(|c| &c.id),
             "alternatives":measurement.candidates.each_ref().map(|c| &c.continuation), "model":measurement.model_id,
-            "revision":measurement.model_revision, "runtime":measurement.runtime, "conditions":conditions,
+            "revision":measurement.model_revision, "runtime":measurement.runtime, "conditions":conditions, "joint":joint,
             "reversals":reversals, "runs":runs}));
     }
     reviews
+}
+
+fn score_condition(label: &str, row: &ConditionScore, baseline: f64) -> Value {
+    let margin = margin(row);
+    json!({"label":label,"change_log_odds":margin-baseline,"probabilities":row.log_probs.map(f64::exp),
+        "outside":row.outside_pair_probability(),
+        "preferred":if margin > 0.0 { Some(0) } else if margin < 0.0 { Some(1) } else { None }})
 }
 
 fn reverses(original: f64, edited: f64) -> bool {
@@ -284,10 +303,21 @@ fn trial_run(candidate: &Measurement, trials: &shadow::Measurement, origin: &str
             });
         rows.push(matched.map(|(e, _)| summarize(&e.result.trials)));
     }
+    let joint = if rows.len() == 3
+        && rows[1..].iter().all(Option::is_some)
+        && joint_matches(candidate.report, report)
+    {
+        report
+            .pair
+            .as_ref()
+            .map(|pair| summarize(&pair.result.trials))
+    } else {
+        None
+    };
     rows[1..]
         .iter()
         .any(Option::is_some)
-        .then(|| json!({"origin":origin,"report":report.id,"runner":report.runner_id,"sampling":report.sampling_design,"rows":rows}))
+        .then(|| json!({"origin":origin,"report":report.id,"runner":report.runner_id,"sampling":report.sampling_design,"rows":rows,"joint":joint}))
 }
 
 fn excerpt(text: &str) -> String {
@@ -338,6 +368,12 @@ fn count_starts(trials: &[Trial], prefix: &str, alternatives: &[Candidate; 2]) -
     };
     let mut row = json!({"example":example,"attempted":trials.len(),"text":text,"followed":followed,"starts":starts,
         "other_outputs":other_outputs,"failed":failed});
+    if let [Trial::Completed { choice }] = trials {
+        if choice.kind == "tool_call" {
+            row["tool_proposal"] =
+                json!({"name":choice.label,"arguments":excerpt(&choice.outcome.to_string())});
+        }
+    }
     row["unanimous_start"] = json!(unanimous_start(&row));
     row
 }

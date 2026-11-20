@@ -92,7 +92,7 @@ def sandbox(choice, approved, *, enforce):
     return {"dispatch":dispatch,"orders":states}
 
 
-def measure(binary, checkpoint):
+def verify_checkpoint(checkpoint):
     hashes = {
         "model.safetensors":"fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe",
         "tokenizer.json":"c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
@@ -101,6 +101,10 @@ def measure(binary, checkpoint):
         with (checkpoint / name).open("rb") as file:
             if file_digest(file,"sha256").hexdigest() != expected:
                 raise ValueError("Use the pinned model and tokenizer in the walkthrough.")
+
+
+def measure(binary, checkpoint):
+    verify_checkpoint(checkpoint)
     runner = [sys.executable,ROOT / "scripts/propose_qwen.py",checkpoint,"--model-id",MODEL]
     results = {}
     for case in SCENARIO["cases"]:
@@ -133,18 +137,18 @@ def measure(binary, checkpoint):
     return results
 
 
-def dispatch_receipt(result):
+def dispatch_receipt(report, comparison):
     digest = sha256(json.dumps(CHECKPOINT,sort_keys=True,separators=(",", ":")).encode()).hexdigest()
 
     def arm(key):
-        observed = result["sandbox"]["refreshed"][key]
+        observed = comparison[key]
         status = {"written":"applied","blocked":"blocked"}[observed["dispatch"]]
         return {"checkpoint_sha256":digest,"status":status,"after":observed["orders"]}
 
     return {
-        "version":1,"edited_request_sha256":result["shadow"]["effects"][0]["request_sha256"],
+        "version":1,"edited_request_sha256":report["effects"][0]["request_sha256"],
         "runner_id":"exchange-sqlite-v1","guard_id":"check-current-approval",
-        "proposal":result["trials"]["refreshed"],"checkpoint":CHECKPOINT,
+        "proposal":report["effects"][0]["trials"][0]["choice"],"checkpoint":CHECKPOINT,
         "target_key":PUZZLE["order_id"],"expected":CHECKPOINT[PUZZLE["order_id"]],
         "without_guard":arm("without_gate"),"with_guard":arm("with_gate"),
     }
@@ -167,7 +171,8 @@ def capture_batch():
             "gen_ai.output.messages":[{"role":"assistant","parts":[part]}],
         })
         if result["shadow"]:
-            attrs["nexusweave.shadow_probes"] = [dict(result["shadow"],sandbox_dispatch=dispatch_receipt(result))]
+            attrs["nexusweave.shadow_probes"] = [dict(result["shadow"],
+                sandbox_dispatch=dispatch_receipt(result["shadow"],result["sandbox"]["refreshed"]))]
 
         trace = uuid5(NAMESPACE_URL,"nexusweave/tau-retail/handoff/" + case["id"]).hex
         start = (1795172400 + index * 60) * 10**9

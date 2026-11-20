@@ -337,6 +337,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
     let result: Result<Option<Vec<u8>>> = (|| {
         if request.method() == &Method::Get {
             let value = match path {
+                "/api/sidecar/chat-config" => json!({"models":[]}),
                 "/api/sidecar/health" => json!({
                     "demo": options.demo, "content_capture": options.content || options.demo,
                     "metadata_keys": options.metadata, "queue_depth": metrics.depth.load(Relaxed),
@@ -555,6 +556,17 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                         Some("exchange-approval") => json!({
                             "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/exchange-approval/pending.json"))?,
                         }),
+                        Some("exchange-measured") => {
+                            let mut reports: serde_json::Value =
+                                serde_json::from_str(include_str!(
+                                    "../../examples/exchange-approval/pending-measurement.json"
+                                ))?;
+                            json!({
+                                "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/exchange-approval/pending.json"))?,
+                                "candidate":reports["candidate"].take(),
+                                "shadow":reports["shadow"].take(),
+                            })
+                        }
                         _ => json!({
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/preflight-returns.json"))?,
                         }),
@@ -613,6 +625,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
     }
     if request.method() == &Method::Get {
         let asset: Option<(&str, &[u8])> = match path {
+            "/sidecar-canvas.js" => Some((
+                "text/javascript; charset=utf-8",
+                include_bytes!("../../ui/sidecar-canvas.js"),
+            )),
             "/sidecar-prefix.js" => Some((
                 "text/javascript; charset=utf-8",
                 include_bytes!("../../ui/sidecar-prefix.js"),

@@ -133,7 +133,7 @@ pub fn continuation_path<'a>(candidate: &'a Measurement, index: usize) -> Option
     Some(path(candidate, index, conditions))
 }
 
-fn joint_matches(probe: &super::Report, trials: &shadow::Report) -> bool {
+pub(super) fn joint_matches(probe: &super::Report, trials: &shadow::Report) -> bool {
     probe
         .joint_request_sha256
         .as_ref()
