@@ -1,0 +1,65 @@
+{
+  "dataset_sha256": "f8425253dafc19cd9de31c06ab6c8b57d4da2bf48b8ea2d0790b805fb3aa1968",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+  "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+  "weights_sha256": "fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe",
+  "row": 100,
+  "question_sha256": "5560a7e9cd7f4ad57772fb051795501e8da1da615c160fb41d4b18337c0e8044",
+  "source_sha256": "af59531ea17de833e8ff2e9d62279b023113ca91dee8b1bf1854b2de69e9aa06",
+  "conditions": [
+    {
+      "background_rotation": 0,
+      "other_passages": [
+        "d420e023e1d4d3704b838521a2b268a466cc2e6d7a7e1cb2cc952f0d4522f09a",
+        "b8313a6ba1469ae5cd750c6ec57721d7e9a49b72b53a3ccb7ad2d8d1e29ee94e",
+        "fef297dbfdb71a266680360dc4749aa0ca079baaf02bf8fdf1c1033960a6a625",
+        "53e18e5ba0e86cfbff6f3c60bda95b58604597e2be1c96e80f234b1e5ec89ff1",
+        "77e0876f48fc69052adfee2956b3b1fddec5a130fdcb59984a40298501696524",
+        "b684ec860c349b6ee29c0a9d73858c14a993dbaa25c320b42ac1b2f8e3c8c379",
+        "031800ea62214168d7876ca4e69f852654379d8e64d841e6346a524d5f2af933",
+        "f5dee8ea43b65f9addeda7048c000bb1de698a567d364b28bb900d4ec465acbb",
+        "6cfb37c0f0e3dc30341cfe44a58fde4a2616597952253a58ffbe89072c28cf7c"
+      ],
+      "trials": [
+        {
+          "slot": 1,
+          "baseline": "1989",
+          "edited": "1965"
+        },
+        {
+          "slot": 6,
+          "baseline": "The song \"Catch Me If You Can\" was released on May 6, 2003, as part of the musical \"Catch Me If You Can\".",
+          "edited": "1965"
+        }
+      ]
+    },
+    {
+      "background_rotation": 5,
+      "other_passages": [
+        "77e0876f48fc69052adfee2956b3b1fddec5a130fdcb59984a40298501696524",
+        "b684ec860c349b6ee29c0a9d73858c14a993dbaa25c320b42ac1b2f8e3c8c379",
+        "031800ea62214168d7876ca4e69f852654379d8e64d841e6346a524d5f2af933",
+        "f5dee8ea43b65f9addeda7048c000bb1de698a567d364b28bb900d4ec465acbb",
+        "6cfb37c0f0e3dc30341cfe44a58fde4a2616597952253a58ffbe89072c28cf7c",
+        "d420e023e1d4d3704b838521a2b268a466cc2e6d7a7e1cb2cc952f0d4522f09a",
+        "b8313a6ba1469ae5cd750c6ec57721d7e9a49b72b53a3ccb7ad2d8d1e29ee94e",
+        "fef297dbfdb71a266680360dc4749aa0ca079baaf02bf8fdf1c1033960a6a625",
+        "53e18e5ba0e86cfbff6f3c60bda95b58604597e2be1c96e80f234b1e5ec89ff1"
+      ],
+      "trials": [
+        {
+          "slot": 1,
+          "baseline": "1989",
+          "edited": "1989"
+        },
+        {
+          "slot": 6,
+          "baseline": "1989",
+          "edited": "1989"
+        }
+      ]
+    }
+  ]
+}

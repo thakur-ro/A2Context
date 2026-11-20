@@ -59,7 +59,7 @@ python3 examples/public-qa/view_passage_edits.py /tmp/nexus-qa.jsonl.gz \
 
 ## Compare an edit across inputs
 
-After loading both studies, open **Edit effects varied across inputs**. For *Catch Me If You Can (1989 film)*, Qwen answered “1989” in both original requests. With the film passage in slot 1, editing it changed the answer to “September 4, 2012.” With it in slot 6, the same edit left the answer at “1989.” All ten passages moved together, so the effect of moving this passage alone is still an open question.
+After loading both studies, open **Edit effects varied across inputs**. For *Catch Me If You Can (1989 film)*, Qwen answered “1989” in both original requests. With the film passage in slot 1, editing it changed the answer to “September 4, 2012.” With it in slot 6, the same edit left the answer at “1989.” All ten passages moved together in this comparison. The recommended follow-up isolates the position of the selected passage.
 
 ![Two replays show where the film passage appeared, the original and edited answers, and links to both trials.](../../docs/media/passage-order-comparison.png)
 
@@ -67,6 +67,29 @@ Across the 100 passages, 37 had a complete edit in both orders with changed text
 
 ```sh
 python3 examples/public-qa/compare_orders.py --url http://127.0.0.1:8040
+```
+
+### Move only the selected passage
+
+We followed the recommendation for row 100. Two retrieved passages have the title *Catch Me If You Can (1989 film)*. The selected passage's SHA-256 starts with `77e0876f`. In each saved arrangement we kept the other nine passages in their original relative order, inserted this passage in slot 1 or 6, and generated an answer with its text present or replaced. The original conditions reproduced their saved answers.
+
+| Order of the other nine | Slot | Passage present | Passage replaced |
+| --- | ---: | --- | --- |
+| First order | 1 | UNKNOWN | 1989 |
+| First order | 6 | 1989 | 1989 |
+| Rotated order | 1 | 1989 | September 4, 2012 |
+| Rotated order | 6 | Answer about the DVD and Blu-ray release dates | September 4, 2012 |
+
+Moving this passage alone changed the original answer in both arrangements. With its text replaced, the answer held across the two slots within each arrangement. Moving a passage also changes its neighbors' absolute positions. Each cell is one greedy generation on this checkpoint. [Exact outputs and background passage hashes](film-position-results.json)
+
+We also tested the other same-titled passage, `af59531e`. Moving it changed the original answer in the first arrangement and left it at “1989” in the rotated arrangement. The title would have been ambiguous as an evidence link. [Second passage outputs](film-other-passage-results.json)
+
+With the pinned local model and dataset, reproduce the selected comparison from the repository root.
+
+```sh
+python3 examples/public-qa/replay_source_position.py /tmp/nexus-qa.jsonl.gz /path/to/qwen/snapshot \
+  --row 100 --source-sha256 77e0876f48fc69052adfee2956b3b1fddec5a130fdcb59984a40298501696524 \
+  --output /tmp/nexus-film-position.json
 ```
 
 ## Repeat the model measurements
