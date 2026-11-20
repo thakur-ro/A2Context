@@ -82,11 +82,14 @@ function signed(number) {
 
 function candidateVisual(detail) {
   const alternatives = detail.alternatives.map((entry) => entry.id);
-  const readout = (label, margin) => element("div", {},
+  const percent = new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 1 });
+  const readout = (label, margin, outside) => element("div", {},
     element("strong", { text: label }),
     element("span", { text: margin === 0 ? "Tied" : alternatives[margin > 0 ? 0 : 1] + " favored" }),
-    element("p", { className: "label", text: signed(margin) + " log odds" }));
-  return element("div", { className: "comparison" }, readout("Original request", detail.baseline), readout("One source edited", detail.edited));
+    element("p", { className: "label", text: signed(margin) + " log odds" }),
+    outside == null ? null : element("p", { text: percent.format(outside) + " probability outside this pair" }));
+  return element("div", { className: "comparison" }, readout("Original request", detail.baseline, detail.baseline_outside_pair),
+    readout("One source edited", detail.edited, detail.edited_outside_pair));
 }
 
 function tokenVisual(landmark) {
@@ -354,8 +357,9 @@ function recommendationContext(kind, detail) {
   if (kind === "candidate") {
     const other = detail.other_edits.map((edit) => element("li", { text: sourceName(edit) + " · " +
       signed(edit.change) + " change in log odds" }));
-    return element("div", {}, element("p", { text: "Both alternatives were scored from the same assistant prefix." }),
-      element("pre", { text: detail.prefix || "(Empty assistant prefix)" }),
+    return element("div", {}, element("p", { text: detail.prefix ? "Both alternatives were scored after this fixed prefix." :
+      "Both alternatives were scored at the start of the answer." }),
+      detail.prefix ? element("pre", { text: detail.prefix }) : null,
       other.length ? element("h3", { text: "Other edits in this test" }) : null,
       other.length ? element("ul", {}, ...other) : null);
   }
@@ -396,7 +400,7 @@ function recommendationDetail(kind, detail, action, rows = []) {
     ({ replacement: "These counts come from one request. Sampling variation can also change the observed counts.",
        replay: "The supplied trials have no estimated interval for this comparison.",
        shadow: "The supplied proposal trials have no estimated interval for this comparison.",
-       candidate: "These scores compare two specified alternatives on one request.",
+       candidate: "These scores compare two continuations. Free generation can choose a third answer.",
        token: "This comparison holds the output prefix fixed at each position.",
        conflict: "The disagreement is visible in the inputs. Its effect on the answer still needs a test.",
        duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
@@ -450,7 +454,7 @@ function review(card, occurrences) {
         link("Open span " + row.call, url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))))));
 }
 
-function priorEdits(history) {
+function priorEdits(history, hasCurrentScores) {
   if (history?.status !== "checked") return null;
   const [top] = history.edits;
   const limit = history.truncated ? " The lookup used the latest 512 matching observations." : "";
@@ -467,10 +471,11 @@ function priorEdits(history) {
     element("td", { text: edit.lower }), element("td", { text: edit.equal }), element("td", { text: edit.mixed })));
   return element("section", { className: "panel replacement prior-edits" },
     element("span", { className: "label", text: "Evidence from earlier requests" }),
-    element("h2", { text: top.lower ? "Test " + e.source + " on this request" : "Review earlier source edits" }),
+    element("h2", { text: top.lower && hasCurrentScores ? "Earlier replays suggested testing " + e.source :
+      top.lower ? "Test " + e.source + " on this request" : "Review earlier source edits" }),
     element("p", { text: "Replacing " + e.source + " with " + JSON.stringify(e.replacement) +
       " reduced the match rate on " + top.lower + " of " + plural(top.requests, "distinct earlier input") + "." }),
-    element("p", { text: "These requests shared the model, request settings, source versions and positions. The result for this input is unmeasured." + limit }),
+    element("p", { text: "These requests shared the model, request settings, source versions and positions. Their counts describe earlier answers." + limit }),
     link("Inspect an earlier replay", trial(top), "action"),
     element("details", {}, element("summary", { text: "Compare tested edits" }),
       element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Replacement", "Lower", "Equal", "Mixed"].map(text => element("th", { scope: "col", text })))),
@@ -481,22 +486,37 @@ function priorEdits(history) {
 function pendingPreview() {
   const output = element("section", { className: "feed", "aria-live": "polite" });
   const input = element("input", { type: "file", accept: "application/json,.json" });
-  async function show(load) {
+  let sequence = 0;
+  async function show(load, followUp = null) {
+    const currentLoad = ++sequence;
     output.textContent = "Checking the request…";
     try {
       const report = await load();
-      const cards = report.recommendations.map(({ kind, detail, action }) => recommendationDetail(kind, detail, action));
-      const measured = report.recommendations.filter(r => r.kind === "candidate" || r.kind === "shadow").length;
-      cards.splice(measured, 0, priorEdits(report.history));
+      if (currentLoad !== sequence) return;
+      const current = [], findings = [], probes = new Map();
+      for (const { kind, detail, action } of report.recommendations) {
+        const card = recommendationDetail(kind, detail, action);
+        if (kind === "candidate") {
+          if (!probes.has(detail.report_id)) {
+            const group = element("div", { className: "feed" }, card);
+            probes.set(detail.report_id, group);
+            current.push(group);
+          } else {
+            probes.get(detail.report_id).append(element("details", {}, element("summary", {
+              text: "Inspect the edit to " + sourceName(detail.sources[0]) }), card));
+          }
+        } else if (kind === "shadow") current.push(card);
+        else findings.push(card);
+      }
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") }),
         ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
-        ...cards,
+        ...current, priorEdits(report.history, current.length > 0), followUp, ...findings,
         report.total ? element("p", { className: "label", text: report.total > 15 ? "Showing the first 15 recommendations." : "" }) :
           element("p", { className: "empty", text: "No supported issues or measured shifts in this request." })].filter(Boolean));
     } catch (error) {
-      output.textContent = error.message;
+      if (currentLoad === sequence) output.textContent = error.message;
     }
   }
   input.addEventListener("change", () => {
@@ -518,7 +538,15 @@ function pendingPreview() {
   const routing = element("button", { type: "button", text: "Try a measured tool choice" });
   routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" })));
   const history = element("button", { type: "button", text: "Check a new request against earlier edits" });
-  history.addEventListener("click", () => show(() => api("preview-example", { scenario: "history" })));
+  history.addEventListener("click", () => {
+    const scores = element("button", { type: "button", text: "Compare with model scores for this request" });
+    scores.addEventListener("click", () => show(() => api("preview-example", { scenario: "scored-history" })));
+    show(() => api("preview-example", { scenario: "prior-only" }), scores);
+  });
+  const scenario = query.get("scenario");
+  if (["scored-history", "warranty", "routing", "policy", "history"].includes(scenario)) {
+    show(() => api("preview-example", { scenario }));
+  }
   return element("div", { className: "feed" }, panel("Review an assembled request",
     element("label", { text: "Load a preflight request or a request bundled with probe results" }, input),
     element("div", { className: "actions" }, history, routing, policy)), output);

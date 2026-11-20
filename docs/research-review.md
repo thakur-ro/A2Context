@@ -32,6 +32,8 @@ This matrix records capabilities described in the reviewed sources. The combinat
 
 ## Attribution and experimental methods
 
+Wang et al. found discrepancies between first-token rankings and generated text on multiple-choice tasks with instruction-tuned language models. NexusWeave scores the full token sequence of each supplied continuation. Unscored alternatives can still receive substantial probability. The warranty check therefore compares score reversals with freely generated answers and reports the probability outside the specified pair. [Wang et al., Findings of ACL 2024](https://aclanthology.org/2024.findings-acl.441/) · [NexusWeave experiment](methods.md#what-do-model-scores-add-before-generation)
+
 Liu et al. varied where relevant information appeared in multi-document question answering and key-value retrieval and found position-sensitive performance in long contexts. Their intervention motivates holding content constant and varying order. The NexusWeave demo tests two short source messages, reverse order and the same single-source edits on each side. It measures sensitivity of the scored output in that design. Long-context retrieval accuracy and internal attention require their own measurements. [Lost in the Middle, TACL 2024](https://aclanthology.org/2024.tacl-1.9/)
 
 | Source | Method in the primary source | Relationship to NexusWeave |

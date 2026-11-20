@@ -27,7 +27,7 @@ Expand **Scored replays** on the overview or a source factor to see how many con
 
 ### Preview an assembled request
 
-Choose **Check a new request against earlier edits** in the demo to inspect the pending Maple request. The historical card names a source and replacement, shows how often earlier replays changed the match rate and links to an original trial. The lookup reads retained evidence and makes zero model calls. [Runnable input](../examples/redundant-routing/pending-maple.json) · [Held-out results](methods.md#can-an-earlier-replay-identify-what-to-test-on-the-next-request)
+Choose **Check a new request against earlier edits** in the demo. Earlier replays suggest testing the dispatch guide. Choose **Compare with model scores for this request** to see why editing the routing note reversed the model's preference between `UNKNOWN` and `KITE` on the pending Ash input. Both views use saved measurements. The dashboard makes zero model calls. [Runnable scored request](../examples/redundant-routing/candidate-checks/ash-routing-note.json) · [Held-out results](methods.md#what-do-model-scores-add-before-generation)
 
 For live traffic, supply `nexusweave.organization.id` and the same user identity as the captured calls. The producer defaults to `otlp`. For another producer, set `nexusweave.history.source` to the stored run source. A missing user matches only calls with no user ID. Named, versioned sources must bind to verified text fragments or complete message content. Settings, tools, message roles, fixed text and source positions must agree. Only the text inside bound sources and a separate final plain user question can vary.
 

@@ -339,9 +339,27 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 }
                 "/api/sidecar/preview-example" => {
                     let fixture = match fields.get("scenario").map(String::as_str) {
+                        Some("warranty") => {
+                            serde_json::from_str::<serde_json::Value>(include_str!(
+                                "../../examples/redundant-routing/warranty-probe-results.json"
+                            ))?["example"]
+                                .take()
+                        }
                         Some("history") => json!({
                             "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/redundant-routing/pending-maple.json"))?
                         }),
+                        Some(scenario @ ("prior-only" | "scored-history")) => {
+                            let mut fixture: serde_json::Value = serde_json::from_str(include_str!(
+                                "../../examples/redundant-routing/candidate-checks/ash-routing-note.json"
+                            ))?;
+                            if scenario == "prior-only" {
+                                fixture
+                                    .as_object_mut()
+                                    .expect("demo envelope")
+                                    .remove("candidate");
+                            }
+                            fixture
+                        }
                         Some("routing") => json!({
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/request.json"))?,
                             "candidate": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/report.json"))?,

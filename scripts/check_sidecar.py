@@ -351,6 +351,15 @@ def check_predecision_recommendations(base):
     recommendation = send(base, preview_path, {"request": request, "candidate": candidate, "shadow": shadow})[1]
     result = recommendation["recommendations"]
     assert not recommendation["unverified_probes"]
+    scored_dir = ROOT / "examples/redundant-routing/candidate-checks"
+    for example, expected in [("maple-dispatch-guide", "routing-note"), ("ash-routing-note", "routing-note")]:
+        envelope = json.loads((scored_dir / (example + ".json")).read_text())
+        cards = send(base, preview_path, envelope)[1]["recommendations"]
+        first = cards[0]["detail"]
+        assert first["sources"][0]["source"] == expected and first["baseline"] * first["edited"] < 0
+    warranty = get(base, "preview-example", scenario="warranty")["recommendations"][0]
+    assert warranty["action"]["title"] == "Check which other answers are plausible"
+    assert abs(warranty["detail"]["edited_outside_pair"] - 0.5972319211461123) < 1e-8
     route = next(item for item in result if item["kind"] == "candidate" and item["detail"]["sources"][0]["source"] == "request-type")
     assert route["detail"]["baseline"] > 0 > route["detail"]["edited"]
     assert route["detail"]["other_edits"][0]["source"] == "store-name"
@@ -585,6 +594,15 @@ def main():
             assert get(base, "findings", kind="candidate")["rows"]
             if args.sdk_python:
                 assert get(base, "findings", kind="token")["rows"]
+        with sqlite3.connect(captured) as sql:
+            sql.execute("PRAGMA user_version = 5")
+            sql.execute("UPDATE observations SET detail=json_remove(detail,'$.baseline_outside_pair','$.edited_outside_pair') WHERE kind='candidate'")
+        with server(args.binary, captured, "--capture-content") as base:
+            upgraded = get(base, "findings", kind="candidate")["rows"]
+            assert upgraded
+            for card in upgraded:
+                detail = card["evidence"]["detail"]
+                assert 0 <= detail["baseline_outside_pair"] <= 1 and 0 <= detail["edited_outside_pair"] <= 1
         representative = folder / "representative.sqlite"
         with server(args.binary, representative, "--capture-content") as base:
             check_replay_representative(base)

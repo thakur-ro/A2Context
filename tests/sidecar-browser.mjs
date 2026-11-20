@@ -127,15 +127,22 @@ try {
   await page.getByRole("link", { name: "Before inference" }).click();
   await page.getByRole("button", { name: "Check a new request against earlier edits" }).click();
   const prior = page.locator(".prior-edits");
-  await prior.getByRole("heading", { name: "Test routing-note on this request" }).waitFor();
+  await prior.getByRole("heading", { name: "Test dispatch-guide on this request" }).waitFor();
   await prior.getByText(/2 of 2 distinct earlier inputs/).waitFor();
   await prior.getByText("Compare tested edits").click();
   assert.equal(await prior.locator("tbody tr").count(), 4);
   const oldReplay = await prior.getByRole("link", { name: "Inspect an earlier replay" }).getAttribute("href");
   const original = await browser.newPage();
   await original.goto(new URL(oldReplay, base).href);
-  await original.locator('[data-context-id="routing-note"]:focus').waitFor();
+  await original.locator('[data-context-id="dispatch-guide"]:focus').waitFor();
   await original.close();
+  await page.getByRole("button", { name: "Compare with model scores for this request" }).click();
+  const measuredEdit = page.locator(".panel").filter({ has: page.getByRole("heading", {
+    name: "Editing routing-note switched the preferred alternative", exact: true }) });
+  await measuredEdit.getByText("UNKNOWN favored", { exact: true }).waitFor();
+  await measuredEdit.getByText("KITE favored", { exact: true }).waitFor();
+  await prior.getByRole("heading", { name: "Earlier replays suggested testing dispatch-guide" }).waitFor();
+  if (process.env.PENDING_SCREENSHOT) await measuredEdit.screenshot({ path: process.env.PENDING_SCREENSHOT });
   await page.getByRole("button", { name: "Try a measured tool choice" }).click();
   await page.getByText("price favored", { exact: true }).first().waitFor();
   await page.getByRole("button", { name: "Try a policy conflict" }).click();
@@ -161,6 +168,10 @@ try {
   await factor(mobile, "Conflicting rules").click();
   await conflictCard(mobile).getByRole("link", { name: "Review recommendation" }).click();
   await mobile.getByRole("heading", { name: "Recommendation", exact: true }).waitFor();
+  assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
+  await mobile.goto(base + "/?view=preview&scenario=warranty");
+  await mobile.getByText("59.7% probability outside this pair", { exact: true }).waitFor();
+  await mobile.getByRole("heading", { name: "Check which other answers are plausible" }).waitFor();
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
   assert.deepEqual(errors, []);
   console.log("Verified recommendations, before-inference preview, measured choices and tokens, legacy links, and desktop and mobile layouts.");

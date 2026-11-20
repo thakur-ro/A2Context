@@ -1,0 +1,153 @@
+{
+  "request": {
+    "version": 1,
+    "attributes": {
+      "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "nexusweave.organization.id": "dispatch-lab",
+      "nexusweave.history.source": "synthetic-qwen-order",
+      "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Dispatch guide: Route Pine parcels to bay DOVE.\"},{\"role\":\"user\",\"content\":\"Routing note: Route Pine parcels to bay DOVE.\"},{\"role\":\"user\",\"content\":\"Where should a Pine parcel go?\"}],\"temperature\":0,\"max_tokens\":16}",
+      "nexusweave.context.semantics": {
+        "version": 1,
+        "request_sources": [
+          {
+            "id": "dispatch-guide",
+            "source_id": "dispatch-guide",
+            "source_version": "1",
+            "role": "user",
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 16,
+                "end_byte": 47
+              }
+            }
+          },
+          {
+            "id": "routing-note",
+            "source_id": "routing-note",
+            "source_version": "1",
+            "role": "user",
+            "request_fragment": {
+              "pointer": "/messages/2/content",
+              "text_range": {
+                "start_byte": 14,
+                "end_byte": 45
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "candidate": {
+    "version": 1,
+    "id": "pine-dispatch-guide",
+    "scorer_id": "qwen2-transformers-continuation-v1",
+    "captured_request_sha256": "5b4eb507e6ffc0bbb09b3040e280837619157e40142c36d599254f81bb4e704b",
+    "assistant_prefix": "",
+    "candidates": [
+      {
+        "id": "DOVE",
+        "continuation": "DOVE"
+      },
+      {
+        "id": "UNKNOWN",
+        "continuation": "UNKNOWN"
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "assistant_prefix_token_ids": [],
+      "candidate_token_ids": [
+        [
+          5865,
+          4491
+        ],
+        [
+          51378
+        ]
+      ],
+      "conditions": [
+        {
+          "id": "baseline",
+          "rendered_prefix_sha256": "e83d5a3e52fd1aa4f0891bdaa343548102d8422fc87b459648e59e1634a02bdd",
+          "log_probs": [
+            -0.11913681030273438,
+            -3.6622066497802734
+          ]
+        },
+        {
+          "id": "edit:request-source:dispatch-guide",
+          "rendered_prefix_sha256": "e8c85d802e07ed321c647f42801873a80c1f48cdd8ee1d81729437fadc0ec822",
+          "log_probs": [
+            -0.0568084716796875,
+            -3.201265335083008
+          ]
+        },
+        {
+          "id": "edit:request-source:routing-note",
+          "rendered_prefix_sha256": "0ae82566d8d8aa951ca7e1d6e4cb7070f9ac917de43242c90fb51ee672007055",
+          "log_probs": [
+            -0.2471275329589844,
+            -1.640207290649414
+          ]
+        }
+      ]
+    },
+    "baseline_log_odds": 3.543069839477539,
+    "effects": [
+      {
+        "condition_id": "edit:request-source:dispatch-guide",
+        "intervention": {
+          "context_id": "request-source:dispatch-guide",
+          "pointer": "/messages/1/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 16,
+            "end_byte": 47
+          },
+          "replacement": "No dispatch record available."
+        },
+        "source_id": "dispatch-guide",
+        "source_version": "1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "1ee5b32b1b67c354bb1235cdba1da2e2fc37327c191504383a3653230b8f8dc0",
+        "log_odds": 3.1444568634033203,
+        "change_log_odds": -0.39861297607421875
+      },
+      {
+        "condition_id": "edit:request-source:routing-note",
+        "intervention": {
+          "context_id": "request-source:routing-note",
+          "pointer": "/messages/2/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 14,
+            "end_byte": 45
+          },
+          "replacement": "No dispatch record available."
+        },
+        "source_id": "routing-note",
+        "source_version": "1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "dd50352bc293763e8be5d8620305fbda491bae0aa44de05c85bf136ffd3f3b8c",
+        "log_odds": 1.3930797576904297,
+        "change_log_odds": -2.1499900817871094
+      }
+    ]
+  }
+}

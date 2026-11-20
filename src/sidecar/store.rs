@@ -225,10 +225,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 5 {
+        if version == 6 {
             return Ok(());
         }
-        if !(0..5).contains(&version) {
+        if !(0..6).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -250,7 +250,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 5)?;
+        self.0.pragma_update(None, "user_version", 6)?;
         Ok(())
     }
 

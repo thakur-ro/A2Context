@@ -106,6 +106,25 @@ With the saved demo running, reproduce the comparison without a model call. To r
 python3 examples/redundant-routing/check_prior_edits.py --url http://127.0.0.1:8040
 ```
 
+### What do model scores add before generation?
+
+We gave the local Qwen scorer the pending dispatch request, two source edits and two continuations taken from the task: the specified bay code and `UNKNOWN`. At the empty assistant prefix it summed the conditional log probabilities of the tokens in each continuation. Subtracting the second sum from the first gives the preference margin. The sidecar checks the request and edit bindings. Within one probe, it lists edits that reverse the preference first, then orders by absolute change in margin. A tied margin supplies no reversal.
+
+On the eight previously examined dispatch requests, replay history's first suggested edit changed the answer on 4/8. The current-request probe showed a reversal on six requests. Its first reversal changed the generated text on 6/6. Across all 16 individual edits, seven reversed preference and all seven changed the generated text. This comparison reuses cases whose outputs were already available during development. [Saved model reports](../examples/redundant-routing/candidate-checks) · [Evaluation script](../examples/redundant-routing/check_prior_edits.py)
+
+![On the Ash request, editing the routing note switches preference from UNKNOWN to KITE. The panel shows the probability left outside the pair.](media/pending-model-scores.png)
+
+For a separate warranty workflow, we fixed four inspections, two source orders and the same edit for both sources. We scored `APPROVE` versus `DENY` on all eight requests before generating any answers. The workflow also allowed `REVIEW`. Among 16 edits, nine reversed the two-way preference and changed the answer. Another six preserved both the preference and the answer. One changed the answer without reversing the preference. These are repeated conditions from one synthetic template and checkpoint. [Warranty inputs and runner](../examples/redundant-routing/check_warranty_probe.py) · [Scores and generated answers](../examples/redundant-routing/warranty-probe-results.json)
+
+The missed edit was the policy on the accidental-damage request with the policy first. `DENY` still outranked `APPROVE`, but the model generated `REVIEW`. The panel reports the probability outside the two disjoint candidate token sequences as `1 − exp(log_p_A) − exp(log_p_B)`, conditional on the same prompt and prefix. It went from **46.8% to 59.7%**. If either condition puts most of its mass outside the pair, the recommendation calls for checking other answers. This mass describes continuations at this prefix. A complete answer can still extend either scored sequence.
+
+With the demo running, verify the ranking against the saved dispatch outputs. To regenerate the probes, pass the pinned local snapshot and revision used above to `score_pending_edits.py`.
+
+```sh
+python3 examples/redundant-routing/check_prior_edits.py --url http://127.0.0.1:8040 \
+  --candidate-checks examples/redundant-routing/candidate-checks
+```
+
 ## Reproduction
 
 - Run the saved demo and follow the three [README journeys](../README.md#try-the-demo).

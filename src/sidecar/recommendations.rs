@@ -32,8 +32,14 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Keep one copy in its original role and test removing the other. Compare the named outcome before trimming the input in production.",
             "Observed exact repetition",
         ),
+        "candidate" if ["baseline_outside_pair", "edited_outside_pair"].iter()
+            .any(|key| detail[key].as_f64().is_some_and(|value| value > 0.5)) => (
+            "Check which other answers are plausible",
+            "Most probability fell outside the two tested continuations in at least one condition. Generate the full answer or include another plausible continuation in a follow-up test.",
+            "Limited candidate coverage at the tested prefix",
+        ),
         "candidate" => (
-            "Test the source that shifted the choice",
+            "Check the edited answer or tool call",
             "Repeat the comparison at the same prefix and include an unrelated control edit. Check the full proposed answer or tool arguments before adopting the change.",
             "Measured preference at a fixed prefix",
         ),
@@ -126,9 +132,20 @@ pub fn preview(
 
 pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
     for probe in replay::candidates::recorded(&run.id, call) {
-        let replay::candidates::Verification::Matched { measurement } = probe.verification else {
+        let replay::candidates::Verification::Matched { mut measurement } = probe.verification
+        else {
             continue;
         };
+        // Log-odds changes are comparable within this prefix and candidate pair.
+        let baseline = measurement.baseline_log_odds;
+        let flips =
+            |margin: f64| (baseline > 0.0 && margin < 0.0) || (baseline < 0.0 && margin > 0.0);
+        measurement.effects.sort_by(|a, b| {
+            flips(b.log_odds)
+                .cmp(&flips(a.log_odds))
+                .then_with(|| b.change_log_odds.abs().total_cmp(&a.change_log_odds.abs()))
+                .then_with(|| a.context_id.cmp(b.context_id))
+        });
         for effect in measurement
             .effects
             .iter()
@@ -157,6 +174,7 @@ pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
             findings.push(findings::occurrence("candidate", key, call, json!({
                 "report_id": probe.report_id, "sources": [findings::source(item)], "alternatives": measurement.candidates,
                 "baseline": measurement.baseline_log_odds, "edited": effect.log_odds, "change": effect.change_log_odds,
+                "baseline_outside_pair":measurement.baseline_outside_pair_probability, "edited_outside_pair":effect.outside_pair_probability,
                 "model": measurement.model_id, "revision": measurement.model_revision, "runtime": measurement.runtime,
                 "prefix": measurement.assistant_prefix, "replacement": effect.replacement, "operation": effect.operation,
                 "other_edits": measurement.effects.iter().filter(|other| other.context_id != effect.context_id).take(4)

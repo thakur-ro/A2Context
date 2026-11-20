@@ -77,6 +77,13 @@ pub struct ConditionScore {
     pub log_probs: [f64; 2],
 }
 
+impl ConditionScore {
+    /// Remaining probability after the two disjoint token prefixes at this condition.
+    pub fn outside_pair_probability(&self) -> f64 {
+        (1.0 - self.log_probs[0].exp() - self.log_probs[1].exp()).clamp(0.0, 1.0)
+    }
+}
+
 /// Conditional preference shifts and the exact source edits used to measure them.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]

@@ -52,6 +52,7 @@ pub struct Measurement<'a> {
     pub assistant_prefix: &'a str,
     pub candidates: &'a [Candidate; 2],
     pub baseline_log_odds: f64,
+    pub baseline_outside_pair_probability: f64,
     pub effects: Vec<RecordedEffect<'a>>,
 }
 
@@ -72,6 +73,7 @@ pub struct RecordedEffect<'a> {
     pub replacement: &'a str,
     pub log_odds: f64,
     pub change_log_odds: f64,
+    pub outside_pair_probability: f64,
 }
 
 /// Verify captured probes on one call against their request and source edits.
@@ -208,6 +210,7 @@ fn verify<'a>(
             replacement: &effect.intervention.replacement,
             log_odds,
             change_log_odds,
+            outside_pair_probability: score.outside_pair_probability(),
         });
     }
 
@@ -221,6 +224,7 @@ fn verify<'a>(
         assistant_prefix: &report.assistant_prefix,
         candidates: &report.candidates,
         baseline_log_odds: baseline,
+        baseline_outside_pair_probability: report.scores.conditions[0].outside_pair_probability(),
         effects,
     })
 }
