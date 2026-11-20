@@ -624,27 +624,43 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
         );
     }
     if request.method() == &Method::Get {
-        let asset: Option<(&str, &[u8])> = match path {
-            "/sidecar-canvas.js" => Some((
-                "text/javascript; charset=utf-8",
-                include_bytes!("../../ui/sidecar-canvas.js"),
-            )),
-            "/sidecar-prefix.js" => Some((
-                "text/javascript; charset=utf-8",
-                include_bytes!("../../ui/sidecar-prefix.js"),
-            )),
-            "/sidecar-token-path.js" => Some((
-                "text/javascript; charset=utf-8",
-                include_bytes!("../../ui/sidecar-token-path.js"),
-            )),
-            "/sidecar.js" => Some((
-                "text/javascript; charset=utf-8",
-                include_bytes!("../../ui/sidecar.js"),
-            )),
-            "/sidecar-a2ui.js" => Some((
-                "text/javascript; charset=utf-8",
+        // Serve one script on the dashboard's cold path. Keep individual asset URLs for older pages.
+        const SCRIPTS: &[(&str, &[u8])] = &[
+            (
+                "/sidecar-a2ui.js",
                 include_bytes!("../../ui/sidecar-a2ui.js"),
-            )),
+            ),
+            (
+                "/sidecar-prefix.js",
+                include_bytes!("../../ui/sidecar-prefix.js"),
+            ),
+            (
+                "/sidecar-token-path.js",
+                include_bytes!("../../ui/sidecar-token-path.js"),
+            ),
+            (
+                "/context-network.js",
+                include_bytes!("../../ui/context-network.js"),
+            ),
+            (
+                "/sidecar-canvas.js",
+                include_bytes!("../../ui/sidecar-canvas.js"),
+            ),
+            ("/sidecar.js", include_bytes!("../../ui/sidecar.js")),
+        ];
+        const JS: &str = "text/javascript; charset=utf-8";
+        if path == "/workspace.js" {
+            let mut body = Vec::with_capacity(SCRIPTS.iter().map(|(_, s)| s.len() + 3).sum());
+            for (_, script) in SCRIPTS {
+                body.extend_from_slice(script);
+                body.extend_from_slice(b"\n;\n");
+            }
+            return (200, JS, body);
+        }
+        if let Some((_, script)) = SCRIPTS.iter().find(|(url, _)| *url == path) {
+            return (200, JS, script.to_vec());
+        }
+        let asset: Option<(&str, &[u8])> = match path {
             "/sidecar.css" => Some((
                 "text/css; charset=utf-8",
                 include_bytes!("../../ui/sidecar.css"),

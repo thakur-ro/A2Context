@@ -722,7 +722,7 @@ impl Store {
                 | "order-tests"
                 | "replay-variations"
         ) {
-            sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,t.user,json_extract(o.detail,'$.factor') AS factor,
+            sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,t.user,t.source,t.workflow,json_extract(o.detail,'$.factor') AS factor,
                 CASE WHEN o.kind IN ('candidate','token') OR (o.kind='prefill' AND json_extract(o.detail,'$.shifted')=1) OR
                     (o.kind IN ('replay','shadow') AND json_extract(o.detail,'$.effect_pp') != 0) THEN 1 ELSE 0 END AS changed,
                 CASE WHEN json_array_length(o.detail,'$.changed_edits')>0
@@ -1313,7 +1313,7 @@ impl Store {
                            FROM (SELECT trace_id,call_id,json_extract(detail,'$.measurement.location.decision_id') AS decision,
                                json_extract(detail,'$.mask.outcome') AS outcome FROM events WHERE group_id=g.group_id)
                            GROUP BY trace_id,call_id,decision) GROUP BY outcome))) END,
-                     'evidence',json_object('thread_key',e.thread_key,'thread',e.thread,'trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail)),
+                     'evidence',json_object('producer',e.source,'organization',e.org,'workflow',e.workflow,'thread_key',e.thread_key,'thread',e.thread,'trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail)),
                      'trend',json((SELECT json_group_array(json_object('day',day,'count',hits)) FROM
                        (SELECT date(observed,'unixepoch') AS day,count(*) AS hits FROM events e
                         WHERE e.group_id=g.group_id AND observed IS NOT NULL GROUP BY day ORDER BY day DESC LIMIT 14))))

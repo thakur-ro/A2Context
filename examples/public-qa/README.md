@@ -4,6 +4,8 @@ A retrieval workflow sent ten passages to a small language model. Before the mod
 
 The [fresh-question evaluation](holdout.md) tests the same ranking on 20 additional questions with its primary comparison fixed in advance.
 
+Can a workflow flag missing evidence before the model answers? In a separate experiment, both an abstention score and a keyword baseline missed 19 of 20 annotated passage omissions. [Missing-passage experiment](annotation-gap.md)
+
 ## What changed in the answers?
 
 In the first order, editing the passage ranked first by the model changed the generated text on **8 of 10 questions**. Testing the first passage in the prompt gave the same count for a fraction of the work. The model selected the annotated answer passage once. On one question, its largest shift was on a passage about the film *Terminator Genisys* when the question asked about the original film. Removing that passage changed the answer from “Jason Clarke” to “Michael Edwards,” which matched a dataset alias.

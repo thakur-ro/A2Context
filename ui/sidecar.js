@@ -73,7 +73,16 @@ function url(params, filters = scope) {
   return search.size ? "?" + search : "/";
 }
 
-async function api(path, params = {}, allowMissing = false) {
+// The sidecar serves dashboard queries from one SQLite reader. Issue one read at
+// a time per tab so a detail page does not compete for idle loopback connections.
+let lastRead = Promise.resolve();
+function api(path, params = {}, allowMissing = false) {
+  const result = lastRead.then(() => readEvidence(path, params, allowMissing));
+  lastRead = result.then(() => {}, () => {});
+  return result;
+}
+
+async function readEvidence(path, params, allowMissing) {
   const response = await fetch("/api/sidecar/" + path + "?" + new URLSearchParams(params));
   if (allowMissing && response.status === 404) return null;
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || "Evidence could not be loaded.");
@@ -1981,10 +1990,18 @@ function pendingPreview() {
       const testedTop = checked && report.prefill?.ranked[0]?.context_id === experiment.interventions[0].context_id &&
         report.prefill.ranked[0].request_sha256 === experiment.edited_request_sha256;
       const history = priorEdits(report.history, current.length > 0 || Boolean(report.prefill));
+      const coverage = report.scope_coverage;
+      const gap = coverage && (!coverage.declarations || coverage.known_values < coverage.declarations);
       const opening = report.prefill?.ranked[0]?.opening_changed !== undefined;
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
+        gap && element("section",{className:"panel","aria-label":"Rule capture gap"},
+          element("h2",{text:"Check capture for " + coverage.scope.key}),
+          element("p",{text:coverage.declarations ? coverage.known_values + " of " + coverage.declarations +
+            " declarations supplied a value in scope “" + coverage.scope.scope + "”." :
+            "No captured declaration matched scope “" + coverage.scope.scope + "”."}),
+          element("p",{text:"Check the rule name and source declarations in the request builder."})),
         !prefixReviews.length && dispatchHistory,
         ...prefixReviews.flatMap((r,i) => [prefixReview(r,report.example_question,i === 0 ? followUp : null),
           blockInvestigation([{review:r,index:r.reversals[0] || 1}])]),
@@ -2000,7 +2017,7 @@ function pendingPreview() {
         ...current, prefixReviews.length && dispatchHistory, report.screen_suggestion ? screenReview(report.screen_suggestion) : null,
         checked ? null : history, prefixReviews.length ? null : followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
-        !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
+        !gap && !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
       if (currentLoad === sequence) output.textContent = error.message;
     }
@@ -2490,9 +2507,12 @@ async function main() {
       row.focus();
     }
   }
+  let refreshing = false;
   if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !prefixCohorts && !targetPatterns && !ranking && !outcomeCategory && !health.demo) window.setInterval(() => {
-    if (!document.hidden && !byId("content").contains(document.activeElement)) {
-      Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
+    if (!refreshing && !document.hidden && !byId("content").contains(document.activeElement)) {
+      refreshing = true;
+      Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; })
+        .finally(() => { refreshing = false; });
     }
   }, 15000);
 }

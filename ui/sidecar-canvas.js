@@ -134,6 +134,7 @@ function investigationCanvas(impact, page, models) {
   const listing = element("section",{className:"canvas-list","aria-label":"Recommendation cards"},
     element("div",{className:"canvas-section-title"},element("h2",{text:"Needs attention"}),browse),cards);
   home.append(form,setup,suggestions,status,output,past,stats,listing,link("Explore evidence by source",url({explore:1})));
+  let loadedPage = page, currentTotal = impact.recommendations;
   let records = [], history = [], previous, answering = false, moreEvidence = false;
   const corrections = new Map();
   const normalize = q => q.trim().toLowerCase().replace(/[?.!]+$/, "");
@@ -183,6 +184,23 @@ function investigationCanvas(impact, page, models) {
     send.disabled = true;
     status.textContent = picker.value && !selected ? "Asking " + picker.value + "…" : "";
     try {
+      if (!selected && /^(?:(?:show|open|draw)(?: me)? (?:the |a )?)?(?:context|evidence) (?:map|graph|network)$/i.test(normalize(question))) {
+        let rows = loadedPage.rows, offset = loadedPage.next_offset;
+        const host = element("div",{});
+        function draw(focusId) {
+          host.replaceChildren(contextNetwork(rows,{focusId,total:currentTotal,onNext:offset == null ? null : async id => {
+            const result = await api("findings",{...scope,offset});
+            rows = [...new Map([...rows,...result.rows].map(row=>[row.id,row])).values()];
+            offset = result.next_offset;
+            draw(id);
+          }}));
+        }
+        draw(previous && "finding:"+previous.facts.id);
+        output.replaceChildren(host);
+        input.value="";
+        status.textContent="";
+        return;
+      }
       let candidates = records;
       const terms = canvasTerms(question);
       if (moreEvidence && terms.length && !selected) {
@@ -228,6 +246,8 @@ function investigationCanvas(impact, page, models) {
   }
   form.addEventListener("submit", event => {event.preventDefault(); ask(input.value.trim());});
   home.updateEvidence = (impact, page) => {
+    loadedPage = page;
+    currentTotal = impact.recommendations;
     moreEvidence = page.next_offset != null;
     records = page.rows.map(canvasRecord);
     previous = records.find(r => r.facts.id === previous?.facts.id) || (moreEvidence ? previous : null);
@@ -239,6 +259,7 @@ function investigationCanvas(impact, page, models) {
       records.some(r => r.facts.kind === kindLabels.conflict) ? "Which instructions disagreed?" : "What needs attention first?",
       records.some(r => r.dispatch) ? "What changed at dispatch?" : "Where does this repeat?",
     ];
+    questions.push("Show the context map");
     suggestions.replaceChildren(...questions.map(q => prompt(q, () => ask(q))));
     cards.replaceChildren(...records.slice(0,3).map(r => element("article",{className:"canvas-card"},
       NexusWeaveA2UI.recommendation("card-"+r.facts.id,{label:r.facts.kind,title:r.facts.title,description:r.facts.observed}),

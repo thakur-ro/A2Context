@@ -145,6 +145,55 @@ function blockChart(margins, original, edited, extent, crossing) {
   return chart;
 }
 
+function blockEffectMap(baseline, effect, controls) {
+  const sites = Object.keys(blockSites);
+  const deltas = sites.flatMap(site => effect.swaps[site].map(value => Math.abs(value - baseline)));
+  const peak = Math.max(...deltas);
+  const readout = element("output", {className:"patch-readout", "aria-live":"polite"});
+  const grid = element("div", {className:"patch-grid"});
+  const buttons = [];
+  function select(index) {
+    const {button, site, block} = buttons[index];
+    for (const entry of buttons) {
+      entry.button.tabIndex = entry.button === button ? 0 : -1;
+      entry.button.setAttribute("aria-pressed", String(entry.button === button));
+    }
+    const score = effect.swaps[site][block];
+    readout.textContent = blockSites[site] + ", block " + block + " · Change " + signed(score - baseline) +
+      " log odds · Original " + signed(baseline) + " · Patched " + signed(score) + " · Self-swap " + signed(controls[site][block]);
+  }
+  for (const site of sites) {
+    const row = element("div", {className:"patch-row", role:"group", "aria-label":blockSites[site]});
+    const values = effect.swaps[site];
+    row.style.gridTemplateColumns = "repeat(" + values.length + ", minmax(20px,1fr))";
+    values.forEach((value, block) => {
+      const delta = value - baseline;
+      const label = blockSites[site] + ", block " + block;
+      const button = element("button", {type:"button", className:"patch-dot", "aria-label":label,
+        title:label + " · " + signed(delta) + " log odds"});
+      button.dataset.direction = delta > 0 ? "positive" : delta < 0 ? "negative" : "zero";
+      button.style.setProperty("--dot-size", (6 + (peak ? 10*Math.sqrt(Math.abs(delta)/peak) : 0)) + "px");
+      const index = buttons.length;
+      buttons.push({button, site, block});
+      button.onclick = () => select(index);
+      button.onkeydown = event => {
+        const step = {ArrowLeft:-1, ArrowRight:1, ArrowUp:-values.length, ArrowDown:values.length}[event.key];
+        if (step === undefined) return;
+        event.preventDefault();
+        const next = Math.min(buttons.length-1, Math.max(0, index+step));
+        select(next);
+        buttons[next].button.focus();
+      };
+      row.append(button);
+    });
+    grid.append(element("small",{text:blockSites[site]}),row);
+  }
+  select(deltas.indexOf(peak));
+  return element("details", {className:"patch-map"},element("summary",{text:"Inspect both activation positions"}),
+    element("p",{text:"Each dot is a separate swap at one decoder block, ordered from first to last. Size shows the absolute change in log odds. Blue increases the score, amber decreases it, and gray marks zero."}),
+    grid, readout);
+}
+
 function blockInvestigation(entries) {
   const measured = entries.flatMap(({review, label, index}) => review?.block_probe?.status === "matched" ?
     [{review, label, index, probe:review.block_probe.probe}] : []);
@@ -164,12 +213,12 @@ function blockInvestigation(entries) {
 
   function draw() {
     const samples = measured.map(({label, index, probe}) => ({
-      label, baseline:probe.baseline, control:probe.self_swaps[site.value],
+      label, baseline:probe.baseline, controls:probe.self_swaps,
       effect:probe.effects[source ? Number(source.value) : index - 1]
     }));
     const extent = Math.max(1, ...samples.flatMap(({baseline,effect}) =>
       [baseline.margin, effect.donor.margin, ...effect.swaps[site.value]]).map(Math.abs));
-    plots.replaceChildren(...samples.map(({label, baseline, effect, control}) => {
+    plots.replaceChildren(...samples.map(({label, baseline, effect, controls}) => {
       const original = baseline.margin, edited = effect.donor.margin;
       const margins = effect.swaps[site.value];
       const crossing = margins.findIndex(m => Math.sign(original) !== 0 && Math.sign(m) === -Math.sign(original));
@@ -188,12 +237,13 @@ function blockInvestigation(entries) {
           element("span", {className:"block-sweep",text:"One vector swapped"})),
         crossing >= 0 && Math.sign(original) === Math.sign(edited) &&
           element("p", {text:"The full source edit kept the original preference."}),
+        blockEffectMap(original, effect, controls),
         element("details", {}, element("summary", {text:"Read scores and controls"}),
           element("p", {text:"The patch copies token position " + to + " of the full edit to position " + from +
             " of the original request at the same block. Blocks and positions start at zero."}),
           comparisonTable(["Block","Swap log odds","Self-swap"], margins.map((value,block) =>
             element("tr", {}, element("th", {scope:"row",text:block}),
-              element("td", {text:String(value)}),element("td", {text:String(control[block])}))))));
+              element("td", {text:String(value)}),element("td", {text:String(controls[site.value][block])}))))));
     }));
   }
   site.addEventListener("change",draw);

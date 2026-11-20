@@ -129,7 +129,12 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
         changed["attributes"][key] = value
         assert preview(changed)[1] == []
     wrong_scope = dict(pending,scope={"key":"exchange_authorization","scope":"first order"})
-    assert preview(wrong_scope)[1] == []
+    unmatched, earlier = preview(wrong_scope)
+    assert earlier == []
+    assert unmatched["scope_coverage"] == {"scope":wrong_scope["scope"],"declarations":0,"known_values":0}
+    assert current["scope_coverage"] is None
+    requested = dict(pending, scope={"key":"exchange_authorization","scope":"second order"})
+    assert preview(requested)[0]["scope_coverage"] == {"scope":requested["scope"],"declarations":2,"known_values":2}
     changed = deepcopy(pending)
     declarations = changed["attributes"]["nexusweave.context.semantics"]["request_sources"]
     declarations[1]["rule"]["value"] = "approved"

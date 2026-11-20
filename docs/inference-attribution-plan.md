@@ -2,6 +2,8 @@
 
 NexusWeave should help a developer see which context is influencing a decision as inference unfolds, how that influence changes, and which other available inputs have little measured effect or reinforce each other. Clicking a result should take the developer back to the prompt source and the inference position that the evidence covers.
 
+The [research preview](research-preview.md) records the latest holdout, the decisions it changed, and the next experiment.
+
 ## What we can observe
 
 | Evidence | What it supports |

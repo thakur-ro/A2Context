@@ -82,6 +82,23 @@ fn checks_equal_missing_and_out_of_scope_values() {
 }
 
 #[test]
+fn explicit_scope_distinguishes_missing_capture_from_a_measured_count() {
+    let mut input: Value = serde_json::from_str(EXAMPLE).unwrap();
+    for (scope, declarations, known_values) in [("standard", 2, 1), ("holiday", 0, 0)] {
+        input["scope"]["scope"] = json!(scope);
+        input["attributes"][SEMANTICS]["request_sources"][1]["rule"]["value"] = Value::Null;
+        let coverage = check(input.clone()).unwrap().scope_coverage.unwrap();
+        assert_eq!(
+            (coverage.declarations, coverage.known_values),
+            (declarations, known_values)
+        );
+        assert_eq!(coverage.scope.scope, scope);
+    }
+    input["scope"] = Value::Null;
+    assert!(check(input).unwrap().scope_coverage.is_none());
+}
+
+#[test]
 fn carries_the_same_source_identities_into_a_recorded_decision() {
     let input: Value = serde_json::from_str(EXAMPLE).unwrap();
     let before = check(input).unwrap();

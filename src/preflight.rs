@@ -35,10 +35,37 @@ pub struct Report {
     pub model: Option<String>,
     pub captured_items: usize,
     pub scoped_rule_items: usize,
+    /// Present when the caller asked for a specific rule. Counts captured declarations only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope_coverage: Option<ScopeCoverage>,
     pub findings: Vec<Finding>,
     /// Attach to the resulting inference span as `nexusweave.preflight`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receipt: Option<Receipt>,
+}
+
+/// Capture coverage for a rule that the caller explicitly asked to inspect.
+#[derive(Debug, Serialize)]
+pub struct ScopeCoverage {
+    pub scope: DecisionScope,
+    pub declarations: usize,
+    pub known_values: usize,
+}
+
+/// Counts declarations and supplied values for the requested key and scope.
+/// Zero declarations means that the capture supplied no matching rule.
+pub fn scope_coverage(call: &Call, scope: &DecisionScope) -> ScopeCoverage {
+    let mut declarations = 0;
+    let mut known_values = 0;
+    for (_, rule) in rules(call, Some(scope)) {
+        declarations += 1;
+        known_values += usize::from(rule.value.is_some());
+    }
+    ScopeCoverage {
+        scope: scope.clone(),
+        declarations,
+        known_values,
+    }
 }
 
 /// The scope and fingerprint of a check on the exact captured request body.
@@ -321,6 +348,7 @@ fn compare(call: &Call, scope: Option<&DecisionScope>) -> Report {
         model: call.model.clone(),
         captured_items: call.context.len(),
         scoped_rule_items,
+        scope_coverage: scope.map(|s| scope_coverage(call, s)),
         findings,
         receipt: None,
     }

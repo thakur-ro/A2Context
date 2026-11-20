@@ -60,6 +60,15 @@ Send a versioned JSON object with `version: 1` and an `attributes` object. An op
 
 A rule group with two different known values yields `conflict`. Otherwise, any missing value yields `insufficient_evidence`. When all values are known and equal, it yields `duplicate`. Groups with fewer than two declarations produce no finding. Authority labels are shown as declared. The report measures input conditions, and your workflow decides how to handle the findings.
 
+When your workflow asks for a particular rule, inspect `scope_coverage` before treating an empty findings list as a successful check. For example, this staging assertion requires at least one declaration for the requested rule and a value for each matching declaration.
+
+```sh
+nexusweave preflight examples/preflight-returns.json |
+  jq -e '.scope_coverage | .declarations > 0 and .known_values == .declarations'
+```
+
+This assertion checks capture completeness for that rule. The separate `findings` array reports contradictions, including the one in this example. A missing declaration can come from the request builder or its instrumentation. An unscoped CLI check omits `scope_coverage`.
+
 Use `nexusweave preflight -` to read the same JSON from stdin. Rust applications can deserialize it as `nexusweave::preflight::Request` and call `nexusweave::preflight::check`. Run `cargo doc --locked --no-deps --open` for the Rust API and a tested example.
 
 For an HTTP integration, start the [local inspector](#run-the-local-demo) and post the same request to it.

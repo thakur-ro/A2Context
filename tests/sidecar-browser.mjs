@@ -17,6 +17,19 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 950 } });
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
+  await page.getByRole("button",{name:"Show the context map"}).click();
+  const map = page.getByRole("region",{name:"Context map"});
+  const firstPage = await map.getByLabel("Focus a node").locator("option").count();
+  await map.getByRole("button",{name:"Load more findings"}).click();
+  await page.waitForFunction(n => document.querySelector('[aria-label="Focus a node"]').length > n, firstPage);
+  while (await map.getByRole("button",{name:"Load more findings"}).count()) {
+    const before = await map.getByLabel("Focus a node").locator("option").count();
+    await map.getByRole("button",{name:"Load more findings"}).click();
+    await page.waitForFunction(n => document.querySelector('[aria-label="Focus a node"]').length > n, before);
+  }
+  const loaded = await map.getByLabel("Focus a node").locator("option").count()-1;
+  assert.equal(await map.locator(".overview-plot .network-node").count(),Math.min(loaded,120));
+  if (process.env.CONTEXT_NETWORK_CAPTURE) await map.screenshot({path:process.env.CONTEXT_NETWORK_CAPTURE});
   const question = page.getByLabel("Question about workflow evidence");
   await question.fill("What changed when product-id was edited?");
   await question.press("Enter");
@@ -216,6 +229,12 @@ try {
   await page.getByRole("button", { name: "Try a policy conflict" }).click();
   await page.getByRole("heading", { name: "Resolve the competing rules" }).waitFor();
   assert.equal(new URL(page.url()).searchParams.get("view"), "preview");
+  const missingRule = JSON.parse(await readFile(new URL("../examples/preflight-returns.json",import.meta.url),"utf8"));
+  missingRule.scope.scope = "holiday";
+  await page.locator('input[type="file"]').setInputFiles({name:"coverage.json",mimeType:"application/json",
+    buffer:Buffer.from(JSON.stringify({request:missingRule}))});
+  const captureGap = page.getByRole("region",{name:"Rule capture gap"});
+  await captureGap.getByText(/No captured declaration matched scope.*holiday/).waitFor();
   const demoFixture = name => readFile(new URL("../examples/redundant-routing/" + name, import.meta.url), "utf8").then(JSON.parse);
   const {request} = await demoFixture("candidate-checks/ash-routing-note.json");
   const {shadow} = await demoFixture("ash-history-check.json");

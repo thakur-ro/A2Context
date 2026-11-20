@@ -25,7 +25,11 @@ CHROME_BINARY=/path/to/chrome \
 node tests/sidecar-browser.mjs
 ```
 
+To run both browser suites from a built checkout, set `PLAYWRIGHT_MODULE` and `CHROME_BINARY` as above and run `python3 scripts/check_browser.py`. It starts fresh sidecars for each dataset. The Linux CI job installs pinned Playwright and its Chromium build.
+
 The checks cover recommendations, the request preview before inference, cross-user recurrence with filter persistence, the original span and replay links, and horizontal layout at widths of 1280 and 390 pixels. With `make demo` running, pass the printed origin to `node tests/exchange-a2ui-browser.mjs SIDECAR_URL` to check the A2UI cards, keyboard navigation to the exact sandbox replay, and same-origin loading at desktop and mobile widths.
+
+The context-map journey pages through 43 fixture findings and checks that the node picker covers the loaded graph. The exchange journey follows a named source to an outcome and the exact replay. It also checks both activation positions and keyboard selection of individual blocks. During testing, Chrome occasionally waited for one of several deferred scripts on a fresh loopback server. Serving the dashboard scripts in one response passed 72 fresh browser-context loads across six new sidecars on macOS. That check covers cold navigation on this host.
 
 The preview and live-path tests verify a candidate flip, its smaller comparison edit, the report’s binding to the captured request, and a token-level recommendation from an attached activation report. A stale request hash yields an unverified probe and no measured card. Restarting a retained database from the earlier schema version regenerates the recommendation projections.
 

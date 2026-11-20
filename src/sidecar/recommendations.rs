@@ -329,6 +329,7 @@ pub fn preview(
     Ok(json!({
         "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths, "prefix_reviews":prefix_reviews,
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
+        "scope_coverage": scope.as_ref().map(|s| nexusweave::preflight::scope_coverage(call, s)),
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))
 }

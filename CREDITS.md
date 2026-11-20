@@ -37,6 +37,10 @@ The public passage-edit experiment uses the multi-document QA data released by L
 
 The review also compares this work with PECoRe by Gabriele Sarti and colleagues and MIRAGE by Jirui Qi and colleagues. Both use changes in token predictions to study context reliance. [PECoRe](https://gsarti.com/publication/pecore/) · [MIRAGE](https://aclanthology.org/2024.emnlp-main.347/)
 
+The passage-omission experiment evaluates a specified abstention before generation. Rajpurkar and colleagues studied abstention on human-written unanswerable questions in SQuAD 2.0. Our experiment uses paired passage substitutions. [SQuAD 2.0](https://aclanthology.org/P18-2124/) · [Paired omission study](examples/public-qa/annotation-gap.md)
+
+The dashboard adapts the force-directed graph layout by Thomas Fruchterman and Edward Reingold to position the nodes in a bounded overview. Position has no role in the attribution scores. [Graph drawing by force-directed placement](https://doi.org/10.1002/spe.4380211102)
+
 ## Interoperability
 
 The local stdio adapter uses the official Rust SDK for Model Context Protocol. [Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)

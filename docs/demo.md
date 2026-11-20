@@ -1,6 +1,6 @@
 # When the customer stops the second exchange
 
-https://github.com/user-attachments/assets/6e09e1e3-2f3c-477c-8ab9-32cdf60c2122
+https://github.com/user-attachments/assets/d65e33bb-a204-46ed-8af3-924b7591a7df
 
 A support agent verifies the customer, looks up two orders and a replacement product, and requests the first exchange. Before the second write, the customer asks it to leave the puzzle order alone. The agent receives both that message and a cached confirmation that still authorizes both exchanges.
 
@@ -14,11 +14,11 @@ make demo
 
 Open the address it prints. The demo loads saved telemetry and measurements into a temporary SQLite database. It requires no API key.
 
-1. The home page shows two recommendations across three captured conversations. Choose **Which instructions disagreed?** The map pairs the confirmation cache’s approval with the customer’s hold.
+1. The home page shows two recommendations across three captured conversations. Choose **Show the context map** and select the confirmation cache to see both findings. Choose **Which instructions disagreed?** The map pairs the confirmation cache’s approval with the customer’s hold.
 2. Ask **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
 3. Ask **Where else did that repeat?** Two conversations contributed to this finding. **See affected requests** opens the evidence. The state table shows that the earlier boots exchange stayed in place under both conditions.
 
-The homepage recording uses a local Gemma 3 4B chat partner. The partner answers the source and recurrence questions. NexusWeave reads the dispatch result directly from the sandbox receipt. The exchange agent itself used Qwen. You can follow the same path in **Workspace evidence** without either model installed. [Connect a model](chat-canvas.md)
+The recording uses **Workspace evidence**. The source comparison reads the two declarations, and the dispatch comparison reads the sandbox receipt. The exchange agent’s saved proposals came from Qwen. You can run the walkthrough without installing a model. [Connect a model](chat-canvas.md)
 
 [MP4 for offline viewing](media/exchange-approval.mp4) · [Saved proposals and order states](../examples/exchange-approval/results.json)
 
@@ -78,4 +78,4 @@ cmp examples/exchange-approval/results.json /tmp/exchange-replay.json
 python3 tests/check_exchange_demo.py target/debug/nexusweave
 ```
 
-To record the running dashboard again, use `node scripts/record_demo.mjs SIDECAR_URL /tmp/exchange-approval.mp4`. Pass the gateway URL and append the configured model ID to record real partner responses. The recorder follows the live UI in Chromium and encodes a 1920 × 1080 H.264 MP4 at 30 fps. It draws a 12 × 17 CSS-pixel pointer at the actual click coordinates. Set `PLAYWRIGHT_MODULE`, `CHROME_BINARY`, or `FFMPEG` if you installed those tools outside their usual locations.
+To record the running dashboard again, use `node scripts/record_demo.mjs SIDECAR_URL /tmp/exchange-approval.mp4`. Pass the gateway URL and append the configured model ID to record real partner responses. The recorder follows the live UI in Chromium and encodes a 2560 × 1440 H.264 MP4 at 30 fps. It draws a 16 × 23 CSS-pixel pointer at the actual click coordinates. Set `PLAYWRIGHT_MODULE`, `CHROME_BINARY`, or `FFMPEG` if you installed those tools outside their usual locations.

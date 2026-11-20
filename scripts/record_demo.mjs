@@ -1,4 +1,4 @@
-// Record the exchange workflow loaded by make demo at 1920×1080.
+// Record the exchange workflow loaded by make demo at 2560×1440.
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 
@@ -11,7 +11,7 @@ const viewport = { width: 1280, height: 720 };
 let pointer = { x: 943, y: 150 };
 
 try {
-  const page = await browser.newPage({ viewport, deviceScaleFactor: 1.5, reducedMotion: "reduce" });
+  const page = await browser.newPage({ viewport, deviceScaleFactor: 2, reducedMotion: "reduce" });
   page.setDefaultTimeout(model ? 60000 : 8000);
   // A browser screenshot does not include the system pointer. Draw one at the real click coordinates.
   await page.addInitScript(() => {
@@ -20,7 +20,7 @@ try {
       overlay.setAttribute("aria-hidden", "true");
       overlay.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:1000";
       const arrow = document.createElement("div");
-      arrow.style.cssText = "position:absolute;width:12px;height:17px;filter:drop-shadow(0 1px 1px #17202c66)";
+      arrow.style.cssText = "position:absolute;width:16px;height:23px;filter:drop-shadow(0 1px 1px #17202c66)";
       const shape = "polygon(0 0, 95% 58%, 58% 65%, 74% 91%, 58% 100%, 39% 73%, 12% 96%)";
       for (const [inset, color] of [["0", "white"], ["1px", "#18212c"]]) {
         const layer = document.createElement("span");
@@ -113,10 +113,15 @@ try {
       await picker.selectOption(model);
       await read("Ask " + model + " about the evidence captured for this workflow.", 2);
     }
+    await click(page.getByRole("button",{name:"Show the context map"}));
+    const network = page.getByRole("region",{name:"Context map"});
+    await read("The same confirmation cache appears in both findings.", 2.8, network, 38);
+    await click(network.getByRole("button",{name:"source · confirmation-cache",exact:true}));
+    await read("Follow the cache to the conflicting instructions and the dispatch replay.", 2.8);
     await click(page.getByRole("button",{name:"Which instructions disagreed?"}));
     const canvas = page.getByRole("region",{name:"Answer canvas"});
     await canvas.getByText('"hold"',{exact:true}).waitFor();
-    await read("The confirmation cache still said approved. The latest customer message said hold.", 4.5);
+    await read("The confirmation cache still said approved. The latest customer message said hold.", 3.8, canvas, 65);
     const question = page.getByRole("textbox",{name:"Question about workflow evidence"});
     await click(question);
     caption = "";

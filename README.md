@@ -4,9 +4,9 @@
 
 Ship NexusWeave as a small Rust service beside your LLM workflow. Open the recommendation cards and ask which instructions disagreed, where the problem recurred, or what a source edit changed. Each answer can open the underlying call or replay. [Use the chat canvas with your model](docs/chat-canvas.md)
 
-https://github.com/user-attachments/assets/6e09e1e3-2f3c-477c-8ab9-32cdf60c2122
+https://github.com/user-attachments/assets/d65e33bb-a204-46ed-8af3-924b7591a7df
 
-A customer pauses the second of two exchanges. The agent still proposes it after its confirmation cache is refreshed. Ask which instructions disagreed. Then compare what the same proposal did with and without an approval check at dispatch. [Run the walkthrough](docs/demo.md)
+A customer pauses the second of two exchanges. The agent still proposes it after its confirmation cache is refreshed. Ask which instructions disagreed. Then compare what the same proposal did with and without an approval check at dispatch. [Run the walkthrough](docs/demo.md) · [Download the recording](docs/media/exchange-approval.mp4)
 
 ## What can I learn?
 
@@ -16,7 +16,7 @@ A customer pauses the second of two exchanges. The agent still proposes it after
 | Which source should I test before answering? | Check the assembled request. If your scorer supplies probabilities, compare candidate continuations before and after a named source edit at the same answer prefix. |
 | Would this edit fix the answer elsewhere? | Compare original and edited generations against a supplied reference. The dashboard surfaces matched questions where the same edit had opposite effects on correctness. |
 
-The workflow exports spans asynchronously over OTLP/HTTP. A bounded worker normalizes them and stores findings in SQLite. The Rust binary serves the dashboard. Default analysis makes zero model calls. You can attach replay results or measurements from an instrumented model when you need stronger evidence. A trace records the observable request and response. Internal activation claims require a model intervention. [Algorithms and limits](docs/methods.md) · [Research and related systems](docs/research-review.md)
+The workflow exports spans asynchronously over OTLP/HTTP. A bounded worker normalizes them and stores findings in SQLite. The Rust binary serves the dashboard. Default analysis makes zero model calls. You can attach replay results or measurements from an instrumented model when you need stronger evidence. A trace records the observable request and response. Internal activation claims require a model intervention. [Algorithms and limits](docs/methods.md) · [Research and related systems](docs/research-review.md) · [What the experiments support](docs/research-preview.md)
 
 ## Try the demo
 
