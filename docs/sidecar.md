@@ -30,6 +30,14 @@ The dashboard counts each identified conversation once after applying the curren
 
 Expand **Scored replays** on the overview or a source factor to see how many conversations had changed match rates, equal rates, both results across comparisons, or no scored replay. The four counts in `impact.replay_outcomes` add up to the identified conversations with findings in that scope. Probe scores contribute to the broader measured-change count. Only replay comparisons contribute to this breakdown. Two equal match rates can come from as little as one trial per arm. Open the recommendation to check the trial counts and scoring rule.
 
+### See what happened when two sources changed together
+
+Open the Cedar dispatch recommendation. The cards show the original answer, an edit to each source, and the joint edit. Under **Where did this pattern recur?**, select the result to open either of the two conversations. The counts separate reports, identified conversations and distinct captured JSON requests. Each report compares the same edits, model, runner, rule, and number of trials per condition. A conversation can contain different results. [Open Cedar in the demo](http://127.0.0.1:8040/?recommendation=602208c5e9c068fab608137a9c92699923591b1f349ab8504b57e65084f85808) · [Compare the wordings and scoring rules](methods.md#when-both-single-edits-preserve-the-answer)
+
+![The Cedar replay shows the original answer and each edited answer, with two conversations behind the joint-only result.](media/joint-proposals.png)
+
+For clients, a joint replay card returns `joint_patterns` for the selected factor and trial count. Request `occurrences` with its `group`, `factor`, `joint_pattern` and `baseline_trials` to page through the supporting reports under the same filters. Each occurrence identifies the trace, call, decision and replay. A report without captured request JSON contributes to `missing_inputs`. Distinct input counts preserve array order and ignore JSON object key order.
+
 ### Follow a source edit through an answer
 
 Open a token recommendation. It selects the output position and source edit with the largest measured shift. Choose another token to see which tested edits affected its probability. Expand a source to see the replacement and the answer the model generated with it. The coverage count lists captured inputs that still need a test. [Open the refund example](http://127.0.0.1:8040/?recommendation=6158b8bd5e64d129e9be699f6c78c0965402edc0b7367df671e02ff744171bb1#output-token-14)

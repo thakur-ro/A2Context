@@ -212,7 +212,8 @@ pub fn derive(
             let report = by_location[&(item.location, item.replay_id)];
             let single_edits: Vec<_> = report.variants.iter().filter(|_| edit == "joint").map(|arm| {
                 json!({"id":arm.intervention.context_id,"replacement":arm.intervention.replacement.chars().take(200).collect::<String>(),
-                    "summary":arm.summary,"difference_pp":arm.difference_pp})
+                    "summary":arm.summary,"difference_pp":arm.difference_pp,
+                    "proposal":super::outcomes::consistent(&arm.trials).map(super::outcomes::preview)})
             }).collect();
             let joint_only = edit == "joint"
                 && effect != 0.0
@@ -224,7 +225,21 @@ pub fn derive(
                        "runner": group.comparison.runner_id, "model": group.comparison.model,
                        "single_edits":single_edits, "joint_only":joint_only, "outcome": group.comparison.decision_label, "match_rule": group.comparison.match_rule,
                        "sampling_design": group.comparison.sampling_design});
+            let input = if let Some(captured) = &call.recorded_request {
+                use std::collections::btree_map::Entry;
+                Some(match captured_inputs.entry(call.id.as_str()) {
+                    Entry::Occupied(entry) => entry.into_mut(),
+                    Entry::Vacant(entry) => {
+                        entry.insert(super::variation::Input::new(call, captured)?)
+                    }
+                })
+            } else {
+                None
+            };
             if edit == "joint" {
+                detail["joint_input"] = json!(input.as_ref().map(|i| &i.digest));
+                detail["joint_pattern"] =
+                    json!(super::outcomes::joint_pattern(report).unwrap_or("unresolved"));
                 if let Some(pair) = &report.pair {
                     detail["response_pair"] =
                         json!(super::outcomes::compare(&report.baseline, &pair.trials));
@@ -239,14 +254,7 @@ pub fn derive(
                     .iter()
                     .find(|v| v.intervention.context_id == *context_id)
                 {
-                    if let Some(captured) = &call.recorded_request {
-                        use std::collections::btree_map::Entry;
-                        let input = match captured_inputs.entry(call.id.as_str()) {
-                            Entry::Occupied(entry) => entry.into_mut(),
-                            Entry::Vacant(entry) => {
-                                entry.insert(super::variation::Input::new(call, captured)?)
-                            }
-                        };
+                    if let Some(input) = input {
                         input.annotate(&mut detail, &variant.intervention);
                     }
                     detail["response_pair"] =

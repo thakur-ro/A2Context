@@ -12,6 +12,16 @@ pub struct Action {
 
 pub fn action(kind: &str, detail: &Value) -> Action {
     let (title, next, basis) = match kind {
+        "replay" if detail["joint_pattern"] == "joint_only" => (
+            "Retest both sources before removing either",
+            "Each single edit preserved the original proposal. Editing both changed it. Repeat all four conditions with a different request and compare the complete answers or tool arguments.",
+            "Complete proposals from the same four-condition experiment",
+        ),
+        "replay" if detail["joint_only"] == true => (
+            "Keep one source available while testing removal",
+            "Repeat both single edits and the joint edit with a second replacement. A different wording can change the result.",
+            "Only the joint edit changed the measured match rate",
+        ),
         "replacement" => (
             "Repeat the comparison with both wordings",
             "Vary the wording and the order of the sources on fresh requests. Keep the scoring rule fixed and check which result repeats before changing the workflow.",
@@ -65,6 +75,14 @@ pub fn action(kind: &str, detail: &Value) -> Action {
         ),
     };
     Action { title, next, basis }
+}
+
+pub(super) fn joint_followup() -> Action {
+    Action {
+        title: "Compare the four-condition results",
+        next: "Check the linked examples for different proposals or unresolved trials before applying the result across conversations.",
+        basis: "Comparable joint edits had more than one observed pattern",
+    }
 }
 
 pub(super) fn prefill_action(card: &Value) -> Action {

@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) struct Input<'a> {
-    digest: String,
+    pub(super) digest: String,
     order_design: Option<String>,
     pub(super) positions: BTreeMap<&'a str, (&'a RequestFragment, usize, usize)>,
 }

@@ -71,6 +71,22 @@ try {
   assert.equal(await arms.count(), 4);
   assert.match(await arms.nth(1).innerText(), /1 \/ 1 matched/);
   assert.match(await arms.nth(3).innerText(), /0 \/ 1 matched/);
+  assert.deepEqual(await arms.locator("code").allTextContents(), ['"LARK"', '"LARK"', '"LARK"', '"UNKNOWN"']);
+  await page.goto(base + "/?recommendation=602208c5e9c068fab608137a9c92699923591b1f349ab8504b57e65084f85808");
+  const recurrence = page.locator(".panel").filter({has:page.getByRole("heading",{name:"Where did this pattern recur?"})});
+  await recurrence.getByText("2 identified conversations · 2 distinct captured inputs · 2 reports").waitFor();
+  if (process.env.JOINT_PROPOSALS_SCREENSHOT) {
+    const first = await page.locator(".panel").first().boundingBox();
+    const last = await recurrence.boundingBox();
+    await page.screenshot({path:process.env.JOINT_PROPOSALS_SCREENSHOT, fullPage:true,
+      clip:{x:first.x, y:first.y, width:first.width, height:last.y + last.height - first.y}});
+  }
+  await recurrence.getByRole("link", {name:"Only the joint edit changed the proposal"}).click();
+  const fourArmReports = page.locator("#content .list a");
+  assert.equal(await fourArmReports.count(), 2);
+  await fourArmReports.last().click();
+  await page.getByText(/Joint interaction: -100 percentage points/).waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("decision"), "bay");
   await page.getByRole("link", { name: "Recommendations", exact: true }).click();
   await page.locator("#filters summary").click();
   await page.getByLabel("Organization").fill("demo-retail");
@@ -174,6 +190,11 @@ try {
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
   mobile.on("pageerror", (error) => errors.push(error.message));
+  await mobile.goto(base + "/?recommendation=602208c5e9c068fab608137a9c92699923591b1f349ab8504b57e65084f85808");
+  await mobile.locator(".joint-recurrence a").click();
+  await mobile.locator("#content .list a").first().click();
+  await mobile.getByRole("heading", {name:"Only the joint edit changed the proposal"}).waitFor();
+  assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await mobile.goto(tokenRecommendation.split("#")[0] + "#output-token-6");
   await mobile.getByRole("button", {name:/Token 6 ·/, pressed:true}).waitFor();
   assert.equal(await mobile.locator(".edit-result strong").first().innerText(), "returns-policy");

@@ -301,6 +301,69 @@ def check_replay_representative(base):
     assert get(base, "impact", trace=rate["trace"])["evidence_counts"]["rate"] == 1
 
 
+def check_joint_proposals(base):
+    # Synthetic trials deliberately pass a coarse rule even when their complete answers differ.
+    from send_otlp_replay import prepare
+
+    def record(thread, outcomes, samples=1, owner="first"):
+        trace, report = prepare(thread)
+        span = trace["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
+        fields = {attr["key"]: attr["value"] for attr in span["attributes"]}
+        fields["nexusweave.organization.id"]["stringValue"] = "joint-check"
+        fields["nexusweave.user.id"]["stringValue"] = owner
+        report["match_rule"] = {"kind": "kind_and_label"}
+        baseline = report["baseline"][0]
+        report["baseline"] *= samples
+        summary = {"attempted": samples, "completed": samples, "matched": samples}
+        report["baseline_summary"] = summary
+        for arm, values in zip([*report["variants"], report["pair"]], outcomes, strict=True):
+            trials = [deepcopy(baseline) for _ in range(samples)]
+            for trial, value in zip(trials, values, strict=True):
+                trial["choice"]["outcome"] = value
+            arm.update(trials=trials, summary=summary, difference_pp=0)
+        report["pair"]["interaction_pp"] = 0
+        send_traces(base, trace)
+        send(base, "/api/replay-reports", report, expected=201)
+        return report
+
+    scope = {"org": "joint-check", "kind": "replay"}
+    held, changed = "60", "different answer"
+    first = record("same-thread", [[held], [held], [changed]])
+    def joint(**filters):
+        cards = get(base, "findings", **scope, **filters)["rows"]
+        return next(c for c in cards if c["evidence"]["detail"]["edit"] == "joint")
+    card = joint()
+    group = card["id"]
+    assert card["evidence"]["detail"]["effect_pp"] == 0 and card["evidence"]["detail"]["joint_pattern"] == "joint_only"
+    assert get(base, "factors", **scope)["rows"][0]["signal"] == "joint_proposal"
+    assert get(base, "impact", group=group)["changed"] == 1
+    assert get(base, "impact", group=group)["replay_outcomes"]["equal_only"] == 1
+    record("same-thread", [[changed], [held], [changed]])
+    record("another-thread", [[changed], [held], [held]], owner="second")
+    record("same-thread", [[held], [held], [held]])
+    uncertain = record("mixed", [[held, changed], [held, held], [changed, changed]], samples=2)
+    rows = joint(group=group)["joint_patterns"]
+    assert {r["pattern"] for r in rows} == {"joint_only","single_and_joint","single_only","unchanged"}
+    assert all(r["inputs"] == r["conversations"] == r["observations"] == 1 for r in rows)
+    assert len(joint(group=group,user="first")["joint_patterns"]) == 3
+    for row in rows:
+        subset = get(base, "occurrences", **scope, group=group, joint_pattern=row["pattern"], baseline_trials=1)["rows"]
+        occurrence, = subset
+        m = occurrence["detail"]["measurement"]
+        picked = joint(group=group, trace=occurrence["trace"], call=occurrence["call"],
+                       decision=m["location"]["decision_id"], replay=m["replay_id"])
+        assert picked["evidence"]["detail"]["joint_pattern"] == row["pattern"]
+        impact = get(base, "impact", group=group, trace=occurrence["trace"])
+        assert impact["changed"] == impact["evidence_counts"]["proposal"] == int(row["pattern"] != "unchanged")
+    mixed = joint(group=group,trace=uncertain["location"]["run_id"])
+    assert mixed["joint_patterns"][0]["pattern"] == "unresolved"
+    assert mixed["evidence"]["detail"]["single_edits"][0]["proposal"] is None
+    assert not get(base, "findings", group=group, decision="elsewhere")["rows"]
+    send(base, "/api/replay-reports", first)
+    assert joint(group=group)["joint_patterns"] == rows
+    return group, rows
+
+
 def check_replay_variation(base):
     # These synthetic trial outcomes exercise grouping, not model performance.
     from send_otlp_replay import prepare
@@ -751,10 +814,16 @@ def main():
             check_replay_representative(base)
             check_replacement_comparison(base)
             check_replay_variation(base)
+            joint_group, joint_rows = check_joint_proposals(base)
             check_order_tests(base)
             pairs = get(base, "order-tests", org="order-check")
             proposal_rows = get(base, "conversation-outcomes", level=1)
             assert proposal_rows["rows"]
+        with sqlite3.connect(representative) as sql:
+            sql.execute("PRAGMA user_version = 13")
+            sql.execute("UPDATE observations SET detail=json_remove(detail,'$.joint_pattern','$.joint_input') WHERE kind='replay'")
+        with server(args.binary, representative, "--capture-content") as base:
+            assert get(base, "findings", group=joint_group, org="joint-check")["rows"][0]["joint_patterns"] == joint_rows
         with sqlite3.connect(representative) as sql:
             sql.execute("PRAGMA user_version = 11")
             sql.execute("UPDATE observations SET detail=json_remove(detail,'$.response_pair') WHERE kind='replay'")

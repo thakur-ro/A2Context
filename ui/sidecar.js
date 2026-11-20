@@ -11,8 +11,9 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const traceId = query.get("trace");
-const measuredExample = Object.fromEntries(["trace", "call", "replay", "context", "routing_design", "report"]
+const measuredExample = Object.fromEntries(["trace", "call", "decision", "replay", "context", "routing_design", "report"]
   .filter((key) => recommendationId && query.has(key)).map((key) => [key, query.get(key)]));
+const jointSelection = query.has("joint_pattern") ? {joint_pattern:query.get("joint_pattern"), baseline_trials:query.get("baseline_trials")} : null;
 const positionPair = query.get("pair");
 const positionDesign = positionPair ? Object.fromEntries(["group", "baseline_trials", "edit_trials"]
   .filter((key) => query.has(key)).map((key) => [key, query.get(key)])) : {};
@@ -71,9 +72,14 @@ function trend(rows) {
 
 function replayTrials(detail) {
   const m = detail.measurement;
-  const singles = (detail.single_edits || []).map((arm) => ["Edit " + arm.id, arm.summary]);
-  const arms = [["Baseline", m.baseline, detail.baseline_answer], ...singles,
-    [detail.edit === "joint" ? "Joint edit" : "Source edit", m.variant, detail.edited_answer], ["Control edit", m.control]];
+  const original = detail.response_pair?.original;
+  const proposals = [detail.response_pair?.edited, ...(detail.single_edits || []).map(arm => arm.proposal)].filter(Boolean);
+  const sameAnswerLabel = original?.kind === "model_output" && proposals.every(p => p.kind === original.kind && p.label === original.label);
+  const proposalText = p => p && (sameAnswerLabel ? p.outcome_preview : [p.kind, p.label, p.outcome_preview].join(" · "));
+  const singles = (detail.single_edits || []).map(arm => ["Edit " + arm.id, arm.summary, proposalText(arm.proposal)]);
+  const pair = detail.edit === "joint" && detail.response_pair;
+  const arms = [["Baseline", m.baseline, pair ? proposalText(pair.original) : detail.baseline_answer], ...singles,
+    [detail.edit === "joint" ? "Joint edit" : "Source edit", m.variant, pair ? proposalText(pair.edited) : detail.edited_answer], ["Control edit", m.control]];
   return element("div", { className: "comparison" }, ...arms.filter(([, data]) => data).map(([label, data, answer]) =>
     element("div", {}, element("strong", { text: label }),
       element("span", { text: data.matched + " / " + data.attempted + " matched" }),
@@ -174,6 +180,14 @@ function visual(kind, detail, rows = []) {
   return element("div", { className: "visual" }, element("span", { className: "label", text: label }), body);
 }
 
+const jointPatterns = {
+  joint_only: "Only the joint edit changed the proposal",
+  single_and_joint: "A single edit and the joint edit each changed the proposal",
+  single_only: "A single edit changed the proposal and the joint edit restored it",
+  unchanged: "All four conditions produced the same proposal",
+  unresolved: "At least one condition has no consistent proposal",
+};
+
 function findingTitle(kind, detail) {
   if (kind === "prefill") {
     if (detail.leader.status === "zero") return "The tested edits left the first-token distribution unchanged";
@@ -202,6 +216,7 @@ function findingTitle(kind, detail) {
       detail.baseline_answer !== detail.edited_answer) {
     return "Editing “" + sourceName(detail.sources[0]) + "” changed the replayed answer";
   }
+  if (detail.joint_pattern && detail.joint_pattern !== "unresolved") return jointPatterns[detail.joint_pattern];
   if (detail.effect_pp === 0 && detail.response_pair?.changed) return "The proposal changed with an equal match rate";
   if (detail.joint_only) return "Only the joint edit changed the match rate";
   const amount = Math.abs(detail.effect_pp);
@@ -285,10 +300,10 @@ function positionReadout(result) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
+  const signals = { routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
+  const step = { routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
@@ -549,7 +564,7 @@ function findingCard(card) {
       element("p", { className: "label", text: plural(card.occurrences, "observation") + " · " + plural(card.traces, "request") }),
       link("Review recommendation", url({ factor: factorId, recommendation: card.id }), "action")),
     element("div", { className: "suggestion" }, element("span", { className: "label", text: "Next experiment" }),
-      element("p", { text: detail.joint_only ? "Test the two sources together" : card.action.title })));
+      element("p", { text: card.action.title })));
 }
 
 function panel(title, ...children) {
@@ -652,6 +667,9 @@ function recommendationContext(kind, detail) {
   }
   if (kind === "replay" && detail.edit === "joint" && detail.single_edits?.length) {
     return element("div", {},
+      detail.single_edits.some(a => a.proposal?.truncated) || detail.response_pair?.original.truncated || detail.response_pair?.edited.truncated ?
+        element("p", {className:"label", text:"Previews show the first 160 characters. The comparison uses the complete proposals."}) : null,
+      detail.joint_pattern === "unresolved" ? element("p", {text:"At least one condition has missing or different proposals across trials. The match counts are still available."}) : null,
       element("p", { text: "Joint interaction: " + (detail.measurement.interaction_pp == null ? "unavailable" :
         signed(detail.measurement.interaction_pp) + " percentage points beyond the sum of the two individual changes.") }),
       element("details", {}, element("summary", { text: "Tested replacements" }),
@@ -694,7 +712,7 @@ function recommendationDetail(kind, detail, action, rows = []) {
        duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
   return panel(findingTitle(kind, detail), tag(kind),
     kind === "replacement" ? element("p", { className: "label", text: detail.model + " · " + plural(detail.conditions[0].baseline.attempted, "trial") + " per condition" }) : element("p", { className: "label", text: action.basis }), visual(kind, detail, rows),
-    responsePair(detail.response_pair), recommendationContext(kind, detail), element("p", { className: "uncertainty", text: uncertainty }),
+    detail.joint_pattern ? null : responsePair(detail.response_pair), recommendationContext(kind, detail), element("p", { className: "uncertainty", text: uncertainty }),
     element("details", {}, element("summary", { text: "How this was measured" }),
       element("p", { text: ({
         replacement: "The sidecar compared two replay reports with the same recorded decision, runner, request, edit locations, scoring rule, sampling design and baseline counts. The reports used different replacement texts.",
@@ -705,8 +723,8 @@ function recommendationDetail(kind, detail, action, rows = []) {
         conflict: "The sidecar compared the rule key, scope and declared value on captured inputs. This check can run as soon as the workflow assembles a request.",
         duplicate: "The sidecar found the same text at separate input locations. This check can run before the workflow sends the request."
       })[kind] })),
-    element("h3", { text: detail.joint_only ? "Keep one source available while testing removal" : action.title }),
-    element("p", { text: detail.joint_only ? "Repeat both single edits and the joint edit with a second replacement. A different wording can change the result." : action.next }),
+    element("h3", { text: action.title }),
+    element("p", { text: action.next }),
     detail.replacement == null ? null : element("details", {}, element("summary", { text: "Show tested replacement" }),
       element("pre", { text: detail.replacement || "(Removed text)" })));
 }
@@ -721,10 +739,26 @@ function replacementLinks(detail, traceId, callId) {
   });
 }
 
+function jointRecurrence(card) {
+  const rows = card.joint_patterns || [];
+  if (!rows.length || card.occurrences < 2) return null;
+  const samples = card.evidence.detail.measurement.baseline.attempted;
+  const result = element("ul", {className:"joint-recurrence"});
+  for (const row of rows) {
+    result.append(element("li", {}, link(jointPatterns[row.pattern],
+      url({factor:card.evidence.detail.factor, recommendation:card.id, joint_pattern:row.pattern, baseline_trials:samples})),
+      element("span", {className:"label", text:plural(row.conversations, "identified conversation") + " · " + plural(row.inputs, "distinct captured input") +
+        " · " + plural(row.observations, "report") + (row.missing_inputs ? " · input unavailable for " + plural(row.missing_inputs, "report") : "")})));
+  }
+  return panel("Where did this pattern recur?", result,
+    element("p", {text:"These reports used the same source edits, runner and scoring rule, with " + plural(samples, "trial") + " per condition. A conversation can appear in more than one row."}));
+}
+
 function review(card, occurrences) {
   const { trace_id, call_id, detail } = card.evidence;
-  byId("title").textContent = "Recommendation";
-  byId("summary").textContent = card.action.basis;
+  byId("title").textContent = detail.joint_pattern ? "Two-source replay" : "Recommendation";
+  byId("summary").textContent = detail.joint_pattern ? [card.evidence.thread, detail.model,
+    plural(detail.measurement.baseline.attempted, "trial") + " per condition"].filter(Boolean).join(" · ") : card.action.basis;
   if (card.kind === "prefill") {
     const titles = { tools:"Tool definitions changed the edit’s effect", instruction:"The instruction changed the edit’s effect",
       combined:"The edit depended on the routing setup", constant:"The edit’s effect held across setups", incomplete:"Some routing trials are missing" };
@@ -760,6 +794,7 @@ function review(card, occurrences) {
     card.kind === "token" ? tokenPath(card) : null,
     card.kind === "token" ? element("details", {className:"panel"}, element("summary", {text:"Peak score change and block swap"}),
       recommendationDetail(card.kind, detail, card.action, card.trend)) : recommendationDetail(card.kind, detail, card.action, card.trend),
+    jointRecurrence(card),
     measuredExample.trace ? link("See this recommendation across requests", url({ recommendation: card.id, factor: factorId })) : null,
     card.threads > 1 ? compareForm(card.id) : null, evidence,
     panel("Where this appeared", ...occurrences.rows.map((row) => element("details", { className: "occurrence" },
@@ -1025,7 +1060,19 @@ async function render(refresh = false) {
     body = data.rows.length ? traceRows(data.rows) : null;
     pagination(data.next_offset, { thread: threadId });
   } else if (view === "findings") {
-    if (recommendationId) {
+    if (recommendationId && jointSelection) {
+      const selection = {recommendation:recommendationId, factor:factorId, ...jointSelection};
+      const data = await api("occurrences", {...scope, group:recommendationId, factor:factorId, ...jointSelection, offset:pageOffset});
+      byId("title").textContent = jointPatterns[jointSelection.joint_pattern] || "Joint edit comparisons";
+      byId("summary").textContent = "Open a reported comparison to see all four conditions.";
+      body = element("div", {className:"feed"}, link("Back to recommendation", url({recommendation:recommendationId, factor:factorId})),
+        data.rows.length ? listing(data.rows, row => rowLink(row.thread || "Request without a conversation ID",
+          [factorName(row.detail.sources), fullDate(row.observed)].join(" · "),
+          url({recommendation:recommendationId, factor:factorId, trace:row.trace, call:row.call,
+            decision:row.detail.measurement.location.decision_id, replay:row.detail.measurement.replay_id}))) :
+          element("p", {className:"empty", text:"No matching comparisons in this scope."}));
+      pagination(data.next_offset, selection);
+    } else if (recommendationId) {
       const filters = { ...scope, ...measuredExample, group: recommendationId, ...(factorId && { factor: factorId }) };
       const [cards, occurrences] = await Promise.all([api("findings", filters),
         api("occurrences", { ...filters, offset: pageOffset })]);
@@ -1162,7 +1209,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      pair: positionPair, ...positionDesign, recommendation: recommendationId, level:outcomeCategory && outcomeLevel, ...measuredExample }, values);
+      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, level:outcomeCategory && outcomeLevel, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

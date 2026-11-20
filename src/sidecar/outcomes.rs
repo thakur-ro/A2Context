@@ -17,7 +17,7 @@ pub(super) fn preview(choice: &replay::Choice) -> Value {
     json!({"kind":choice.kind,"label":choice.label,"outcome_preview":preview,"truncated":truncated})
 }
 
-fn consistent(trials: &[replay::Trial]) -> Option<&replay::Choice> {
+pub(super) fn consistent(trials: &[replay::Trial]) -> Option<&replay::Choice> {
     let first = trials.first()?;
     match first {
         replay::Trial::Completed { choice } if trials.iter().all(|t| t == first) => Some(choice),
@@ -35,10 +35,27 @@ pub(super) fn compare(baseline: &[replay::Trial], variant: &[replay::Trial]) -> 
     )
 }
 
+/// Compare the complete proposals first. Keep the match-rule measurement independent.
+pub(super) fn joint_pattern(report: &replay::Replay) -> Option<&'static str> {
+    let [first, second] = report.variants.as_slice() else {
+        return None;
+    };
+    let baseline = consistent(&report.baseline)?;
+    let a = consistent(&first.trials)? != baseline;
+    let b = consistent(&second.trials)? != baseline;
+    let joint = consistent(&report.pair.as_ref()?.trials)? != baseline;
+    Some(match (a || b, joint) {
+        (false, true) => "joint_only",
+        (true, true) => "single_and_joint",
+        (true, false) => "single_only",
+        (false, false) => "unchanged",
+    })
+}
+
 // Keep the sort keys small. Load the selected finding's detail after pagination.
 pub(super) const CLASSIFIED: &str = ", classified AS (
     SELECT thread_key,trace_id,call_id,n,observed,
-      CASE WHEN json_extract(detail,'$.response_pair.changed')=1 OR (kind='token' AND json_extract(detail,'$.landmark.generated_choice_changed')=1) THEN 1
+      CASE WHEN proposal_changed=1 OR (kind='token' AND json_extract(detail,'$.landmark.generated_choice_changed')=1) THEN 1
            WHEN kind='prefill' AND (EXISTS (SELECT 1 FROM json_each(e.detail,'$.proposal_checks') c WHERE json_extract(c.value,'$.changed')=1)
                  OR EXISTS (SELECT 1 FROM json_each(e.detail,'$.routing_test.cells') c WHERE json_extract(c.value,'$.changed')=1)) THEN 1
            WHEN kind='replacement' OR (kind IN ('replay','shadow') AND json_extract(detail,'$.effect_pp')!=0) THEN 2

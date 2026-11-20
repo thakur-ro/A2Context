@@ -35,6 +35,8 @@ The comparison test attaches two different wordings to one live decision. A diff
 
 The source-order check sends the four replication requests through OTLP, attaches eight replay reports and finds four request pairs. Two pairs show different single-edit counts. Filtering to a user who saw just one order removes all pairs. Adding a conflicting repeat removes only the affected pair. Rebuilding the SQLite projections from version three restores the same counts and report links. The browser opens a linked trial and verifies the selected source.
 
+The four-condition regression sends controlled trial records through the live API. It covers both single and joint changes, unchanged outputs, and a condition with mixed answers. It verifies that a constant match rate can coexist with a changed proposal, that different sample sizes stay separate, and that the same conversation can contribute different results. A database upgrade from version 13 rebuilds the saved classifications and input counts. Desktop and mobile browser checks follow the Cedar result to its individual comparisons.
+
 ## What the public traces support
 
 The pinned Exgentic retail sample contains eight conversations and 99 model calls. On the unannotated import, the sidecar found 101 exact repetitions across 83 calls in all eight conversations. Every repetition was dialogue from unnamed assistant or user messages. The normalized calls had no declared rules, bound experiment reports or replay-ready request bodies. The traces support locating those repetitions. A causal change in the historical model's answer remains unmeasured.

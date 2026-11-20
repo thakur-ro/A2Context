@@ -50,7 +50,7 @@ A numeric zero in a replay means the recorded match rates were equal. A missing 
 
 ## Reading conversation impact
 
-The overview counts distinct conversation keys within the current filters. A conversation with several sources or tests counts once in the headline and once under each relevant factor. Requests without conversation IDs have a separate count. The measured subset requires a nonzero observed change in the scored outcome, proposal rate, fixed-candidate preference, or token score. A conflict alone never enters that subset. These counts describe captured experiments and signals. Production harm requires its own outcome and evidence.
+The overview counts distinct conversation keys within the current filters. A conversation with several sources or tests counts once in the headline and once under each relevant factor. Requests without conversation IDs have a separate count. The measured subset includes a changed complete proposal or a nonzero change in the scored outcome, proposal rate, fixed-candidate preference, or token score. A conflict alone never enters that subset. These counts describe captured experiments and signals. Production harm requires its own outcome and evidence.
 
 A factor groups the same versioned source set within a telemetry source and organization. Unnamed inputs stay local to a request. Different edits, models and outcomes remain separate recommendations beneath a factor. The overview gives joint-only changes and candidate flips precedence over lower-level score movements. A badge identifies the strongest type of evidence present. Within a recommendation, trial counts and any design-supported 95% interval describe the actual comparison. There is no calibrated probability that a suggested fix will generalize.
 
@@ -64,6 +64,21 @@ Two synthetic records gave the same routing instruction, “Route Alder parcels 
 | This parcel was scanned this morning. | LARK | LARK | LARK | UNKNOWN |
 
 With the neutral replacement, the two single edits missed the dependency that the joint edit exposed. With the availability wording, editing the later copy alone changed the answer. A single request cannot distinguish a position effect from sensitivity to the replacement’s meaning or sampling variation. For a follow-up, vary source order, wording and parcel codes, sample more requests, and score them with the same criterion. The dashboard places the two sets of trial counts side by side and highlights the edit whose count differed. [Original request](../examples/redundant-routing/measured/evidence.json) · [Neutral replacement](../examples/redundant-routing/measured/neutral-report.json) · [Availability replacement](../examples/redundant-routing/measured/unavailable-report.json)
+
+### When both single edits preserve the answer
+
+The recommendation compares the complete proposal in each condition with the original replay. It labels a change as joint-only when both individual edits preserve the original and the joint edit changes it. This comparison requires all trials to complete and agree within each of the four conditions. Mixed or missing proposals in a scored joint replay leave the four-way result unresolved. Proposal equality includes kind, label and the full outcome, including tool arguments. The match rate uses the report’s own scoring rule.
+
+As a check, we rescored the four saved neutral-wording trials using only the proposal kind and label. All four matched under that rule, including `UNKNOWN`. The complete answers still show the joint-only change. This uses the same generated trials twice. To reproduce from the checkout, use a built binary.
+
+```sh
+printf '%s\n' '{"kind":"kind_and_label"}' > /tmp/nexus-dispatch-rule.json
+target/debug/nexusweave rescore-replay examples/redundant-routing/measured/evidence.json \
+  examples/redundant-routing/measured/neutral-report.json /tmp/nexus-dispatch-rule.json \
+  dispatch-label-control /tmp/nexus-dispatch-labels.json
+```
+
+On the saved local Qwen runs, the neutral wording gave a joint-only change in both source orders for Cedar. On Birch a single edit also changed the answer. Each condition has one trial. The reports establish what these runs produced under the selected edits. An internal explanation or a production failure rate would need further evidence. [Local order experiment](../examples/redundant-routing/measured/local-order.json)
 
 The capture and eight replay trials used 569 input tokens and 15 output tokens. To reproduce with your own `OPENAI_API_KEY`, run the command below from the checkout. It makes nine hosted requests, each capped at 16 output tokens. Opening the demo reads the saved reports offline.
 
