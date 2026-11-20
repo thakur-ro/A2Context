@@ -263,3 +263,67 @@ fn compares_the_named_catalog_and_keeps_unknown_tools_and_missing_capture_visibl
     input["allowed_tools"] = json!([" "]);
     assert!(pending::inspect(serde_json::from_value(input).unwrap()).is_err());
 }
+
+#[test]
+fn renderer_receipts_bind_to_the_request_and_hide_locations_when_excerpts_are_off() {
+    let measured: Value = serde_json::from_str(include_str!(
+        "../examples/local-mlx-tool/rendering/liquid-preview.json"
+    ))
+    .unwrap();
+    let input = json!({"request": measured});
+    let view = inspection(input.clone());
+    assert_eq!(view["render_check"]["unchanged"], 1);
+    assert_eq!(view["render_check"]["fields"][1]["status"], "changed");
+    let query = serde_json::from_value(json!({"input":input})).unwrap();
+    assert_eq!(
+        pending::evidence(query, false).unwrap()["render_check"],
+        json!({"tested":2,"unchanged":1,"unrenderable":0})
+    );
+    for (pointer, value) in [
+        (
+            "/request/attributes/nexusweave.render_check/request_sha256",
+            json!("0".repeat(64)),
+        ),
+        (
+            "/request/attributes/nexusweave.render_check/removals/0/tokens/count",
+            json!(2),
+        ),
+        (
+            "/request/attributes/nexusweave.render_check/removals/1/pointer",
+            json!("/messages/3"),
+        ),
+    ] {
+        let mut invalid = input.clone();
+        *invalid.pointer_mut(pointer).unwrap() = value;
+        assert!(pending::inspect(serde_json::from_value(invalid).unwrap()).is_err());
+    }
+}
+
+#[test]
+fn renderer_receives_independent_removals_in_captured_order_and_preserves_rejections() {
+    use pending::rendering::{measure, Rendered};
+    let request = serde_json::from_value(json!({"version":1,"attributes":{
+        "nexusweave.request.body":r#"{"middle":2,"a/~b":1,"tail":[7,8]}"#
+    }}))
+    .unwrap();
+    let receipt = measure(request, vec!["/a~1~0b".into(), "/tail/0".into()], |batch| {
+        assert_eq!(
+            batch["requests"][1].to_string(),
+            r#"{"middle":2,"tail":[7,8]}"#
+        );
+        assert_eq!(
+            batch["requests"][2].to_string(),
+            r#"{"middle":2,"a/~b":1,"tail":[8]}"#
+        );
+        Ok(Rendered {
+            renderer: "test".into(),
+            renderer_sha256: "a".repeat(64),
+            tokens: vec![Some(vec![1, 2]), Some(vec![2, 1]), None],
+        })
+    })
+    .unwrap();
+    let view = inspection(json!({"request":receipt}));
+    assert_eq!(view["render_check"]["unchanged"], 0);
+    assert_eq!(view["render_check"]["fields"][0]["status"], "changed");
+    assert_eq!(view["render_check"]["fields"][1]["status"], "unrenderable");
+}

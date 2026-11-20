@@ -263,6 +263,7 @@ pub fn preview(
         mut call,
         scope,
         mut prefill,
+        render_check,
         tool_scope,
         preflight,
         ..
@@ -319,7 +320,14 @@ pub fn preview(
             None
         }
     });
-    let total = observations.len() + usize::from(scope_issue.is_some());
+    let render_issue = render_check.as_ref().filter(|v| v["unchanged"].as_u64().unwrap_or(0) > 0).map(|_| {
+        json!({"kind":"render_gap","id":"pending-render-gap","detail":{},
+            "action":{"title":"Check fields that left the model input unchanged",
+                "next":"Inspect how your chat template serializes these fields before sending the request."}})
+    });
+    let total = observations.len()
+        + usize::from(scope_issue.is_some())
+        + usize::from(render_issue.is_some());
     let issue = scope_issue.map(|(title, next)| {
         json!({"kind":"tool_scope", "id":"pending-tool-scope",
                "detail": {"outside_count": tool_scope.as_ref().map(|check| check.outside.len())},
@@ -328,7 +336,12 @@ pub fn preview(
     let findings = observations.into_iter().map(|item| {
         json!({"kind":item.kind, "id":item.group, "detail":item.detail, "action":item.action})
     });
-    let items: Vec<_> = issue.into_iter().chain(findings).take(15).collect();
+    let items: Vec<_> = render_issue
+        .into_iter()
+        .chain(issue)
+        .chain(findings)
+        .take(15)
+        .collect();
     let shadow = replay::shadow::recorded("pending", call);
     let tool_map = tool_scope.as_ref().map(|catalog| {
         let trials: Vec<_> = shadow
@@ -389,7 +402,7 @@ pub fn preview(
         "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths, "prefix_reviews":prefix_reviews,
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
         "scope_coverage": preflight.scope_coverage, "source_coverage": preflight.source_coverage,
-        "anchor_overlap": preflight.anchor_overlap, "tool_scope":tool_scope,"tool_map":tool_map,
+        "anchor_overlap": preflight.anchor_overlap, "tool_scope":tool_scope,"tool_map":tool_map,"render_check":render_check,
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))
 }

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "scope": null,
+  "attributes": {
+    "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Answer the stock question from the inventory tool result. Answer with only the numeric quantity.\"},{\"role\":\"user\",\"content\":\"How many units of MUG-42 are in stock?\"},{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"type\":\"function\",\"function\":{\"name\":\"look_up_inventory\",\"arguments\":{\"sku\":\"MUG-42\"}}}]},{\"role\":\"tool\",\"content\":{\"sku\":\"MUG-42\",\"quantity\":42,\"in_stock\":true}}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"look_up_inventory\",\"description\":\"Look up current stock for a product by SKU.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"}},\"required\":[\"sku\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"get_store_hours\",\"description\":\"Read the store's business hours.\",\"parameters\":{\"type\":\"object\",\"properties\":{}}}}],\"temperature\":0,\"max_tokens\":96}",
+    "nexusweave.render_check": {
+      "version": 1,
+      "renderer": "LiquidAI/LFM2.5-1.2B-Instruct-MLX-8bit",
+      "renderer_sha256": "a8ea2f0f8a707dc48d0a9baa96e0edda5859eae204975b6eeca27cfd5da14b3a",
+      "request_sha256": "86129ba59532b2f94c31bb1024c9ac299e4f9559120602eb3e8b6bbcbafc28b0",
+      "baseline": {
+        "count": 192,
+        "sha256": "8f124cdd96271334b9cc69f557349027b4da001ce83eed86eb11c7d9bdcd14c4"
+      },
+      "removals": [
+        {
+          "pointer": "/messages/2/tool_calls",
+          "request_sha256": "ef957f5b16aec13f3c1624239b0b708a7ba096e3c8822856783cf6c4cd4120f7",
+          "tokens": {
+            "count": 192,
+            "sha256": "8f124cdd96271334b9cc69f557349027b4da001ce83eed86eb11c7d9bdcd14c4"
+          }
+        },
+        {
+          "pointer": "/messages/3/content/quantity",
+          "request_sha256": "71f994793cbcabef8889c6f244c92b67368fee13dbbeb6dcc580195a29852d2e",
+          "tokens": {
+            "count": 185,
+            "sha256": "f270138c7fef2f328e80f704eeda57527cd20ffccf135c70b9853d6ebf1f48f9"
+          }
+        }
+      ]
+    }
+  }
+}

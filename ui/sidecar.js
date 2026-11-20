@@ -2017,6 +2017,16 @@ function pendingTokenScores(paths) {
     element("label", {}, "Continuation ", select), chart);
 }
 
+function renderComparison(report) {
+  const labels = {unchanged:"Identical input tokens", changed:"Different input tokens", unrenderable:"Renderer rejected the edited request"};
+  return element("section", {className:"panel", "aria-label":"Model input rendering"},
+    element("h2", {text:report.unchanged ? "Check fields that left the model input unchanged" : "Field removal checks"}),
+    element("p", {text:report.renderer + " · " + plural(report.baseline_tokens,"original input token")}),
+    ...report.fields.map(field => element("p", {}, element("code", {text:field.pointer}),
+      " · " + labels[field.status] + (field.input_tokens == null ? "" : " (" + field.input_tokens + " tokens)"))),
+    report.unchanged ? element("p", {text:"Inspect how your chat template serializes the fields with identical tokens. Each trial removed one field before rendering."}) : null);
+}
+
 function pendingPreview() {
   const output = element("section", { className: "feed", "aria-live": "polite" });
   const input = element("input", { type: "file", accept: "application/json,.json" });
@@ -2039,7 +2049,7 @@ function pendingPreview() {
       const dispatchHistory = priorDispatch(report.history, dispatchCards.length > 0);
       const sourceGap = report.recommendations.find(row => row.kind === "source_gap");
       for (const { kind, detail, action } of report.recommendations) {
-        if (kind === "source_gap" || kind === "tool_scope") continue;
+        if (kind === "source_gap" || kind === "tool_scope" || kind === "render_gap") continue;
         if (kind === "shadow" && experiment?.status === "ready" && experiment.edited_request_sha256 === detail.edited_request_sha256 &&
             experiment.interventions[0].context_id === detail.sources[0].id &&
             experiment.proposal_tests.some(test => test.report === detail.report_id && test.runner === detail.runner)) continue;
@@ -2071,6 +2081,7 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "finding") + (report.prefill ? " · First-token test attached" : "") }),
+        report.render_check && renderComparison(report.render_check),
         pendingToolScope(report.tool_scope, report.tool_map, report.recommendations.find(r => r.kind === "tool_scope")),
         overlappingAnchors(report.anchor_overlap),
         sources && element("section",{className:"panel","aria-label":"Required source coverage"},
@@ -2099,7 +2110,7 @@ function pendingPreview() {
         ...current, prefixReviews.length && dispatchHistory, report.screen_suggestion ? screenReview(report.screen_suggestion) : null,
         checked ? null : history, prefixReviews.length ? null : followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
-        !gap && !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
+        !gap && !report.render_check && !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
       if (currentLoad === sequence) output.textContent = error.message;
     }

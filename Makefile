@@ -53,6 +53,7 @@ check-qa:
 	$(PYTHON) examples/public-qa/support-review/witness-edits/generate.py --check examples/public-qa/support-review/witness-edits/answers.json
 
 check-dispatch-study:
+	$(PYTHON) examples/local-mlx-tool/rendering/check.py
 	$(PYTHON) examples/bfcl-transfer/airport-context/check.py
 	$(PYTHON) examples/bfcl-transfer/mlx/check.py
 	$(PYTHON) examples/bfcl-transfer/mlx/feedback/check.py

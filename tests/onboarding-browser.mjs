@@ -21,6 +21,13 @@ try {
   await catalog.getByText("3 tool definitions · 2 outside scope · 0 unclassified").waitFor();
   assert.deepEqual(await catalog.getByRole("listitem").locator("code").allTextContents(),
     ["/tools/1","/tools/2"]);
+  for (const [renderer, status] of [["liquid","Identical input tokens (192 tokens)"],["community","Different input tokens (192 tokens)"]]) {
+    await page.locator('input[type="file"]').setInputFiles("examples/local-mlx-tool/rendering/"+renderer+"-preview.json");
+    const rendering = page.getByRole("region",{name:"Model input rendering"});
+    await rendering.getByText(status,{exact:false}).waitFor();
+    await rendering.getByText("/messages/2/tool_calls",{exact:true}).waitFor();
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
+  }
   await page.goto(base);
   await setup.waitFor();
   const sample = await readFile(new URL("../examples/exchange-approval/exchange.otlp.json",import.meta.url),"utf8");

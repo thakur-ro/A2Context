@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "attributes": {
+    "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Answer the stock question from the inventory tool result. Answer with only the numeric quantity.\"},{\"role\":\"user\",\"content\":\"How many units of MUG-42 are in stock?\"},{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"type\":\"function\",\"function\":{\"name\":\"look_up_inventory\",\"arguments\":{\"sku\":\"MUG-42\"}}}]},{\"role\":\"tool\",\"content\":{\"sku\":\"MUG-42\",\"quantity\":42,\"in_stock\":true}}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"look_up_inventory\",\"description\":\"Look up current stock for a product by SKU.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"sku\":{\"type\":\"string\"}},\"required\":[\"sku\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"get_store_hours\",\"description\":\"Read the store's business hours.\",\"parameters\":{\"type\":\"object\",\"properties\":{}}}}],\"temperature\":0,\"max_tokens\":96}"
+  }
+}

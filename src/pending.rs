@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
+pub mod rendering;
 mod tool_scope;
 pub use tool_scope::ToolScope;
 
@@ -69,6 +70,7 @@ pub fn inspect(input: Request) -> Result<Value, String> {
         preflight,
         prefill,
         tool_scope,
+        render_check,
     } = prepare(input, true)?;
     let fields = request
         .as_ref()
@@ -77,7 +79,7 @@ pub fn inspect(input: Request) -> Result<Value, String> {
     let candidates = replay::candidates::recorded("pending", &call);
     let shadows = replay::shadow::recorded("pending", &call);
     Ok(json!({
-        "version": 1, "prefill":prefill, "tool_scope":tool_scope,
+        "version": 1, "prefill":prefill, "tool_scope":tool_scope, "render_check":render_check,
         "prefix_reviews":replay::candidates::prefix_reviews(&candidates, &shadows),
         "model": call.model,
         "context": call.context,
@@ -106,6 +108,7 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
         preflight,
         prefill,
         tool_scope,
+        render_check,
     } = prepare(query.input, query.include_excerpts)?;
     let excerpts = query.include_excerpts;
     let tool_scope = tool_scope.map(|check| {
@@ -158,7 +161,7 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
     let next = (rows.len() > query.limit).then(|| query.offset.saturating_add(query.limit));
     rows.truncate(query.limit);
     Ok(json!({
-        "kind": "pending_evidence", "version": 1, "tool_scope":tool_scope, "prefill":prefill, "model": call.model,
+        "kind": "pending_evidence", "version": 1, "tool_scope":tool_scope, "render_check":render_check, "prefill":prefill, "model": call.model,
         "captured_inputs": call.context.len(), "original_request_captured": request.is_some(),
         "captured_excerpts_enabled": allow_excerpts,
         "preflight": {"scope": scope, "finding_count": preflight.findings.len(),
@@ -190,6 +193,7 @@ pub fn recommendation_measurements(
 /// Normalized request, scope and verified measurements used by the sidecar preview.
 pub struct Inspected {
     pub tool_scope: Option<ToolScope>,
+    pub render_check: Option<Value>,
     pub prefill: Option<Value>,
     pub call: Call,
     request: Option<Value>,
@@ -204,6 +208,7 @@ pub fn preview(input: Request) -> Result<Inspected, String> {
 
 fn prepare(mut input: Request, excerpts: bool) -> Result<Inspected, String> {
     let raw = input.request.attributes.remove(replay::prefill::ATTRIBUTE);
+    let renderer = input.request.attributes.remove(rendering::ATTRIBUTE);
     let required = preflight::RequiredSources::take(&mut input.request.attributes)?;
     let (mut call, request, scope) = preflight::pending_call(input.request)?;
     let preflight = preflight::report_for_pending(&call, scope.clone(), required);
@@ -234,6 +239,7 @@ fn prepare(mut input: Request, excerpts: bool) -> Result<Inspected, String> {
             reports: Some(vec![report]),
         });
     }
+    let render_check = rendering::read(renderer, request.as_ref(), excerpts)?;
     let prefill = replay::prefill::read(raw, &call, request.as_ref(), excerpts)?;
     let tool_scope = input
         .allowed_tools
@@ -242,6 +248,7 @@ fn prepare(mut input: Request, excerpts: bool) -> Result<Inspected, String> {
         .transpose()?;
     Ok(Inspected {
         tool_scope,
+        render_check,
         prefill,
         call,
         request,
