@@ -13,7 +13,8 @@ async function replayJson(endpoint, body) {
   const options = body === undefined ? undefined : {
     method: "POST", headers: { "Content-Type": "application/json" }, body,
   };
-  const response = await fetch(endpoint, options);
+  const scope = !endpoint.includes("?") && globalThis.location?.pathname === "/details" ? location.search : "";
+  const response = await fetch(endpoint + scope, options);
   const result = await response.json().catch(() => null);
   if (!response.ok || result === null) {
     throw new Error(result?.message || "The local inspector could not process the replay request.");

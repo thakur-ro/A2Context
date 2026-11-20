@@ -147,7 +147,7 @@ function selectLinkValue(id, value) {
 }
 
 function inspectionLink(reference = state.reference) {
-  const url = new URL(window.location.pathname, window.location.href);
+  const url = new URL(window.location.href);
   const params = new URLSearchParams({ v: "1", view: state.view });
   switch (state.view) {
     case "conversation":

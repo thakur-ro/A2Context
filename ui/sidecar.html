@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NexusWeave</title>
+  <link rel="stylesheet" href="/sidecar.css">
+  <script src="/sidecar.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <div class="shell masthead">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">✳</span> NexusWeave</a>
+      <span id="environment"></span>
+    </div>
+    <nav id="navigation" class="shell" aria-label="Workspace"></nav>
+  </header>
+  <main class="shell" id="workspace">
+    <div class="heading">
+      <div><h1 id="title">Findings</h1><p id="summary"></p></div>
+      <details id="filters">
+        <summary>Filters<span id="filter-count"></span></summary>
+        <form id="filter-form">
+          <label>From (UTC)<input type="date" name="after"></label>
+          <label>Before (UTC)<input type="date" name="before"></label>
+          <label>Organization<input name="org"></label>
+          <label>User<input name="user"></label>
+          <label>Workflow<input name="workflow"></label>
+          <label>Metadata key<select name="meta_key"><option value="">Any key</option></select></label>
+          <label>Metadata value<input name="meta_value"></label>
+          <div class="actions"><button type="submit">Apply filters</button><a id="reset">Reset</a></div>
+        </form>
+      </details>
+    </div>
+    <div id="scope"></div>
+    <p id="status" role="status"></p>
+    <div id="content"></div>
+    <nav id="pagination" aria-label="Pages"></nav>
+  </main>
+</body>
+</html>

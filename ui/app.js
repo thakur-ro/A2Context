@@ -1447,7 +1447,7 @@ function render() {
 async function start() {
   setupPendingView();
   try {
-    const response = await fetch("/api/inspection");
+    const response = await fetch("/api/inspection" + (location.pathname === "/details" ? location.search : ""));
     if (!response.ok) throw new Error("HTTP " + response.status);
     data = await response.json();
     for (const check of data.preflight_checks || []) preflightChecksByCall.set(contextCallKey(check), check);

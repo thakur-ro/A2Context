@@ -20,7 +20,7 @@ pub fn route<'a>(
     }
     // The loopback inspector already displays the underlying capture. These queries
     // return excerpts only when the request asks for them.
-    let reply = match request.url() {
+    let reply = match request.url().split('?').next()? {
         "/api/turn-evidence" => query(request, |input| {
             turn_evidence::query_with_activations(input, runs, replays, reports, true)
         }),

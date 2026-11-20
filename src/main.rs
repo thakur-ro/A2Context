@@ -20,6 +20,8 @@ const USAGE: &str = "Usage:
   nexusweave import-otlp <traces.json|traces.jsonl> <evidence.json>
   nexusweave annotate <evidence.json> <annotations.json> <output.json>
   nexusweave replay <evidence.json> <case.json> <report.json> -- <runner> [args...]
+  nexusweave plan-replay <evidence.json> <case.json> <plan.json>
+  nexusweave score-replay <evidence.json> <case.json> <trials.json> <report.json>
   nexusweave rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>
   nexusweave validate <evidence.json> [...]
   nexusweave preflight <request.json|->
@@ -36,6 +38,7 @@ const USAGE: &str = "Usage:
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] [evidence.json ...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
   nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
+  nexusweave sidecar [--listen 127.0.0.1:8040] (--db path | --demo) [--capture-content] [--retain-days 7] [--metadata key]...
   nexusweave serve [--listen 127.0.0.1:8040] [--replay report.json] [--activation-report report.json] [--otlp-store directory] [evidence.json ...]";
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -107,6 +110,21 @@ fn run(args: Vec<String>) -> Result<()> {
                 report.baseline.len(),
                 report.variants.len() + usize::from(report.pair.is_some())
             );
+        }
+        ["plan-replay", input, specification, output] => {
+            let runs = read_runs(&[input])?;
+            validate_loaded_runs(&runs)?;
+            let case = serde_json::from_reader(fs::File::open(specification)?)?;
+            let plan = replay::batch::prepare(&case, &runs)?;
+            write_new(output, &serde_json::to_vec_pretty(&plan)?)?;
+        }
+        ["score-replay", input, specification, trials, output] => {
+            let runs = read_runs(&[input])?;
+            validate_loaded_runs(&runs)?;
+            let case = serde_json::from_reader(fs::File::open(specification)?)?;
+            let batch = serde_json::from_reader(fs::File::open(trials)?)?;
+            let report = replay::batch::score(&case, &runs, batch)?;
+            write_new(output, &serde_json::to_vec_pretty(&report)?)?;
         }
         ["rescore-replay", input, report, rule, new_id, output] => {
             let runs = read_runs(&[input])?;
@@ -269,6 +287,7 @@ fn run(args: Vec<String>) -> Result<()> {
                 .write_all(&inspection_json(&options, true)?)?;
             println!();
         }
+        ["sidecar", args @ ..] => sidecar::serve(args)?,
         ["serve", args @ ..] => serve(inspection_options(args, true)?)?,
         _ => return Err(USAGE.into()),
     }
@@ -750,152 +769,6 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                 "text/html; charset=utf-8",
                 include_bytes!("../ui/index.html").as_slice(),
             ),
-            (true, &Method::Get, "/app.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/app.js").as_slice(),
-            ),
-            (true, &Method::Get, "/pending.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/pending.js").as_slice(),
-            ),
-            (true, &Method::Get, "/examples/pending-returns.json") => (
-                200,
-                "application/json",
-                include_bytes!("../examples/preflight-returns.json").as_slice(),
-            ),
-            (true, &Method::Get, "/examples/pending-routing.json") => (
-                200,
-                "application/json",
-                include_bytes!("../examples/runtime-comparison/pending-routing/request.json")
-                    .as_slice(),
-            ),
-            (true, &Method::Get, "/replay-planner.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/replay-planner.js").as_slice(),
-            ),
-            (true, &Method::Get, "/context-matrix.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/context-matrix.js").as_slice(),
-            ),
-            (true, &Method::Get, "/source-profiles.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/source-profiles.js").as_slice(),
-            ),
-            (true, &Method::Get, "/execution-tree.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/execution-tree.js").as_slice(),
-            ),
-            (true, &Method::Get, "/retrievals.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/retrievals.js").as_slice(),
-            ),
-            (true, &Method::Get, "/compare.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/compare.js").as_slice(),
-            ),
-            (true, &Method::Get, "/rule-findings.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/rule-findings.js").as_slice(),
-            ),
-            (true, &Method::Get, "/replay-outcomes.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/replay-outcomes.js").as_slice(),
-            ),
-            (true, &Method::Get, "/capture-profiles.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/capture-profiles.js").as_slice(),
-            ),
-            (true, &Method::Get, "/inspection-links.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/inspection-links.js").as_slice(),
-            ),
-            (true, &Method::Get, "/context-changes.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/context-changes.js").as_slice(),
-            ),
-            (true, &Method::Get, "/decision-changes.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/decision-changes.js").as_slice(),
-            ),
-            (true, &Method::Get, "/decision-investigation.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/decision-investigation.js").as_slice(),
-            ),
-            (true, &Method::Get, "/context-replay-coverage.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/context-replay-coverage.js").as_slice(),
-            ),
-            (true, &Method::Get, "/conversation.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/conversation.js").as_slice(),
-            ),
-            (true, &Method::Get, "/context-screening.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/context-screening.js").as_slice(),
-            ),
-            (true, &Method::Get, "/activation.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/activation.js").as_slice(),
-            ),
-            (true, &Method::Get, "/source-masks.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/source-masks.js").as_slice(),
-            ),
-            (true, &Method::Get, "/activation-output.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/activation-output.js").as_slice(),
-            ),
-            (true, &Method::Get, "/activation-branches.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/activation-branches.js").as_slice(),
-            ),
-            (true, &Method::Get, "/activation-patterns.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/activation-patterns.js").as_slice(),
-            ),
-            (true, &Method::Get, "/conflict-breakdown.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/conflict-breakdown.js").as_slice(),
-            ),
-            (true, &Method::Get, "/visibility-patterns.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/visibility-patterns.js").as_slice(),
-            ),
-            (true, &Method::Get, "/assessment-patterns.js") => (
-                200,
-                "text/javascript; charset=utf-8",
-                include_bytes!("../ui/assessment-patterns.js").as_slice(),
-            ),
-            (true, &Method::Get, "/styles.css") => (
-                200,
-                "text/css; charset=utf-8",
-                include_bytes!("../ui/styles.css").as_slice(),
-            ),
             (true, &Method::Get, "/api/inspection") => match data.as_deref() {
                 Some(snapshot) => (200, "application/json", snapshot),
                 None => (
@@ -910,6 +783,9 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
                     .expect("inspection route response");
                 (*status, "application/json", body.as_slice())
             }
+            (true, &Method::Get, path) => {
+                browser_asset(path).unwrap_or((404, "text/plain", b"Not found"))
+            }
             (_, _, _) => (404, "text/plain", b"Not found".as_slice()),
         };
         let response = Response::new(status.into(), vec![
@@ -923,6 +799,158 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
     Ok(())
 }
 
+fn browser_asset(path: &str) -> Option<(u16, &'static str, &'static [u8])> {
+    Some(match path {
+        "/app.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/app.js").as_slice(),
+        ),
+        "/pending.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/pending.js").as_slice(),
+        ),
+        "/examples/pending-returns.json" => (
+            200,
+            "application/json",
+            include_bytes!("../examples/preflight-returns.json").as_slice(),
+        ),
+        "/examples/pending-routing.json" => (
+            200,
+            "application/json",
+            include_bytes!("../examples/runtime-comparison/pending-routing/request.json")
+                .as_slice(),
+        ),
+        "/replay-planner.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/replay-planner.js").as_slice(),
+        ),
+        "/context-matrix.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/context-matrix.js").as_slice(),
+        ),
+        "/source-profiles.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/source-profiles.js").as_slice(),
+        ),
+        "/execution-tree.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/execution-tree.js").as_slice(),
+        ),
+        "/retrievals.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/retrievals.js").as_slice(),
+        ),
+        "/compare.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/compare.js").as_slice(),
+        ),
+        "/rule-findings.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/rule-findings.js").as_slice(),
+        ),
+        "/replay-outcomes.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/replay-outcomes.js").as_slice(),
+        ),
+        "/capture-profiles.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/capture-profiles.js").as_slice(),
+        ),
+        "/inspection-links.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/inspection-links.js").as_slice(),
+        ),
+        "/context-changes.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/context-changes.js").as_slice(),
+        ),
+        "/decision-changes.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/decision-changes.js").as_slice(),
+        ),
+        "/decision-investigation.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/decision-investigation.js").as_slice(),
+        ),
+        "/context-replay-coverage.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/context-replay-coverage.js").as_slice(),
+        ),
+        "/conversation.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/conversation.js").as_slice(),
+        ),
+        "/context-screening.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/context-screening.js").as_slice(),
+        ),
+        "/activation.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/activation.js").as_slice(),
+        ),
+        "/source-masks.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/source-masks.js").as_slice(),
+        ),
+        "/activation-output.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/activation-output.js").as_slice(),
+        ),
+        "/activation-branches.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/activation-branches.js").as_slice(),
+        ),
+        "/activation-patterns.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/activation-patterns.js").as_slice(),
+        ),
+        "/conflict-breakdown.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/conflict-breakdown.js").as_slice(),
+        ),
+        "/visibility-patterns.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/visibility-patterns.js").as_slice(),
+        ),
+        "/assessment-patterns.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/assessment-patterns.js").as_slice(),
+        ),
+        "/styles.css" => (
+            200,
+            "text/css; charset=utf-8",
+            include_bytes!("../ui/styles.css").as_slice(),
+        ),
+        _ => return None,
+    })
+}
+
 fn header(name: &str, value: &str) -> Header {
     Header::from_bytes(name, value).expect("static valid header")
 }
@@ -932,3 +960,4 @@ mod mcp_stdio;
 mod otlp_http;
 mod replay_http;
 mod report_store;
+mod sidecar;

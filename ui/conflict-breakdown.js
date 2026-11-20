@@ -90,7 +90,7 @@ async function showPatternPage(container, endpoint, spec, renderPage) {
   pending.setAttribute("role", "status");
   container.replaceChildren(pending);
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch(endpoint + (location.pathname === "/details" ? location.search : ""), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(spec),

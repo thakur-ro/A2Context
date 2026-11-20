@@ -47,7 +47,9 @@ pub fn conflicts<'a>(
     request: &mut Request,
     runs: impl Iterator<Item = &'a Run>,
 ) -> Option<(u16, Vec<u8>)> {
-    if request.method() != &Method::Post || request.url() != "/api/conflict-query" {
+    if request.method() != &Method::Post
+        || request.url().split('?').next() != Some("/api/conflict-query")
+    {
         return None;
     }
     let result = crate::replay_http::read_json::<conflict_query::ViewSpec>(request, 16 * 1024)

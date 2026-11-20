@@ -5,9 +5,9 @@ use crate::openinference::{self, Kind};
 use crate::{
     Availability, Call, ContextItem, Decision, Evidence, Run, ToolResult, TraceSpan, SCHEMA_VERSION,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 #[derive(Deserialize)]
@@ -58,7 +58,7 @@ struct Attribute {
     value: Value,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 struct RecordedSpan {
     /// Nanoseconds are kept for ordering before formatting timestamps for the inspector.
     start: Option<i128>,
@@ -69,9 +69,20 @@ struct RecordedSpan {
     organization_id: Option<String>,
     user_id: Option<String>,
     conversation_id: Option<String>,
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
 }
 
 type Spans = BTreeMap<String, (usize, RecordedSpan)>;
+
+/// Stored OTLP evidence for one trace, including spans that arrived before inference.
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub struct StoredTrace(Spans);
+
+pub struct CapturePolicy<'a> {
+    pub content: bool,
+    pub metadata: &'a BTreeSet<String>,
+}
 
 #[derive(Default)]
 pub struct Archive {
@@ -95,6 +106,45 @@ impl Batch {
 
     pub fn runs(&self) -> impl Iterator<Item = &Run> {
         self.traces.values().filter_map(|trace| trace.run.as_ref())
+    }
+
+    pub fn into_updates(self) -> impl Iterator<Item = (String, StoredTrace, Option<Run>)> {
+        self.traces
+            .into_iter()
+            .map(|(id, trace)| (format!("otlp:{id}"), StoredTrace(trace.spans), trace.run))
+    }
+}
+
+impl StoredTrace {
+    /// Whether the recorded operation supplies an inference coverage denominator.
+    pub fn inference_span(&self, id: &str) -> bool {
+        self.0.get(id).is_some_and(|(_, span)| {
+            let attrs = &span.attrs;
+            let operation = attrs["gen_ai.operation.name"].as_str();
+            matches!(
+                operation,
+                Some("chat" | "generate_content" | "text_completion")
+            ) || (operation.is_none() && attrs.get("gen_ai.request.model").is_some())
+                || (operation != Some("execute_tool")
+                    && openinference::kind(attrs) == Some(Kind::Llm))
+        })
+    }
+
+    pub fn metadata(&self) -> BTreeMap<String, String> {
+        let mut visible = BTreeMap::new();
+        let mut ambiguous = BTreeSet::new();
+        for (_, span) in self.0.values() {
+            for (key, value) in &span.metadata {
+                if visible
+                    .insert(key.clone(), value.clone())
+                    .is_some_and(|old| old != *value)
+                {
+                    ambiguous.insert(key);
+                }
+            }
+        }
+        visible.retain(|key, _| !ambiguous.contains(key));
+        visible
     }
 }
 
@@ -123,78 +173,151 @@ impl Archive {
     }
 
     pub fn prepare(&self, document: &Value) -> Result<Batch, String> {
-        let exports = document
-            .as_array()
-            .map(Vec::as_slice)
-            .unwrap_or(std::slice::from_ref(document));
-        let mut updates = BTreeMap::<String, Spans>::new();
-        for (index, value) in exports.iter().enumerate() {
-            let export: Export = serde_json::from_value(value.clone())
-                .map_err(|error| format!("invalid OTLP export {}: {error}", index + 1))?;
-            for resource in export.resource_spans {
-                let resource_attrs = decode_attrs(
-                    resource
-                        .resource
-                        .as_ref()
-                        .map(|resource| resource.attributes.as_slice())
-                        .unwrap_or_default(),
-                )?;
-                for scope in resource.scope_spans {
-                    for span in scope.spans {
-                        let trace_id = normalize_id(&span.trace_id, 32, "traceId")?;
-                        let span_id = normalize_id(&span.span_id, 16, "spanId")?;
-                        let attrs = decode_attrs(&span.attributes)?;
-                        let record = RecordedSpan {
-                            start: parse_time(span.start_time_unix_nano.as_ref())
-                                .map_err(|error| format!("span {span_id}: {error}"))?,
-                            end: parse_time(span.end_time_unix_nano.as_ref())
-                                .map_err(|error| format!("span {span_id}: {error}"))?
-                                .filter(|end| *end != 0),
-                            name: span.name.filter(|name| !name.is_empty()),
-                            parent_span_id: span
-                                .parent_span_id
-                                .filter(|id| !id.is_empty())
-                                .map(|id| id.to_ascii_lowercase()),
-                            organization_id: identity(
-                                &attrs,
-                                &resource_attrs,
-                                "nexusweave.organization.id",
-                            ),
-                            user_id: identity(&attrs, &resource_attrs, "nexusweave.user.id")
-                                .or_else(|| openinference::scope_id(&attrs, "user.id")),
-                            conversation_id: optional_str(&attrs, "gen_ai.conversation.id")
-                                .or_else(|| openinference::scope_id(&attrs, "session.id")),
-                            attrs,
-                        };
-                        let known = self.traces.get(&trace_id).map(|trace| &trace.spans);
-                        let spans = updates.get(&trace_id).or(known);
-                        if let Some((_, existing)) = spans.and_then(|spans| spans.get(&span_id)) {
-                            if existing != &record {
-                                return Err(format!("conflicting copies of OTLP span {span_id}"));
-                            }
-                        } else {
-                            let spans = updates
-                                .entry(trace_id)
-                                .or_insert_with(|| known.cloned().unwrap_or_default());
-                            spans.insert(span_id, (spans.len(), record));
+        prepare(document, None, |id| {
+            Ok(self
+                .traces
+                .get(id)
+                .map(|trace| StoredTrace(trace.spans.clone()))
+                .unwrap_or_default())
+        })
+    }
+}
+
+/// Merge a batch against trace snapshots loaded on demand, applying capture policy before storage.
+pub fn prepare_stored(
+    document: &Value,
+    policy: &CapturePolicy<'_>,
+    mut load: impl FnMut(&str) -> Result<StoredTrace, String>,
+) -> Result<Batch, String> {
+    prepare(document, Some(policy), |id| load(&format!("otlp:{id}")))
+}
+
+fn prepare(
+    document: &Value,
+    policy: Option<&CapturePolicy<'_>>,
+    mut load: impl FnMut(&str) -> Result<StoredTrace, String>,
+) -> Result<Batch, String> {
+    let exports = document
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or(std::slice::from_ref(document));
+    let mut updates = BTreeMap::<String, Spans>::new();
+    let mut changed = BTreeSet::new();
+    for (index, value) in exports.iter().enumerate() {
+        let export: Export = serde_json::from_value(value.clone())
+            .map_err(|error| format!("invalid OTLP export {}: {error}", index + 1))?;
+        for resource in export.resource_spans {
+            let resource_attrs = decode_attrs(
+                resource
+                    .resource
+                    .as_ref()
+                    .map(|resource| resource.attributes.as_slice())
+                    .unwrap_or_default(),
+            )?;
+            for scope in resource.scope_spans {
+                for span in scope.spans {
+                    let trace_id = normalize_id(&span.trace_id, 32, "traceId")?;
+                    let span_id = normalize_id(&span.span_id, 16, "spanId")?;
+                    let mut attrs = decode_attrs(&span.attributes)?;
+                    let metadata = policy
+                        .map(|policy| {
+                            policy
+                                .metadata
+                                .iter()
+                                .map(String::as_str)
+                                .chain(["service.name"])
+                                .filter_map(|key| {
+                                    let value =
+                                        attrs.get(key).or_else(|| resource_attrs.get(key))?;
+                                    let value = match value {
+                                        Value::String(value) => value.clone(),
+                                        Value::Bool(_) | Value::Number(_) => value.to_string(),
+                                        _ => return None,
+                                    };
+                                    (value.len() <= 200).then(|| (key.to_owned(), value))
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    let mut record = RecordedSpan {
+                        start: parse_time(span.start_time_unix_nano.as_ref())
+                            .map_err(|error| format!("span {span_id}: {error}"))?,
+                        end: parse_time(span.end_time_unix_nano.as_ref())
+                            .map_err(|error| format!("span {span_id}: {error}"))?
+                            .filter(|end| *end != 0),
+                        name: span.name.filter(|name| !name.is_empty()),
+                        parent_span_id: span
+                            .parent_span_id
+                            .filter(|id| !id.is_empty())
+                            .map(|id| id.to_ascii_lowercase()),
+                        organization_id: identity(
+                            &attrs,
+                            &resource_attrs,
+                            "nexusweave.organization.id",
+                        ),
+                        user_id: identity(&attrs, &resource_attrs, "nexusweave.user.id")
+                            .or_else(|| openinference::scope_id(&attrs, "user.id")),
+                        conversation_id: optional_str(&attrs, "gen_ai.conversation.id")
+                            .or_else(|| openinference::scope_id(&attrs, "session.id")),
+                        metadata,
+                        attrs: Value::Null,
+                    };
+                    if policy.is_some_and(|policy| !policy.content) {
+                        record.name = None;
+                        attrs
+                            .as_object_mut()
+                            .expect("decoded attributes")
+                            .retain(|key, _| {
+                                matches!(
+                                    key.as_str(),
+                                    "gen_ai.operation.name"
+                                        | "gen_ai.request.model"
+                                        | "openinference.span.kind"
+                                        | "llm.model_name"
+                                        | "nexusweave.turn.id"
+                                )
+                            });
+                    }
+                    record.attrs = attrs;
+                    if policy.is_some() && updates.len() >= 64 && !updates.contains_key(&trace_id) {
+                        return Err(
+                            "sidecar export exceeds 64 trace IDs; send smaller batches".into()
+                        );
+                    }
+                    let spans = match updates.entry(trace_id.clone()) {
+                        std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
+                        std::collections::btree_map::Entry::Vacant(entry) => {
+                            entry.insert(load(&trace_id)?.0)
                         }
+                    };
+                    if let Some((_, existing)) = spans.get(&span_id) {
+                        if existing != &record {
+                            return Err(format!("conflicting copies of OTLP span {span_id}"));
+                        }
+                    } else {
+                        if policy.is_some() && spans.len() >= 512 {
+                            return Err("sidecar trace exceeds 512 spans".into());
+                        }
+                        changed.insert(trace_id);
+                        spans.insert(span_id, (spans.len(), record));
                     }
                 }
             }
         }
-
-        let traces = updates
-            .into_iter()
-            .map(|(trace_id, spans)| {
-                let run = normalize_trace(&trace_id, &spans)?;
-                Ok((trace_id, Trace { spans, run }))
-            })
-            .collect::<Result<_, String>>()?;
-        Ok(Batch { traces })
     }
+
+    let traces = updates
+        .into_iter()
+        .filter(|(id, _)| changed.contains(id))
+        .map(|(trace_id, spans)| {
+            let run = normalize_trace(&trace_id, &spans, policy.is_some())?;
+            Ok((trace_id, Trace { spans, run }))
+        })
+        .collect::<Result<_, String>>()?;
+    Ok(Batch { traces })
 }
 
-fn normalize_trace(trace_id: &str, spans: &Spans) -> Result<Option<Run>, String> {
+fn normalize_trace(trace_id: &str, spans: &Spans, all_spans: bool) -> Result<Option<Run>, String> {
     let mut ordered: Vec<_> = spans.iter().collect();
     ordered.sort_by_key(|(_, (position, span))| (span.start.is_none(), span.start, *position));
     let mut calls = Vec::new();
@@ -206,9 +329,10 @@ fn normalize_trace(trace_id: &str, spans: &Spans) -> Result<Option<Run>, String>
     if calls.is_empty() {
         return Ok(None);
     }
-    let trace_spans = if ordered
-        .iter()
-        .any(|(_, (_, span))| span.parent_span_id.is_some())
+    let trace_spans = if all_spans
+        || ordered
+            .iter()
+            .any(|(_, (_, span))| span.parent_span_id.is_some())
     {
         ordered
             .into_iter()

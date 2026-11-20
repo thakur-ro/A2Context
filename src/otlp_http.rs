@@ -114,29 +114,11 @@ impl Journal {
         self.reader.runs()
     }
 
-    pub fn receive(&mut self, mut request: Request, fixed_ids: &BTreeSet<String>) -> bool {
-        let content_type = request_header(&request, "Content-Type")
-            .and_then(|value| value.split(';').next())
-            .map(str::trim);
-        let format = match content_type {
-            Some(value) if value.eq_ignore_ascii_case(PROTOBUF) => Format::Protobuf,
-            Some(value) if value.eq_ignore_ascii_case(JSON) => Format::Json,
-            _ => {
-                respond(
-                    request,
-                    Format::Json,
-                    Err((
-                        415,
-                        "send OTLP as application/json or application/x-protobuf".into(),
-                    )),
-                );
-                return false;
-            }
-        };
+    pub fn receive(&mut self, request: Request, fixed_ids: &BTreeSet<String>) -> bool {
         let previous = self.reader.next_batch;
-        let result = read_document(&mut request, format)
-            .and_then(|document| self.accept(document, fixed_ids));
-        respond(request, format, result);
+        receive(request, MAX_BODY, |document| {
+            self.accept(document, fixed_ids)
+        });
         self.reader.next_batch != previous
     }
 
@@ -176,6 +158,35 @@ impl Journal {
     }
 }
 
+pub fn receive(
+    mut request: Request,
+    limit: usize,
+    accept: impl FnOnce(Value) -> std::result::Result<(), Rejection>,
+) -> bool {
+    let content_type = request_header(&request, "Content-Type")
+        .and_then(|value| value.split(';').next())
+        .map(str::trim);
+    let format = match content_type {
+        Some(value) if value.eq_ignore_ascii_case(PROTOBUF) => Format::Protobuf,
+        Some(value) if value.eq_ignore_ascii_case(JSON) => Format::Json,
+        _ => {
+            respond(
+                request,
+                Format::Json,
+                Err((
+                    415,
+                    "send OTLP as application/json or application/x-protobuf".into(),
+                )),
+            );
+            return false;
+        }
+    };
+    let result = read_document(&mut request, format, limit).and_then(accept);
+    let accepted = result.is_ok();
+    respond(request, format, result);
+    accepted
+}
+
 fn fixed_run_collision(run: &Run) -> String {
     format!(
         "live trace {} is already loaded from an evidence file",
@@ -199,19 +210,23 @@ fn request_header<'a>(request: &'a Request, name: &'static str) -> Option<&'a st
         .map(|header| header.value.as_str())
 }
 
-fn read_document(request: &mut Request, format: Format) -> std::result::Result<Value, Rejection> {
+fn read_document(
+    request: &mut Request,
+    format: Format,
+    limit: usize,
+) -> std::result::Result<Value, Rejection> {
     let gzip = match request_header(request, "Content-Encoding") {
         None => false,
         Some(value) if value.eq_ignore_ascii_case("identity") => false,
         Some(value) if value.eq_ignore_ascii_case("gzip") => true,
         _ => return Err((415, "expected identity or gzip Content-Encoding".into())),
     };
-    if request.body_length().is_some_and(|len| len > MAX_BODY) {
-        return Err((413, "OTLP request exceeds the 64 MiB limit".into()));
+    if request.body_length().is_some_and(|len| len > limit) {
+        return Err((413, format!("OTLP request exceeds {limit} bytes")));
     }
-    let input = bounded_read(request.as_reader())?;
+    let input = bounded_read(request.as_reader(), limit)?;
     let input = if gzip {
-        bounded_read(MultiGzDecoder::new(input.as_slice()))?
+        bounded_read(MultiGzDecoder::new(input.as_slice()), limit)?
     } else {
         input
     };
@@ -230,14 +245,14 @@ fn read_document(request: &mut Request, format: Format) -> std::result::Result<V
     Ok(document)
 }
 
-fn bounded_read(reader: impl Read) -> std::result::Result<Vec<u8>, Rejection> {
+fn bounded_read(reader: impl Read, limit: usize) -> std::result::Result<Vec<u8>, Rejection> {
     let mut bytes = Vec::new();
     reader
-        .take((MAX_BODY + 1) as u64)
+        .take((limit + 1) as u64)
         .read_to_end(&mut bytes)
         .map_err(|error| (400, format!("could not read OTLP request: {error}")))?;
-    if bytes.len() > MAX_BODY {
-        return Err((413, "OTLP request exceeds the 64 MiB limit".into()));
+    if bytes.len() > limit {
+        return Err((413, format!("OTLP request exceeds {limit} bytes")));
     }
     Ok(bytes)
 }

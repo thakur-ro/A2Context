@@ -9,6 +9,8 @@
 - Marc Lipsitch, Eric Tchetgen Tchetgen, and Ted Cohen describe negative controls for probing bias. NexusWeave adapts that experimental idea by comparing a target edit with an edit expected to leave the decision unchanged. [Negative Controls, 2010](https://pmc.ncbi.nlm.nih.gov/articles/PMC3053408/)
 - Wassily Hoeffding’s inequality supplies the bound used for reported replay intervals under independent sampling. The paired-edit test uses the four conditions of a two-factor design. [Hoeffding, 1963](https://doi.org/10.1080/01621459.1963.10500830), [NIST factorial experiment definition](https://www.itl.nist.gov/div898/handbook/glossary.htm)
 
+The [scoping review](docs/research-review.md) compares the sidecar workflow with TRACE, REFLECT, LangSmith Insights, SentinelRCA, and Langfuse. The README structure uses [Transformers](https://github.com/huggingface/transformers) as a reference for showing a runnable result near the top.
+
 ## Data and tools
 
 - Exgentic’s `agent-llm-traces` dataset supplied the recorded retail sessions for the importer comparison. The [sample manifest](examples/retail-sample.manifest.json) pins the dataset revision and documents session selection. The policy excerpt in [retail-annotations.json](examples/retail-annotations.json) comes from that dataset and is distributed under [CDLA Permissive 2.0](LICENSES/CDLA-Permissive-2.0.txt). [Exgentic dataset card](https://huggingface.co/datasets/Exgentic/agent-llm-traces)

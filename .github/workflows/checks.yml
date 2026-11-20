@@ -30,6 +30,13 @@ jobs:
         run: cargo +stable clippy --locked --all-targets -- -D warnings
       - name: Test Rust
         run: cargo +stable test --locked
+      - name: Verify sidecar with JSON and OpenTelemetry SDK producers
+        if: runner.os == 'Linux'
+        run: |
+          cargo build --locked
+          python3 -m venv "$RUNNER_TEMP/nexusweave-otel"
+          "$RUNNER_TEMP/nexusweave-otel/bin/pip" install opentelemetry-exporter-otlp-proto-http==1.45.2
+          python3 scripts/check_sidecar.py --binary target/debug/nexusweave --sdk-python "$RUNNER_TEMP/nexusweave-otel/bin/python"
       - name: Build Rust API documentation
         env:
           RUSTDOCFLAGS: -D warnings

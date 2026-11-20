@@ -2,13 +2,20 @@
 
 use nexusweave::{replay, Call, Run};
 use percent_encoding::percent_decode_str;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::Read;
 use tiny_http::{Method, Request};
 
 const MAX_BODY: usize = 64 * 1024 * 1024;
 type Reply = Result<Vec<u8>, (u16, String)>;
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScoreRequest {
+    case: replay::Case,
+    batch: replay::batch::Batch,
+}
 
 pub fn route<'a>(
     request: &mut Request,
@@ -20,6 +27,17 @@ pub fn route<'a>(
             .and_then(|case| {
                 replay::validate_case(&case, runs).map_err(|error| (400, error))?;
                 encode(&json!({}))
+            }),
+        (&Method::Post, "/api/replay-plan") => read_json::<replay::Case>(request, MAX_BODY)
+            .and_then(|case| {
+                let plan = replay::batch::prepare(&case, runs).map_err(|error| (400, error))?;
+                encode(&plan)
+            }),
+        (&Method::Post, "/api/replay-score") => read_json::<ScoreRequest>(request, MAX_BODY)
+            .and_then(|input| {
+                let report = replay::batch::score(&input.case, runs, input.batch)
+                    .map_err(|error| (400, error))?;
+                encode(&report)
             }),
         (&Method::Post, "/api/shadow-check") => {
             read_json::<replay::shadow::Plan>(request, 1024 * 1024).and_then(|plan| {

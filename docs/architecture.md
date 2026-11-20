@@ -23,6 +23,21 @@ flowchart TD
     R -->|Measured effect| G
 ```
 
+## Findings alongside inference
+
+```mermaid
+flowchart LR
+    A[Inference workflow] --> B[Asynchronous OTLP exporter]
+    B --> C[Bounded sidecar queue]
+    B --> D[Existing observability backend]
+    C --> E[Normalize and evaluate captured evidence]
+    E --> F[(SQLite trace and finding records)]
+    F --> G[Findings, Traces, Threads]
+    H[Explicit replay experiment] --> E
+```
+
+The sidecar evaluates captured data as exports arrive. Use a preflight check when the workflow needs a result before inference. [Deployment](sidecar.md) · [Sidecar methods](methods.md)
+
 ## What the algorithms measure
 
 | Question | How it works | What you can conclude |

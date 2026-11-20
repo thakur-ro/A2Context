@@ -1,0 +1,377 @@
+"""Exercise the sidecar API, rank labeled cases, and reproduce a bounded load test."""
+
+import argparse
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from copy import deepcopy
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+import re
+import socket
+import sqlite3
+import subprocess
+import sys
+import tempfile
+import time
+from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qs, urlencode, urlsplit
+from urllib.request import Request, urlopen
+from uuid import NAMESPACE_URL, uuid5
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def send(base, path, payload=None, expected=200, headers=None):
+    if payload is not None:
+        data = json.dumps(payload).encode()
+        headers = {"Content-Type": "application/json", **(headers or {})}
+    else:
+        data = None
+    try:
+        response = urlopen(Request(base + path, data, headers or {}), timeout=20)
+    except HTTPError as error:
+        response = error
+    with response:
+        raw = response.read()
+        if expected is not None:
+            assert response.status == expected, (path, response.status, raw[:300])
+        if response.headers.get_content_type() == "application/json":
+            return response.status, json.loads(raw)
+        return response.status, raw
+
+
+def send_traces(base, document):
+    send(base, "/v1/traces", document)
+
+
+def sdk_sender(python):
+    def export_traces(base, document):
+        subprocess.run([python, str(ROOT / "tests/send_sdk_fixture.py"), base + "/v1/traces"],
+                       input=json.dumps(document), text=True, check=True)
+    return export_traces
+
+
+def get(base, view, **params):
+    return send(base, "/api/sidecar/" + view + "?" + urlencode(params))[1]
+
+
+def export(*spans):
+    return {"resourceSpans": [{"resource": {"attributes": attrs({"service.name": "policy-workflow"})},
+                               "scopeSpans": [{"spans": list(spans)}]}]}
+
+
+def attrs(values):
+    return [{"key": key, "value": {"stringValue": value}} for key, value in values.items()]
+
+
+CLOCK = int(datetime(2026, 10, 12, tzinfo=timezone.utc).timestamp())
+
+
+def case_span(case, mode, number=0, *, org="heldout", shift=0):
+    trace = uuid5(NAMESPACE_URL, f"{org}:{case}:{number}").hex
+    span = "1111111111111111"
+    text = "Input carrying " + case
+    other = text if mode == "duplicate" else "Alternative declaration for " + case
+    messages = [{"role": role, "parts": [{"type": "text", "content": value}]}
+                for role, value in [("developer", text), ("user", other)]]
+    declarations = [{
+        "anchor": {"field": "gen_ai.input.messages", "message_index": i, "part_index": 0},
+        "source_id": f"{case}-source-{i}",
+        "source_version": "v1",
+        **({"rule": {"key": case, "scope": "standard", "value": i}} if mode == "conflict" else {}),
+    } for i in range(2)]
+    output = {
+        "traceId": trace, "spanId": span, "name": "private-span-name:" + case,
+        "parentSpanId": "2222222222222222",
+        "startTimeUnixNano": str((CLOCK + shift + number * 86400) * 10**9),
+        "attributes": attrs({
+            "gen_ai.operation.name": "chat",
+            "gen_ai.request.model": "fixture",
+            "gen_ai.input.messages": json.dumps(messages),
+            "gen_ai.conversation.id": "thread-" + str(number),
+            "nexusweave.context.semantics": json.dumps({"version": 1, "context": declarations}),
+            "nexusweave.organization.id": org,
+            "nexusweave.user.id": "case-owner",
+            "deployment.environment.name": "validation",
+            "private.token": "secret-would-be-redacted",
+        }),
+    }
+    return output
+
+
+def root_span(child):
+    return {"traceId": child["traceId"], "spanId": child["parentSpanId"],
+            "name": "agent-root", "startTimeUnixNano": str(int(child["startTimeUnixNano"]) - 1000),
+            "attributes": []}
+
+
+@contextmanager
+def server(binary, db, *flags):
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    base = f"http://127.0.0.1:{port}"
+    with tempfile.TemporaryFile() as logs:
+        process = subprocess.Popen(
+            [str(binary), "sidecar", "--db", str(db), "--listen", f"127.0.0.1:{port}", *flags],
+            stdout=logs, stderr=logs,
+        )
+        try:
+            deadline = time.monotonic() + 10
+            while True:
+                try:
+                    get(base, "health")
+                    break
+                except (URLError, TimeoutError):
+                    if process.poll() is not None or time.monotonic() >= deadline:
+                        logs.seek(0)
+                        raise RuntimeError(logs.read().decode())
+                    time.sleep(0.02)
+            yield base
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=5)
+
+
+def check_capture(binary, folder, producer_python=None):
+    db = folder / "redacted.sqlite"
+    flags = ("--metadata", "deployment.environment.name")
+    child = case_span("redaction", "conflict")
+    trace_id = "otlp:" + child["traceId"]
+    with server(binary, db, *flags) as base:
+        send(base, "/v1/traces", export(child))
+        send(base, "/v1/traces", export(child))
+        assert not get(base, "findings")["rows"]
+        assert get(base, "health")["coverage"] == {"traces": 1, "inference_spans": 1, "with_inputs": 0, "with_request": 0, "with_rules": 0}
+        rows = get(base, "traces", workflow="policy-workflow", meta_key="deployment.environment.name", meta_value="validation")["rows"]
+        assert [row["id"] for row in rows] == [trace_id]
+        assert not get(base, "traces", meta_key="private.token", meta_value="secret-would-be-redacted")["rows"]
+        send(base, "/v1/traces", export(child), expected=403, headers={"Origin": "https://untrusted.example"})
+        if producer_python:
+            subprocess.run([producer_python, str(ROOT / "examples/send_otlp_inventory.py"), "--endpoint", base + "/v1/traces",
+                            "--conversation-id", "independent-sdk-producer"], check=True)
+            assert any(row["thread"] == "independent-sdk-producer" for row in get(base, "threads", org="sdk-demo-org")["rows"])
+            assert get(base, "health")["coverage"]["inference_spans"] == 3
+    with sqlite3.connect(db) as sql:
+        state = "\n".join(value for pair in sql.execute("SELECT raw,run FROM traces") for value in pair)
+        assert "secret-would-be-redacted" not in state and "private-span-name" not in state
+        assert "Input carrying redaction" not in state and "MUG-42" not in state
+    with server(binary, db, *flags) as base:
+        send(base, "/v1/traces", export(root_span(child)))
+        detail = get(base, "trace", id=trace_id)["trace"]
+        assert {span["id"] for span in detail["spans"]} == {child["spanId"], child["parentSpanId"]}
+        assert len(detail["calls"]) == 1
+    with sqlite3.connect(db) as sql:
+        sql.execute("UPDATE traces SET seen=? WHERE id=?", (int(time.time()) - 8 * 86400, trace_id))
+    with server(binary, db, *flags) as base:
+        assert trace_id not in [row["id"] for row in get(base, "traces")["rows"]]
+
+
+def check_replay(base, send_trace=send_traces):
+    sys.path.insert(0, str(ROOT / "examples"))
+    from send_otlp_replay import prepare as prepare_replay
+
+    trace, report = prepare_replay("held-out-experiment")
+    path = "/api/replay-reports"
+    send_trace(base, trace)
+    tampered = deepcopy(report)
+    tampered["baseline_request_sha256"] = "0" * 64
+    send(base, path, tampered, expected=400)
+    send(base, path, report, expected=201)
+    send(base, path, report)
+    incomplete = deepcopy(report)
+    incomplete["id"] += "-incomplete"
+    variant = incomplete["variants"][0]
+    variant["trials"] = [{"status": "failed"}]
+    variant["summary"] = {"attempted": 1, "completed": 0, "matched": 0}
+    variant["difference_pp"] = None
+    incomplete.pop("pair", None)
+    send(base, path, incomplete, expected=201)
+    location = report["location"]
+    details = get(base, "trace", id=location["run_id"])
+    assert details["replay_reports"] == 2
+    measured = [item for item in details["findings"] if item["detail"]["measurement"]["replay_id"] == report["id"]]
+    assert sorted(item["detail"]["effect_pp"] for item in measured) == [-100.0, -100.0, 0.0]
+    assert all(item["call_id"] == location["call_id"] for item in measured)
+    assert all(len(item["detail"]["measurement"]["location"]) >= 3 for item in measured)
+    assert not any(item["detail"]["measurement"]["replay_id"] == incomplete["id"] and item["detail"]["effect_pp"] == 0
+                   for item in details["findings"])
+    return len(measured)
+
+
+def check_activation(base, producer_python):
+    output = subprocess.check_output([producer_python, str(ROOT / "examples/send_otlp_activation.py"), "--url", base], text=True)
+    linked = parse_qs(urlsplit(output.strip()).fragment)
+    trace = linked["run"][0]
+    assert get(base, "trace", id=trace)["activation_reports"] == 1
+    details = send(base, "/api/inspection?" + urlencode({"run": trace}))[1]
+    assert details["activation_reports"][0]["location"]["run_id"] == trace
+
+
+def check_external_batch(binary, folder):
+    fixtures = ROOT / "examples/context-screening/replay"
+    evidence, case = fixtures / "evidence.json", fixtures / "case.json"
+    plan_path = folder / "plan.json"
+    subprocess.run([str(binary), "plan-replay", str(evidence), str(case), str(plan_path)], check=True)
+    plan = json.loads(plan_path.read_text())
+    saved = json.loads((fixtures / "report.json").read_text())
+    trials_by_condition = [saved["baseline"], *(arm["trials"] for arm in saved["variants"]), saved["pair"]["trials"]]
+    outcomes = [
+        {"context_ids": condition["context_ids"], "request_sha256": condition["request_sha256"], "trials": trials}
+        for condition, trials in zip(plan["conditions"], trials_by_condition, strict=True)
+    ]
+    batch = {"version": 1, "plan_id": plan["plan_id"], "conditions": list(reversed(outcomes))}
+    trials_path, report_path = folder / "trials.json", folder / "report.json"
+    trials_path.write_text(json.dumps(batch))
+    command = [str(binary), "score-replay", str(evidence), str(case), str(trials_path)]
+    subprocess.run([*command, str(report_path)], check=True)
+    assert json.loads(report_path.read_text()) == saved
+    batch["conditions"][0]["request_sha256"] = "1" * 64
+    trials_path.write_text(json.dumps(batch))
+    failure = subprocess.run([*command, str(folder / "rejected.json")], capture_output=True)
+    assert failure.returncode != 0 and b"request digest" in failure.stderr
+
+
+# The labels answer whether an engineer should investigate the issue. Separately
+# recorded precedence labels the benign structured disagreement as low priority.
+COHORTS = {
+    "development": ("refund_cap", "support_region", "missing_exception", "intended_escalation", "copied_notice"),
+    "heldout": ("recall_status", "retention_window", "hidden_override", "accepted_precedence", "repeat_reminder"),
+}
+
+
+def rank(base, cohort, send_trace=send_traces):
+    primary, secondary, missing, benign, duplicate = COHORTS[cohort]
+    labels = {primary, secondary, missing}
+    for name, mode, count, shift in [
+        (primary, "conflict", 4, 0), (secondary, "conflict", 3, 200),
+        (missing, "undeclared", 2, 300), (benign, "conflict", 1, 6 * 86400),
+        (duplicate, "duplicate", 2, 5 * 86400),
+    ]:
+        spans = (case_span(name, mode, number, org=cohort, shift=shift) for number in range(count))
+        send_trace(base, export(*spans))
+    rows = get(base, "findings", org=cohort)["rows"]
+    assert len(rows) == 4, rows
+    assert rows[0]["evidence"]["detail"]["rule"] == primary
+    assert len(rows[0]["trend"]) == 4
+    assert get(base, "findings", org=cohort, group=rows[0]["id"], after="2026-10-13", before="2026-10-15")["rows"][0]["traces"] == 2
+    assert get(base, "findings", org=cohort, group=rows[0]["id"], user="unseen")["rows"] == []
+    assert len(get(base, "threads", org=cohort)["rows"]) == 4
+    if cohort == "heldout":
+        rows.extend(row for row in get(base, "findings", kind="replay")["rows"] if row["kind"] == "replay")
+        labels.update({"measured source edit", "measured joint edit"})
+        rows.sort(key=lambda row: (row["priority"],
+                                  -row["threads"], -row["traces"], -(row["latest"] or 0), row["id"]))
+    def name(row):
+        detail = row["evidence"]["detail"]
+        if row["kind"] == "replay":
+            if detail["edit"] == "joint":
+                return "measured joint edit"
+            return "measured source edit" if detail["effect_pp"] != 0 else "measured equality"
+        return detail.get("rule", duplicate)
+
+    scores = {}
+    observed = {name(row) for row in rows}
+    for method, ordering in [
+        ("ranked", rows),
+        ("rules_only", sorted((row for row in rows if row["kind"] == "conflict"), key=lambda row: -row["latest"])),
+        ("newest_first", sorted(rows, key=lambda row: -(row["latest"] or 0))),
+    ]:
+        top = [name(row) for row in ordering[:5]]
+        scores[method] = {
+            "true_at_5": len(set(top) & labels), "shown": len(top), "labeled_issues": len(labels),
+            "precision_among_shown": round(len(set(top) & labels) / len(top), 3),
+            "coverage": round(len({name(row) for row in ordering} & labels) / len(labels), 3),
+            "highest_false_positive": next((label for label in top if label not in labels), None),
+        }
+    return {"findings": scores, "missed": sorted(labels - observed)}
+
+
+def load(base, clients, batches, batch_size, payload_bytes):
+    org = "sidecar-overload"
+    inputs = []
+    for index in range(batches):
+        spans = []
+        for number in range(batch_size):
+            span = case_span(f"load-{index}", "conflict", number, org=org)
+            if payload_bytes:
+                span["attributes"].extend(attrs({"gen_ai.system_instructions": json.dumps([
+                    {"type": "text", "content": "x" * payload_bytes}
+                ])}))
+            spans.append(span)
+        inputs.append(export(*spans))
+
+    def submit(payload):
+        started = time.monotonic()
+        code, _ = send(base, "/v1/traces", payload, expected=None)
+        return code, (time.monotonic() - started) * 1000
+
+    initial = get(base, "health")
+    started = time.monotonic()
+    with ThreadPoolExecutor(max_workers=clients) as pool:
+        outcomes = list(pool.map(submit, inputs))
+    elapsed = time.monotonic() - started
+    final = get(base, "health")
+    codes = sorted({code for code, _ in outcomes})
+    timings = sorted(ms for code, ms in outcomes if code == 200)
+    assert set(codes) <= {200, 503} and timings, codes
+    drops = final["queue_drops"] - initial["queue_drops"]
+    assert drops == sum(code == 503 for code, _ in outcomes)
+    assert final["queue_depth"] == 0
+    recovered = 0
+    recovery_started = time.monotonic()
+    for payload, (code, _) in zip(inputs, outcomes, strict=True):
+        if code == 503:
+            send(base, "/v1/traces", payload)
+            recovered += 1
+    recovery_seconds = time.monotonic() - recovery_started
+    coverage = get(base, "health", org=org)["coverage"]
+    assert coverage["traces"] == batches * batch_size
+    return {"responses": {code: sum(status == code for status, _ in outcomes) for code in codes},
+            "wall_s": round(elapsed, 3), "p95_successful_export_ms": round(timings[int((len(timings) - 1) * 0.95)], 2),
+            "last_processing_lag_ms": final["processing_lag_ms"], "batch_size": batch_size,
+            "clients": clients, "extra_bytes_per_span": payload_bytes, "retry_recovered_batches": recovered,
+            "retry_wall_s": round(recovery_seconds, 3), "retained_traces": coverage["traces"]}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/nexusweave")
+    parser.add_argument("--sdk-python", help="Interpreter with OpenTelemetry SDK and OTLP/HTTP exporter installed")
+    parser.add_argument("--overload-url", help="Run load only against an isolated persistent sidecar")
+    parser.add_argument("--clients", type=int, default=24)
+    parser.add_argument("--batches", type=int, default=192)
+    parser.add_argument("--batch-size", type=int, default=12)
+    parser.add_argument("--payload-bytes", type=int, default=4096)
+    args = parser.parse_args()
+    if args.overload_url:
+        print(json.dumps(load(args.overload_url, args.clients, args.batches, args.batch_size, args.payload_bytes), indent=2))
+        return
+    with tempfile.TemporaryDirectory() as directory:
+        folder = Path(directory)
+        check_capture(args.binary, folder, args.sdk_python)
+        check_external_batch(args.binary, folder)
+        captured = folder / "scoped.sqlite"
+        with server(args.binary, captured, "--capture-content") as base:
+            fidelity = check_replay(base)
+            development = rank(base, "development")
+            heldout = rank(base, "heldout")
+            if args.sdk_python:
+                check_activation(base, args.sdk_python)
+        with server(args.binary, captured, "--capture-content") as base:
+            assert any(card["kind"] == "replay" for card in get(base, "findings")["rows"])
+        if args.sdk_python:
+            # Repeat the live card, recurrence, and replay journeys using the
+            # SDK's actual encoder, processor, and exporter.
+            with server(args.binary, folder / "sdk.sqlite", "--capture-content") as base:
+                sdk = sdk_sender(args.sdk_python)
+                assert check_replay(base, sdk) == fidelity
+                assert rank(base, "heldout", sdk) == heldout
+        print(json.dumps({"capture_checks": "passed", "producer_sdk": bool(args.sdk_python), "recomputed_replay_deltas": fidelity,
+                          "development": development, "heldout": heldout}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

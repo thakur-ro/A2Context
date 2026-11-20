@@ -1,5 +1,6 @@
 //! Controlled request replays. A runner proposes a decision and returns it as JSON.
 
+pub mod batch;
 pub mod candidates;
 mod capture;
 mod distribution;
@@ -40,7 +41,7 @@ pub struct Choice {
     pub outcome: Value,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Case {
     pub version: u32,
     pub id: String,
@@ -269,16 +270,20 @@ pub fn execute(
     runs: &[Run],
     sample: impl FnMut(&Value) -> Option<Choice>,
 ) -> Result<Replay, String> {
-    let PreparedCase {
-        recorded,
-        baseline_request_sha256,
-        match_rule,
-        edits,
-        control,
-    } = prepare_case(case, runs)?;
-    let matcher = Matcher::new(&match_rule, &recorded)?;
-    let requests = edited_requests(case.request.clone(), &edits, case.test_pair)?;
-    let mut trials = sample_conditions(&requests, case.samples, sample);
+    let prepared = prepare_case(case, runs)?;
+    score_trials_with(case, prepared, |prepared| {
+        let requests = edited_requests(case.request.clone(), &prepared.edits, case.test_pair)?;
+        Ok(sample_conditions(&requests, case.samples, sample))
+    })
+}
+
+fn score_trials_with(
+    case: &Case,
+    prepared: PreparedCase<'_>,
+    collect: impl FnOnce(&PreparedCase<'_>) -> Result<Vec<Vec<Trial>>, String>,
+) -> Result<Replay, String> {
+    let matcher = Matcher::new(&prepared.match_rule, &prepared.recorded)?;
+    let mut trials = collect(&prepared)?;
     let paired_trials = case
         .test_pair
         .then(|| trials.pop().expect("pair condition"));
@@ -289,7 +294,7 @@ pub fn execute(
         .interventions
         .iter()
         .cloned()
-        .zip(edits)
+        .zip(prepared.edits)
         .zip(trials)
         .map(|((mut intervention, edit), trials)| {
             if intervention.operation == Operation::ReplaceJson {
@@ -336,18 +341,19 @@ pub fn execute(
             summary,
         }
     });
-    let control_comparison = control
+    let control_comparison = prepared
+        .control
         .map(|index| compare_control(&variants[index], &variants[1 - index], case.sampling_design));
     Ok(Replay {
         version: 1,
         id: case.id.clone(),
         runner_id: case.runner_id.clone(),
         location: case.location.clone(),
-        recorded,
-        match_rule,
+        recorded: prepared.recorded,
+        match_rule: prepared.match_rule,
         sampling_design: case.sampling_design,
         rescored_from: None,
-        baseline_request_sha256,
+        baseline_request_sha256: prepared.baseline_request_sha256,
         baseline,
         baseline_summary,
         variants,

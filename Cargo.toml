@@ -3,7 +3,7 @@ name = "nexusweave"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Diagnose context and inspect decisions in LLM workflows"
+description = "Find context conflicts and test source edits in LLM workflows"
 repository = "https://github.com/thakur-ro/NexusWeave"
 documentation = "https://github.com/thakur-ro/NexusWeave/blob/main/docs/rust-api.md"
 include = [
@@ -43,3 +43,4 @@ tempfile = "3"
 tiny_http = "0.12"
 time = { version = "0.3", features = ["formatting", "parsing"] }
 tokio = { version = "1", features = ["rt"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
