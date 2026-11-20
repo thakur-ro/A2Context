@@ -2004,7 +2004,9 @@ function pendingPreview() {
       const experiment = report.history?.experiment;
       const dispatchCards = report.recommendations.flatMap(({detail}) => detail.sandbox_dispatch ? [sandboxDispatch(detail.sandbox_dispatch)] : []);
       const dispatchHistory = priorDispatch(report.history, dispatchCards.length > 0);
+      const sourceGap = report.recommendations.find(row => row.kind === "source_gap");
       for (const { kind, detail, action } of report.recommendations) {
+        if (kind === "source_gap") continue;
         if (kind === "shadow" && experiment?.status === "ready" && experiment.edited_request_sha256 === detail.edited_request_sha256 &&
             experiment.interventions[0].context_id === detail.sources[0].id &&
             experiment.proposal_tests.some(test => test.report === detail.report_id && test.runner === detail.runner)) continue;
@@ -2035,12 +2037,12 @@ function pendingPreview() {
       const opening = report.prefill?.ranked[0]?.opening_changed !== undefined;
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
-          " · " + plural(report.total, "comparison finding") + (report.prefill ? " · First-token test attached" : "") }),
+          " · " + plural(report.total, "finding") + (report.prefill ? " · First-token test attached" : "") }),
         overlappingAnchors(report.anchor_overlap),
         sources && element("section",{className:"panel","aria-label":"Required source coverage"},
           element("h2",{text:(sources.matched ? "Sources captured for " : "Check sources for ") + sources.name}),
           requiredSourceList(sources),
-          !sources.matched && element("p",{text:"Check the request builder and capture declarations for one complete alternative."})),
+          sourceGap && element("p",{text:sourceGap.action.next})),
         gap && element("section",{className:"panel","aria-label":"Rule capture gap"},
           element("h2",{text:"Check capture for " + coverage.scope.key}),
           element("p",{text:coverage.declarations ? coverage.known_values + " of " + coverage.declarations +

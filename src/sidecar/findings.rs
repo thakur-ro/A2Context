@@ -77,8 +77,11 @@ pub(super) fn occurrence(
     }
 }
 
-fn source_gap(run: &Run, call: &Call) -> Option<Observation> {
-    let coverage = nexusweave::preflight::verified_source_coverage(call)?;
+pub(super) fn source_gap(
+    run: &Run,
+    call: &Call,
+    coverage: &nexusweave::preflight::SourceCoverage,
+) -> Option<Observation> {
     if coverage.matched {
         return None;
     }
@@ -140,7 +143,9 @@ pub fn derive(
 ) -> Result<Vec<Observation>, String> {
     let mut findings = Vec::new();
     for call in &run.calls {
-        findings.extend(source_gap(run, call));
+        if let Some(coverage) = nexusweave::preflight::verified_source_coverage(call) {
+            findings.extend(source_gap(run, call, &coverage));
+        }
         let mut rules = BTreeMap::<_, Vec<_>>::new();
         let mut texts = BTreeMap::<_, Vec<_>>::new();
         for item in &call.context {

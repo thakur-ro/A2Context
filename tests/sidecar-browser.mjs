@@ -292,6 +292,21 @@ try {
     buffer:Buffer.from(JSON.stringify({request:missingRule}))});
   await required.getByRole("heading",{name:"Sources captured for Holiday eligibility"}).waitFor();
   assert.equal(await required.getByText(/All anchored in the request/).count(),1);
+  const substitution = structuredClone(missingRule);
+  delete substitution.scope;
+  for (const row of substitution.attributes["nexusweave.context.semantics"].request_sources) delete row.rule;
+  substitution.attributes["nexusweave.required_sources"] = {name:"Expected returns policy",
+    any_of:[["retail/returns-policy"]],expected_text_sha256:{"retail/returns-policy":"a".repeat(64)}};
+  const response = await page.request.post(new URL("/api/sidecar/preview",page.url()).href,{data:{request:substitution}});
+  assert.ok(response.ok());
+  const preview = await response.json();
+  assert.equal(preview.total,1);
+  assert.equal(preview.recommendations[0].kind,"source_gap");
+  assert.equal(preview.recommendations[0].action.title,"Compare captured text with the upstream source");
+  await page.locator('input[type="file"]').setInputFiles({name:"changed.json",mimeType:"application/json",
+    buffer:Buffer.from(JSON.stringify({request:substitution}))});
+  await required.getByText(/Captured text differs: retail\/returns-policy/).waitFor();
+  assert.equal(await page.getByText("No supported issues or measured shifts in this request.").count(),0);
   const declarations = missingRule.attributes["nexusweave.context.semantics"].request_sources;
   declarations.push({id:"handbook",source_id:"retail/handbook",
     request_fragment:{pointer:"/messages/0/content",text_range:{start_byte:12,end_byte:31}}});

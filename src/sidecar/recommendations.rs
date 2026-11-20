@@ -60,7 +60,7 @@ pub fn action(kind: &str, detail: &Value) -> Action {
         "source_gap" => (
             "Check the request builder and source capture",
             "Inspect the unconfirmed IDs for one alternative. Verify that the builder included those inputs and exported their named fragments, then repeat preflight.",
-            "A preflight receipt matched the captured request and source anchors",
+            "No configured alternative had all its required source fragments",
         ),
         "conflict" => (
             "Resolve the competing rules",
@@ -245,7 +245,7 @@ pub fn preview(
 ) -> Result<Value, (u16, String)> {
     let history_scope = super::history::Scope::read(&input.request.attributes);
     let pending::Inspected {
-        call,
+        mut call,
         scope,
         mut prefill,
         preflight,
@@ -257,6 +257,9 @@ pub fn preview(
             .map_err(|e| (503, e.to_string()))?,
         Err(status) => json!({"status":status,"edits":[]}),
     };
+    // The current pending contract determines this preview, even if the input
+    // also carries a receipt from an earlier inspection.
+    call.preflight_receipt = None;
     let run = Run {
         schema_version: nexusweave::SCHEMA_VERSION,
         id: "pending".into(),
@@ -276,16 +279,20 @@ pub fn preview(
                     && item.detail["scope"].as_str() == Some(&scope.scope)
             })
     });
+    if let Some(coverage) = &preflight.source_coverage {
+        observations.extend(findings::source_gap(&run, call, coverage));
+    }
     observations.sort_by_key(|item| match item.kind {
+        "source_gap" => 0,
         "shadow"
             if item.detail["effect_pp"] == 0.0
                 && item.detail["response_pair"]["changed"] != true =>
         {
-            3
+            4
         }
-        "candidate" | "shadow" => 0,
-        "conflict" => 1,
-        _ => 2,
+        "candidate" | "shadow" => 1,
+        "conflict" => 2,
+        _ => 3,
     });
     let total = observations.len();
     let items = observations

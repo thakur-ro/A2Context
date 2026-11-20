@@ -15,6 +15,8 @@ Existing detail links resolve through the sidecar when it has the referenced tra
 
 ### Find a source capture gap across conversations
 
+To check a request before calling the model, post `{"request": ...}` to `/api/sidecar/preview`. An unsatisfied requirement produces a `source_gap` entry in `recommendations`, including the affected IDs and the next check to run. The preview works without a completed span and keeps the pending request in memory. Use this path in a staging check or open **Before inference** in the dashboard.
+
 Run preflight on an assembled request with `nexusweave.required_sources`. Copy its `receipt` into the inference span’s `nexusweave.preflight` attribute. On OTLP, JSON-encode the receipt as a string. Export the exact original request and source declarations with it. With content capture enabled, a matching version-two or version-three receipt lets the background worker recompute which named fragments satisfied the requirement. A missing or mismatched receipt provides no verified result. Version-one receipts still verify ordinary rule checks. [Preflight example](guide.md#check-alternative-sources-before-dispatch)
 
 If every alternative has an unconfirmed source, the dashboard shows **Check sources for** the named requirement. Filter by user or workflow to see affected conversations and open the exact call. In the context map, hollow dashed nodes identify required IDs with no matching anchor. Filled source nodes identify fragments the call actually captured. The workflow may still have supplied the text at an undeclared location.
