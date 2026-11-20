@@ -336,6 +336,20 @@ try {
   await required.getByText("/messages/0/content",{exact:true}).waitFor();
   assert.equal(await required.getByText("a".repeat(64),{exact:true}).count(),1);
   assert.equal(await page.getByText("No supported issues or measured shifts in this request.").count(),0);
+  const lookups = JSON.parse(await readFile(new URL("../examples/exchange-approval/dispatch-study/lookup-field/pending-requests.json",import.meta.url),"utf8"));
+  const fan = lookups.cases.find(row=>row.id==="fan-approved").arms;
+  for (const arm of ["lookup","punctuation"]) {
+    await page.locator('input[type="file"]').setInputFiles({name:"payment-"+arm+".json",mimeType:"application/json",
+      buffer:Buffer.from(JSON.stringify({request:fan[arm]}))});
+    if (arm === "lookup") {
+      await required.getByText(/Captured text differs: payment-lookup/).waitFor();
+      await required.getByText("Inspect differing fragments").click();
+      const digest = fan.lookup.attributes["nexusweave.required_sources"].expected_text_sha256["payment-lookup"];
+      await required.getByText(digest,{exact:true}).waitFor();
+    } else {
+      await required.getByRole("heading",{name:"Sources captured for Authorized payment method"}).waitFor();
+    }
+  }
   const declarations = missingRule.attributes["nexusweave.context.semantics"].request_sources;
   declarations.push({id:"handbook",source_id:"retail/handbook",
     request_fragment:{pointer:"/messages/0/content",text_range:{start_byte:12,end_byte:31}}});

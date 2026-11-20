@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from check_sidecar import attrs, case_span, export, get, root_span, send_traces, server
+from check_sidecar import attrs, case_span, export, get, root_span, send, send_traces, server
 
 
 def checked_span(binary, index, *, anchored=False, tamper=None, user="pat", source_version="v1", expected=None):
@@ -50,6 +50,21 @@ def verify(binary):
         gaps = [checked_span(binary, i) for i in (0, 1)]
         batch = export(*gaps)
         with server(binary, path, "--capture-content") as base:
+            study = ROOT / "examples/exchange-approval/dispatch-study/lookup-field"
+            for case in json.loads((study / "pending-requests.json").read_text())["cases"]:
+                for arm, request in case["arms"].items():
+                    _, preview = send(base, "/api/sidecar/preview", {"request": request})
+                    local = json.loads(subprocess.check_output([binary, "preflight", "-"],
+                                       input=json.dumps(request), text=True))
+                    coverage = preview["source_coverage"]
+                    assert coverage == local["source_coverage"]
+                    assert coverage["matched"] == (arm != "lookup")
+                    cards = [r for r in preview["recommendations"] if r["kind"] == "source_gap"]
+                    assert len(cards) == int(arm == "lookup")
+                    if cards:
+                        assert coverage["text_mismatches"] == ["payment-lookup"]
+                        source, = cards[0]["detail"]["sources"]
+                        assert source["request_fragment"]["pointer"] == "/messages/0/content"
             send_traces(base, batch)
             send_traces(base, export(root_span(gaps[0])))
             send_traces(base, batch)
