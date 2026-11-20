@@ -1,0 +1,37 @@
+{
+  "question": "Can the model's preference for two durations identify which source edit changes a numeric answer when the user refers to an activity without naming its calendar?",
+  "checkpoint": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "weights_sha256": "fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe",
+  "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+  "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+  "temperature": 0,
+  "max_tokens": 32,
+  "sources": {"atlas-calendar": "Atlas", "birch-calendar": "Birch"},
+  "activities": {"plants": "greenhouse tour", "music": "orchestra rehearsal"},
+  "minutes": [30, 60],
+  "system": "Use the event listings below to answer the visitor's question.",
+  "entry": "{name} calendar: the {activity} lasts {minutes} minutes.",
+  "replacement": "{name} calendar: the duration of the {activity} is unavailable.",
+  "questions": {
+    "plants": "How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.",
+    "music": "How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits."
+  },
+  "prefix": "Activity length: ",
+  "candidates": ["30", "60"],
+  "design": "Cross first source (Atlas/Birch), Atlas duration (30/60), activity in Atlas (plants/music), and question (plants/music) in this order. Assign the remaining duration and activity to Birch. Place the system introduction and the two entries in a single system message, separated by newlines. The final user message is the frozen question. For each source intervention replace its entire entry with the matching neutral entry. Save a record and both bound reports for every cell.",
+  "procedure": "In every cell, before free generation score both complete candidate strings after the empty prefix and the supplied literal prefix on the original and on each of the two edited requests. For each of those three bodies run one unconstrained greedy generation. Preserve every cell, including incomplete generations. Reproduce the whole experiment and compare the result bytes.",
+  "selectors": {
+    "empty": "Choose the only edit that strictly reverses log P(30) minus log P(60) at the empty prefix. Abstain when there are zero or two reversals. A tie is not a reversal.",
+    "supplied": "Use the same rule after the supplied prefix.",
+    "fixed": "Always choose Atlas; separately always choose Birch.",
+    "position": "Always choose the first entry; separately always choose the last.",
+    "name": "Choose the unique entry whose calendar name appears as a complete, case-insensitive word in the question. Abstain otherwise.",
+    "overlap": "Lowercase and tokenize the complete question and each complete original entry with [a-z]+. Count the intersection of distinct words, with no stemming or stopword removal. Choose the entry with strictly more overlapping words; abstain on a tie.",
+    "meaning": "Before scoring, fix two lookup rules: 'tropical plants' in a question matches 'greenhouse tour' in an entry; 'musicians' in a question matches 'orchestra rehearsal' in an entry. Select the unique matching entry or abstain. This hand-written baseline knows the task vocabulary."
+  },
+  "field": "Extract every standalone ASCII integer using the Python expression \\b[0-9]+\\b on the complete free answer. Resolve only one integer equal to 30 or 60. A numeric switch requires different resolved numbers in the original and edited answers. All other comparisons with a missing field or failed trial are unresolved.",
+  "primary": "For each rule report selections, resolved selections, unresolved selections and numeric switches out of all 16 cells. Among selected questions report correct, wrong and unresolved fields before and after the chosen edit against the intended duration in the original request. Give correct-to-wrong and wrong-to-correct counts for confirmed switches. For both score rules give a confusion table over all 32 edits against numeric switch, plus unmatched comparisons. Report any-switch cells and per-arm correct, wrong, unresolved, completed and exact supplied-prefix adherence.",
+  "pairs": "Group by identical source text and order across the two questions. Of eight pairs report how often the supplied-prefix rule selects different sources and both selections switch the field. Distinguish this target from answering the underlying question correctly. Keep failures and abstentions.",
+  "scope": "Sixteen deterministic cells represent eight matched pairs in one synthetic activity-listing template using one checkpoint, two paraphrases and a fixed two-value candidate set."
+}
