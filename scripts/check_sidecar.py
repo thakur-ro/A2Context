@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import socket
 import sqlite3
+from statistics import median
 import subprocess
 import sys
 import tempfile
@@ -405,11 +406,20 @@ def load(base, clients, batches, batch_size, payload_bytes):
     recovery_seconds = time.monotonic() - recovery_started
     coverage = get(base, "health", org=org)["coverage"]
     assert coverage["traces"] == batches * batch_size
+    reads = []
+    for _ in range(10):
+        start = time.monotonic()
+        impact = get(base, "impact", org=org)
+        factors = get(base, "factors", org=org)
+        reads.append(1000 * (time.monotonic() - start))
+        assert impact == {"conversations": batch_size, "changed": 0, "unlinked_requests": 0, "factors": batches}
+        assert len(factors["rows"]) == min(batches, 15)
     return {"responses": {code: sum(status == code for status, _ in outcomes) for code in codes},
             "wall_s": round(elapsed, 3), "p95_successful_export_ms": round(timings[int((len(timings) - 1) * 0.95)], 2),
             "last_processing_lag_ms": final["processing_lag_ms"], "batch_size": batch_size,
             "clients": clients, "extra_bytes_per_span": payload_bytes, "retry_recovered_batches": recovered,
-            "retry_wall_s": round(recovery_seconds, 3), "retained_traces": coverage["traces"]}
+            "retry_wall_s": round(recovery_seconds, 3), "retained_traces": coverage["traces"],
+            "overview_read_pairs": len(reads), "median_sequential_overview_ms": round(median(reads), 2)}
 
 
 def main():

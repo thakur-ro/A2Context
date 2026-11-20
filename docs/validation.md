@@ -97,3 +97,5 @@ On Docker Desktop 28.3.2 with an arm64 Linux container, the cgroup reported a on
 | Unique retained traces after retries | 2,304 |
 
 The script retries each 503 sequentially after the burst. This run demonstrates bounded admission and recovery under the stated payload and concurrency. Sustained workload capacity depends on trace size, traffic shape, disk, and exporter retry configuration.
+
+The source-factor dashboard was also tested at commit `cd530a1` under the same container limits and workload. All 141 initially declined batches succeeded on retry. The database retained 2,304 requests. The overview reported 12 distinct conversations and 192 source factors. Ten sequential pairs of HTTP reads (impact summary plus the first factor page) took a median of **7.97 ms** after ingestion finished. Peak cgroup memory across ingestion, retries and reads was **48.7 MiB**, with zero OOM events. This measures a warm database after a burst. Concurrent ingest and dashboard latency under sustained load remain unmeasured.

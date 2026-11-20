@@ -11,6 +11,17 @@ Use `http://127.0.0.1:8040/v1/traces` as the traces endpoint of an asynchronous 
 
 Existing detail links resolve through the sidecar when it has the referenced trace. Legacy thread or workspace snapshots are limited to eight traces or 8 MiB of trace data. The conversation and request lists support pagination.
 
+### Read recommendations from another dashboard
+
+All four routes return JSON. Pass the same `org`, `user`, `workflow`, UTC dates (`after` inclusive, `before` exclusive) and allowlisted metadata pair (`meta_key`, `meta_value`) through each step. Omit dates to include undated observations. A paged response contains `rows` and `next_offset`. Supply that offset on the same query to continue.
+
+| GET route under `/api/sidecar/` | Use |
+| --- | --- |
+| `impact` | Read the number of distinct identified conversations with findings, the subset with a measured change, the number of requests without conversation IDs, and the number of source factors. |
+| `factors` | List versioned source sets, the strongest signal associated with each set, and the counts in scope. Select the opaque `id` of a factor. |
+| `findings?factor=…` | Get the recommendations for that factor. Each includes an action, comparison details and an example occurrence. Use `group` to select a recommendation by ID. |
+| `occurrences?factor=…&group=…` | Page through the individual observations behind the recommendation. Each row carries its own measurement, request and call IDs, and conversation key when available. |
+
 ### Preview an assembled request
 
 Open **Before inference** and load a preflight request or a request bundled with previously measured probe reports. The workflow can also call `POST /api/sidecar/preview` with a JSON object containing `request` and optional `candidate` or `shadow` reports. The response includes the evidence and suggested next step. This route uses the bounded worker, processes the request in memory, and makes zero model calls. Use it as a separate check when the workflow needs a result before dispatching the original request. [Preflight format](guide.md#check-context-before-inference) · [Pending inspection format](../schema/pending-inspection-1.json)

@@ -75,7 +75,10 @@ function replayTrials(detail) {
       data.unscored || data.completed < data.attempted ? element("div", { className: "label", text: plural(data.unscored || 0, "unscored trial") + " · " + data.completed + " completed" }) : null)));
 }
 
-const signed = (number) => (number > 0 ? "+" : "") + Number(number.toFixed(3));
+function signed(number) {
+  const value = number !== 0 && Math.abs(number) < 0.001 ? number.toExponential(2) : Number(number.toFixed(3));
+  return (number > 0 ? "+" : "") + value;
+}
 
 function candidateVisual(detail) {
   const alternatives = detail.alternatives.map((entry) => entry.id);
@@ -303,7 +306,7 @@ function recommendationDetail(kind, detail, action, rows = []) {
     recommendationContext(kind, detail), element("p", { className: "uncertainty", text: uncertainty }),
     element("details", {}, element("summary", { text: "How this was measured" }),
       element("p", { text: ({
-        candidate: "A model runner scored two fixed continuations before choosing an answer. The sidecar verified that its report matches the captured request and source edit.",
+        candidate: "A model runner scored two fixed continuations from the same prefix. This can run before inference or in a later experiment. The sidecar verifies the request and edit. The runner supplies the timing.",
         shadow: "A model runner proposed answers or tool calls for the baseline and edited requests. The sidecar checked the request and recomputed the match rates.",
         token: "An instrumented model runner replaced a source and swapped decoder-block activations on a fixed output path. This view shows where the original token’s score moved under those interventions.",
         replay: "A runner replayed the original request and the specified edits. The sidecar checked the request digests and counted the returned answers or tool calls that matched the recorded outcome.",
