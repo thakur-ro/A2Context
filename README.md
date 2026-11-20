@@ -4,9 +4,11 @@
 
 NexusWeave runs beside your LLM workflow. It flags conflicting instructions and missing sources, groups recurring problems across conversations, and shows what happened when someone tested an edit.
 
+**Start here** · [Try the demo](#try-the-demo) · [Check a request before inference](docs/getting-started.md#check-one-request-before-inference) · [Connect your application](docs/getting-started.md#instrument-your-application)
+
 ## Try the demo
 
-A customer puts an exchange on hold, but the agent’s confirmation cache still says “approved.” Investigate this recorded case with Git and a stable Rust toolchain, including your platform’s C build tools. The demo needs no API key or model download. [Install Rust](https://rustup.rs/)
+A customer puts an exchange on hold, but the agent’s confirmation cache still says “approved.” To run this private preview, you need checkout access, Git, stable Rust and your platform’s C build tools. The demo needs no API key or model download. [Install Rust](https://rustup.rs/)
 
 ```sh
 git clone https://github.com/thakur-ro/NexusWeave.git
@@ -18,7 +20,7 @@ Open the address printed in the terminal. You’ll see **2 recommendations**. Ch
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 
-**Connect your application next.** Start a live sidecar, send one sample batch, and check that a trace arrived. Then point your workflow’s OpenTelemetry exporter at the same endpoint. [Connect your first workflow](docs/getting-started.md) · [Follow the exchange walkthrough](docs/demo.md) · [Play the full-resolution recording](docs/media/exchange-approval.mp4)
+**Try it with live telemetry.** Send a staging span with your own OpenTelemetry exporter or run the included Python sender. The first request produces one conflict. A second conversation shows how the same issue recurs. [Get your first live recommendation](docs/getting-started.md#get-a-recommendation-from-a-live-span)
 
 ## What can I learn?
 

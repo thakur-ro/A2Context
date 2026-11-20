@@ -9,8 +9,14 @@ try {
   await page.goto(base);
   const setup = page.getByRole("region",{name:"Receiver setup"});
   await page.getByRole("heading",{name:"Connect your workflow"}).waitFor();
-  const endpoint = await setup.locator("code").innerText();
-  assert.equal(endpoint,base+"/v1/traces");
+  const endpoint = base + "/v1/traces";
+  assert.equal(await setup.locator("code").innerText(),
+    "export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\nexport OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + endpoint);
+  await setup.getByRole("link",{name:"Check a request before connecting"}).click();
+  await page.locator('input[type="file"]').setInputFiles("examples/exchange-approval/pending.json");
+  await page.getByText(/captured inputs · 1 finding$/).waitFor();
+  await page.goto(base);
+  await setup.waitFor();
   const sample = await readFile(new URL("../examples/exchange-approval/exchange.otlp.json",import.meta.url),"utf8");
   const response = await page.request.post(endpoint,{data:sample,headers:{"Content-Type":"application/json"}});
   assert.ok(response.ok());

@@ -2416,12 +2416,15 @@ async function render(refresh = false) {
         const health = await api("health");
         const {traces, inference_spans: calls} = health.coverage;
         byId("title").textContent = traces ? "Telemetry received" : "Connect your workflow";
-        const next = !traces ? "Send a batch from your workflow’s OpenTelemetry HTTP exporter to this endpoint." :
+        const next = !traces ? "Configure your workflow’s OpenTelemetry batch exporter, then send one model request." :
           !calls ? "Set gen_ai.operation.name on a model span so the receiver can identify the inference." :
           health.content_capture ? "Findings appear when captured sources disagree, repeat, or match another supported check." :
           "This workspace retains metadata. To investigate a source conflict, use a separate capture-enabled database with redacted staging inputs.";
         byId("content").replaceChildren(element("section",{className:"panel","aria-label":"Receiver setup"},
-          element("p",{text:next}), !traces && element("code",{text:health.otlp_http_endpoint}),
+          element("p",{text:next}),
+          !traces && element("pre",{},element("code",{text:"export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\n" +
+            "export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + health.otlp_http_endpoint})),
+          !traces && link("Check a request before connecting",url({view:"preview"})),
           traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
           traces > 0 && link("Threads",url({view:"threads"})),
           element("p",{},link("Check receiver status","/api/sidecar/health"))));

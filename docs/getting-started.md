@@ -1,67 +1,71 @@
 # Connect your first workflow
 
-You’ll start a live receiver, send it a known trace batch, then switch to your application’s exporter. Run the commands from the repository root with Rust and curl. [Try the recorded demo first](../README.md#try-the-demo)
+You can check one request before inference or run a receiver that finds patterns across conversations. Both paths use the exchange workflow from the demo. Start in the checkout with stable Rust and your platform’s C build tools. If the demo is still running, press Ctrl+C in its terminal. [Run the recorded demo](../README.md#try-the-demo)
 
-## 1. Start an empty workspace
-
-In one terminal, run:
+## Check one request before inference
 
 ```sh
-cargo run --locked -- sidecar --db first-workflow.sqlite
+cargo run --locked -- preflight examples/exchange-approval/pending.json
 ```
 
-Open the printed address, normally `http://127.0.0.1:8040`. Leave this process running. The database persists between runs. The default capture policy retains trace metadata and drops prompt and response content.
+Look for `exchange_authorization` in the JSON report. The cache declares `approved` and the customer declares `hold` for the same order. You can also load that file under **Before inference** in the demo dashboard. This check reads the assembled inputs and makes zero model calls.
 
-## 2. Verify that a trace arrives
+To try your own request, pass the JSON your builder will send as `nexusweave.request.body`. For each source, supply its ID, version and location in that body. For a declared-rule check, give both sources the same rule key and scope and the value each supplied. Pipe the resulting versioned request to `cargo run --locked -- preflight -`. A conflict tells you the inputs disagree. A controlled edit and a measured outcome can tell you whether changing one affected the answer. [Example request](../examples/exchange-approval/pending.json) · [Source declarations](guide.md#declare-context-sources-and-decision-scope)
 
-In a second terminal, send the same sample that powers the recorded demo:
+## Get a recommendation from a live span
 
-```sh
-curl --fail-with-body --header 'Content-Type: application/json' \
-  --data-binary @examples/exchange-approval/exchange.otlp.json \
-  http://127.0.0.1:8040/v1/traces
-curl --fail http://127.0.0.1:8040/api/sidecar/health
-```
+This walkthrough sends synthetic approval data through a Python OpenTelemetry batch exporter. It uses the same protocol as a deployed workflow and requires no model or API key.
 
-On a fresh database, look for `coverage.traces` and `coverage.inference_spans` both equal to **3**, and `content_capture` equal to **false**. Reload the dashboard. **Telemetry received** confirms that the batch arrived and shows the counts. This run discarded the source declarations and replay evidence, so the feed has no recommendations. You can resend the sample to test delivery again. Its trace IDs stay the same.
-
-## 3. Send a span from your application
-
-If your application already exports OpenTelemetry traces, use its existing batch exporter. For a local SDK that reads the standard environment variables, set these in the application's environment before starting it:
-
-```sh
-export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf
-export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:8040/v1/traces
-```
-
-On the span around a chat request, set `gen_ai.operation.name` to `chat` and `gen_ai.request.model` to your model identifier. A stable `gen_ai.conversation.id` groups turns in a thread. Run one inference, then choose **Threads** under **Telemetry received** or **Capture coverage** and find your conversation. If your exporter already feeds LangSmith or another backend, add NexusWeave as a second destination in the Collector. [Collector fan-out](sidecar.md#fan-out-without-changing-observability-platforms) · [OpenTelemetry exporter settings](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/)
-
-**Starting without an instrumented app?** This Python example sends a tool choice, an inventory lookup and an answer through the real SDK. It uses synthetic data and makes no model calls. With the receiver from step 1 running, try:
-
-```sh
-python3 -m venv /tmp/nexusweave-otel
-/tmp/nexusweave-otel/bin/pip install opentelemetry-exporter-otlp-proto-http==1.45.2
-/tmp/nexusweave-otel/bin/python examples/send_otlp_inventory.py --conversation-id first-inventory
-```
-
-Look for `first-inventory` in **Threads**. After one run, the counts from step 2 increase to **4 traces** and **5 inference spans**. [Inventory producer](../examples/send_otlp_inventory.py)
-
-## 4. See a source-level finding
-
-Stop the receiver with Ctrl+C. For this synthetic sample, start another workspace with content capture enabled:
+**Terminal 1.** Start a staging workspace that can retain the sample’s source evidence. Use a new database for the counts below.
 
 ```sh
 cargo run --locked -- sidecar --db first-findings.sqlite --capture-content
 ```
 
-Repeat the curl commands in step 2 and reload the dashboard. On a fresh database, you’ll see **2 recommendations**. Choose **Which instructions disagreed?** The cache supplied `approved` and the customer supplied `hold`. The second recommendation links to a saved comparison of the same proposal under two approval policies.
+**Terminal 2.** From the same checkout, install the exporter in a temporary environment. These commands use a POSIX shell and Python 3.11 or newer. If you already have a configured exporter, skip to [instrument your application](#instrument-your-application).
 
-For your own conflict finding, instrument the request builder with stable source IDs, source locations and the rule key, scope and value each source declares. Send a suitably redacted stream to the capture-enabled workspace. You can check the declarations on a pending request before sending any telemetry or calling a model. [Working request with two declarations](../examples/exchange-approval/pending.json) · [Check context before inference](guide.md#check-context-before-inference) · [Deploy the sidecar](../DEPLOYMENT.md)
+```sh
+sdk_env=$(mktemp -d)
+python3 -m venv "$sdk_env"
+"$sdk_env/bin/python" -m pip install opentelemetry-exporter-otlp-proto-http==1.45.2
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:8040/v1/traces
+"$sdk_env/bin/python" examples/exchange-approval/first_span.py exchange-101
+```
 
-### If the dashboard is still empty
+Open the address printed in Terminal 1. The **Recommendations** page now has **one conflict in one conversation**. Choose **Which instructions disagreed?** to see the cache’s approval and the customer’s hold.
+
+Send the same source values in a different conversation, then reload the dashboard.
+
+```sh
+"$sdk_env/bin/python" examples/exchange-approval/first_span.py exchange-102
+```
+
+The same finding now covers **two conversations**. The source IDs and versions stayed the same, and the exporter assigned a fresh trace ID. [Read the complete sender](../examples/exchange-approval/first_span.py)
+
+## Instrument your application
+
+Leave the staging receiver running if you completed the walkthrough. For a first connection from an existing app, start a metadata-only receiver from the checkout.
+
+```sh
+cargo run --locked -- sidecar --db first-workflow.sqlite
+```
+
+1. **Connect your exporter.** For an existing batch exporter that reads standard OpenTelemetry settings, start your application with the following environment. If it already sends to LangSmith or another backend, add a second destination at the Collector to keep both. [Collector fan-out](sidecar.md#fan-out-without-changing-observability-platforms)
+
+   ```sh
+   export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf
+   export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:8040/v1/traces
+   ```
+
+2. **Identify the call.** On the model span, set `gen_ai.operation.name` (for example, `chat`), `gen_ai.request.model` and a stable `gen_ai.conversation.id`. Send one staging request, then check `coverage.inference_spans` at `/api/sidecar/health`.
+3. **Name the inputs you want to compare.** For this step, use the capture-enabled staging receiver above with a separate database and redacted inputs. At request assembly, record the messages and attach `nexusweave.context.semantics` to that span. In the example, `approval_inputs` takes the two structured values the workflow already has and anchors each declaration to the message part it generated. Replace those inputs with yours. Check that `coverage.with_rules` increases and open the resulting recommendation when the two known values disagree. [Working instrumentation](../examples/exchange-approval/first_span.py) · [Adapter reference](guide.md#declare-context-sources-and-decision-scope)
+
+In metadata-only mode, **Telemetry received** confirms delivery and links to **Threads**. To check the container, storage and exporter before shipping, run the deployment checks. [Verify the shipping image](../DEPLOYMENT.md#check-the-shipping-image-locally)
+
+### If the dashboard is empty
 
 | What you see | What to check |
 | --- | --- |
-| curl cannot connect | Use the address printed by the live sidecar. In a container, loopback belongs to that container’s network namespace. |
-| The sample arrives, but your app’s trace does not | Check that an exporter is installed, that it uses OTLP over HTTP, and that the trace endpoint includes `/v1/traces`. Flush the exporter before a short-lived process exits. |
-| Inference spans arrive, but no rule finding appears | Check `content_capture` and `coverage.with_rules` in health. Use a fresh database when changing the capture policy. Confirm the same rule key and scope appear on both sources. |
+| **Connect your workflow** after sending a span | The endpoint must include `/v1/traces`. Check the exporter’s error output. Flush or shut down the exporter before a short-lived process exits. In a container, loopback belongs to that container’s network namespace. |
+| **Telemetry received**, zero inference spans | Set `gen_ai.operation.name` on the model span. |
+| Inference spans arrive, no conflict appears | Check `content_capture` and `coverage.with_rules` in receiver health. Use a fresh database when switching capture policy. Compare the two source anchors, rule keys, scopes and values. |

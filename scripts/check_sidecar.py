@@ -9,6 +9,7 @@ from hashlib import sha256
 from itertools import combinations
 from math import ceil
 import json
+import os
 from pathlib import Path
 import re
 import socket
@@ -175,6 +176,20 @@ def check_capture(binary, folder, producer_python=None):
     with server(binary, db, *flags) as base:
         assert trace_id not in [row["id"] for row in get(base, "traces")["rows"]]
         assert get(base, "impact", org="heldout")["captured_conversations"] == 0
+
+
+def check_first_recommendation(binary, folder, python):
+    sender = ROOT / "examples/exchange-approval/first_span.py"
+    with server(binary, folder / "first-findings.sqlite", "--capture-content") as base:
+        env = {**os.environ, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": base + "/v1/traces"}
+        for count, thread in enumerate(("exchange-101", "exchange-102"), start=1):
+            subprocess.run([python, str(sender), thread], env=env, check=True)
+            finding, = get(base, "findings")["rows"]
+            assert (finding["kind"], finding["threads"]) == ("conflict", count)
+            assert {s["source"] for s in finding["evidence"]["detail"]["sources"]} == {
+                "confirmation-cache", "latest-customer-choice",
+            }
+            assert get(base, "health")["coverage"]["with_rules"] == count
 
 
 def check_thread_calls(binary, folder):
@@ -1468,6 +1483,8 @@ def main():
     with tempfile.TemporaryDirectory() as directory:
         folder = Path(directory)
         check_capture(args.binary, folder, args.sdk_python)
+        if args.sdk_python:
+            check_first_recommendation(args.binary, folder, args.sdk_python)
         check_screen_suggestions(args.binary, folder)
         check_conversation_population(args.binary, folder / "population.sqlite")
         check_thread_calls(args.binary, folder)
