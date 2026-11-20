@@ -17,13 +17,22 @@ function makeContextNetwork(rows) {
     const {facts} = record;
     const detail = card.evidence.detail;
     const probe = ["prefill","candidate","token"].includes(card.kind) ? {kind:card.kind, detail} : null;
-    const finding = add("finding:"+card.id,{type:"finding",name:facts.title,description:facts.observed,href:record.href,kind:facts.kind,probe});
+    const coverage = card.kind === "source_gap" ? detail.coverage : null;
+    const finding = add("finding:"+card.id,{type:"finding",name:facts.title,description:facts.observed,
+      href:record.href,kind:facts.kind,probe,coverage});
+    if (card.kind === "source_gap") {
+      for (const name of facts.unconfirmed_sources) {
+        const id = add("unconfirmed:"+JSON.stringify([card.id,name]),{type:"unconfirmed",name,
+          description:"No matching source anchor in this request", href:record.href});
+        connect(id,finding,"required anchor unconfirmed");
+      }
+    }
     for (const source of detail.sources) {
       const name = sourceName(source);
       const {producer, organization, workflow, trace_id, call_id} = card.evidence;
       const identity = [producer, organization, workflow, source.source ?? [trace_id,call_id,source.id],
         source.version ?? null,source.role ?? null];
-      const id = add("source:"+JSON.stringify(identity),{type:"source",name,
+      const id = add("source:"+JSON.stringify(identity),{type:"source",name,caption:[source.role,source.version].filter(Boolean).join(" · "),
         description:[workflow,source.role,source.version && "Version "+source.version].filter(Boolean).join(" · ") || "Version and role unavailable"});
       connect(id,finding,"named in evidence");
     }
@@ -63,9 +72,10 @@ function renderNeighborhood(graph, focus, page, choose, flip) {
     g.append(networkSvg("title",{},[node.kind,node.name,node.description].filter(Boolean).join(" · ")),
       networkSvg("circle",{cx:x,cy:y,r:center?22:14,class:"node-aura"}),
       networkSvg("circle",{cx:x,cy:y,r:center?10:6,class:"node-core"}));
-    const label = node.name.length > 32 ? node.name.slice(0,31)+"…" : node.name;
+    const displayName = node.coverage?.name || node.name;
+    const label = displayName.length > 32 ? displayName.slice(0,31)+"…" : displayName;
     g.append(networkSvg("text",{x,y:y+31,"text-anchor":"middle",class:"network-label"},label));
-    const detail = node.type === "outcome" ? node.kind : node.type === "finding" ? node.kind : node.description;
+    const detail = node.type === "unconfirmed" ? "Anchor unconfirmed" : node.caption || node.kind || node.description;
     if (detail) g.append(networkSvg("text",{x,y:y+45,"text-anchor":"middle",class:"network-caption"},detail.slice(0,32)));
     const activate = () => choose(node.id);
     g.addEventListener("click",activate);
@@ -151,7 +161,7 @@ function networkOverview(graph, choose) {
   if (count <= 12) {
     // Small cases read left to right, with enough space between full labels.
     for (const [column,type] of ["source","finding","outcome"].entries()) {
-      const lane = points.filter(p => p.node.type === type);
+      const lane = points.filter(p => p.node.type === type || (type === "source" && p.node.type === "unconfirmed"));
       lane.forEach((p,i) => {
         p.x = 128 + column*260;
         p.y = (i+1)*365/(lane.length+1);
@@ -198,8 +208,10 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
   search.prepend(element("option",{value:"",text:"Whole network"}));
   const body = element("div",{});
   const summary = element("span",{text:plural(rows.length,"finding")+(total != null ? " of "+total : "")+" loaded"});
-  const legend = element("div",{className:"network-legend"},...["source","finding","outcome"].map(type =>
-    element("span",{className:type,text:type === "outcome" ? "Declared or measured value" : type === "source" ? "Source" : "Finding"})));
+  const labels = {source:"Source",unconfirmed:"Unconfirmed source",finding:"Finding",outcome:"Declared or measured value"};
+  const types = new Set([...graph.nodes.values()].map(node => node.type));
+  const legend = element("div",{className:"network-legend"},...Object.keys(labels).filter(type => types.has(type))
+    .map(type => element("span",{className:type,text:labels[type]})));
   const controls = element("div",{className:"network-controls"},element("label",{}, "Focus", search),summary);
   if (onNext) {
     const more = element("button",{type:"button",text:"Load more findings"});
@@ -224,6 +236,8 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
       element("strong",{text:node.name}),element("span",{text:node.description}),
       element("small",{text:plural(neighbors.length,"connection")+" · "+relations}),
       node.href && link("Inspect this evidence →",node.href)));
+    if (node.coverage) body.append(element("section",{className:"panel","aria-label":"Configured alternatives"},
+      element("h3",{text:"One complete alternative is required"}),requiredSourceList(node.coverage)));
     if (node.probe?.kind === "prefill") {
       body.append(visual("prefill", node.probe.detail));
     } else if (node.probe) {

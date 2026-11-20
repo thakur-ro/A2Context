@@ -19,6 +19,9 @@ function canvasRecord(card) {
     ] };
     facts.observed = "Without the check, " + target.key + " ended in “" + state(target.without_guard) + "”. With the check, it " +
       (target.before === target.with_guard ? "stayed" : "ended") + " in “" + state(target.with_guard) + "”.";
+  } else if (card.kind === "source_gap") {
+    facts.unconfirmed_sources = [...new Set(detail.coverage.alternatives.flatMap(group => group.unconfirmed))];
+    facts.observed = "No source alternative was complete. Unconfirmed IDs include " + facts.unconfirmed_sources.join(", ") + ".";
   } else if (card.kind === "conflict") {
     map = { root:detail.rule.replaceAll("_", " ") + " · " + detail.scope, arms:detail.sources.map((source, i) => ({
       label:sourceName(source), value:detail.values[i] ?? "Value unavailable",
@@ -67,6 +70,7 @@ function canvasTerms(question) {
 function canvasAnswer(question, records, previous) {
   const q = question.toLowerCase();
   const choices = [
+    [/\b(missing|unconfirmed|capture gap)\b/, r => r.facts.kind === kindLabels.source_gap],
     [/\b(dispatch|guard|sandbox|write|writes|enforce)\b/, r => r.dispatch],
     [/\b(conflict\w*|disagree\w*|contradict\w*|instructions?)\b/, r => r.facts.kind === kindLabels.conflict],
     [/\b(duplicat\w*|redundan\w*|repetition)\b/, r => r.facts.kind === kindLabels.duplicate],

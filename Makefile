@@ -1,7 +1,7 @@
 IMAGE ?= nexusweave:local
 PYTHON ?= python3
 
-.PHONY: demo check check-qa check-dispatch-study check-ui image verify-image
+.PHONY: demo check check-qa check-dispatch-study check-qwen-agent check-ui image verify-image
 
 demo:
 	cargo build --locked
@@ -19,6 +19,7 @@ check: check-qa check-dispatch-study
 	$(PYTHON) tests/sidecar_prefix_reference.py target/debug/nexusweave
 	$(PYTHON) tests/sidecar_tool_masks.py target/debug/nexusweave
 	$(PYTHON) tests/check_exchange_demo.py target/debug/nexusweave
+	$(PYTHON) tests/sidecar_source_gaps.py target/debug/nexusweave
 
 check-qa:
 	$(PYTHON) examples/public-qa/compare_orders.py
@@ -31,6 +32,11 @@ check-qa:
 
 check-dispatch-study:
 	$(PYTHON) examples/exchange-approval/dispatch-study/compare_parsers.py --check
+
+check-qwen-agent:
+	cargo build --locked
+	$(PYTHON) examples/exchange-approval/dispatch-study/framework/replay.py --check
+	$(PYTHON) examples/exchange-approval/dispatch-study/framework/check_sidecar_export.py
 
 check-ui:
 	cargo build --locked

@@ -164,6 +164,30 @@ fn empty_requirements_cannot_pass_vacuously() {
 }
 
 #[test]
+fn langsmith_recomputes_source_coverage_only_for_a_matching_version_two_receipt() {
+    let mut input: Value = serde_json::from_str(EXAMPLE).unwrap();
+    input["attributes"]["nexusweave.required_sources"] = json!({
+        "name":"Holiday return", "any_of":[["retail/returns-policy","holiday-calendar"]]
+    });
+    let receipt = serde_json::to_value(check(input).unwrap().receipt.unwrap()).unwrap();
+    assert_eq!(receipt["version"], 2);
+    let mut trace = fixture_trace();
+    trace["extra"]["metadata"]["nexusweave.preflight"] = receipt;
+    let runs = langsmith::import(&trace).unwrap();
+    let result = at_turn(&runs, false);
+    let coverage = &result["preflight"]["source_coverage"];
+    assert_eq!(coverage["matched"], false);
+    assert_eq!(
+        coverage["alternatives"][0]["unconfirmed"],
+        json!(["holiday-calendar"])
+    );
+    trace["extra"]["metadata"]["nexusweave.preflight"]["version"] = json!(1);
+    let changed = at_turn(&langsmith::import(&trace).unwrap(), false);
+    assert_eq!(changed["preflight"]["status"], "unverified");
+    assert!(changed["preflight"].get("source_coverage").is_none());
+}
+
+#[test]
 fn carries_the_same_source_identities_into_a_recorded_decision() {
     let input: Value = serde_json::from_str(EXAMPLE).unwrap();
     let before = check(input).unwrap();

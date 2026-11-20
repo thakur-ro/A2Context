@@ -41,11 +41,19 @@ In eight new synthetic exchange requests, the pre-answer divergence ranking sele
 
 Changing only the tool parser changed which four requests the top edit affected. The example adapter accepted 30 of 40 generations as executable tool calls. Requiring the inner payload to parse as JSON accepted eight. Applying the same approval gate still left twelve final states that differed between parsers. A production replay therefore needs the actual parser and dispatch policy as well as the model and prompt. [Per-arm evidence](../examples/exchange-approval/dispatch-study/results.json) · [Offline parser replay](../examples/exchange-approval/dispatch-study/compare_parsers.py)
 
-For a known staging requirement, preflight now checks whether at least one complete set of named source fragments is anchored in the request. An exchange can be configured to require the cache and latest customer message together, or an independent consent event. A successful check establishes that the configured IDs are present. The live authorization decision still belongs at dispatch. [Check alternative sources](guide.md#check-alternative-sources-before-dispatch)
+For a known staging requirement, preflight now checks whether at least one complete set of named source fragments is anchored in the request. An exchange can be configured to require the cache and latest customer message together, or an independent consent event. With a matching version-two receipt, the sidecar also groups repeated gaps across conversations and links back to the calls. A successful check establishes that the configured IDs are present. The live authorization decision still belongs at dispatch. [Check alternative sources](guide.md#check-alternative-sources-before-dispatch)
+
+## What did an independent agent runtime actually execute?
+
+Qwen-Agent’s native tool parser and registered tool callback replayed the same 40 previously generated responses. It recognized 30 tool calls, rejected 22 argument payloads and executed eight. Relative to the original adapter, the pending state differed on 12 of 40 trials even with the approval gate enabled. Source sensitivity changed with the execution stack. The ranked edit affected four approved requests under Qwen-Agent and four held requests under the original ungated adapter.
+
+Of those four approved exchanges, the ranked edit restored two expected writes and lost two. Counting any changed outcome would have reported all four as successes. For a recommendation to say that an edit helped, the workflow needs to supply its expected outcome.
+
+The harness exported 236 application-instrumented OpenTelemetry spans to a disposable sidecar across 80 traces and eight threads. The two dispatch policies reused the same generated text. The exporter captured stage boundaries without prompt or response bodies. These spans establish where a proposal stopped. They cannot establish which context the model used. [Framework implementation, saved receipts and sidecar check](../examples/exchange-approval/dispatch-study/framework/README.md)
 
 ## Next validation
 
-Use an independently instrumented staging workflow with its actual tool parser, retries and dispatcher. Before enabling recommendations, choose a business invariant and register the source edits and comparison order. Include the latest-message selector in the comparison. Have a workflow engineer investigate an affected request without guidance and record which evidence they opened, time to identify the failed stage, and whether the recommended edit restored the invariant on a fresh request. The current fixtures supply no independent usability result.
+Run a live staging workflow that can retry after an argument rejection. The Qwen-Agent replay stopped after the first tool result. Before enabling recommendations, choose a business invariant and register the source edits and comparison order. Include the latest-message selector in the comparison. Have a workflow engineer investigate an affected request without guidance and record which evidence they opened, time to identify the failed stage, and whether the recommended edit restored the invariant on a fresh request. The current fixtures supply no independent usability result.
 
 ## Release scope
 

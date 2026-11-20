@@ -82,6 +82,8 @@ pub struct Receipt {
     pub version: u32,
     pub scope: Option<DecisionScope>,
     pub fingerprint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    required_sources: Option<RequiredSources>,
 }
 
 /// A preflight receipt recorded on an inference call.
@@ -165,12 +167,13 @@ pub(crate) fn report_for_pending(
     required: Option<RequiredSources>,
 ) -> Report {
     let mut report = compare(call, scope.as_ref());
-    report.source_coverage = required.map(|r| r.evaluate(call));
-    if let Some(fingerprint) = fingerprint(call, scope.as_ref()) {
+    report.source_coverage = required.as_ref().map(|r| r.evaluate(call));
+    if let Some(fingerprint) = receipt_fingerprint(call, scope.as_ref(), required.as_ref()) {
         report.receipt = Some(Receipt {
-            version: VERSION,
+            version: if required.is_some() { 2 } else { VERSION },
             scope,
             fingerprint,
+            required_sources: required,
         });
     }
     report
@@ -239,9 +242,13 @@ pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<RecordedCh
         .as_ref()
         .and_then(|receipt| receipt.scope.as_ref());
     let verification = match verify(call, captured) {
-        Ok(_) => Verification::Matched {
-            report: Box::new(compare(call, scope)),
-        },
+        Ok(receipt) => {
+            let mut report = compare(call, scope);
+            report.source_coverage = receipt.required_sources.as_ref().map(|r| r.evaluate(call));
+            Verification::Matched {
+                report: Box::new(report),
+            }
+        }
         Err(issue) => Verification::Unverified { issue },
     };
     Some(RecordedCheck {
@@ -258,7 +265,10 @@ fn verify<'a>(call: &Call, captured: &'a CapturedReceipt) -> Result<&'a Receipt,
         .receipt
         .as_ref()
         .ok_or("The workflow supplied an unreadable preflight receipt.")?;
-    if receipt.version != VERSION {
+    if !matches!(
+        (receipt.version, &receipt.required_sources),
+        (1, None) | (2, Some(_))
+    ) {
         return Err("The preflight receipt version is unsupported.");
     }
     if call
@@ -268,9 +278,23 @@ fn verify<'a>(call: &Call, captured: &'a CapturedReceipt) -> Result<&'a Receipt,
     {
         return Err("The recorded source declarations could not be read.");
     }
-    let actual = fingerprint(call, receipt.scope.as_ref())
-        .ok_or("The original request body was unavailable for verification.")?;
+    if receipt
+        .required_sources
+        .as_ref()
+        .is_some_and(|r| r.validate().is_err())
+    {
+        return Err("The receipt contains an invalid source requirement.");
+    }
+    let actual = receipt_fingerprint(
+        call,
+        receipt.scope.as_ref(),
+        receipt.required_sources.as_ref(),
+    )
+    .ok_or("The original request body was unavailable for verification.")?;
     if actual != receipt.fingerprint {
+        if receipt.version == 2 {
+            return Err("The request, source requirement or captured anchors differ from the preflight check.");
+        }
         return Err(
             "The recorded request or its declared rule sources differ from the preflight check.",
         );
@@ -280,6 +304,43 @@ fn verify<'a>(call: &Call, captured: &'a CapturedReceipt) -> Result<&'a Receipt,
 
 pub(crate) fn verified_receipt(call: &Call) -> Option<&Receipt> {
     verify(call, call.preflight_receipt.as_ref()?).ok()
+}
+
+/// Recompute capture coverage only when a version-two receipt matches the recorded inputs.
+pub fn verified_source_coverage(call: &Call) -> Option<SourceCoverage> {
+    let captured = call.preflight_receipt.as_ref()?;
+    let required = captured.receipt.as_ref()?.required_sources.as_ref()?;
+    verify(call, captured).ok()?;
+    Some(required.evaluate(call))
+}
+
+fn receipt_fingerprint(
+    call: &Call,
+    scope: Option<&DecisionScope>,
+    required: Option<&RequiredSources>,
+) -> Option<String> {
+    let base = fingerprint(call, scope)?;
+    let Some(required) = required else {
+        return Some(base);
+    };
+    let mut anchors: Vec<_> = call
+        .context
+        .iter()
+        .filter(|item| item.request_fragment.is_some() && item.source_id.is_some())
+        .map(|item| {
+            crate::canonical_json(&json!([
+                item.source_id,
+                item.source_version,
+                item.role,
+                item.request_fragment,
+                item.availability,
+                item.text
+            ]))
+        })
+        .collect();
+    anchors.sort_unstable();
+    let payload = json!(["nexusweave.preflight", 2, base, required, anchors]);
+    Some(crate::replay::sha256(payload.to_string().as_bytes()))
 }
 
 fn fingerprint(call: &Call, scope: Option<&DecisionScope>) -> Option<String> {

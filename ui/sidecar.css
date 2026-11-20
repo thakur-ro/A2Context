@@ -441,6 +441,9 @@ body:has(.canvas-home) { background:#f6f6f4; }
 .network-legend,.network-controls,.network-readout small,.network-pager { font-size:.78rem; color:var(--muted); }
 .network-legend span::before { content:""; display:inline-block; vertical-align:middle; width:7px; height:7px; border-radius:50%; margin-right:5px; background:var(--node); }
 .context-network .source { --node:var(--source-node); }
+.context-network .unconfirmed { --node:#805b32; }
+.network-node.unconfirmed .node-core { fill:white; stroke:var(--node); stroke-dasharray:3 2; }
+.network-legend .unconfirmed::before { background:white; border:1px dashed var(--node); }
 .context-network .finding { --node:var(--finding-node); }
 .context-network .outcome { --node:var(--outcome-node); }
 .network-controls label { display:flex; align-items:center; gap:8px; min-width:0; }

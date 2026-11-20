@@ -43,6 +43,8 @@ The passage-omission experiment evaluates a specified abstention before generati
 
 The dashboard adapts the force-directed graph layout by Thomas Fruchterman and Edward Reingold to position the nodes in a bounded overview. Position has no role in the attribution scores. [Graph drawing by force-directed placement](https://doi.org/10.1002/spe.4380211102)
 
+Qwen-Agent’s Nous tool parser and registered tool interface supplied an independent execution path for the exchange study. The replay uses the published framework with a saved-text transport and application-owned OpenTelemetry spans. [Qwen-Agent 0.0.34](https://pypi.org/project/qwen-agent/0.0.34/) · [Replay implementation](examples/exchange-approval/dispatch-study/framework/README.md)
+
 ## Interoperability
 
 The local stdio adapter uses the official Rust SDK for Model Context Protocol. [Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)

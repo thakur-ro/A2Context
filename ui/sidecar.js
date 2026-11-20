@@ -6,7 +6,7 @@ const view = ["traces", "threads", "preview"].includes(query.get("view")) ? quer
 const filterNames = { after: "From", before: "Before", org: "Organization", user: "User",
   workflow: "Workflow", meta_key: "Metadata key", meta_value: "Metadata value" };
 const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
-const kindLabels = { prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
+const kindLabels = { source_gap:"Source capture gap", prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
@@ -212,7 +212,14 @@ function orderComparison({ forward, reverse, differs }) {
     element("details", {}, element("summary", { text: "Original trials" }), ...trials));
 }
 
+function requiredSourceList(coverage) {
+  return element("ul",{},...coverage.alternatives.map(group => element("li",{
+    text:group.required.join(" + ") + (group.unconfirmed.length ? " · Still unconfirmed: " + group.unconfirmed.join(", ") : " · All anchored in the request")
+  })));
+}
+
 function visual(kind, detail, rows = []) {
+  if (kind === "source_gap") return requiredSourceList(detail.coverage);
   if (kind === "prefill") return firstTokenPreview(detail, true);
   if (kind === "source_mask") return maskComparison(detail.mask);
   const [label, body] = kind === "replacement" ? ["Trials matching the recorded outcome", replacementVisual(detail)] :
@@ -233,6 +240,7 @@ const jointPatterns = {
 };
 
 function findingTitle(kind, detail) {
+  if (kind === "source_gap") return "Check sources for " + detail.coverage.name;
   if (kind === "source_mask") return "Mask " + detail.sources.map(sourceName).join(" and ") + " when the recorded tool was " + detail.mask.original.label;
   if (kind === "prefill") {
     if (detail.leader.status === "zero") return "The tested edits left the first-token distribution unchanged";
@@ -274,6 +282,7 @@ function findingTitle(kind, detail) {
 }
 
 function findingDetail(kind, detail) {
+  if (kind === "source_gap") return "No configured alternative had all its source fragments anchored in the request.";
   if (kind === "source_mask") return maskOutcomes[detail.mask.outcome] + " · " + detail.mask.model;
   if (kind === "prefill") return plural(detail.ranked.length, "source edit") + " · " + detail.model_id;
   if (kind === "replacement") return detail.outcome + " · " + detail.model + " · " + plural(detail.wordings, "tested wording");
@@ -479,11 +488,11 @@ function investigation(href, title, description, detail) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
+  const signals = { source_gap:"Source capture gap", routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
     token: "Token score shifted", source_mask: "Source masks tested", sandbox_dispatch: "Sandbox state preserved",
     sandbox_regression: "Expected state missed with check", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
+  const step = { source_gap:"Inspect unconfirmed source IDs", routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer", source_mask: "Compare tool proposals after masking sources",
     sandbox_dispatch: "See what changed at dispatch",
@@ -494,7 +503,7 @@ function factorRow(factor, featured = false) {
   const test = factor.signal === "variation" && factor.position_test;
   const isolated = test && test.result.present.changed === 2 && test.result.replaced.compared === 2 && test.result.replaced.changed === 0;
   const headline = isolated ? "Moving this source changed both proposals" : "Review the source-position test";
-  const name = factorName(factor.sources);
+  const name = factorName(factor.sources) || "Configured sources";
   const counts = [factor.org, plural(factor.conversations, "identified conversation"), plural(factor.requests, "request"),
     plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ");
   const disputed = factor.disputed_routing;
@@ -516,7 +525,7 @@ function factorRow(factor, featured = false) {
   }
   return element("a", {className:"factor-row", href}, element("div", {},
     element("strong", {text:name}), element("span", {className:"row-extra", text:counts})),
-    element("span", {className:["conflict", "duplicate", "dialogue"].includes(factor.signal) ? "basis" : "basis measured", text:signal}),
+    element("span", {className:["conflict", "source_gap", "duplicate", "dialogue"].includes(factor.signal) ? "basis" : "basis measured", text:signal}),
     element("span", {className:"arrow", "aria-hidden":"true", text:"→"}));
 }
 
@@ -1104,6 +1113,7 @@ function recommendationDetail(kind, detail, action, rows = [], hasConflictTrial 
        shadow: "The supplied proposal trials have no estimated interval for this comparison.",
        candidate: "These scores compare two continuations. Free generation can choose a third answer.",
        token: "This comparison holds the output prefix fixed at each position.",
+       source_gap: "Missing anchors can reflect incomplete capture even when the text was present.",
        conflict: hasConflictTrial ? "The declarations establish the disagreement. Each replay below measures one edit on this call." : "The disagreement is visible in the inputs. Its effect on the answer still needs a test.",
        duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
   return panel(findingTitle(kind, detail), tag(kind),
@@ -1116,6 +1126,7 @@ function recommendationDetail(kind, detail, action, rows = [], hasConflictTrial 
         shadow: "A model runner proposed answers or tool calls for the baseline and edited requests. The sidecar checked the request and recomputed the match rates.",
         token: "An instrumented model runner replaced a source and swapped decoder-block activations on a fixed output path. This view shows where the original token’s score moved under those interventions.",
         replay: "A runner replayed the original request and the specified edits. The sidecar checked the request digests and counted the returned answers or tool calls that matched the recorded outcome.",
+        source_gap: "The sidecar verified the preflight receipt against the recorded request, source anchors and configured alternatives, then checked each alternative for complete coverage.",
         conflict: "The sidecar compared the rule key, scope and declared value on captured inputs. This check can run as soon as the workflow assembles a request.",
         duplicate: "The sidecar found the same text at separate input locations. This check can run before the workflow sends the request."
       })[kind] })),
@@ -2001,9 +2012,7 @@ function pendingPreview() {
           " · " + plural(report.total, "comparison finding") + (report.prefill ? " · First-token test attached" : "") }),
         sources && element("section",{className:"panel","aria-label":"Required source coverage"},
           element("h2",{text:(sources.matched ? "Sources captured for " : "Check sources for ") + sources.name}),
-          element("ul",{},...sources.alternatives.map(group => element("li",{
-            text:group.required.join(" + ") + (group.unconfirmed.length ? " · Still unconfirmed: " + group.unconfirmed.join(", ") : " · All anchored in the request")
-          }))),
+          requiredSourceList(sources),
           !sources.matched && element("p",{text:"Check the request builder and capture declarations for one complete alternative."})),
         gap && element("section",{className:"panel","aria-label":"Rule capture gap"},
           element("h2",{text:"Check capture for " + coverage.scope.key}),

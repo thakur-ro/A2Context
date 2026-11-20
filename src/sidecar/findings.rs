@@ -77,6 +77,55 @@ pub(super) fn occurrence(
     }
 }
 
+fn source_gap(run: &Run, call: &Call) -> Option<Observation> {
+    let coverage = nexusweave::preflight::verified_source_coverage(call)?;
+    if coverage.matched {
+        return None;
+    }
+    // Alternative order has no effect on whether the requirement is met.
+    let mut routes = BTreeSet::new();
+    let mut expected = BTreeSet::new();
+    for alternative in &coverage.alternatives {
+        let required: BTreeSet<_> = alternative.required.iter().collect();
+        expected.extend(required.iter().copied());
+        routes.insert((
+            required,
+            alternative.unconfirmed.iter().collect::<BTreeSet<_>>(),
+        ));
+    }
+    let present: Vec<_> = call
+        .context
+        .iter()
+        .filter(|item| {
+            item.availability == Availability::Included
+                && item.request_fragment.is_some()
+                && item
+                    .source_id
+                    .as_ref()
+                    .is_some_and(|id| expected.contains(id))
+        })
+        .collect();
+    let versions: BTreeSet<_> = present
+        .iter()
+        .map(|item| (&item.source_id, &item.source_version))
+        .collect();
+    let key = json!([
+        "source_gap",
+        run.source,
+        run.organization_id,
+        coverage.name,
+        routes,
+        versions
+    ]);
+    let sources: Vec<_> = present.into_iter().map(source).collect();
+    Some(occurrence(
+        "source_gap",
+        key,
+        call,
+        json!({"coverage":coverage,"sources":sources}),
+    ))
+}
+
 pub fn derive(
     run: &Run,
     reports: &[replay::Replay],
@@ -84,6 +133,7 @@ pub fn derive(
 ) -> Result<Vec<Observation>, String> {
     let mut findings = Vec::new();
     for call in &run.calls {
+        findings.extend(source_gap(run, call));
         let mut rules = BTreeMap::<_, Vec<_>>::new();
         let mut texts = BTreeMap::<_, Vec<_>>::new();
         for item in &call.context {

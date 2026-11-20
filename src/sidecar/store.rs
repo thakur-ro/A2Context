@@ -1217,7 +1217,7 @@ impl Store {
                         WHEN json_extract(detail,'$.sandbox_dispatch.protected')=1 THEN 2.25
                         WHEN kind='source_mask' AND proposal_changed THEN 2.5 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
-                        WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
+                        WHEN kind='source_gap' THEN 4.5 WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
@@ -1228,7 +1228,7 @@ impl Store {
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -6 THEN 'routing_repeats' WHEN -5 THEN 'routing' WHEN -4 THEN 'order' WHEN -3 THEN 'replacement' WHEN -2 THEN 'joint_proposal' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
-                        WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
+                        WHEN 4.5 THEN 'source_gap' WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
                         WHEN 1.5 THEN 'sandbox_regression' WHEN 2.25 THEN 'sandbox_dispatch' WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
@@ -1247,7 +1247,7 @@ impl Store {
                 if let Some(terms) = terms.as_ref() {
                     // Rank groups by a matching observation while counting every scoped observation.
                     sql.push_str("max((SELECT count(*) FROM json_each(?) term WHERE instr(lower(
-                        kind || ' ' || coalesce(thread,'') || ' ' || coalesce(json_extract(detail,'$.rule'),'') ||
+                        kind || ' ' || coalesce(json_extract(detail,'$.coverage'),'') || ' ' || coalesce(thread,'') || ' ' || coalesce(json_extract(detail,'$.rule'),'') ||
                         ' ' || coalesce(json_extract(detail,'$.sandbox_dispatch.tool'),'') ||
                         ' ' || coalesce((SELECT group_concat(coalesce(json_extract(s.value,'$.source'),json_extract(s.value,'$.id')),' ')
                             FROM json_each(detail,'$.sources') s),'')),term.value)>0)) AS relevance,");
@@ -1265,9 +1265,9 @@ impl Store {
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check') THEN -2
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.protected'))=1 THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
-                             WHEN kind='conflict' AND count(DISTINCT trace_id)>1 THEN 0
+                             WHEN kind IN ('conflict','source_gap') AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
-                             WHEN kind='conflict' THEN 2
+                             WHEN kind IN ('conflict','source_gap') THEN 2
                              WHEN kind='duplicate' AND min(coalesce(json_extract(detail,'$.dialogue_only'),0))=1 THEN 5
                              WHEN kind='duplicate' THEN 3
                              ELSE 4 END AS priority
@@ -1617,11 +1617,10 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     let reports = load_reports(tx, &run.id)?;
     let activations = load_reports(tx, &run.id)?;
     let observations = findings::derive(run, &reports, &activations)?;
-    let workflow: Option<String> = if run.organization_id.is_some()
-        && observations
-            .iter()
-            .any(|observation| observation.detail["sandbox_dispatch"].is_object())
-    {
+    let workflow: Option<String> = if observations.iter().any(|o| {
+        o.kind == "source_gap"
+            || (run.organization_id.is_some() && o.detail["sandbox_dispatch"].is_object())
+    }) {
         tx.query_row("SELECT workflow FROM traces WHERE id=?", [&run.id], |row| {
             row.get(0)
         })?
@@ -1630,7 +1629,14 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     };
     let mut insert = tx.prepare("INSERT INTO observations VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
     for (index, mut observation) in observations.into_iter().enumerate() {
-        observation.detail["factor"] = findings::factor_id(run, &observation).into();
+        if observation.kind == "source_gap" {
+            observation.group = findings::digest(
+                json!([observation.group, workflow.as_deref().unwrap_or(&run.id)]).to_string(),
+            );
+            observation.detail["factor"] = observation.group.clone().into();
+        } else {
+            observation.detail["factor"] = findings::factor_id(run, &observation).into();
+        }
         if observation.detail["sandbox_dispatch"].is_object() {
             if let Some(history) = workflow.as_deref().and_then(|workflow| {
                 let call = run

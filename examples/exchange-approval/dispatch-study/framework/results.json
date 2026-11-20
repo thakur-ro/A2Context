@@ -1,0 +1,1043 @@
+{
+  "qwen_agent": "0.0.34",
+  "source_sha256": "ef86f81243df28791b64d38af1e5f39461738b5cb90c017f3f68203b0269599f",
+  "counts": {
+    "tool_validation_error": 22,
+    "without_gate_state_differences": 22,
+    "with_gate_state_differences": 12,
+    "text": 10,
+    "executed": 8
+  },
+  "rows": [
+    {
+      "case": "held-service-a",
+      "arm": "original",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-a",
+      "arm": "cache",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-a",
+      "arm": "record",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-a",
+      "arm": "customer",
+      "raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-a",
+      "arm": "control",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "original",
+      "raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "record",
+      "raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "customer",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "control",
+      "raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "cache",
+      "raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "original",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "customer",
+      "raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "control",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "cache",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "record",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "original",
+      "raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "control",
+      "raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "cache",
+      "raw_sha256": "195766d5135fee07d706ec4566bf21511a02a2270125277f824b052b394d5ee9",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "record",
+      "raw_sha256": "ee9a45a75c62a91bc757e53be088a32ce0a425f67463e10a23f31b168fb61431",
+      "disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "customer",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "original",
+      "raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      },
+      "with_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "customer",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "control",
+      "raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      },
+      "with_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "cache",
+      "raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      },
+      "with_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "record",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "original",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "control",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "cache",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "record",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "customer",
+      "raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      },
+      "with_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "original",
+      "raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      },
+      "with_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "cache",
+      "raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      },
+      "with_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "record",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "customer",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "control",
+      "raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      },
+      "with_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "original",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "record",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "customer",
+      "raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      },
+      "with_gate": {
+        "dispatch": "written",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "exchange_requested"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "control",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "cache",
+      "raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "disposition": "tool_validation_error",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}}",
+      "without_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      },
+      "with_gate": {
+        "dispatch": "no_write",
+        "orders": {
+          "EX-140": "exchange_requested",
+          "EX-271": "delivered"
+        }
+      }
+    }
+  ],
+  "comparison": {
+    "without_gate": [
+      {
+        "id": "held-service-a",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-service-b",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-checkout-a",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-checkout-b",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-service-a",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": 1,
+        "ranked_top": "lost",
+        "listed_first_change": 1,
+        "listed_top": "lost"
+      },
+      {
+        "id": "approved-service-b",
+        "original_state": "delivered",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": 1,
+        "ranked_top": "restored",
+        "listed_first_change": 4,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-checkout-a",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": 1,
+        "ranked_top": "lost",
+        "listed_first_change": 2,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-checkout-b",
+        "original_state": "delivered",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": 1,
+        "ranked_top": "restored",
+        "listed_first_change": 2,
+        "listed_top": "unchanged"
+      }
+    ],
+    "with_gate": [
+      {
+        "id": "held-service-a",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-service-b",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-checkout-a",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "held-checkout-b",
+        "original_state": "delivered",
+        "expected_state": "delivered",
+        "ranked_first_change": null,
+        "ranked_top": "unchanged",
+        "listed_first_change": null,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-service-a",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": 1,
+        "ranked_top": "lost",
+        "listed_first_change": 1,
+        "listed_top": "lost"
+      },
+      {
+        "id": "approved-service-b",
+        "original_state": "delivered",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": 1,
+        "ranked_top": "restored",
+        "listed_first_change": 4,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-checkout-a",
+        "original_state": "exchange_requested",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": 1,
+        "ranked_top": "lost",
+        "listed_first_change": 2,
+        "listed_top": "unchanged"
+      },
+      {
+        "id": "approved-checkout-b",
+        "original_state": "delivered",
+        "expected_state": "exchange_requested",
+        "ranked_first_change": 1,
+        "ranked_top": "restored",
+        "listed_first_change": 2,
+        "listed_top": "unchanged"
+      }
+    ]
+  }
+}

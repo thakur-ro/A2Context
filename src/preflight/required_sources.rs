@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 const ATTRIBUTE: &str = "nexusweave.required_sources";
 
 /// A capture requirement is met when every source in at least one alternative is anchored.
-#[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RequiredSources {
     name: String,
@@ -41,23 +41,28 @@ impl RequiredSources {
             value => serde_json::from_value(value),
         };
         let check: Self = parsed.map_err(|e| format!("Invalid {ATTRIBUTE}: {e}"))?;
-        if check.name.trim().is_empty() || check.any_of.is_empty() {
+        check.validate()?;
+        Ok(Some(check))
+    }
+
+    pub(super) fn validate(&self) -> Result<(), String> {
+        if self.name.trim().is_empty() || self.any_of.is_empty() {
             return Err(format!(
                 "{ATTRIBUTE} requires a name and at least one alternative"
             ));
         }
-        for group in &check.any_of {
+        for group in &self.any_of {
             if group.is_empty() || group.iter().any(|id| id.trim().is_empty()) {
                 return Err(format!(
                     "Every {ATTRIBUTE} alternative needs nonempty source IDs"
                 ));
             }
         }
-        Ok(Some(check))
+        Ok(())
     }
 
     /// Evaluate on a normalized pending call whose request fragments have been validated.
-    pub fn evaluate(self, call: &Call) -> SourceCoverage {
+    pub fn evaluate(&self, call: &Call) -> SourceCoverage {
         let anchored: BTreeSet<_> = call
             .context
             .iter()
@@ -68,7 +73,7 @@ impl RequiredSources {
             .collect();
         let alternatives: Vec<_> = self
             .any_of
-            .into_iter()
+            .iter()
             .map(|required| {
                 let unconfirmed = required
                     .iter()
@@ -76,13 +81,13 @@ impl RequiredSources {
                     .cloned()
                     .collect();
                 Alternative {
-                    required,
+                    required: required.clone(),
                     unconfirmed,
                 }
             })
             .collect();
         SourceCoverage {
-            name: self.name,
+            name: self.name.clone(),
             matched: alternatives.iter().any(|row| row.unconfirmed.is_empty()),
             alternatives,
         }

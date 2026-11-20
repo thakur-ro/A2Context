@@ -52,6 +52,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Vary the wording and the order of the sources on fresh requests. Keep the scoring rule fixed and check which result repeats before changing the workflow.",
             "Different match counts in comparable replay conditions",
         ),
+        "source_gap" => (
+            "Check the request builder and source capture",
+            "Inspect the unconfirmed IDs for one alternative. Verify that the builder included those inputs and exported their named fragments, then repeat preflight.",
+            "A preflight receipt matched the captured request and source anchors",
+        ),
         "conflict" => (
             "Resolve the competing rules",
             "Confirm which source should govern this scope. Test changing only the other declaration against the answer or tool choice you expect.",

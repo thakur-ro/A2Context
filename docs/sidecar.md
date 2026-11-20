@@ -13,6 +13,16 @@ Use `http://127.0.0.1:8040/v1/traces` as the traces endpoint of an asynchronous 
 
 Existing detail links resolve through the sidecar when it has the referenced trace. Legacy thread or workspace snapshots are limited to eight traces or 8 MiB of trace data. The conversation and request lists support pagination.
 
+### Find a source capture gap across conversations
+
+Run preflight on an assembled request with `nexusweave.required_sources`. Copy its `receipt` into the inference span’s `nexusweave.preflight` attribute. On OTLP, JSON-encode the receipt as a string. Export the exact original request and source declarations with it. With content capture enabled, a matching version-two receipt lets the background worker recompute which named fragments satisfied the requirement. A missing or mismatched receipt provides no verified result. Version-one receipts still verify ordinary rule checks. [Preflight example](guide.md#check-alternative-sources-before-dispatch)
+
+If every alternative has an unconfirmed source, the dashboard shows **Check sources for** the named requirement. Filter by user or workflow to see affected conversations and open the exact call. In the context map, hollow dashed nodes identify required IDs with no matching anchor. Filled source nodes identify fragments the call actually captured. The workflow may still have supplied the text at an undeclared location.
+
+![Exchange authorization finding with a captured cache fragment and two unconfirmed source anchors](media/source-capture-gap.png)
+
+`GET /api/sidecar/findings?kind=source_gap` returns these cards. Groups match the producer, organization, workflow, requirement name, required alternatives, unconfirmed IDs and observed source versions. Reordering alternatives keeps the group stable. A complete alternative produces no gap finding. The version-two fingerprint binds the earlier rule check, requirement and named fragment inventory. The workflow supplies the timing. The receipt establishes consistency between the check and captured evidence.
+
 ### Read a conversation turn by turn
 
 Open **See this call in its conversation** on a recommendation. The selected call has a focus outline. Read the preceding question, the proposed tool and the recorded answer in order. When the exporter supplies a turn ID, adjacent calls in that turn appear together. Otherwise each call has its own entry. The latest captured user text can come from earlier in the conversation.
