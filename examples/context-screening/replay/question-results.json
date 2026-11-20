@@ -1,0 +1,333 @@
+{
+  "protocol_sha256": "799912a686322c2d848e1a36740d612eb51ea3eb91991bb9aaccadbd91053edc",
+  "cases": [
+    {
+      "question": "A customer asks how long they have to return a journal. Give the permitted number of days.",
+      "scores": {
+        "version": 1,
+        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+        "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+        "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+        "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "baseline_request_sha256": "a6942afb730a1547b3a5ec701e0e9437461e2c4fc65e6afcad8d6e2ad66d4395",
+        "effects": [
+          {
+            "context_id": "request-source:journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_sha256": "5133eddbac18566975fda4df2328a39c95ac195a9a0148ebf42b9c61e4df1d0a",
+            "js_bits": 0.013814573279624624,
+            "top_token_id": 785
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_sha256": "4b6dd78560ddb967be70ddc71075ec9834e02abeb114f578bdcc648c12a738ec",
+            "js_bits": 0.04762680879506882,
+            "top_token_id": 785
+          }
+        ],
+        "top_token_id": 785
+      },
+      "selected": {
+        "history": "journal-faq",
+        "first_listed": "journal-policy",
+        "distribution": "journal-faq",
+        "opening": null
+      },
+      "answers": {
+        "original": null,
+        "journal-policy": null,
+        "journal-faq": null
+      }
+    },
+    {
+      "question": "I'm filling out a return form for my journal. What number goes in the box marked return window (days)?",
+      "scores": {
+        "version": 1,
+        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+        "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+        "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+        "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "baseline_request_sha256": "59e28c7bbd4429a35af6b244007c09c01a734e74a75d685e5161149205caae4f",
+        "effects": [
+          {
+            "context_id": "request-source:journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_sha256": "3cb75740f6c0321ce5b7db53c6c64efcef9a24c4d76b12076db00a590177578e",
+            "js_bits": 0.010905679155646069,
+            "top_token_id": 785
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_sha256": "16821e1460a402aefc1fa9e4d3323954e94af1194efa5ab2bd52c12d8bbee5c7",
+            "js_bits": 0.01694264057645815,
+            "top_token_id": 785
+          }
+        ],
+        "top_token_id": 785
+      },
+      "selected": {
+        "history": "journal-faq",
+        "first_listed": "journal-policy",
+        "distribution": "journal-faq",
+        "opening": null
+      },
+      "answers": {
+        "original": null,
+        "journal-policy": null,
+        "journal-faq": null
+      }
+    },
+    {
+      "question": "How long after purchase can someone return a journal? Respond with the number only.",
+      "scores": {
+        "version": 1,
+        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+        "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+        "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+        "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "baseline_request_sha256": "74e899ea3086e5118fb4f6f763ff6e03ee95ecbee219fd90f3c3eddb0bdb2df9",
+        "effects": [
+          {
+            "context_id": "request-source:journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_sha256": "8dfe7c93d0d5903352d1f582b5fbf752aafa3d285173fd516adabff93d92263a",
+            "js_bits": 0.023148968399428652,
+            "top_token_id": 21
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_sha256": "8909f34cf28194d2d548d4f208f562a91c0a20f80d5151094c37871ab45d57f0",
+            "js_bits": 0.05350538195615941,
+            "top_token_id": 18
+          }
+        ],
+        "top_token_id": 21
+      },
+      "selected": {
+        "history": "journal-faq",
+        "first_listed": "journal-policy",
+        "distribution": "journal-faq",
+        "opening": "journal-faq"
+      },
+      "answers": {
+        "original": "60 days",
+        "journal-policy": "60 days",
+        "journal-faq": "30 days"
+      }
+    },
+    {
+      "question": "Using the stated policy, finish this sentence: A journal may be returned within ___ days.",
+      "scores": {
+        "version": 1,
+        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+        "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+        "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+        "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "baseline_request_sha256": "fa50489a0abf6cdeee562c7d19213d5e22a4c80da5642e20fa04f29e31dbe248",
+        "effects": [
+          {
+            "context_id": "request-source:journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_sha256": "622a156adf0733d183ad6b05880c4c7d6fedb630a35a736b76a1c98b00400602",
+            "js_bits": 0.006792696997340009,
+            "top_token_id": 32
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_sha256": "dd1a3cccdbd87921bd963defd3302abfe6bc8df3487695c5391b9a62e9cc0faa",
+            "js_bits": 0.014835372944899264,
+            "top_token_id": 32
+          }
+        ],
+        "top_token_id": 32
+      },
+      "selected": {
+        "history": "journal-faq",
+        "first_listed": "journal-policy",
+        "distribution": "journal-faq",
+        "opening": null
+      },
+      "answers": {
+        "original": "A journal may be returned within 30 days.",
+        "journal-policy": "A journal may be returned within 60 days.",
+        "journal-faq": "A journal may be returned within 30 days."
+      }
+    },
+    {
+      "question": "My journal arrived today. Can you tell me the return window in one short sentence?",
+      "scores": {
+        "version": 1,
+        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+        "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+        "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+        "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "baseline_request_sha256": "e36293348f98d22da10ca2c1f8dca4daf1359ba4ea6e23204b27cc0a3a07c118",
+        "effects": [
+          {
+            "context_id": "request-source:journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_sha256": "fdd66d6e1c7c2c99fcb5ead5c28c4a3c7cdb82673c751a4053cda172b3e25dc2",
+            "js_bits": 0.009173229066278269,
+            "top_token_id": 785
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_sha256": "2ae82d750c8cc1be0bcacf1d474132a247855f95efd60c3f9b98eac625b7ad41",
+            "js_bits": 0.023958623875112044,
+            "top_token_id": 785
+          }
+        ],
+        "top_token_id": 785
+      },
+      "selected": {
+        "history": "journal-faq",
+        "first_listed": "journal-policy",
+        "distribution": "journal-faq",
+        "opening": null
+      },
+      "answers": {
+        "original": null,
+        "journal-policy": null,
+        "journal-faq": null
+      }
+    },
+    {
+      "question": "Reply to a customer who asks about the deadline for returning a journal. Begin with 'You have'.",
+      "scores": {
+        "version": 1,
+        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+        "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+        "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+        "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "baseline_request_sha256": "9d70dfd7e3382f8de8fd5906600ec5876329c8b424ce6f65b4416dd5cb732fff",
+        "effects": [
+          {
+            "context_id": "request-source:journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_sha256": "365054e5e487fbdcf8fa24d6d1e2dc17800b3b3b09dcc296a44e463a4a2149b9",
+            "js_bits": 0.004263171398706759,
+            "top_token_id": 2610
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_sha256": "b9bbc6dbfb1ab36ca837f0e88c0d318bff744e8878d46c5388beaddaa87b2468",
+            "js_bits": 0.011510326400471843,
+            "top_token_id": 2610
+          }
+        ],
+        "top_token_id": 2610
+      },
+      "selected": {
+        "history": "journal-faq",
+        "first_listed": "journal-policy",
+        "distribution": "journal-faq",
+        "opening": null
+      },
+      "answers": {
+        "original": "You have.",
+        "journal-policy": "You have.",
+        "journal-faq": "You have."
+      }
+    },
+    {
+      "question": "Complete this answer using the applicable journal return period: The deadline is",
+      "scores": {
+        "version": 1,
+        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+        "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+        "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+        "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "baseline_request_sha256": "9ed61495c9e3c13c8256b68199a47894fdd7ef632fe14d02f221451eea5da5e4",
+        "effects": [
+          {
+            "context_id": "request-source:journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_sha256": "25fe3ab184c9685be5a141330da12c3fa226bae8d0441027f97e502933a1b23b",
+            "js_bits": 0.025928192068478264,
+            "top_token_id": 785
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_sha256": "ace5efb8c30c2d991be076d2ed786fb465afb2001d747de7b2bb479ac240c17e",
+            "js_bits": 0.0130881951230198,
+            "top_token_id": 785
+          }
+        ],
+        "top_token_id": 785
+      },
+      "selected": {
+        "history": "journal-faq",
+        "first_listed": "journal-policy",
+        "distribution": "journal-policy",
+        "opening": null
+      },
+      "answers": {
+        "original": "The deadline is exactly 60 days.",
+        "journal-policy": "The deadline is exactly 60 days.",
+        "journal-faq": "The deadline is 30 days."
+      }
+    },
+    {
+      "question": "I need the journal return deadline for a receipt. Write 'Returns: ' followed by the number of days.",
+      "scores": {
+        "version": 1,
+        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+        "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+        "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+        "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+        "baseline_request_sha256": "70d7988fecb424e111a78aa635e4edb84eee68f0a51bf572b13b7622bef2466e",
+        "effects": [
+          {
+            "context_id": "request-source:journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_sha256": "3014ef8d6903d028402e96b6fd5b60cceadd60410b631ad6d946fde419c70ed0",
+            "js_bits": 0.0010753136945661087,
+            "top_token_id": 16446
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_sha256": "83442986f708b6645e84cfa0564ae8ef542ef9e10de619aaaf28434656b0e4b3",
+            "js_bits": 0.0021708782513472835,
+            "top_token_id": 16446
+          }
+        ],
+        "top_token_id": 16446
+      },
+      "selected": {
+        "history": "journal-faq",
+        "first_listed": "journal-policy",
+        "distribution": "journal-faq",
+        "opening": null
+      },
+      "answers": {
+        "original": "Returns: 30 days",
+        "journal-policy": "Returns: 60 days",
+        "journal-faq": "Returns: 30 days"
+      }
+    }
+  ]
+}

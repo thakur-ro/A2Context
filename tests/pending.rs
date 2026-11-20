@@ -137,6 +137,50 @@ fn binds_first_token_ranking_to_the_same_edits_as_the_tool_proposals() {
 }
 
 #[test]
+fn opening_tokens_require_complete_pairs_and_follow_excerpt_permissions() {
+    let original: Value = serde_json::from_str(include_str!(
+        "../examples/context-screening/replay/opening-followup.json"
+    ))
+    .unwrap();
+    let attr = nexusweave::replay::prefill::ATTRIBUTE;
+    let scores = &original["request"]["attributes"][attr]["scores"];
+    let view = inspection(original.clone());
+    assert_eq!(view["prefill"]["top_token_id"], scores["top_token_id"]);
+    for row in view["prefill"]["ranked"].as_array().unwrap() {
+        assert_eq!(row["opening_changed"], false);
+        assert_eq!(row["top_token_id"], scores["top_token_id"]);
+    }
+    let mut input = original.clone();
+    let effect = &mut input["request"]["attributes"][attr]["scores"]["effects"][0];
+    effect["top_token_id"] = json!(scores["top_token_id"].as_u64().unwrap() + 1);
+    let evidence = pending::evidence(
+        serde_json::from_value(json!({"input":input})).unwrap(),
+        false,
+    )
+    .unwrap();
+    assert!(evidence["prefill"].get("top_token_id").is_none());
+    let rows = evidence["prefill"]["ranked"].as_array().unwrap();
+    assert!(rows.iter().all(|row| row.get("top_token_id").is_none()));
+    assert_eq!(
+        rows.iter()
+            .filter(|row| row["opening_changed"] == true)
+            .count(),
+        1
+    );
+    for field in ["baseline", "edit"] {
+        let mut input = original.clone();
+        let scores = &mut input["request"]["attributes"][attr]["scores"];
+        let owner = if field == "baseline" {
+            scores
+        } else {
+            &mut scores["effects"][0]
+        };
+        owner.as_object_mut().unwrap().remove("top_token_id");
+        assert!(pending::inspect(serde_json::from_value(input).unwrap()).is_err());
+    }
+}
+
+#[test]
 fn prefill_validates_all_edits_before_calling_the_adapter() {
     use nexusweave::replay::prefill;
     let raw: Value = serde_json::from_str(include_str!(

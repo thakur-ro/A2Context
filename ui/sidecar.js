@@ -1250,7 +1250,7 @@ function proposalComparisons(probe) {
         element("div", { className: "comparison" },
           element("div", {}, element("strong", { text: "Original proposal" }), element("code", { text: proposal(check.original) })),
           element("div", {}, element("strong", { text: "Edited proposal" }), element("code", { text: proposal(check.edited) }))),
-        element("p", { className: "label", text: "One completed proposal per condition · " + check.runner }));
+        element("p", { className: "label", text: (check.baseline_trials ? plural(check.baseline_trials,"original trial") + " · " + plural(check.edited_trials,"edited trial") : "One completed proposal per condition") + " · " + check.runner }));
     }));
 }
 
@@ -1288,6 +1288,39 @@ function routingComparison(probe) {
     element("p", {className:"label", text:"One proposal per condition · " + test.runner}));
 }
 
+function openingComparison(probe, question) {
+  const checks = probe.proposal_checks || [];
+  const flips = probe.ranked.filter(edit => edit.opening_changed);
+  const source = edit => edit.source || edit.context_id;
+  const held = probe.ranked.find(edit => !edit.opening_changed &&
+    checks.some(check => check.context_id === edit.context_id && check.changed));
+  let heading = "The same opening token led under every tested edit";
+  if (held) heading = "Editing " + source(held) + " changed the proposal with the same opening token on top";
+  else if (flips.length === 1) heading = "Editing " + source(flips[0]) + " changed the most likely opening token";
+  else if (flips.length) heading = plural(flips.length, "edit") + " changed the most likely opening token";
+  const rows = probe.ranked.map(edit => {
+    const matches = checks.filter(check => check.context_id === edit.context_id);
+    const results = new Set(matches.map(check => check.status === "varied" ? "Trials varied" :
+      check.status === "incomplete" ? "Incomplete" : check.changed ? "Changed" : "Held"));
+    const outcome = [...results].join(" / ") || "Unmeasured";
+    return element("tr", {className:results.has("Changed") ? "changed" : ""}, element("th", {scope:"row",text:source(edit)}),
+      element("td", {text:edit.opening_changed ? "Changed" : "Held"}), element("td", {text:outcome}));
+  });
+  return element("section", {className:"panel replacement opening-comparison"},
+    element("span", {className:"label", text:checks.length ? "Opening scores and proposal trials" : "Before the first output token"}), element("h2", {text:heading}),
+    question && element("blockquote", {text:question}),
+    element("table", {}, element("thead", {}, element("tr", {}, ...["Source edited","Most likely opening","Complete proposal"]
+      .map(text => element("th", {scope:"col",text})))), element("tbody", {}, ...rows)),
+    !checks.length && element("p", {text:flips.length === 1
+      ? "Test the complete proposal after editing " + source(flips[0]) + "."
+      : "Test the complete proposals to see whether a difference appears later in the answer."}),
+    checks.some(check => check.original) && proposalComparisons({...probe,proposal_checks:checks.filter(check => check.original)}),
+    element("details", {}, element("summary", {text:"First-token measurements"}),
+      element("p", {text:probe.model_id + " · " + probe.model_revision + " · " + probe.runtime}),
+      ...probe.ranked.map(edit => element("p", {text:source(edit) + " · token ID " + probe.top_token_id + " → " +
+        edit.top_token_id + " · " + Number(edit.js_bits.toPrecision(3)) + " bits of Jensen–Shannon divergence"}))));
+}
+
 function firstTokenPreview(probe, recorded = false, tested = false) {
   const [top] = probe.ranked;
   const tied = probe.ranked.filter((row) => row.js_bits === top.js_bits).length;
@@ -1303,11 +1336,13 @@ function firstTokenPreview(probe, recorded = false, tested = false) {
   const describe = {"Changed":"The top edit changed the completed proposal.",
     "Held":"The completed proposal stayed the same after the top edit.",
     "Results differed":"Completed comparisons disagreed about the top edit."};
+  const hasOpening = top.opening_changed !== undefined;
   const rows = probe.ranked.map((row) => element("tr", {},
     element("th", { scope: "row", title: row.version || row.context_id }, name(row),
       probe.selector_check?.first === row.context_id && element("small",{text:"First listed edit"})),
     element("td", {}, element("meter", { min: 0, max: top.js_bits || 1, value: row.js_bits, "aria-label": name(row) + " divergence" })),
     element("td", { text: bits(row.js_bits) }),
+    hasOpening && element("td", {text:row.opening_changed ? "Changed" : "Held"}),
     recorded && element("td", {text:outcomes.get(row.context_id) || "No completed comparison"})));
   return element("section", { className: "panel replacement" },
     element("span", { className: "label", text: recorded ? "Captured first-token measurement" : "Before the first output token" }),
@@ -1327,7 +1362,7 @@ function firstTokenPreview(probe, recorded = false, tested = false) {
     recorded && probe.answer_reference ? referenceDetail(probe) : null,
     recorded ? proposalComparisons(probe) : null,
     element("details", {}, element("summary", { text: "Compare source edits" }),
-      element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Relative to largest shift", "Divergence", ...(recorded ? ["Completed proposal"] : [])].map(
+      element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Relative to largest shift", "Divergence", ...(hasOpening ? ["Opening token"] : []), ...(recorded ? ["Completed proposal"] : [])].map(
         (text) => element("th", { scope: "col", text })))), element("tbody", {}, ...rows)),
       element("p", { className: "label", text: probe.model_id + " · " + probe.model_revision + " · " + probe.runtime })));
 }
@@ -1696,14 +1731,17 @@ function pendingPreview() {
       const testedTop = checked && report.prefill?.ranked[0]?.context_id === experiment.interventions[0].context_id &&
         report.prefill.ranked[0].request_sha256 === experiment.edited_request_sha256;
       const history = priorEdits(report.history, current.length > 0 || Boolean(report.prefill));
+      const opening = report.prefill?.ranked[0]?.opening_changed !== undefined;
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
-        ...targets.map(check => declaredTarget(check, report.example_question)), ...standalone.map(pendingTokenScores),
+        opening && openingComparison(report.prefill, report.example_question),
+        ...targets.map(check => opening ? element("details", {className:"panel"}, element("summary", {text:"Review the declared target"}),
+          declaredTarget(check,report.example_question)) : declaredTarget(check, report.example_question)), ...standalone.map(pendingTokenScores),
         ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
         report.prefill ? routingComparison(report.prefill) : null,
         checked ? history : null,
-        report.prefill && !(testedTop && report.prefill.ranked.length === 1) ? firstTokenPreview(report.prefill, false, testedTop) : null,
+        report.prefill && !opening && !(testedTop && report.prefill.ranked.length === 1) ? firstTokenPreview(report.prefill, false, testedTop) : null,
         ...current, report.screen_suggestion ? screenReview(report.screen_suggestion) : null, checked ? null : history, followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
         !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
@@ -1745,7 +1783,11 @@ function pendingPreview() {
   const questions = element("nav", {className:"actions", "aria-label":"Journal questions"},
     ...windowQuestions.map(([key, label]) => key === scenario ? element("strong", {text:label, "aria-current":"page"}) :
       link(label, url({view:"preview", scenario:key}))));
-  if (scenario === "window-before") {
+  if (scenario === "opening-before" || scenario === "opening-checked") {
+    show(() => api("preview-example", {scenario}), scenario === "opening-before"
+      ? link("Check the complete proposals",url({view:"preview",scenario:"opening-checked"}),"action")
+      : link("See the pre-generation evidence",url({view:"preview",scenario:"opening-before"})));
+  } else if (scenario === "window-before") {
     show(() => api("preview-example", {scenario}),
       link("Compare with generated answers",url({view:"preview",scenario:"window-earlier"}),"action"));
   } else if (windowQuestions.some(([key]) => key === scenario)) {

@@ -408,6 +408,19 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             scenario @ ("window-earlier" | "window-followup" | "window-unopened"
                             | "window-fresh"),
                         ) => journal_example(scenario.trim_start_matches("window-"))?,
+                        Some(scenario @ ("opening-before" | "opening-checked")) => {
+                            let mut example: serde_json::Value =
+                                serde_json::from_str(include_str!(
+                                    "../../examples/context-screening/replay/opening-followup.json"
+                                ))?;
+                            if scenario == "opening-before" {
+                                example
+                                    .as_object_mut()
+                                    .expect("saved envelope")
+                                    .remove("shadow");
+                            }
+                            example
+                        }
                         Some("window-before") => {
                             let mut example = journal_example("earlier")?;
                             example

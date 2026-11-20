@@ -17,7 +17,7 @@ def run_probe(binary, command, request, case, runner):
         paths = [Path(folder) / name for name in ("request.json", "case.json", "report.json")]
         for path, payload in zip(paths[:2], (request, case), strict=True):
             path.write_text(json.dumps(payload))
-        subprocess.run([binary, command, *paths, "--", sys.executable, *runner], check=True)
+        subprocess.run([binary, command, *paths, "--", sys.executable, *runner], check=True, stdout=sys.stderr)
         return json.loads(paths[2].read_text())
 
 

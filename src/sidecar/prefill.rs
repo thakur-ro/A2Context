@@ -236,6 +236,33 @@ fn settings(call: &Call) -> Option<Value> {
     Some(settings)
 }
 
+pub(super) fn attach_opening_checks(
+    probe: &mut Value,
+    call: &Call,
+    shadow: &[replay::shadow::RecordedProbe],
+) {
+    let Some(rows) = probe["ranked"].as_array().filter(|rows| {
+        rows.first()
+            .is_some_and(|row| row["opening_changed"].is_boolean())
+    }) else {
+        return;
+    };
+    let mut checks = Vec::new();
+    matching_shadow_arms(shadow, call, rows, |report, effect, id| {
+        let mut check = super::outcomes::compare(&report.baseline, &effect.result.trials)
+            .unwrap_or_else(|| {
+                let complete = report.baseline_summary.completed == report.baseline.len()
+                    && effect.result.summary.completed == effect.result.trials.len();
+                json!({"status":if complete { "varied" } else { "incomplete" }})
+            });
+        check["context_id"] = json!(id);
+        check["runner"] = json!(&report.runner_id);
+        check["report"] = json!(&report.id);
+        checks.push(check);
+    });
+    probe["proposal_checks"] = json!(checks);
+}
+
 fn proposal_checks(
     shadow: &[replay::shadow::RecordedProbe],
     call: &Call,
@@ -244,33 +271,43 @@ fn proposal_checks(
     with_digests: bool,
 ) -> Vec<Value> {
     let mut checks = Vec::new();
+    matching_shadow_arms(shadow, call, ranked, |report, effect, id| {
+        if let (
+            [replay::Trial::Completed { choice: original }],
+            [replay::Trial::Completed { choice: edited }],
+        ) = (report.baseline.as_slice(), effect.result.trials.as_slice())
+        {
+            let mut check = json!({"context_id":id,"report":report.id,"runner":report.runner_id,
+                "changed":original!=edited,"original":super::outcomes::preview(original), "edited":super::outcomes::preview(edited)});
+            score_text_outputs(&mut check, reference, with_digests, original, edited);
+            checks.push(check);
+        }
+    });
+    checks
+}
+
+fn matching_shadow_arms(
+    shadow: &[replay::shadow::RecordedProbe],
+    call: &Call,
+    ranked: &[Value],
+    mut visit: impl FnMut(&replay::shadow::Report, &replay::shadow::Effect, &str),
+) {
     let Some(reports) = call.shadow_probes.as_ref().and_then(|c| c.reports.as_ref()) else {
-        return checks;
+        return;
     };
     for (verified, report) in shadow.iter().zip(reports) {
         let replay::shadow::Verification::Matched { measurement } = &verified.verification else {
             continue;
         };
-        let [replay::Trial::Completed { choice: original }] = report.baseline.as_slice() else {
-            continue;
-        };
         for (effect, resolved) in report.effects.iter().zip(&measurement.effects) {
-            let [replay::Trial::Completed { choice: edited }] = effect.result.trials.as_slice()
-            else {
-                continue;
-            };
             if ranked.iter().any(|row| {
                 row["request_sha256"] == effect.request_sha256
                     && row["context_id"] == resolved.context_id
             }) {
-                let mut check = json!({"context_id":resolved.context_id,"report":report.id,"runner":report.runner_id,
-                    "changed":original!=edited,"original":super::outcomes::preview(original), "edited":super::outcomes::preview(edited)});
-                score_text_outputs(&mut check, reference, with_digests, original, edited);
-                checks.push(check);
+                visit(report, effect, resolved.context_id);
             }
         }
     }
-    checks
 }
 
 // Count each captured input once. Disagreeing repeats retain their own category.

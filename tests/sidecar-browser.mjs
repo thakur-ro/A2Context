@@ -569,6 +569,22 @@ try {
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
   }
+  if (process.env.OPENING_URL) {
+    for (const device of [page, mobile]) {
+      await device.goto(new URL("?view=preview&scenario=opening-before", process.env.OPENING_URL).href);
+      const panel = device.locator(".opening-comparison");
+      await panel.getByRole("heading",{name:"The same opening token led under every tested edit"}).waitFor();
+      assert.equal(await panel.getByRole("cell",{name:"Unmeasured",exact:true}).count(),2);
+      await device.getByRole("link",{name:"Check the complete proposals"}).click();
+      await panel.getByRole("heading",{name:/Editing journal-policy changed the proposal/}).waitFor();
+      await panel.getByText("Compare generated proposals",{exact:true}).click();
+      const policy = panel.locator('[data-context="request-source:journal-policy"]');
+      await policy.getByText("A journal may be returned within 60 days.",{exact:true}).waitFor();
+      await policy.getByText("A journal may be returned within 30 days.",{exact:true}).waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      if (device === page && process.env.OPENING_SCREENSHOT) await panel.screenshot({path:process.env.OPENING_SCREENSHOT});
+    }
+  }
   if (process.env.CONFLICT_PATTERN_URL) {
     for (const device of [page, mobile]) {
       await device.goto(process.env.CONFLICT_PATTERN_URL);

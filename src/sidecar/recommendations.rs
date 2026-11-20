@@ -219,7 +219,7 @@ pub fn preview(
     input: pending::Request,
 ) -> Result<Value, (u16, String)> {
     let history_scope = super::history::Scope::read(&input.request.attributes);
-    let (call, scope, prefill) =
+    let (call, scope, mut prefill) =
         pending::recommendation_measurements(input).map_err(|message| (400, message))?;
     let mut history = match history_scope {
         Ok(history_scope) => history_scope
@@ -273,6 +273,9 @@ pub fn preview(
         .filter(|e| e["status"] == "ready")
     {
         super::history::current_tests(experiment, call, &shadow, prefill.as_ref());
+    }
+    if let Some(probe) = prefill.as_mut() {
+        super::prefill::attach_opening_checks(probe, call, &shadow);
     }
     let target_checks = super::targets::checks(call, &shadow);
     let screen = super::capture::screen_candidate(call);

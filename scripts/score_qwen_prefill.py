@@ -20,7 +20,7 @@ def js_bits(torch, p, q):
     return ((p.exp() * (p - log_mean)).sum() + (q.exp() * (q - log_mean)).sum()).item() / (2 * math.log(2))
 
 
-def score_batch(runtime, batch, model_id, revision, tokenizer_sha256):
+def score_batch(runtime, batch, model_id, revision, tokenizer_sha256, *, opening_tokens=False):
     if batch["version"] != 1:
         raise ValueError("Expected a version 1 prefill batch.")
 
@@ -42,9 +42,14 @@ def score_batch(runtime, batch, model_id, revision, tokenizer_sha256):
         effects.append({"context_id": edit["context_id"], "source_id": edit["source_id"], "source_version": edit["source_version"],
                         "request_sha256": edit["request_sha256"],
                         "js_bits": 0.0 if runtime.torch.equal(baseline, edited) else min(1.0, max(0.0, divergence))})
-    return {"version": 1, "model_id": model_id, "model_revision": revision,
+        if opening_tokens:
+            effects[-1]["top_token_id"] = int(edited.argmax())
+    result = {"version": 1, "model_id": model_id, "model_revision": revision,
             "runtime": runtime.identity, "tokenizer_sha256": tokenizer_sha256,
             "baseline_request_sha256": batch["baseline_request_sha256"], "effects": effects}
+    if opening_tokens:
+        result["top_token_id"] = int(baseline.argmax())
+    return result
 
 
 if __name__ == "__main__":
@@ -52,10 +57,11 @@ if __name__ == "__main__":
     parser.add_argument("model", type=Path)
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--revision", required=True)
+    parser.add_argument("--opening-tokens", action="store_true", help="Include the full-vocabulary argmax ID for each condition.")
     args = parser.parse_args()
     batch = json.load(sys.stdin)
     runtime = load_runtime(args.model)
     tokenizer_digest = sha256((args.model / "tokenizer.json").read_bytes()).hexdigest()
     with runtime.torch.inference_mode():
-        scores = score_batch(runtime, batch, args.model_id, args.revision, tokenizer_digest)
+        scores = score_batch(runtime, batch, args.model_id, args.revision, tokenizer_digest, opening_tokens=args.opening_tokens)
     print(json.dumps(scores, allow_nan=False))

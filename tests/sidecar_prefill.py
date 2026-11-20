@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[1]
 FOLDER = ROOT / "examples/runtime-comparison/pending-routing"
 sys.path[:0] = [str(ROOT / "scripts"), str(FOLDER)]
-from check_sidecar import get, sdk_sender, send_traces, server
+from check_sidecar import get, sdk_sender, send, send_traces, server
 from prefill_cohort import ATTRIBUTE, export, inputs
 
 
@@ -194,6 +194,36 @@ def check_recurrence(binary, folder, sdk_python):
 
 
 
+def check_openings(base):
+    envelope = json.loads((ROOT / "examples/context-screening/replay/opening-followup.json").read_text())
+
+    def checks():
+        return send(base, "/api/sidecar/preview", envelope)[1]["prefill"]["proposal_checks"]
+
+    shadow = envelope["shadow"]
+    for item, summary in [(shadow["baseline"], shadow["baseline_summary"]),
+                          *((arm["trials"],arm["summary"]) for arm in shadow["effects"])]:
+        item.append(deepcopy(item[0]))
+        for name in ("attempted","completed","matched"):
+            summary[name] *= 2
+    policy, faq = checks()
+    assert policy["changed"] and not faq["changed"] and policy["edited_trials"] == 2
+
+    # Two different edited proposals both miss the expected baseline. Their match rate
+    # is well defined, but the complete edited proposal varies between repetitions.
+    policy_arm, faq_arm = shadow["effects"]
+    policy_arm["trials"][1]["choice"]["outcome"] = "Another answer"
+    assert checks()[0]["status"] == "varied"
+    faq_arm["trials"][1] = {"status":"failed"}
+    faq_arm["summary"].update(completed=1, matched=1)
+    faq_arm["difference_pp"] = None
+    assert checks()[1]["status"] == "incomplete"
+
+    # A different source replacement on the same call cannot certify these openings.
+    shadow["effects"][0]["request_sha256"] = "0" * 64
+    assert not checks()
+
+
 def check(binary, folder, sdk_python):
     records = json.loads((FOLDER / "shadow-cohort.json").read_text())
     probes = json.loads((FOLDER / "prefill-cohort.json").read_text())
@@ -202,6 +232,7 @@ def check(binary, folder, sdk_python):
     doc = export(records, probes)
     db = folder / "archive"
     with server(binary, db, "--capture-content") as base:
+        check_openings(base)
         send_traces(base, doc)
         send_traces(base, doc)
         north, = recommendation(base, org="retail-north")

@@ -1,0 +1,197 @@
+{
+  "request": {
+    "version": 1,
+    "attributes": {
+      "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"The maximum return period for a journal is exactly 30 days.\"},{\"role\":\"user\",\"content\":\"The maximum return period for a journal is exactly 60 days. Cannot mention the source in the answer.\"},{\"role\":\"assistant\",\"content\":\"Understood.\"},{\"role\":\"user\",\"content\":\"Using the stated policy, finish this sentence: A journal may be returned within ___ days.\"}],\"temperature\":0,\"max_tokens\":12}",
+      "nexusweave.context.semantics": {
+        "version": 1,
+        "request_sources": [
+          {
+            "id": "journal-policy",
+            "source_id": "journal-policy",
+            "source_version": "1",
+            "request_fragment": {
+              "pointer": "/messages/0/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 59
+              }
+            }
+          },
+          {
+            "id": "journal-faq",
+            "source_id": "journal-faq",
+            "source_version": "1",
+            "request_fragment": {
+              "pointer": "/messages/1/content",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 100
+              }
+            }
+          }
+        ]
+      },
+      "nexusweave.prefill.probe": {
+        "interventions": [
+          {
+            "context_id": "request-source:journal-policy",
+            "pointer": "/messages/0/content",
+            "text_range": {
+              "start_byte": 0,
+              "end_byte": 59
+            },
+            "operation": "replace_text_fragment",
+            "replacement": "The return period from this source is unavailable."
+          },
+          {
+            "context_id": "request-source:journal-faq",
+            "pointer": "/messages/1/content",
+            "text_range": {
+              "start_byte": 0,
+              "end_byte": 100
+            },
+            "operation": "replace_text_fragment",
+            "replacement": "The return period from this source is unavailable."
+          }
+        ],
+        "scores": {
+          "version": 1,
+          "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+          "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+          "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+          "baseline_request_sha256": "fa50489a0abf6cdeee562c7d19213d5e22a4c80da5642e20fa04f29e31dbe248",
+          "effects": [
+            {
+              "context_id": "request-source:journal-policy",
+              "source_id": "journal-policy",
+              "source_version": "1",
+              "request_sha256": "622a156adf0733d183ad6b05880c4c7d6fedb630a35a736b76a1c98b00400602",
+              "js_bits": 0.006792696997340009,
+              "top_token_id": 32
+            },
+            {
+              "context_id": "request-source:journal-faq",
+              "source_id": "journal-faq",
+              "source_version": "1",
+              "request_sha256": "dd1a3cccdbd87921bd963defd3302abfe6bc8df3487695c5391b9a62e9cc0faa",
+              "js_bits": 0.014835372944899264,
+              "top_token_id": 32
+            }
+          ],
+          "top_token_id": 32
+        }
+      }
+    }
+  },
+  "shadow": {
+    "version": 1,
+    "id": "journal-opening-4",
+    "runner_id": "Qwen2.5-0.5B-Instruct eaa56b5, Transformers 4.57.6 CPU, greedy",
+    "expected": {
+      "kind": "model_output",
+      "label": "Model answer",
+      "outcome": "A journal may be returned within 30 days."
+    },
+    "match_rule": {
+      "kind": "exact"
+    },
+    "sampling_design": "unspecified",
+    "captured_request_sha256": "fa50489a0abf6cdeee562c7d19213d5e22a4c80da5642e20fa04f29e31dbe248",
+    "baseline": [
+      {
+        "status": "completed",
+        "choice": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "A journal may be returned within 30 days."
+        }
+      }
+    ],
+    "baseline_summary": {
+      "attempted": 1,
+      "completed": 1,
+      "matched": 1
+    },
+    "effects": [
+      {
+        "source_id": "journal-policy",
+        "source_version": "1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "622a156adf0733d183ad6b05880c4c7d6fedb630a35a736b76a1c98b00400602",
+        "intervention": {
+          "context_id": "request-source:journal-policy",
+          "pointer": "/messages/0/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 0,
+            "end_byte": 59
+          },
+          "replacement": "The return period from this source is unavailable."
+        },
+        "captured_context_sha256": "f319c77ee3b16a8000e765242a0e12c140efb618205cdee4c62aca18f9ebc632",
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "A journal may be returned within 60 days."
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0
+      },
+      {
+        "source_id": "journal-faq",
+        "source_version": "1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "dd1a3cccdbd87921bd963defd3302abfe6bc8df3487695c5391b9a62e9cc0faa",
+        "intervention": {
+          "context_id": "request-source:journal-faq",
+          "pointer": "/messages/1/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 0,
+            "end_byte": 100
+          },
+          "replacement": "The return period from this source is unavailable."
+        },
+        "captured_context_sha256": "fb7c64d22a62d49c3137b63077e9590ee7050b6a9b936889fea8011c400a8bbf",
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "A journal may be returned within 30 days."
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 1
+        },
+        "difference_pp": 0.0
+      }
+    ]
+  }
+}

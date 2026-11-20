@@ -21,6 +21,9 @@ pub struct Scores {
     pub runtime: String,
     pub tokenizer_sha256: String,
     pub baseline_request_sha256: String,
+    /// Highest-probability token before decoding, under the reported tokenizer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_token_id: Option<u32>,
     pub effects: Vec<Effect>,
 }
 
@@ -32,6 +35,9 @@ pub struct Effect {
     pub source_version: Option<String>,
     pub request_sha256: String,
     pub js_bits: f64,
+    /// Supply for every edit when the baseline includes an opening token.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_token_id: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -136,6 +142,24 @@ impl Probe {
             let mut row = json!({"context_id":source.id, "source":source.source_id, "version":source.source_version,
                 "request_sha256":effect.request_sha256,"pointer":edit.pointer,"text_range":edit.text_range,
                 "operation":edit.operation,"js_bits":effect.js_bits});
+            match (s.top_token_id, effect.top_token_id) {
+                (Some(original), Some(edited)) => {
+                    if s.baseline_request_sha256 == effect.request_sha256 && original != edited {
+                        return Err("Identical requests have conflicting opening token IDs.".into());
+                    }
+                    row["opening_changed"] = json!(original != edited);
+                    if excerpts {
+                        row["top_token_id"] = json!(edited);
+                    }
+                }
+                (None, None) => {}
+                _ => {
+                    return Err(
+                        "An opening-token comparison needs IDs for the baseline and every edit."
+                            .into(),
+                    )
+                }
+            }
             if excerpts {
                 row["before"] = json!(excerpt(before));
                 row["replacement"] = json!(excerpt(&edit.replacement));
@@ -146,6 +170,11 @@ impl Probe {
         let mut view = json!({"metric":"first_token_js_bits","model_id":s.model_id,"model_revision":s.model_revision,
             "runtime":s.runtime,"tokenizer_sha256":s.tokenizer_sha256,"baseline_request_sha256":s.baseline_request_sha256,
             "ranked":ranked.into_iter().map(|(_,row)| row).collect::<Vec<_>>()});
+        if excerpts {
+            if let Some(id) = s.top_token_id {
+                view["top_token_id"] = json!(id);
+            }
+        }
         if let Some(raw) = &self.routing_test {
             match routing::checked(raw, self, call, body, excerpts) {
                 Ok(result) => view["routing_test"] = result,

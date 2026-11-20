@@ -163,6 +163,31 @@ With the saved demo running, reproduce the comparison without a model call. To r
 python3 examples/redundant-routing/check_prior_edits.py --url http://127.0.0.1:8040
 ```
 
+### Can the opening token identify which conflicting source to test?
+
+We fixed eight new journal-return questions and four rules for choosing an edit before running Qwen. Each request retained the two conflicting sources, preceding dialogue, neutral replacements and 12-token output limit of the three development examples. Only the final user message varied. We scored the original and both edits before generating any answer for that question, then ran one greedy generation per condition. The original, policy edit and FAQ edit all finished on five questions. All three reached the generation limit on the other three. [Frozen protocol](https://github.com/thakur-ro/NexusWeave/blob/9a877e101d04a7343d948a2f1648374b54d1e1ac/examples/context-screening/replay/question-holdout.json) · [Pinned Qwen weights](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2/model.safetensors)
+
+| Rule applied before generation | Selected an edit | Selected edit changed the answer | Selected outcome unresolved |
+| --- | ---: | ---: | ---: |
+| FAQ, the most frequent changing edit in development | 8/8 | 2/8 | 3 |
+| Policy, the first source listed | 8/8 | 2/8 | 3 |
+| Larger first-token distribution shift | 8/8 | 1/8 | 3 |
+| Only edit that switched the most likely opening token | 1/8 | 1/1 selected | 0 |
+
+Four questions had at least one verified answer change. Across the 16 individual edits, one switched the highest-scoring first token and changed the answer. Of the 15 edits that kept the same token on top, three changed the answer, six preserved it and six comparisons were unresolved. In the sentence-completion example, the FAQ edit produced the largest distribution shift. The policy edit alone changed the answer from “A journal may be returned within 30 days.” to “A journal may be returned within 60 days.” [Inspect this request before generation](http://127.0.0.1:8040/?view=preview&scenario=opening-before) · [See the complete proposals](http://127.0.0.1:8040/?view=preview&scenario=opening-checked)
+
+These counts describe one model, one conflict and eight authored questions. For a new workflow, verifying the full proposal still matters when the opening holds. Selecting the larger distribution shift also missed changes here. The sidecar shows each signal alongside any complete proposal tests for the same source and request. No confidence percentage is inferred from this sample. [Per-question scores and answers](../examples/context-screening/replay/question-results.json)
+
+![The policy edit preserved the most likely opening token and changed the completed answer from 30 to 60 days](media/opening-source-comparison.png)
+
+The two complete runs produced byte-identical results with Transformers 4.57.6 and PyTorch 2.11.0 on CPU. Read the saved results with Python 3.10 or later. To reproduce, use the local checkpoint and the pinned environment. The first command makes zero model calls.
+
+```sh
+python3 examples/context-screening/replay/check_question_holdout.py
+python3 examples/context-screening/replay/check_question_holdout.py --model "$qwen_dir" --results /tmp/question-results.json
+cmp examples/context-screening/replay/question-results.json /tmp/question-results.json
+```
+
 ### What do model scores add before generation?
 
 We gave the local Qwen scorer the pending dispatch request, two source edits and two continuations taken from the task: the specified bay code and `UNKNOWN`. At the empty assistant prefix it summed the conditional log probabilities of the tokens in each continuation. Subtracting the second sum from the first gives the preference margin. The sidecar checks the request and edit bindings. Within one probe, it lists edits that reverse the preference first, then orders by absolute change in margin. A tied margin supplies no reversal.
