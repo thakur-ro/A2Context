@@ -17,7 +17,7 @@ cargo run --locked -- sidecar --demo
 ```
 
 1. **See what shifted a tool choice.** Open **Before inference** and try the measured tool choice. The request-type edit flips preference from stock to price. Editing the store name barely changes the score in the same test.
-2. **Test whether two sources can substitute for each other.** Open **Results varied across wordings** for the dispatch guide and routing note. The comparison highlights the one edit whose result differed. [Experiment](docs/methods.md#two-copies-of-a-dispatch-record)
+2. **Check which copy of an instruction mattered.** Choose **Compare the two source orders**. With one replacement, moving a dispatch record from the earlier slot to the later one changed the answer after that record was edited. Try the neutral wording in the same view to see where the match counts held. [Experiment](docs/methods.md#check-the-result-against-new-parcel-codes-and-source-order)
 3. **Locate the effect along an answer.** Open the refund-policy token recommendation to see which output token changed most under the source edit and what the decoder-block swap measured.
 4. **Test what to change.** Try a policy conflict before inference. Filter Recommendations by organization `demo-retail` and user `user-042` to compare recurrence with `user-077`.
 

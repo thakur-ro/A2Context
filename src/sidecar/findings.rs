@@ -218,11 +218,21 @@ pub fn derive(
                     .variants
                     .iter()
                     .all(|arm| arm.difference_pp == Some(0.0));
-            findings.push(occurrence("replay", json!(["replay", group.key]), call,
-                json!({"effect_pp": effect, "measurement": item, "sources": sources, "edit": edit,
+            let mut detail = json!({"effect_pp": effect, "measurement": item, "sources": sources, "edit": edit,
                        "runner": group.comparison.runner_id, "model": group.comparison.model,
                        "single_edits":single_edits, "joint_only":joint_only, "outcome": group.comparison.decision_label, "match_rule": group.comparison.match_rule,
-                       "sampling_design": group.comparison.sampling_design})));
+                       "sampling_design": group.comparison.sampling_design});
+            if edit == "joint" {
+                if let Some(trial) = super::order::trial(call, report) {
+                    detail["order_test"] = trial;
+                }
+            }
+            findings.push(occurrence(
+                "replay",
+                json!(["replay", group.key]),
+                call,
+                detail,
+            ));
         }
     }
     super::replacement::compare(run, reports, &mut findings);

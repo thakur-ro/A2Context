@@ -20,7 +20,7 @@ fn excerpt(text: &str) -> String {
     result
 }
 
-fn arm(summary: &replay::Summary, trials: &[replay::Trial]) -> Value {
+pub(super) fn arm(summary: &replay::Summary, trials: &[replay::Trial]) -> Value {
     let answer = match trials.first() {
         Some(first @ replay::Trial::Completed { choice })
             if choice.kind == "model_output" && trials.iter().all(|trial| trial == first) =>

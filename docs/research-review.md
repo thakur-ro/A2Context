@@ -32,6 +32,8 @@ This matrix records capabilities described in the reviewed sources. The combinat
 
 ## Attribution and experimental methods
 
+Liu et al. varied where relevant information appeared in multi-document question answering and key-value retrieval and found position-sensitive performance in long contexts. Their intervention motivates holding content constant and varying order. The NexusWeave demo tests two short source messages, reverse order and the same single-source edits on each side. It measures sensitivity of the scored output in that design. Long-context retrieval accuracy and internal attention require their own measurements. [Lost in the Middle, TACL 2024](https://aclanthology.org/2024.tacl-1.9/)
+
 | Source | Method in the primary source | Relationship to NexusWeave |
 | --- | --- | --- |
 | **ContextCite** | Perturbs context to attribute generated statements to source passages. | Related. A NexusWeave replay tests a selected edit and selected answer or tool outcome. It does not fit ContextCite’s attribution model. [NeurIPS 2024](https://proceedings.neurips.cc/paper_files/paper/2024/hash/adbea136219b64db96a9941e4249a857-Abstract-Conference.html) |

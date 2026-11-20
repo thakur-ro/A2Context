@@ -1,4 +1,5 @@
 mod findings;
+mod order;
 mod recommendations;
 mod replacement;
 mod store;
@@ -318,6 +319,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/threads"
                 | "/api/sidecar/impact"
                 | "/api/sidecar/factors"
+                | "/api/sidecar/order-tests"
                 | "/api/sidecar/occurrences" => {
                     store.list(path.rsplit('/').next().expect("view path"), &fields)?
                 }
@@ -531,7 +533,17 @@ fn seed(store: &mut Store) -> Result<()> {
     runs.extend(serde_json::from_str::<Vec<Run>>(include_str!(
         "../../examples/redundant-routing/measured/evidence.json"
     ))?);
-    let reports = [
+    #[derive(serde::Deserialize)]
+    struct OrderExperiment {
+        runs: Vec<Run>,
+        reports: Vec<replay::Replay>,
+    }
+    let experiment: OrderExperiment = serde_json::from_str(include_str!(
+        "../../examples/redundant-routing/measured/local-order.json"
+    ))?;
+    runs.extend(experiment.runs);
+    let mut reports = experiment.reports;
+    reports.extend([
         serde_json::from_str(include_str!(
             "../../examples/redundant-routing/measured/unavailable-report.json"
         ))?,
@@ -544,7 +556,7 @@ fn seed(store: &mut Store) -> Result<()> {
         serde_json::from_str(include_str!(
             "../../examples/context-screening/replay/report-policy.json"
         ))?,
-    ];
+    ]);
     let pending = include_str!("../../examples/runtime-comparison/pending-routing/trace.json");
     runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
         pending,

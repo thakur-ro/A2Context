@@ -71,11 +71,19 @@ We ran the two wordings on Qwen2.5-0.5B-Instruct with a local CPU runner, greedy
 
 In one neutral Birch trial, Qwen returned `BAY WREN` instead of the required `WREN`. It identified the bay while failing exact match. Another returned `UNKNOWN` after only the dispatch guide was edited. The comparison therefore shows the answer text alongside the match count when every trial in that arm produced the same text. These four requests share a template and a model, which limits generalization. [All 28 outputs](../examples/redundant-routing/local-order-results.json) · [Local runner](../examples/redundant-routing/replicate_local.py)
 
-To repeat offline, supply the local Qwen snapshot used by the [Transformers experiments](inference-attribution-plan.md).
+In the demo, **Compare the two source orders** opens four matched comparisons, one per parcel and wording. The availability wording changed a single-edit match count across orders for both parcels. The neutral wording did so for neither. You can open either original replay. In the neutral Birch comparison the same source edit produced two distinct answers that both failed exact match.
+
+![With the guide first, editing the routing note yields UNKNOWN. With the note first, editing the guide yields UNKNOWN.](media/source-order.png)
+
+The sidecar matches validated joint replay reports that edited two named sources in distinct message content fields. Each edit needs a captured message index or a verified byte range. It places the two complete messages into stable source-ID order, then hashes the resulting request along with the two positions, source versions, replacement operations, ranges and strings, model, runner, recorded outcome, scoring rule, sampling design, baseline counts and single-edit sample sizes. A pair needs an eligible report in each message order under the current filters. Identical messages, rescored reports and control comparisons are ineligible. If repeats of one order disagree on a single-edit match count, the sidecar withholds that comparison. The table shows representative trials for both orders. These counts describe the captured runs. Sampling and unrecorded runtime changes can also affect the result.
+
+To repeat offline, supply the local Qwen snapshot used by the [Transformers experiments](inference-attribution-plan.md). The packaging command checks each planned request against the local runner’s input and scores the saved answers without calling a model.
 
 ```sh
 python3 examples/redundant-routing/replicate_local.py /path/to/qwen/snapshot \
   --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2
+python3 examples/redundant-routing/package_order_replays.py target/debug/nexusweave \
+  examples/redundant-routing/local-order-results.json /tmp/order-replays.json
 ```
 
 ## Reproduction

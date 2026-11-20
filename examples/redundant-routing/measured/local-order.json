@@ -1,0 +1,1182 @@
+{
+  "runs": [
+    {
+      "id": "order-cedar-dispatch-guide",
+      "source": "synthetic-qwen-order",
+      "schema_version": 1,
+      "organization_id": "dispatch-lab",
+      "conversation_id": "Cedar with dispatch guide first",
+      "calls": [
+        {
+          "id": "dispatch",
+          "model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "context": [
+            {
+              "id": "dispatch-guide",
+              "source_id": "dispatch-guide",
+              "source_version": "1",
+              "kind": "message",
+              "role": "user",
+              "availability": "included",
+              "text": "Route Cedar parcels to bay IBIS.",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 16,
+                  "end_byte": 48
+                }
+              },
+              "evidence": {
+                "field": "request.messages",
+                "message_index": 1
+              }
+            },
+            {
+              "id": "routing-note",
+              "source_id": "routing-note",
+              "source_version": "1",
+              "kind": "message",
+              "role": "user",
+              "availability": "included",
+              "text": "Route Cedar parcels to bay IBIS.",
+              "request_fragment": {
+                "pointer": "/messages/2/content",
+                "text_range": {
+                  "start_byte": 14,
+                  "end_byte": 46
+                }
+              },
+              "evidence": {
+                "field": "request.messages",
+                "message_index": 2
+              }
+            }
+          ],
+          "tool_results": [],
+          "relationships": [],
+          "recorded_request": {
+            "body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Dispatch guide: Route Cedar parcels to bay IBIS.\"},{\"role\":\"user\",\"content\":\"Routing note: Route Cedar parcels to bay IBIS.\"},{\"role\":\"user\",\"content\":\"Where should a Cedar parcel go?\"}],\"temperature\":0,\"max_tokens\":16}",
+            "evidence": {
+              "field": "request.body"
+            }
+          },
+          "decisions": [
+            {
+              "id": "bay",
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "IBIS",
+              "evidence": {
+                "field": "generated_text"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "order-cedar-routing-note",
+      "source": "synthetic-qwen-order",
+      "schema_version": 1,
+      "organization_id": "dispatch-lab",
+      "conversation_id": "Cedar with routing note first",
+      "calls": [
+        {
+          "id": "dispatch",
+          "model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "context": [
+            {
+              "id": "routing-note",
+              "source_id": "routing-note",
+              "source_version": "1",
+              "kind": "message",
+              "role": "user",
+              "availability": "included",
+              "text": "Route Cedar parcels to bay IBIS.",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 14,
+                  "end_byte": 46
+                }
+              },
+              "evidence": {
+                "field": "request.messages",
+                "message_index": 1
+              }
+            },
+            {
+              "id": "dispatch-guide",
+              "source_id": "dispatch-guide",
+              "source_version": "1",
+              "kind": "message",
+              "role": "user",
+              "availability": "included",
+              "text": "Route Cedar parcels to bay IBIS.",
+              "request_fragment": {
+                "pointer": "/messages/2/content",
+                "text_range": {
+                  "start_byte": 16,
+                  "end_byte": 48
+                }
+              },
+              "evidence": {
+                "field": "request.messages",
+                "message_index": 2
+              }
+            }
+          ],
+          "tool_results": [],
+          "relationships": [],
+          "recorded_request": {
+            "body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Routing note: Route Cedar parcels to bay IBIS.\"},{\"role\":\"user\",\"content\":\"Dispatch guide: Route Cedar parcels to bay IBIS.\"},{\"role\":\"user\",\"content\":\"Where should a Cedar parcel go?\"}],\"temperature\":0,\"max_tokens\":16}",
+            "evidence": {
+              "field": "request.body"
+            }
+          },
+          "decisions": [
+            {
+              "id": "bay",
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "IBIS",
+              "evidence": {
+                "field": "generated_text"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "order-birch-dispatch-guide",
+      "source": "synthetic-qwen-order",
+      "schema_version": 1,
+      "organization_id": "dispatch-lab",
+      "conversation_id": "Birch with dispatch guide first",
+      "calls": [
+        {
+          "id": "dispatch",
+          "model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "context": [
+            {
+              "id": "dispatch-guide",
+              "source_id": "dispatch-guide",
+              "source_version": "1",
+              "kind": "message",
+              "role": "user",
+              "availability": "included",
+              "text": "Route Birch parcels to bay WREN.",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 16,
+                  "end_byte": 48
+                }
+              },
+              "evidence": {
+                "field": "request.messages",
+                "message_index": 1
+              }
+            },
+            {
+              "id": "routing-note",
+              "source_id": "routing-note",
+              "source_version": "1",
+              "kind": "message",
+              "role": "user",
+              "availability": "included",
+              "text": "Route Birch parcels to bay WREN.",
+              "request_fragment": {
+                "pointer": "/messages/2/content",
+                "text_range": {
+                  "start_byte": 14,
+                  "end_byte": 46
+                }
+              },
+              "evidence": {
+                "field": "request.messages",
+                "message_index": 2
+              }
+            }
+          ],
+          "tool_results": [],
+          "relationships": [],
+          "recorded_request": {
+            "body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Dispatch guide: Route Birch parcels to bay WREN.\"},{\"role\":\"user\",\"content\":\"Routing note: Route Birch parcels to bay WREN.\"},{\"role\":\"user\",\"content\":\"Where should a Birch parcel go?\"}],\"temperature\":0,\"max_tokens\":16}",
+            "evidence": {
+              "field": "request.body"
+            }
+          },
+          "decisions": [
+            {
+              "id": "bay",
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "WREN",
+              "evidence": {
+                "field": "generated_text"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "order-birch-routing-note",
+      "source": "synthetic-qwen-order",
+      "schema_version": 1,
+      "organization_id": "dispatch-lab",
+      "conversation_id": "Birch with routing note first",
+      "calls": [
+        {
+          "id": "dispatch",
+          "model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "context": [
+            {
+              "id": "routing-note",
+              "source_id": "routing-note",
+              "source_version": "1",
+              "kind": "message",
+              "role": "user",
+              "availability": "included",
+              "text": "Route Birch parcels to bay WREN.",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 14,
+                  "end_byte": 46
+                }
+              },
+              "evidence": {
+                "field": "request.messages",
+                "message_index": 1
+              }
+            },
+            {
+              "id": "dispatch-guide",
+              "source_id": "dispatch-guide",
+              "source_version": "1",
+              "kind": "message",
+              "role": "user",
+              "availability": "included",
+              "text": "Route Birch parcels to bay WREN.",
+              "request_fragment": {
+                "pointer": "/messages/2/content",
+                "text_range": {
+                  "start_byte": 16,
+                  "end_byte": 48
+                }
+              },
+              "evidence": {
+                "field": "request.messages",
+                "message_index": 2
+              }
+            }
+          ],
+          "tool_results": [],
+          "relationships": [],
+          "recorded_request": {
+            "body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Routing note: Route Birch parcels to bay WREN.\"},{\"role\":\"user\",\"content\":\"Dispatch guide: Route Birch parcels to bay WREN.\"},{\"role\":\"user\",\"content\":\"Where should a Birch parcel go?\"}],\"temperature\":0,\"max_tokens\":16}",
+            "evidence": {
+              "field": "request.body"
+            }
+          },
+          "decisions": [
+            {
+              "id": "bay",
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "WREN",
+              "evidence": {
+                "field": "generated_text"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "reports": [
+    {
+      "version": 1,
+      "id": "order-cedar-dispatch-guide-1",
+      "runner_id": "Qwen/Qwen2.5-0.5B-Instruct / eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 / Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32 / c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "location": {
+        "run_id": "order-cedar-dispatch-guide",
+        "call_id": "dispatch",
+        "decision_id": "bay"
+      },
+      "recorded": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "IBIS"
+      },
+      "baseline_request_sha256": "d3525a1cf3faa3667d038f24aec7781ca92e69a685771003bbc0deac0f89e8cc",
+      "baseline": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "IBIS"
+          }
+        }
+      ],
+      "baseline_summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "variants": [
+        {
+          "intervention": {
+            "context_id": "dispatch-guide",
+            "pointer": "/messages/1/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            },
+            "replacement": "No dispatch record available."
+          },
+          "captured_context_sha256": "86b80fae9cf21aa8ed02bcd38447ba39c42378e015e25e93cf76a9019cb4f1db",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "IBIS"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        },
+        {
+          "intervention": {
+            "context_id": "routing-note",
+            "pointer": "/messages/2/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            },
+            "replacement": "No dispatch record available."
+          },
+          "captured_context_sha256": "86b80fae9cf21aa8ed02bcd38447ba39c42378e015e25e93cf76a9019cb4f1db",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "UNKNOWN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 0
+          },
+          "difference_pp": -100.0
+        }
+      ],
+      "pair": {
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "UNKNOWN"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0,
+        "interaction_pp": 0.0
+      }
+    },
+    {
+      "version": 1,
+      "id": "order-cedar-dispatch-guide-2",
+      "runner_id": "Qwen/Qwen2.5-0.5B-Instruct / eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 / Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32 / c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "location": {
+        "run_id": "order-cedar-dispatch-guide",
+        "call_id": "dispatch",
+        "decision_id": "bay"
+      },
+      "recorded": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "IBIS"
+      },
+      "baseline_request_sha256": "d3525a1cf3faa3667d038f24aec7781ca92e69a685771003bbc0deac0f89e8cc",
+      "baseline": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "IBIS"
+          }
+        }
+      ],
+      "baseline_summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "variants": [
+        {
+          "intervention": {
+            "context_id": "dispatch-guide",
+            "pointer": "/messages/1/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            },
+            "replacement": "This parcel was scanned this morning."
+          },
+          "captured_context_sha256": "86b80fae9cf21aa8ed02bcd38447ba39c42378e015e25e93cf76a9019cb4f1db",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "IBIS"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        },
+        {
+          "intervention": {
+            "context_id": "routing-note",
+            "pointer": "/messages/2/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            },
+            "replacement": "This parcel was scanned this morning."
+          },
+          "captured_context_sha256": "86b80fae9cf21aa8ed02bcd38447ba39c42378e015e25e93cf76a9019cb4f1db",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "IBIS"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        }
+      ],
+      "pair": {
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "UNKNOWN"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0,
+        "interaction_pp": -100.0
+      }
+    },
+    {
+      "version": 1,
+      "id": "order-cedar-routing-note-1",
+      "runner_id": "Qwen/Qwen2.5-0.5B-Instruct / eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 / Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32 / c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "location": {
+        "run_id": "order-cedar-routing-note",
+        "call_id": "dispatch",
+        "decision_id": "bay"
+      },
+      "recorded": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "IBIS"
+      },
+      "baseline_request_sha256": "9ebb38cd1e1fcd00b3dfaccf010669c9700fecf914aa06e8ffb49b48c767b32b",
+      "baseline": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "IBIS"
+          }
+        }
+      ],
+      "baseline_summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "variants": [
+        {
+          "intervention": {
+            "context_id": "routing-note",
+            "pointer": "/messages/1/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            },
+            "replacement": "No dispatch record available."
+          },
+          "captured_context_sha256": "86b80fae9cf21aa8ed02bcd38447ba39c42378e015e25e93cf76a9019cb4f1db",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "IBIS"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        },
+        {
+          "intervention": {
+            "context_id": "dispatch-guide",
+            "pointer": "/messages/2/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            },
+            "replacement": "No dispatch record available."
+          },
+          "captured_context_sha256": "86b80fae9cf21aa8ed02bcd38447ba39c42378e015e25e93cf76a9019cb4f1db",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "UNKNOWN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 0
+          },
+          "difference_pp": -100.0
+        }
+      ],
+      "pair": {
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "UNKNOWN"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0,
+        "interaction_pp": 0.0
+      }
+    },
+    {
+      "version": 1,
+      "id": "order-cedar-routing-note-2",
+      "runner_id": "Qwen/Qwen2.5-0.5B-Instruct / eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 / Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32 / c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "location": {
+        "run_id": "order-cedar-routing-note",
+        "call_id": "dispatch",
+        "decision_id": "bay"
+      },
+      "recorded": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "IBIS"
+      },
+      "baseline_request_sha256": "9ebb38cd1e1fcd00b3dfaccf010669c9700fecf914aa06e8ffb49b48c767b32b",
+      "baseline": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "IBIS"
+          }
+        }
+      ],
+      "baseline_summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "variants": [
+        {
+          "intervention": {
+            "context_id": "routing-note",
+            "pointer": "/messages/1/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            },
+            "replacement": "This parcel was scanned this morning."
+          },
+          "captured_context_sha256": "86b80fae9cf21aa8ed02bcd38447ba39c42378e015e25e93cf76a9019cb4f1db",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "IBIS"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        },
+        {
+          "intervention": {
+            "context_id": "dispatch-guide",
+            "pointer": "/messages/2/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            },
+            "replacement": "This parcel was scanned this morning."
+          },
+          "captured_context_sha256": "86b80fae9cf21aa8ed02bcd38447ba39c42378e015e25e93cf76a9019cb4f1db",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "IBIS"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        }
+      ],
+      "pair": {
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "UNKNOWN"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0,
+        "interaction_pp": -100.0
+      }
+    },
+    {
+      "version": 1,
+      "id": "order-birch-dispatch-guide-1",
+      "runner_id": "Qwen/Qwen2.5-0.5B-Instruct / eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 / Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32 / c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "location": {
+        "run_id": "order-birch-dispatch-guide",
+        "call_id": "dispatch",
+        "decision_id": "bay"
+      },
+      "recorded": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "WREN"
+      },
+      "baseline_request_sha256": "d33d63ddbb4f6431a3abc56e6860f68f72a35b7618bebac0fd1f4929c55f53d0",
+      "baseline": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "WREN"
+          }
+        }
+      ],
+      "baseline_summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "variants": [
+        {
+          "intervention": {
+            "context_id": "dispatch-guide",
+            "pointer": "/messages/1/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            },
+            "replacement": "No dispatch record available."
+          },
+          "captured_context_sha256": "5cbf0dc430b667181bdba4276c9cc3f3ee07500d81d9938c4f3ccbff82783ab4",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "WREN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        },
+        {
+          "intervention": {
+            "context_id": "routing-note",
+            "pointer": "/messages/2/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            },
+            "replacement": "No dispatch record available."
+          },
+          "captured_context_sha256": "5cbf0dc430b667181bdba4276c9cc3f3ee07500d81d9938c4f3ccbff82783ab4",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "UNKNOWN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 0
+          },
+          "difference_pp": -100.0
+        }
+      ],
+      "pair": {
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "UNKNOWN"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0,
+        "interaction_pp": 0.0
+      }
+    },
+    {
+      "version": 1,
+      "id": "order-birch-dispatch-guide-2",
+      "runner_id": "Qwen/Qwen2.5-0.5B-Instruct / eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 / Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32 / c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "location": {
+        "run_id": "order-birch-dispatch-guide",
+        "call_id": "dispatch",
+        "decision_id": "bay"
+      },
+      "recorded": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "WREN"
+      },
+      "baseline_request_sha256": "d33d63ddbb4f6431a3abc56e6860f68f72a35b7618bebac0fd1f4929c55f53d0",
+      "baseline": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "WREN"
+          }
+        }
+      ],
+      "baseline_summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "variants": [
+        {
+          "intervention": {
+            "context_id": "dispatch-guide",
+            "pointer": "/messages/1/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            },
+            "replacement": "This parcel was scanned this morning."
+          },
+          "captured_context_sha256": "5cbf0dc430b667181bdba4276c9cc3f3ee07500d81d9938c4f3ccbff82783ab4",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "BAY WREN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 0
+          },
+          "difference_pp": -100.0
+        },
+        {
+          "intervention": {
+            "context_id": "routing-note",
+            "pointer": "/messages/2/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            },
+            "replacement": "This parcel was scanned this morning."
+          },
+          "captured_context_sha256": "5cbf0dc430b667181bdba4276c9cc3f3ee07500d81d9938c4f3ccbff82783ab4",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "WREN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        }
+      ],
+      "pair": {
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "UNKNOWN"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0,
+        "interaction_pp": 0.0
+      }
+    },
+    {
+      "version": 1,
+      "id": "order-birch-routing-note-1",
+      "runner_id": "Qwen/Qwen2.5-0.5B-Instruct / eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 / Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32 / c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "location": {
+        "run_id": "order-birch-routing-note",
+        "call_id": "dispatch",
+        "decision_id": "bay"
+      },
+      "recorded": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "WREN"
+      },
+      "baseline_request_sha256": "db07a95442961d47da6a7eef8ddd9320b4008e7f6c5c13f2d233c7abed6afba9",
+      "baseline": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "WREN"
+          }
+        }
+      ],
+      "baseline_summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "variants": [
+        {
+          "intervention": {
+            "context_id": "routing-note",
+            "pointer": "/messages/1/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            },
+            "replacement": "No dispatch record available."
+          },
+          "captured_context_sha256": "5cbf0dc430b667181bdba4276c9cc3f3ee07500d81d9938c4f3ccbff82783ab4",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "WREN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        },
+        {
+          "intervention": {
+            "context_id": "dispatch-guide",
+            "pointer": "/messages/2/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            },
+            "replacement": "No dispatch record available."
+          },
+          "captured_context_sha256": "5cbf0dc430b667181bdba4276c9cc3f3ee07500d81d9938c4f3ccbff82783ab4",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "UNKNOWN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 0
+          },
+          "difference_pp": -100.0
+        }
+      ],
+      "pair": {
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "UNKNOWN"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0,
+        "interaction_pp": 0.0
+      }
+    },
+    {
+      "version": 1,
+      "id": "order-birch-routing-note-2",
+      "runner_id": "Qwen/Qwen2.5-0.5B-Instruct / eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 / Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32 / c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "location": {
+        "run_id": "order-birch-routing-note",
+        "call_id": "dispatch",
+        "decision_id": "bay"
+      },
+      "recorded": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "WREN"
+      },
+      "baseline_request_sha256": "db07a95442961d47da6a7eef8ddd9320b4008e7f6c5c13f2d233c7abed6afba9",
+      "baseline": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "WREN"
+          }
+        }
+      ],
+      "baseline_summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "variants": [
+        {
+          "intervention": {
+            "context_id": "routing-note",
+            "pointer": "/messages/1/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 14,
+              "end_byte": 46
+            },
+            "replacement": "This parcel was scanned this morning."
+          },
+          "captured_context_sha256": "5cbf0dc430b667181bdba4276c9cc3f3ee07500d81d9938c4f3ccbff82783ab4",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "WREN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 1
+          },
+          "difference_pp": 0.0
+        },
+        {
+          "intervention": {
+            "context_id": "dispatch-guide",
+            "pointer": "/messages/2/content",
+            "operation": "replace_text_fragment",
+            "text_range": {
+              "start_byte": 16,
+              "end_byte": 48
+            },
+            "replacement": "This parcel was scanned this morning."
+          },
+          "captured_context_sha256": "5cbf0dc430b667181bdba4276c9cc3f3ee07500d81d9938c4f3ccbff82783ab4",
+          "trials": [
+            {
+              "status": "completed",
+              "choice": {
+                "kind": "model_output",
+                "label": "Model answer",
+                "outcome": "UNKNOWN"
+              }
+            }
+          ],
+          "summary": {
+            "attempted": 1,
+            "completed": 1,
+            "matched": 0
+          },
+          "difference_pp": -100.0
+        }
+      ],
+      "pair": {
+        "trials": [
+          {
+            "status": "completed",
+            "choice": {
+              "kind": "model_output",
+              "label": "Model answer",
+              "outcome": "UNKNOWN"
+            }
+          }
+        ],
+        "summary": {
+          "attempted": 1,
+          "completed": 1,
+          "matched": 0
+        },
+        "difference_pp": -100.0,
+        "interaction_pp": 0.0
+      }
+    }
+  ]
+}

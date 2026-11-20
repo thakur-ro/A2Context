@@ -99,13 +99,20 @@ function tokenVisual(landmark) {
       element("span", { text: signed(edited - baseline) }))));
 }
 
+function trialTable(headers, rows) {
+  const headings = headers.map(text => element("th", { text, scope: "col" }));
+  function countCell(arm) {
+    return element("td", {},
+      element("span", { text: arm.matched + " / " + arm.attempted }),
+      arm.answer == null ? null : element("code", { className: "arm-answer", text: JSON.stringify(arm.answer) }));
+  }
+  const body = rows.map(([label, a, b]) => element("tr", { className: a.matched !== b.matched ? "different" : "" },
+    element("th", { text: label, scope: "row" }), countCell(a), countCell(b)));
+  return element("table", {}, element("thead", {}, element("tr", {}, ...headings)), element("tbody", {}, ...body));
+}
+
 function replacementVisual(detail) {
   const [left, right] = detail.conditions;
-  const cell = (tag, text, attributes = {}) => element(tag, { text, ...attributes });
-  const row = (label, a, b) => element("tr", { className: a.matched !== b.matched ? "different" : "" },
-    cell("th", label, { scope: "row" }), ...[a, b].map((arm) => element("td", {},
-      element("span", { text: arm.matched + " / " + arm.attempted }),
-      arm.answer == null ? null : element("code", { className: "arm-answer", text: JSON.stringify(arm.answer) }))));
   function wording(condition, label) {
     const edits = condition.edits;
     const same = edits.every((edit) => edit.replacement === edits[0].replacement);
@@ -115,11 +122,35 @@ function replacementVisual(detail) {
   }
   return element("div", { className: "replacement" },
     element("div", { className: "comparison" }, wording(left, "Wording A"), wording(right, "Wording B")),
-    element("table", {}, element("thead", {}, element("tr", {}, cell("th", "Edit", { scope: "col" }),
-      cell("th", "Wording A", { scope: "col" }), cell("th", "Wording B", { scope: "col" }))),
-      element("tbody", {}, row("Original", left.baseline, right.baseline),
-        ...left.edits.map((edit, index) => row(edit.id, edit, right.edits[index])),
-        left.joint ? row("Both sources", left.joint, right.joint) : null)));
+    trialTable(["Edit", "Wording A", "Wording B"], [["Original", left.baseline, right.baseline],
+      ...left.edits.map((edit, i) => [edit.id, edit, right.edits[i]]),
+      ...(left.joint ? [["Both sources", left.joint, right.joint]] : [])]));
+}
+
+function orderComparison({ forward, reverse, differs }) {
+  const [a, b] = forward.edits;
+  const first = [a.source + " first", b.source + " first"];
+  const rows = [["Original", forward.baseline, reverse.baseline],
+    ...forward.edits.map((arm, i) => ["Edit " + arm.source, arm, reverse.edits[i]])];
+  function relativeToBaseline(row, index) {
+    const arm = row.edits[index];
+    return Math.sign(arm.matched * row.baseline.attempted - row.baseline.matched * arm.attempted);
+  }
+  const preservedEarlier = relativeToBaseline(forward, 0) === 0 && relativeToBaseline(reverse, 1) === 0;
+  const lowerLater = relativeToBaseline(forward, 1) < 0 && relativeToBaseline(reverse, 0) < 0;
+  const wording = a.replacement === b.replacement ? [a.replacement] :
+    forward.edits.map(arm => arm.source + " · " + arm.replacement);
+  const trials = [forward, reverse].map((row, i) => {
+    const measurement = { location: { decision_id: row.decision }, replay_id: row.report, context_id: row.edits[0].id };
+    const href = advancedHref({ id: row.trace }, { id: row.call }, { detail: { measurement } });
+    return element("p", {}, link(row.thread || first[i], href));
+  });
+  return element("section", { className: "panel replacement" },
+    element("h2", { text: differs ? "Match counts changed with order" : "Match counts held across orders" }),
+    element("p", { text: forward.model + " · " + wording.map(text => JSON.stringify(text)).join(" / ") }),
+    preservedEarlier && lowerLater ? element("p", { text: "In both orders, editing the earlier source preserved the match rate. Editing the later source lowered it." }) : null,
+    trialTable(["Edited input", ...first], rows),
+    element("details", {}, element("summary", { text: "Original trials" }), ...trials));
 }
 
 function visual(kind, detail, rows = []) {
@@ -207,10 +238,10 @@ function impactPanel(impact) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
+  const signals = { order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
+  const step = { order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
@@ -219,7 +250,8 @@ function factorRow(factor, featured = false) {
   const name = factorName(factor.sources);
   const counts = [factor.org, plural(factor.conversations, "identified conversation"), plural(factor.requests, "request"),
     plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ");
-  return element("a", { className: featured ? "factor-row featured" : "factor-row", href: url({ factor: factor.id }) },
+  return element("a", { className: featured ? "factor-row featured" : "factor-row",
+    href: url({ factor: factor.id, ...(factor.signal === "order" && { order: 1 }) }) },
     element("div", {},
       featured ? element("span", { className: "first-step", text: "Recommended next step" }) : null,
       element("strong", { text: featured ? step[factor.signal] : name }),
@@ -536,13 +568,24 @@ async function render(refresh = false) {
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) body = review(cards.rows[0], occurrences);
       pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId });
+    } else if (factorId && query.has("order")) {
+      const data = await api("order-tests", { ...scope, factor: factorId, offset: pageOffset });
+      const result = data.rows[0];
+      byId("title").textContent = "Source order";
+      byId("summary").textContent = result ? "Swapping the two source messages changed a single-edit match count in " +
+        result.differing + " of " + plural(result.total, "matched comparison") + "." : "No matched orders in this scope.";
+      body = element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId })),
+        result ? element("p", { text: "Each cell shows trials matching the recorded outcome. Repeat the swap on fresh requests to see whether the pattern holds." }) : null,
+        ...data.rows.map(orderComparison));
+      pagination(data.next_offset, { factor: factorId, order: 1 });
     } else if (factorId) {
       const filters = { ...scope, factor: factorId };
-      const [data, impact] = await Promise.all([api("findings", { ...filters, offset: pageOffset }), api("impact", filters)]);
+      const [data, impact, orders] = await Promise.all([api("findings", { ...filters, offset: pageOffset }), api("impact", filters), api("order-tests", filters)]);
       byId("title").textContent = data.rows.length ? factorName(data.rows[0].evidence.detail.sources) : "Source factor";
       byId("summary").textContent = "Each recommendation below uses its own comparison and outcome.";
       body = element("div", { className: "feed" }, link("All source factors", url({})),
         data.rows.length ? replayCoverage(impact) : null,
+        orders.rows.length ? link("Compare the two source orders", url({ factor: factorId, order: 1 }), "action") : null,
         ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
       pagination(data.next_offset, { factor: factorId });
     } else {
@@ -618,7 +661,7 @@ async function main() {
       delete values.meta_value;
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
-      span: query.get("span"), finding: query.get("finding"), factor: factorId, recommendation: recommendationId }, values);
+      span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), recommendation: recommendationId }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

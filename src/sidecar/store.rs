@@ -223,10 +223,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 3 {
+        if version == 4 {
             return Ok(());
         }
-        if !(0..3).contains(&version) {
+        if !(0..4).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -248,7 +248,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 3)?;
+        self.0.pragma_update(None, "user_version", 4)?;
         Ok(())
     }
 
@@ -314,7 +314,10 @@ impl Store {
             .map(|offset| offset.parse::<u32>())
             .transpose()?
             .unwrap_or(0);
-        if matches!(view, "findings" | "factors" | "impact" | "occurrences") {
+        if matches!(
+            view,
+            "findings" | "factors" | "impact" | "occurrences" | "order-tests"
+        ) {
             sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,json_extract(o.detail,'$.factor') AS factor,
                 CASE WHEN o.kind IN ('candidate','token','shadow') OR
                     (o.kind='replay' AND json_extract(o.detail,'$.effect_pp') != 0) THEN 1 ELSE 0 END AS changed
@@ -332,7 +335,14 @@ impl Store {
             append_window(&mut sql, &mut args, "o.observed", filters)?;
             sql.push(')');
         }
+        if matches!(view, "order-tests" | "factors") {
+            sql.push_str(super::order::MATCHED);
+        }
         match view {
+            "order-tests" => sql.push_str(" SELECT json_object('factor',factor,'design',design,
+                'differs',differs,'total',count(*) OVER (),'differing',sum(differs) OVER (),
+                'forward',json(forward),'reverse',json(reverse)) FROM pairs
+                ORDER BY differs DESC,factor,design LIMIT ? OFFSET ?"),
             "impact" => {
                 sql.push_str(", replay_by_thread AS (
                     SELECT thread_key, max(kind='replay' AND changed=1) AS shifted,
@@ -355,14 +365,15 @@ impl Store {
                 SELECT factor,org,json_extract(min(detail),'$.sources') AS sources,
                     count(DISTINCT thread_key) AS conversations,count(DISTINCT trace_id) AS requests,
                     count(DISTINCT CASE WHEN changed=1 THEN trace_id END) AS changed_requests,
-                    count(DISTINCT group_id) AS recommendations,max(observed) AS latest,
+                    count(DISTINCT group_id) + (factor IN (SELECT factor FROM pairs)) AS recommendations,max(observed) AS latest,
+                    CASE WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -3 ELSE
                     min(CASE WHEN kind='replacement' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
                         WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' THEN 2 WHEN kind='token' THEN 3
-                        WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 6 ELSE 7 END) AS signal
+                        WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 6 ELSE 7 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,
-                    'signal',CASE signal WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN 'replay' WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
+                    'signal',CASE signal WHEN -3 THEN 'order' WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN 'replay' WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
                         WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
                 FROM grouped ORDER BY signal,conversations DESC,requests DESC,latest DESC,factor LIMIT ? OFFSET ?"),
             "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,

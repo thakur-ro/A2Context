@@ -266,6 +266,50 @@ def check_replay_representative(base):
     assert outcomes == {"mixed": 0, "changed_only": 1, "equal_only": 1, "unmeasured": 0}, outcomes
 
 
+def check_order_tests(base):
+    fixture = json.loads((ROOT / "examples/redundant-routing/measured/local-order.json").read_text())
+    reports = []
+    for run in fixture["runs"]:
+        call, = run["calls"]
+        span = case_span(run["id"], "order")
+        request = json.loads(call["recorded_request"]["body"])
+        declarations = [{key: item[key] for key in ("id", "source_id", "source_version", "role", "request_fragment")}
+                        for item in call["context"]]
+        span["attributes"] = attrs({
+            "gen_ai.operation.name": "chat", "gen_ai.request.model": call["model"],
+            "gen_ai.conversation.id": run["conversation_id"], "nexusweave.organization.id": "order-check",
+            "nexusweave.user.id": call["context"][0]["source_id"],
+            "nexusweave.request.body": call["recorded_request"]["body"],
+            "nexusweave.context.semantics": json.dumps({"version": 1, "request_sources": declarations}),
+            "gen_ai.input.messages": json.dumps([{"role": m["role"], "parts": [{"type": "text", "content": m["content"]}]}
+                                                 for m in request["messages"]]),
+            "gen_ai.output.messages": json.dumps([{"role": "assistant", "parts": [
+                {"type": "text", "content": call["decisions"][0]["outcome"]}]}]),
+        })
+        send_traces(base, export(span))
+        for report in fixture["reports"]:
+            if report["location"]["run_id"] != run["id"]:
+                continue
+            report["location"] = {"run_id": "otlp:" + span["traceId"], "call_id": span["spanId"], "decision_id": "output:0:0"}
+            for arm in report["variants"]:
+                arm["intervention"]["context_id"] = "request-source:" + arm["intervention"]["context_id"]
+            send(base, "/api/replay-reports", report, expected=201)
+            reports.append(report)
+    pairs = get(base, "order-tests", org="order-check")["rows"]
+    assert [pair["differs"] for pair in pairs] == [1, 1, 0, 0], pairs
+    assert all(pair["total"] == 4 and pair["differing"] == 2 for pair in pairs)
+    assert not get(base, "order-tests", org="order-check", user="routing-note")["rows"]
+    assert get(base, "factors", org="order-check")["rows"][0]["signal"] == "order"
+    # An inconsistent repeat in one orientation retires only that matched comparison.
+    repeat = deepcopy(reports[0])
+    repeat["id"] += "-repeat"
+    changed = next(arm for arm in repeat["variants"] if arm["difference_pp"])
+    changed.update(trials=repeat["baseline"], summary=repeat["baseline_summary"], difference_pp=0)
+    repeat["pair"]["interaction_pp"] = -100
+    send(base, "/api/replay-reports", repeat, expected=201)
+    assert len(get(base, "order-tests", org="order-check")["rows"]) == 3
+
+
 def check_predecision_recommendations(base):
     fixture = ROOT / "examples/runtime-comparison/pending-routing"
     read = lambda name: json.loads((fixture / name).read_text())
@@ -509,9 +553,17 @@ def main():
             assert get(base, "findings", kind="candidate")["rows"]
             if args.sdk_python:
                 assert get(base, "findings", kind="token")["rows"]
-        with server(args.binary, folder / "representative.sqlite", "--capture-content") as base:
+        representative = folder / "representative.sqlite"
+        with server(args.binary, representative, "--capture-content") as base:
             check_replay_representative(base)
             check_replacement_comparison(base)
+            check_order_tests(base)
+            pairs = get(base, "order-tests", org="order-check")
+        with sqlite3.connect(representative) as sql:
+            sql.execute("PRAGMA user_version = 3")
+            sql.execute("UPDATE observations SET detail=json_remove(detail,'$.order_test') WHERE kind='replay'")
+        with server(args.binary, representative, "--capture-content") as base:
+            assert get(base, "order-tests", org="order-check") == pairs
         if args.sdk_python:
             # Repeat the live card, recurrence, and replay journeys using the
             # SDK's actual encoder, processor, and exporter.

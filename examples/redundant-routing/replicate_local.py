@@ -13,13 +13,17 @@ RECORDS = ("Dispatch guide", "Routing note")
 REPLACEMENTS = ("No dispatch record available.", "This parcel was scanned this morning.")
 
 
-def answer(runtime, parcel, bay, order, edited=(), replacement=""):
+def request_for(parcel, bay, order, edited=(), replacement=""):
     messages = [{"role": "system", "content": "Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN."}]
     for record in order:
         value = replacement if record in edited else f"Route {parcel} parcels to bay {bay}."
         messages.append({"role": "user", "content": f"{record}: {value}"})
     messages.append({"role": "user", "content": f"Where should a {parcel} parcel go?"})
-    request = {"model": MODEL, "messages": messages, "temperature": 0, "max_tokens": 16}
+    return {"model": MODEL, "messages": messages, "temperature": 0, "max_tokens": 16}
+
+
+def answer(runtime, parcel, bay, order, edited=(), replacement=""):
+    request = request_for(parcel, bay, order, edited, replacement)
     try:
         return {"answer": propose(runtime, request, MODEL)["outcome"]}
     except ValueError as error:
