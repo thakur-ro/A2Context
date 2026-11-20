@@ -340,6 +340,7 @@ pub fn preview(
         "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths, "prefix_reviews":prefix_reviews,
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
         "scope_coverage": preflight.scope_coverage, "source_coverage": preflight.source_coverage,
+        "anchor_overlap": preflight.anchor_overlap,
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))
 }

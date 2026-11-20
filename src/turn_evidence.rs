@@ -75,6 +75,7 @@ pub fn query<'a>(
         Verification::Matched { report } => json!({
             "status": "matched", "anchor": check.evidence, "scope": check.scope,
             "finding_count": report.findings.len(), "scope_coverage": report.scope_coverage, "source_coverage": report.source_coverage, "scoped_rule_items": report.scoped_rule_items,
+            "anchor_overlap": report.anchor_overlap,
         }),
         Verification::Unverified { issue } => json!({
             "status": "unverified", "anchor": check.evidence, "issue": issue,

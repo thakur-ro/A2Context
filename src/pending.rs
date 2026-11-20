@@ -146,6 +146,7 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
         "captured_excerpts_enabled": allow_excerpts,
         "preflight": {"scope": scope, "finding_count": preflight.findings.len(),
             "scope_coverage": preflight.scope_coverage, "source_coverage":preflight.source_coverage,
+            "anchor_overlap": preflight.anchor_overlap,
             "scoped_rule_items": preflight.scoped_rule_items, "receipt": preflight.receipt},
         "context_screening": screening.as_ref().map(turn_evidence::screen_summary),
         "candidate_probes": candidates.iter().map(|probe| turn_evidence::candidate_summary(probe, excerpts)).collect::<Vec<_>>(),

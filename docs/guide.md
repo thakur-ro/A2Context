@@ -92,6 +92,23 @@ Set the `nexusweave.required_sources` attribute to an object or its JSON encodin
 
 An unconfirmed ID means the capture lacks that anchor. The text may still be present. A complete set establishes capture coverage only. Currency, revision, the meaning of the text and approval at dispatch require their own checks. When the request includes a body, preflight returns a version-two receipt for this check. Attach that receipt to the inference span alongside the original request and source declarations to see where a gap recurs. [Example request](../examples/exchange-approval/pending.json)
 
+### Check whether editing a passage touches two sources
+
+Preflight also checks whether two named sources cover the same part of a request. Here, the handbook and returns policy both identify bytes 12 through 23 of the same system message. Editing that passage changes the input associated with both IDs. In **Before inference**, the result shows the JSON Pointer, half-open byte range and two source IDs for the first overlap in each of up to eight fields. Select disjoint ranges if the experiment needs to isolate the two sources.
+
+![Source boundaries in a system message, with the shared interval shaded on both rows](media/anchor-overlap.png)
+
+To reproduce the diagram, load the resulting file in **Before inference**.
+
+```sh
+jq '.attributes["nexusweave.context.semantics"].request_sources +=
+    [{id:"handbook",source_id:"retail/handbook",request_fragment:{
+      pointer:"/messages/0/content",text_range:{start_byte:12,end_byte:31}}}] | {request:.}' \
+    examples/preflight-returns.json > /tmp/returns-source-boundaries.json
+```
+
+`anchor_overlap.named_bytes` counts the union of all included, named fragment ranges. `shared_bytes` counts the bytes covered by at least two distinct source IDs in the same field. Offsets address UTF-8 bytes in the decoded JSON string. Repeated anchors for one ID count once. Without named fragments the CLI omits the measurement. A measured zero means the named ranges were disjoint across distinct IDs. The sidecar also exposes the measurement on a matching version-two recorded check.
+
 ### Show preflight alongside the recorded answer
 
 When the check includes `nexusweave.request.body`, the response includes a `receipt`. Attach it to the same inference call as `nexusweave.preflight`. For OTLP, serialize the receipt as a JSON string span attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `nexusweave.span.id` to the inference run's exact `id`.

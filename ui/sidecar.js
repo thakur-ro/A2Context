@@ -218,6 +218,30 @@ function requiredSourceList(coverage) {
   })));
 }
 
+function overlappingAnchors(report) {
+  if (!report?.shared_bytes) return null;
+  function drawRange({pointer,text_range:shared,sources,source_count:count}) {
+    const left = Math.min(...sources.map(s => s.text_range.start_byte));
+    const right = Math.max(...sources.map(s => s.text_range.end_byte));
+    function band(range, className) {
+      const node = element("span",{className});
+      node.style.left = 100*(range.start_byte-left)/(right-left)+"%";
+      node.style.width = 100*(range.end_byte-range.start_byte)/(right-left)+"%";
+      return node;
+    }
+    const label = r => "["+r.start_byte+", "+r.end_byte+")";
+    return element("figure",{className:"anchor-ranges"},
+      element("figcaption",{},element("code",{text:pointer})," · "+count+" source IDs share bytes "+label(shared)),
+      ...sources.map(s => element("div",{},element("span",{text:s.source_id+"  "+label(s.text_range)}),
+        element("div",{className:"byte-track","aria-hidden":"true"},band(s.text_range,"named-range"),band(shared,"shared-range")))));
+  }
+  return element("section",{className:"panel","aria-label":"Overlapping source anchors"},
+    element("h2",{text:"Check the boundaries of your source edit"}),
+    element("p",{text:report.shared_bytes+" of "+report.named_bytes+" named UTF-8 bytes belong to more than one source ID. Changing those bytes edits both sources."}),
+    ...report.examples.map(drawRange),
+    element("small",{text:"First shared range per field, showing "+report.examples.length+" of "+plural(report.shared_fields,"field")+". Select disjoint ranges to test the sources separately."}));
+}
+
 function visual(kind, detail, rows = []) {
   if (kind === "source_gap") return requiredSourceList(detail.coverage);
   if (kind === "prefill") return firstTokenPreview(detail, true);
@@ -2010,6 +2034,7 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "comparison finding") + (report.prefill ? " · First-token test attached" : "") }),
+        overlappingAnchors(report.anchor_overlap),
         sources && element("section",{className:"panel","aria-label":"Required source coverage"},
           element("h2",{text:(sources.matched ? "Sources captured for " : "Check sources for ") + sources.name}),
           requiredSourceList(sources),

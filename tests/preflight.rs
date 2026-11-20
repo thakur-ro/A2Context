@@ -14,6 +14,86 @@ fn fixture_trace() -> Value {
     serde_json::from_str(TRACE).unwrap()
 }
 
+#[test]
+fn measures_unions_of_shared_utf8_bytes_in_each_field() {
+    let fragment = |id: usize, source: &str, pointer: &str, start: usize, end: usize| {
+        json!({
+            "id":format!("fragment-{id}"), "source_id":source,
+            "request_fragment":{"pointer":pointer,"text_range":{"start_byte":start,"end_byte":end}}
+        })
+    };
+    let mut request = json!({"version":1,"attributes":{
+        "nexusweave.request.body":json!({"a/b":"éabcdef","other":"éabcdef"}).to_string(),
+        "nexusweave.context.semantics":{"version":1,"request_sources":[
+            fragment(0,"cache","/a~1b",0,5), fragment(1,"cache","/a~1b",2,6),
+            fragment(2,"customer","/a~1b",3,7), fragment(3,"policy","/a~1b",4,5),
+            fragment(4,"outside","/a~1b",7,8), fragment(5,"other","/other",0,8),
+            fragment(6,"cache","/a~1b",2,6)
+        ]}
+    }});
+    let overlap = check(request.clone()).unwrap().anchor_overlap.unwrap();
+    assert_eq!(
+        (
+            overlap.named_bytes,
+            overlap.shared_bytes,
+            overlap.shared_fields
+        ),
+        (16, 3, 1)
+    );
+    assert_eq!(overlap.examples.len(), 1);
+    assert_eq!(overlap.examples[0].pointer, "/a~1b");
+    let [a, b] = &overlap.examples[0].sources;
+    assert_eq!(
+        (a.source_id.as_str(), b.source_id.as_str()),
+        ("cache", "customer")
+    );
+    assert_eq!((a.text_range.start_byte, a.text_range.end_byte), (0, 5));
+    assert_eq!((b.text_range.start_byte, b.text_range.end_byte), (3, 7));
+    assert_eq!(overlap.examples[0].text_range.start_byte, 3);
+    assert_eq!(overlap.examples[0].text_range.end_byte, 4);
+    request["attributes"][SEMANTICS]["request_sources"] = json!([
+        fragment(0, "a", "/other", 0, 2),
+        fragment(1, "b", "/other", 2, 3)
+    ]);
+    assert_eq!(
+        check(request.clone())
+            .unwrap()
+            .anchor_overlap
+            .unwrap()
+            .shared_bytes,
+        0
+    );
+    request["attributes"][SEMANTICS]["request_sources"] = json!([]);
+    assert!(check(request).unwrap().anchor_overlap.is_none());
+}
+
+#[test]
+fn bounds_overlap_examples_without_truncating_the_measurement() {
+    let fields = vec!["sample"; 12];
+    let mut sources = Vec::new();
+    for index in 0..fields.len() {
+        for id in ["one", "two"] {
+            sources.push(
+                json!({"id":format!("{id}-{index}"), "source_id":id, "request_fragment":{
+                    "pointer":format!("/inputs/{index}"),"text_range":{"start_byte":0,"end_byte":6}
+                }}),
+            );
+        }
+    }
+    let request = json!({"version":1,"attributes":{"nexusweave.request.body":json!({"inputs":fields}).to_string(),
+        "nexusweave.context.semantics":{"version":1,"request_sources":sources}}});
+    let overlap = check(request).unwrap().anchor_overlap.unwrap();
+    assert_eq!(
+        (
+            overlap.shared_fields,
+            overlap.shared_bytes,
+            overlap.named_bytes
+        ),
+        (12, 72, 72)
+    );
+    assert_eq!(overlap.examples.len(), 8);
+}
+
 fn at_turn(recorded: &[Run], include_excerpts: bool) -> Value {
     turn_evidence::query(
         &turn_evidence::Request {
@@ -176,6 +256,7 @@ fn langsmith_recomputes_source_coverage_only_for_a_matching_version_two_receipt(
     let runs = langsmith::import(&trace).unwrap();
     let result = at_turn(&runs, false);
     let coverage = &result["preflight"]["source_coverage"];
+    assert_eq!(result["preflight"]["anchor_overlap"]["shared_bytes"], 0);
     assert_eq!(coverage["matched"], false);
     assert_eq!(
         coverage["alternatives"][0]["unconfirmed"],
@@ -185,6 +266,7 @@ fn langsmith_recomputes_source_coverage_only_for_a_matching_version_two_receipt(
     let changed = at_turn(&langsmith::import(&trace).unwrap(), false);
     assert_eq!(changed["preflight"]["status"], "unverified");
     assert!(changed["preflight"].get("source_coverage").is_none());
+    assert!(changed["preflight"].get("anchor_overlap").is_none());
 }
 
 #[test]

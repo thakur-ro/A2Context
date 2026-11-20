@@ -465,6 +465,13 @@ body:has(.canvas-home) { background:#f6f6f4; }
 .network-pager:not(:empty) { margin-top:8px; }
 .overview-plot .large-network { min-width:0; }
 .network-key { display:block; margin-top:8px; font-size:.78rem; color:var(--muted); }
+.anchor-ranges { margin:12px 0; padding:12px 0; border-block-start:1px solid var(--line); font-size:.88rem; overflow-wrap:anywhere; }
+.anchor-ranges figcaption { margin-bottom:8px; }
+.anchor-ranges > div { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:center; gap:12px; padding:3px 0; }
+.byte-track { position:relative; height:8px; background:#edf0f5; border-radius:3px; }
+.byte-track span { position:absolute; inset-block:0; }
+.named-range { background:#aebfd5; }
+.shared-range { background:#465d85; }
 .hover-label { opacity:0; pointer-events:none; }
 .network-node:hover .hover-label,.network-node:focus .hover-label { opacity:1; }
 

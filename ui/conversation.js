@@ -302,6 +302,13 @@ function renderPreflightCheck(parent, check, call, { open, run, shadowAction }) 
       if (run) section.append(node("p", "The workflow reported this check before inference. Its request and rule sources match the recorded call.", "muted"));
       if (check.scope) section.append(node("small", check.scope.key + " · " + check.scope.scope, "anchor"));
       const sources = check.report.source_coverage;
+      const overlap = check.report.anchor_overlap;
+      if (overlap?.shared_bytes) {
+        section.append(node("h3","Overlapping source anchors"),
+          node("p",overlap.shared_bytes+" of "+overlap.named_bytes+" named UTF-8 bytes belong to multiple source IDs."));
+        for (const row of overlap.examples) section.append(node("p", row.sources.map(s=>s.source_id).join(" and ")+" share bytes ["+
+          row.text_range.start_byte+", "+row.text_range.end_byte+") in "+row.pointer+"."));
+      }
       if (sources) {
         section.append(node("h3", (sources.matched ? "Sources captured for " : "Check sources for ") + sources.name));
         for (const group of sources.alternatives) section.append(node("p", group.required.join(" + ") +

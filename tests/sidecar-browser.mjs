@@ -266,6 +266,18 @@ try {
     buffer:Buffer.from(JSON.stringify({request:missingRule}))});
   await required.getByRole("heading",{name:"Sources captured for Holiday eligibility"}).waitFor();
   assert.equal(await required.getByText(/All anchored in the request/).count(),1);
+  const declarations = missingRule.attributes["nexusweave.context.semantics"].request_sources;
+  declarations.push({id:"handbook",source_id:"retail/handbook",
+    request_fragment:{pointer:"/messages/0/content",text_range:{start_byte:12,end_byte:31}}});
+  await page.locator('input[type="file"]').setInputFiles({name:"overlap.json",mimeType:"application/json",
+    buffer:Buffer.from(JSON.stringify({request:missingRule}))});
+  const overlap = page.getByRole("region",{name:"Overlapping source anchors"});
+  await overlap.getByText(/18 of 47 named UTF-8 bytes/).waitFor();
+  await overlap.getByText(/retail\/handbook\s+\[12, 31\)/).waitFor();
+  await overlap.getByText(/retail\/returns-policy\s+\[0, 24\)/).waitFor();
+  await overlap.getByText("/messages/0/content",{exact:true}).waitFor();
+  assert.equal(await overlap.locator(".shared-range").count(),2);
+  if (process.env.ANCHOR_CAPTURE) await overlap.screenshot({path:process.env.ANCHOR_CAPTURE});
   const demoFixture = name => readFile(new URL("../examples/redundant-routing/" + name, import.meta.url), "utf8").then(JSON.parse);
   const {request} = await demoFixture("candidate-checks/ash-routing-note.json");
   const {shadow} = await demoFixture("ash-history-check.json");

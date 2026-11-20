@@ -14,6 +14,7 @@ A customer pauses the second of two exchanges. The agent still proposes it after
 | --- | --- |
 | Which conversations share a context problem? | Open a recommendation to find the turns with the same declared conflict, repeated input or missing source anchor. [Try a recurring capture gap](docs/demo.md#diagnose-missing-context-capture) |
 | Did the request contain the sources my workflow requires? | Before dispatch, check whether one complete set of named source fragments was captured. [Staging example](docs/guide.md#check-alternative-sources-before-dispatch) |
+| Can I edit this passage and isolate one source? | Check which named fragments share the same bytes in the assembled request. [See overlapping edits](docs/guide.md#check-whether-editing-a-passage-touches-two-sources) |
 | Which source should I test before answering? | Check the assembled request. If your scorer supplies probabilities, compare candidate continuations before and after a named source edit at the same answer prefix. |
 | Would this edit fix the answer elsewhere? | Compare original and edited generations against a supplied reference. The dashboard surfaces matched questions where the same edit had opposite effects on correctness. |
 

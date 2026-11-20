@@ -15,7 +15,9 @@ use std::collections::BTreeMap;
 
 const VERSION: u32 = 1;
 
+mod anchor_overlap;
 mod required_sources;
+pub use anchor_overlap::{AnchorOverlap, NamedRange, SharedRange};
 pub(crate) use required_sources::RequiredSources;
 pub use required_sources::{Alternative, SourceCoverage};
 
@@ -45,6 +47,9 @@ pub struct Report {
     /// Coverage of caller-specified alternatives in this pending request.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_coverage: Option<SourceCoverage>,
+    /// Distinct source IDs covering the same bytes in a captured string field.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anchor_overlap: Option<AnchorOverlap>,
     pub findings: Vec<Finding>,
     /// Attach to the resulting inference span as `nexusweave.preflight`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -168,6 +173,7 @@ pub(crate) fn report_for_pending(
 ) -> Report {
     let mut report = compare(call, scope.as_ref());
     report.source_coverage = required.as_ref().map(|r| r.evaluate(call));
+    report.anchor_overlap = anchor_overlap::measure(call);
     if let Some(fingerprint) = receipt_fingerprint(call, scope.as_ref(), required.as_ref()) {
         report.receipt = Some(Receipt {
             version: if required.is_some() { 2 } else { VERSION },
@@ -245,6 +251,9 @@ pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<RecordedCh
         Ok(receipt) => {
             let mut report = compare(call, scope);
             report.source_coverage = receipt.required_sources.as_ref().map(|r| r.evaluate(call));
+            if receipt.version == 2 {
+                report.anchor_overlap = anchor_overlap::measure(call);
+            }
             Verification::Matched {
                 report: Box::new(report),
             }
@@ -424,6 +433,7 @@ fn compare(call: &Call, scope: Option<&DecisionScope>) -> Report {
         scoped_rule_items,
         scope_coverage: scope.map(|s| scope_coverage(call, s)),
         source_coverage: None,
+        anchor_overlap: None,
         findings,
         receipt: None,
     }

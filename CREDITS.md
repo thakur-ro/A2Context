@@ -2,6 +2,8 @@
 
 ## Context inspection and replay
 
+Victor Klee studied the length of a union of intervals in 1977. The source-boundary check applies an endpoint sweep to UTF-8 byte ranges in each JSON field, tracking distinct source IDs over those intervals. [Klee, *The American Mathematical Monthly*](https://doi.org/10.1080/00029890.1977.11994336)
+
 - Giga Chang’s `context-render` informed the use of named context sources and cross-session views. It is an independent project for Claude Code. [context-render](https://github.com/gigayaya/context-render)
 - Benjamin Cohen-Wang, Harshay Shah, Kristian Georgiev, and Aleksander Mądry introduced ContextCite, a related method for attributing generated statements to context. NexusWeave’s replay tests user-selected edits against recorded workflow decisions. [ContextCite, NeurIPS 2024](https://proceedings.neurips.cc/paper_files/paper/2024/hash/adbea136219b64db96a9941e4249a857-Abstract-Conference.html)
 - Stefan Heimersheim and Neel Nanda describe how to apply and interpret activation patching. Their guide informed the decoder-block swaps and controls in the instrumented examples. [How to use and interpret activation patching](https://arxiv.org/abs/2404.15255)
