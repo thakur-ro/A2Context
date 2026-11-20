@@ -1,0 +1,2416 @@
+{
+  "revision": "6ea57973c7a6097fd7c5915698c54c17c5b1b6c8",
+  "protocol_sha256": "de9a2d86e810416ef3c54535304f87d697df30682fb2512b4229d33f03ae5350",
+  "model_files_sha256": "2e4941a75a2fa5513c80e92177aafbca95a71ebfe9c7063934631cac86d689b7",
+  "catalogs_sha256": {
+    "full": "844deb9e2cef0ebb30013cefbf3a22014a8068dd18bca29597807cdc98ec00f3",
+    "scoped": "caeed3047c0202f65c66072b6fba582266b787d0cdc7e353d33adc0b427b1b58"
+  },
+  "cases": [
+    {
+      "id": "multi_turn_base_116",
+      "positive": {
+        "id": "multi_turn_base_116",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_watchlist",
+            "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "status": "executed",
+            "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "response_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d"
+          }
+        ],
+        "state_sha256": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_116",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+        "state_match": true,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9997744422173278,
+        "scoped": 0.9996381410017565,
+        "dots": 0.904964701516522,
+        "letters": 0.8622105660836622
+      },
+      "js_bits": {
+        "full/scoped": 3.8282177268837715e-05,
+        "full/dots": 0.04832232348418186,
+        "full/letters": 0.07157612816450834,
+        "scoped/dots": 0.04774550010323968,
+        "scoped/letters": 0.07095785243840369,
+        "dots/letters": 0.005347973488354431
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_116",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d",
+              "before": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+              "after": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+              "feedback_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d"
+            }
+          ],
+          "state_sha256": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "b28f14815ad348547f550e4215dc35e8d05a37ed70005fa6208cf23d1d2e02fe",
+              "history_sha256": "4dd93571222a335a2da3f75f591a44a2a3955b6696e7d6d8569543ce7d0684db",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3240,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3240
+            },
+            {
+              "prompt_sha256": "d5e2903c9743d258515b37b9b41ccefabaa1b5cf277e083d94598e582b05fd9f",
+              "history_sha256": "31cb864b7422a4aacc60e0c142716d35e0ae0fb19ee2d00a7110e1ecb39effab",
+              "raw_sha256": "8d32875ceb6c66a0ef4df61c2ed35ed2c0dcdc909f37ea54cfcb188cf9c41e76",
+              "input_tokens": 3277,
+              "generated_tokens": 34,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3277
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "scoped": {
+          "id": "multi_turn_base_116",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d",
+              "before": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+              "after": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+              "feedback_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d"
+            }
+          ],
+          "state_sha256": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "32633fb9773d9afd5b276c03d026d2ad15b8d95d7e1b633b193b8d97385b55a7",
+              "history_sha256": "4dd93571222a335a2da3f75f591a44a2a3955b6696e7d6d8569543ce7d0684db",
+              "raw_sha256": "b59a4557afe020ef29bc05e65a3163b56773c6b53e637c541295a3f61686e761",
+              "input_tokens": 775,
+              "generated_tokens": 27,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3240
+            },
+            {
+              "prompt_sha256": "b6eb4e17a8355d8c2cbfc02f51fbd9eaa30253634191c6069eb1c2279a798d7e",
+              "history_sha256": "1e70e314e89d7090513a2cb952987bdab284a857a7e97d2873f8c4df106633dc",
+              "raw_sha256": "8408c7ee1a0c8635cdc36d13e07525f1ecde7a6c071efecacdd1fbcb84c1fbdd",
+              "input_tokens": 829,
+              "generated_tokens": 35,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3294
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "dots": {
+          "id": "multi_turn_base_116",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d",
+              "before": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+              "after": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+              "feedback_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d"
+            }
+          ],
+          "state_sha256": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "cf5fb368ae280e130041e1f33cce97df2abe185f7f9556122c019b84e12df6f2",
+              "history_sha256": "b07b14c2a1ee25fb21fe29e536aa64478b7581505af77837cb2b2a0a5bd88053",
+              "raw_sha256": "a1f1152e308ec0ce326af76ae377459d8b949d4b4a9cf6e584880e3060e5e7eb",
+              "input_tokens": 3240,
+              "generated_tokens": 28,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3240
+            },
+            {
+              "prompt_sha256": "b46c41728ee34570f9393289a7978edfa1f3ced5d6b5c1be25a9e9e0c1d12184",
+              "history_sha256": "3e240429feab4ce3f868b650cb6ddf5c9561aecb7d18cf9295299169cd012d14",
+              "raw_sha256": "fcd21e1cf78b1a830b3b5bb1215b3e8a95df8813046352c1f246c03644f6c9e0",
+              "input_tokens": 3295,
+              "generated_tokens": 22,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3295
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "letters": {
+          "id": "multi_turn_base_116",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d",
+              "before": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+              "after": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+              "feedback_sha256": "42ff4b65f81dd2db9e6a16ad4ea96aaf46dc0fabdfc318fe088b662dbe88b61d"
+            }
+          ],
+          "state_sha256": "16aef1c3d998f239f164fd34ad407d27bd41829604f406935bbfead38d83a0b1",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "681f784eb3fefd3729785bf043bfd1e25013742dab9568c620ef2d611bcf8645",
+              "history_sha256": "0b2ba9a73add308fd00848aa8c61f58f7d44d8482737d5a402b254aef62defc7",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3240,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3240
+            },
+            {
+              "prompt_sha256": "49c0de52c99eaefafbf887982ead24f95feba76a4b03dc524c358ad6dc1bcda1",
+              "history_sha256": "44eb48a792e77f86bb3608a47d5d27ed7c4bcfbc96cf036128a534b9279a3129",
+              "raw_sha256": "fcd21e1cf78b1a830b3b5bb1215b3e8a95df8813046352c1f246c03644f6c9e0",
+              "input_tokens": 3277,
+              "generated_tokens": 22,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3277
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_117",
+      "positive": {
+        "id": "multi_turn_base_117",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "remove_stock_from_watchlist",
+            "native_arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+            "status": "executed",
+            "arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+            "response_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1"
+          }
+        ],
+        "state_sha256": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_117",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+        "state_match": false,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9763028514561288,
+        "scoped": 0.9858132446322792,
+        "dots": 0.9763219028862755,
+        "letters": 0.9790351977950359
+      },
+      "js_bits": {
+        "full/scoped": 0.000976583880766161,
+        "full/dots": 0.0042130749194583955,
+        "full/letters": 0.007106286571473051,
+        "scoped/dots": 0.003522888606792911,
+        "scoped/letters": 0.005198337257080549,
+        "dots/letters": 0.0007288690702740403
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_117",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "feedback_sha256": "189da732d246c2be3aa6c989524f7fec247fd1018f160c25dd3d431ab34022d2"
+            },
+            {
+              "name": "remove_stock_from_watchlist",
+              "native_arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "status": "executed",
+              "arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "response_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+              "feedback_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1"
+            }
+          ],
+          "state_sha256": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "f3d3186598845017cc56fcb5bf4741a8c6a4ad0e27655c55aa050bb73e373b61",
+              "history_sha256": "461fcaddf30819621564cdbb43a62660cb324e76158e6fc86d4015e46c2b0be5",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3260,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3260
+            },
+            {
+              "prompt_sha256": "b03d9328f4712cd232c0622fb1f76a80ddc421ed7523490588b11c5c9e2d9ba4",
+              "history_sha256": "d38591a4cde1e4780d59aeb364ecdb6999996342941c478c534077b837a67c60",
+              "raw_sha256": "d8c07b0640e66b346a8b081b325d8b3b307705e8699748b87471698a299919a4",
+              "input_tokens": 3293,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3293
+            },
+            {
+              "prompt_sha256": "d5a878af2372ac50c67847c82231114abc070673ad734125c4f1e2b896c4d97a",
+              "history_sha256": "4b17c548e87eb012fb128ed37a8162d6dd9de976d0d24f0a4e5f983124bfd311",
+              "raw_sha256": "ea2a048d89c49b5be0805c29e9f5fa4511d026849fd6146f2c933d30f386a880",
+              "input_tokens": 3335,
+              "generated_tokens": 41,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3335
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "scoped": {
+          "id": "multi_turn_base_117",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "feedback_sha256": "189da732d246c2be3aa6c989524f7fec247fd1018f160c25dd3d431ab34022d2"
+            },
+            {
+              "name": "remove_stock_from_watchlist",
+              "native_arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "status": "executed",
+              "arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "response_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+              "feedback_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1"
+            }
+          ],
+          "state_sha256": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "940aac287fc5a453a49190c38e38ec276fdfc1fd73132d74594e7ca22f9842ea",
+              "history_sha256": "461fcaddf30819621564cdbb43a62660cb324e76158e6fc86d4015e46c2b0be5",
+              "raw_sha256": "7002edb143707251f3e1fac54838413fe6c1384e183e7e7f9124c45fd220c636",
+              "input_tokens": 795,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3260
+            },
+            {
+              "prompt_sha256": "19fcacc9bee9911ed148c52a61b9e46cfca1c76947a6f6c51ace42f8b07fd3c4",
+              "history_sha256": "5c50ca2a87b5dcba2302dca10d0c12fa0c24af1352a8105b69afcac6bfaf55c3",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 829,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3294
+            },
+            {
+              "prompt_sha256": "3a6df39d8be8b3d28b0115777c0fdf025ae8dd5b72072b3d002e7ff0f0eaaa9b",
+              "history_sha256": "6ebdfc1a2de9ca76c631a5964adbcc8a77925ee8f1a23eb05d7b2417373eb0b8",
+              "raw_sha256": "d8c07b0640e66b346a8b081b325d8b3b307705e8699748b87471698a299919a4",
+              "input_tokens": 862,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3327
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "dots": {
+          "id": "multi_turn_base_117",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "feedback_sha256": "189da732d246c2be3aa6c989524f7fec247fd1018f160c25dd3d431ab34022d2"
+            },
+            {
+              "name": "remove_stock_from_watchlist",
+              "native_arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "status": "executed",
+              "arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "response_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+              "feedback_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1"
+            },
+            {
+              "name": "get_stock_info",
+              "native_arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "status": "executed",
+              "arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "response_sha256": "64684ff5cd5a400398facd2538a2e249090f0b5a69fad30c79929d1e9b56df0b",
+              "before": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+              "after": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+              "feedback_sha256": "64684ff5cd5a400398facd2538a2e249090f0b5a69fad30c79929d1e9b56df0b"
+            }
+          ],
+          "state_sha256": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "a2b1112b299958f9a7fb7169332ef91c6e62c630a46be604cefcf5162091c1c0",
+              "history_sha256": "2cb805d383b7353c507b349014e1b4bd343371f3ead83e6d4af6a40c54925c66",
+              "raw_sha256": "d64a2dc959a91746782c294265909376d80c825004d47e5d3cd0f27161245924",
+              "input_tokens": 3260,
+              "generated_tokens": 60,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3260
+            },
+            {
+              "prompt_sha256": "0116a1f91957916ba653ec9b196c34a1059ec7f2ee081ad5f91f7f1b6c152b6d",
+              "history_sha256": "b217deab598ca4c69dddde02681597a88ee0b38ea793865758e30ee9eba7fc26",
+              "raw_sha256": "d8c07b0640e66b346a8b081b325d8b3b307705e8699748b87471698a299919a4",
+              "input_tokens": 3343,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3343
+            },
+            {
+              "prompt_sha256": "d80872905cd54e26352c39e0b576f7ad66269d9996995320c6fe25207aa69894",
+              "history_sha256": "4846e93f76b43e8e8bca8ca86f2f38002605f90ac6be45a204c33438f884c3c6",
+              "raw_sha256": "963681b590fecf78e3d81806dc0ff77d3b0677087a8013aaaa85729e3837440d",
+              "input_tokens": 3385,
+              "generated_tokens": 15,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3385
+            }
+          ],
+          "domain_errors": 1,
+          "exact_calls": false
+        },
+        "letters": {
+          "id": "multi_turn_base_117",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "feedback_sha256": "189da732d246c2be3aa6c989524f7fec247fd1018f160c25dd3d431ab34022d2"
+            },
+            {
+              "name": "remove_stock_from_watchlist",
+              "native_arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "status": "executed",
+              "arguments_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "response_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1",
+              "before": "eee8798f22022c729688700c29f125c51604ad090d931c2f5b917edf40fbeb1d",
+              "after": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+              "feedback_sha256": "5b57fd04f773e6630fd446a2a0b21188056d51183f3d58c203739055dd0a04c1"
+            }
+          ],
+          "state_sha256": "3f222d921f7ef21fcac471e20136eb6ad8304b551d58097025856436d951fe76",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "4f035fc71e2f091a0d3b8c289dbc9b1770e6fc355c722555c8c13c15fcae8b54",
+              "history_sha256": "3df79db1ddd21a11993b657c4a811679d3d06eb9d641ef8b238939ea653e9b19",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3260,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3260
+            },
+            {
+              "prompt_sha256": "002e1f28d38404f572ceb2687831e78f4a07ed0b7bdbc4ae50cf2c2228661508",
+              "history_sha256": "eeb9e28eda80ea88cf0ed9ad83174a2d32b71919aa06aa6b352153db01a3e12f",
+              "raw_sha256": "d8c07b0640e66b346a8b081b325d8b3b307705e8699748b87471698a299919a4",
+              "input_tokens": 3293,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3293
+            },
+            {
+              "prompt_sha256": "d47215b81c43b822ae50a1f272d03036973e659e3699acecbbf7082d47068308",
+              "history_sha256": "53787cb901042e3fa38531b295f26cf8f4fcb4ddaf08d1198a032582d9af8c50",
+              "raw_sha256": "fd19ea3986b07043f61b430c80979aaca8b8f684351931f79a279ffe3bfcaa55",
+              "input_tokens": 3335,
+              "generated_tokens": 43,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3335
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_118",
+      "positive": {
+        "id": "multi_turn_base_118",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_watchlist",
+            "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "status": "executed",
+            "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "response_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48"
+          }
+        ],
+        "state_sha256": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_118",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+        "state_match": true,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9990863972950366,
+        "scoped": 0.9998029557268827,
+        "dots": 0.9976981026372688,
+        "letters": 0.9934674438550899
+      },
+      "js_bits": {
+        "full/scoped": 0.00019983848840246182,
+        "full/dots": 0.0005823031887185699,
+        "full/letters": 0.0021096068809233117,
+        "scoped/dots": 0.0008059708905518874,
+        "scoped/letters": 0.0027782726442896768,
+        "dots/letters": 0.0007769509729645661
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_118",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48",
+              "before": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+              "after": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+              "feedback_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48"
+            }
+          ],
+          "state_sha256": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "32178b55037cac19f6ec1c4c4f330e1f38cb80346e9743edd104412933c63514",
+              "history_sha256": "41935620c74f9c197f1f8412863acc81e74d1dee22c8d4e01baa0ecd28078a86",
+              "raw_sha256": "a0bcd790abe5b429f04be896a09846156619e33c6a79be1c963b75f2ce2724ff",
+              "input_tokens": 3250,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3250
+            },
+            {
+              "prompt_sha256": "3a8d28630755b3825d824bf871e25f5396d936f198d6f28e9dba5370e6b6bd58",
+              "history_sha256": "d8fe44687e097e4c5cb4853de88de9d0f2ce038c6dabc042468d683292d82894",
+              "raw_sha256": "fc6f95d84a2418882e7ae30a921a7da63272bd780d77649367515d795bbbf40b",
+              "input_tokens": 3295,
+              "generated_tokens": 34,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3295
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "scoped": {
+          "id": "multi_turn_base_118",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48",
+              "before": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+              "after": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+              "feedback_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48"
+            }
+          ],
+          "state_sha256": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "07d2bdfde65ab99a495713da4777763c8e88ee481708d5f4544716896867e841",
+              "history_sha256": "41935620c74f9c197f1f8412863acc81e74d1dee22c8d4e01baa0ecd28078a86",
+              "raw_sha256": "a0bcd790abe5b429f04be896a09846156619e33c6a79be1c963b75f2ce2724ff",
+              "input_tokens": 785,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3250
+            },
+            {
+              "prompt_sha256": "e4e1e446cd4b75b1201de43d7ad03b4a5a532c579f879ea936a069483ae0b106",
+              "history_sha256": "d8fe44687e097e4c5cb4853de88de9d0f2ce038c6dabc042468d683292d82894",
+              "raw_sha256": "fc6f95d84a2418882e7ae30a921a7da63272bd780d77649367515d795bbbf40b",
+              "input_tokens": 830,
+              "generated_tokens": 34,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3295
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "dots": {
+          "id": "multi_turn_base_118",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48",
+              "before": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+              "after": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+              "feedback_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48"
+            }
+          ],
+          "state_sha256": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "57e7a33d4e4725f7a98028931f54fb3f10ba0eb2fbb4da048f88e3268c908a42",
+              "history_sha256": "6f12e3f60b87f48ea4dbfad2e468dc86796fc6a827829267ffce66f8ca25bcb3",
+              "raw_sha256": "2e45c2256ab93c2179c106c8622b667c178346a38bc440fc85ed4a1ef1d2c8fd",
+              "input_tokens": 3250,
+              "generated_tokens": 26,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3250
+            },
+            {
+              "prompt_sha256": "3e7bd0dff299cff7e590aa61525c5be95a3d336f08b8568e2e24afca52fb5f66",
+              "history_sha256": "6486877b2dc4e15552c64fef87018cbbd0544d7e7a28c390c7a5787305204345",
+              "raw_sha256": "869b34baf3f9d41ab64828640c14b7b1da1a4f9100729ac96b581a42f2102501",
+              "input_tokens": 3303,
+              "generated_tokens": 34,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3303
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "letters": {
+          "id": "multi_turn_base_118",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48",
+              "before": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+              "after": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+              "feedback_sha256": "470626ed21d036636b92e616905756c9c77f13db39b48d74d36250ac04f43e48"
+            }
+          ],
+          "state_sha256": "baec92d241c8fc1c2a23efeccc7992ef9a3525c04cd1acaad11310987bc9abe6",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "c0061c30f9594e66c90af53a9ead8b1fcfe2b79421ef5d8eac55d6f882721f43",
+              "history_sha256": "ffba19d3ed4f16c771c4de10793c2926bcab577a66a63b11d36455813af5602b",
+              "raw_sha256": "adcf6ac7543de2b5d71bdaaee1815204a10e466dd2bc072680f44176bc3462d6",
+              "input_tokens": 3250,
+              "generated_tokens": 26,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3250
+            },
+            {
+              "prompt_sha256": "814a95ce9c0c3bd601c5c703ec06bd4d11821529ba7535985710f8049152ddaa",
+              "history_sha256": "0692fe5f1e3f6039aa0105cb93e564d684797870441fdf0acbe5c2697642dc26",
+              "raw_sha256": "869b34baf3f9d41ab64828640c14b7b1da1a4f9100729ac96b581a42f2102501",
+              "input_tokens": 3303,
+              "generated_tokens": 34,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3303
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_126",
+      "positive": {
+        "id": "multi_turn_base_126",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_watchlist",
+            "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "status": "executed",
+            "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "response_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97"
+          }
+        ],
+        "state_sha256": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_126",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+        "state_match": true,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9984134785126968,
+        "scoped": 0.9992192709237696,
+        "dots": 0.9972212875057134,
+        "letters": 0.9978056015500745
+      },
+      "js_bits": {
+        "full/scoped": 0.00019057499396656877,
+        "full/dots": 0.00043919122783153854,
+        "full/letters": 0.0005996541794204295,
+        "scoped/dots": 0.0005178703697438261,
+        "scoped/letters": 0.00046750955748773665,
+        "dots/letters": 0.00015923328085093363
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_126",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97",
+              "before": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+              "after": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+              "feedback_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97"
+            }
+          ],
+          "state_sha256": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "d53ce2d7d48a1fe3f50d7c697366613e7d6ae1a257be17ace1b241550ad6ae13",
+              "history_sha256": "1ab24ea5723a9066cbd4ec3ffb416d7a22d57cd013de5587f232c38f258e83cc",
+              "raw_sha256": "a0bcd790abe5b429f04be896a09846156619e33c6a79be1c963b75f2ce2724ff",
+              "input_tokens": 3266,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3266
+            },
+            {
+              "prompt_sha256": "1d4ac346100f88523711ee49baebc4539ddff5ba1fd46d9e25837227f415a048",
+              "history_sha256": "c537ad8ed9952ca608ee650e936298757f9ca7c580960cba2a3769e4340b2f0e",
+              "raw_sha256": "6b084762da4a577b73c965934ba832ed510de899e76f8794e5efefba89ad7545",
+              "input_tokens": 3307,
+              "generated_tokens": 32,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3307
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "scoped": {
+          "id": "multi_turn_base_126",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97",
+              "before": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+              "after": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+              "feedback_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97"
+            }
+          ],
+          "state_sha256": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "dad0e341bca4674e1edb7d998d7f0836fa9fcdbc9371a7893e9552d03ba2b809",
+              "history_sha256": "1ab24ea5723a9066cbd4ec3ffb416d7a22d57cd013de5587f232c38f258e83cc",
+              "raw_sha256": "a0bcd790abe5b429f04be896a09846156619e33c6a79be1c963b75f2ce2724ff",
+              "input_tokens": 801,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3266
+            },
+            {
+              "prompt_sha256": "8a61428b5577f3df6575eb9d5b2a29811c10c8fde058980427f432cd9006e1b2",
+              "history_sha256": "c537ad8ed9952ca608ee650e936298757f9ca7c580960cba2a3769e4340b2f0e",
+              "raw_sha256": "9f4dd05f090a76183381c4fb56cc4c0258a0642cfb6a960acc1f8b7818d217a2",
+              "input_tokens": 842,
+              "generated_tokens": 31,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3307
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "dots": {
+          "id": "multi_turn_base_126",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97",
+              "before": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+              "after": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+              "feedback_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97"
+            }
+          ],
+          "state_sha256": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "605c7f3f41c147cabdd713ca1a063b35646a572e8d512983e593a092419d09a6",
+              "history_sha256": "59a73b52c58b6709d9f600a3ac55f914fdc21d9ded0f2a202c0fff4a2a00e67b",
+              "raw_sha256": "157889e13b2842a4e80ce6d4d8899657a9ac4fa30a7b19fb3990903a52aa9049",
+              "input_tokens": 3266,
+              "generated_tokens": 41,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3266
+            },
+            {
+              "prompt_sha256": "cebbe6ea6a1c86bc4d18bf07546a8236bdca950d1e60cdd719545bf0408f2a58",
+              "history_sha256": "795bd08bccd30a0413e9c28800369a2c013b4d45421e5d226ef20e19fe0a5d63",
+              "raw_sha256": "9f4dd05f090a76183381c4fb56cc4c0258a0642cfb6a960acc1f8b7818d217a2",
+              "input_tokens": 3330,
+              "generated_tokens": 31,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3330
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "letters": {
+          "id": "multi_turn_base_126",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97",
+              "before": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+              "after": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+              "feedback_sha256": "cf94e0caeb7d121a86428134ab0db7e988b79a2aa783b2526427f01d87a85e97"
+            }
+          ],
+          "state_sha256": "1af22e2d9bfacf470913b2de24d672416de14fd87a67a77344afaf8a08876875",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "677a64a69d801fdd7411488a038ac94dd8325face8da614542153fb6138084b4",
+              "history_sha256": "17a16e6abee82ecdaf6289faee963a0612fa74322ac9cc5e8f8c05683b259c2b",
+              "raw_sha256": "26c9da4e0e1a849666009a9a4fd5f388cc0a8917ce9b869ec3700f9589a3494f",
+              "input_tokens": 3266,
+              "generated_tokens": 27,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3266
+            },
+            {
+              "prompt_sha256": "002c4b0353054e0293a7b035dd96546f7c6362db86772eb76cbc6155e408a10a",
+              "history_sha256": "8adae3f22e5eefb37117ede273ce6054aa2bce04b6522ba0b17ef34ecbb3a339",
+              "raw_sha256": "6e9a8c4b8e3c5d20365729ee34235f901cd822be49ee20a9abf33a35183ed9fd",
+              "input_tokens": 3316,
+              "generated_tokens": 30,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3316
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_127",
+      "positive": {
+        "id": "multi_turn_base_127",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_watchlist",
+            "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "status": "executed",
+            "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "response_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1"
+          }
+        ],
+        "state_sha256": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_127",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+        "state_match": true,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9932942167709533,
+        "scoped": 0.9969090121188808,
+        "dots": 0.9948711784745876,
+        "letters": 0.9910288638277412
+      },
+      "js_bits": {
+        "full/scoped": 0.0008323500396950658,
+        "full/dots": 0.0020591504636335725,
+        "full/letters": 0.002782673972887816,
+        "scoped/dots": 0.0013323087428959075,
+        "scoped/letters": 0.0025475360593814325,
+        "dots/letters": 0.0006074816804686231
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_127",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1",
+              "before": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+              "after": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+              "feedback_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1"
+            }
+          ],
+          "state_sha256": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "f1990da717f1155a091940b17c60647d6a4166d45c9948374dd7dabc8d8e4e9a",
+              "history_sha256": "4932e8acf08c23613186539373bb6130f61f14d23c978ec599d9e1fdb504be99",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3247,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3247
+            },
+            {
+              "prompt_sha256": "2bdff3e310b9f57c29ab3ee2577a470acc4b394bcc125f8ec2d9e8ce4829df74",
+              "history_sha256": "5a513e12846f863026996e56625818d0be49ad4467619ba26c077a278ebeedbd",
+              "raw_sha256": "ccd509bb0c11d7279a4549f7b532a0c4ceb94c25ef0ba3ee54fe20da8dad028f",
+              "input_tokens": 3280,
+              "generated_tokens": 33,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3280
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "scoped": {
+          "id": "multi_turn_base_127",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1",
+              "before": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+              "after": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+              "feedback_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1"
+            }
+          ],
+          "state_sha256": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "869905df135f336e5ecde5e34028cddcf58e63dc0840f6b239ca1792d1db3272",
+              "history_sha256": "4932e8acf08c23613186539373bb6130f61f14d23c978ec599d9e1fdb504be99",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 782,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3247
+            },
+            {
+              "prompt_sha256": "a881a9569229a084488a80181084942a7fa8a2a51f22d1438cfc0269a1d683fd",
+              "history_sha256": "5a513e12846f863026996e56625818d0be49ad4467619ba26c077a278ebeedbd",
+              "raw_sha256": "0e7c2a33d7ceee82d38e0177e138502744f5e82f5f790db3b512c5aa804e05ad",
+              "input_tokens": 815,
+              "generated_tokens": 33,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3280
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "dots": {
+          "id": "multi_turn_base_127",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1",
+              "before": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+              "after": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+              "feedback_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1"
+            }
+          ],
+          "state_sha256": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "a149e48b1407be744dbb8d9839eaccc10b319c4848fbbb3ccc1416d1985a9602",
+              "history_sha256": "78e1ee333646e520ea27ab4de707a786368260559804932aca8eb90a9a3dd6fe",
+              "raw_sha256": "e19554353bc5809bc79f99b420dbf66e87f8e911a7105f88262405c489bfeadd",
+              "input_tokens": 3247,
+              "generated_tokens": 27,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3247
+            },
+            {
+              "prompt_sha256": "0cff7b013354dfe417bd18721e73448b28936da10d96567a5a07cb20ed2bb7bf",
+              "history_sha256": "7d89ad4a395af87c5f9c8e2746e8a67790c2fab866fc23066cd3171ab40bdece",
+              "raw_sha256": "6d5445f7ae426276ba401ee4e3a8f188beb302a516a5b2e36cf39f2cba18acc1",
+              "input_tokens": 3297,
+              "generated_tokens": 31,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3297
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "letters": {
+          "id": "multi_turn_base_127",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1",
+              "before": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+              "after": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+              "feedback_sha256": "f1f6f0cfd1e512faeb8d61e0c2b2c0309d526822aa63af5f342b0bea09b7bff1"
+            }
+          ],
+          "state_sha256": "12d42020ceab5b0ec6fb9e3006037fb63b29fc9566ee97bba73429a497165864",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "3b9c6135e41cc8b79bf2d45e8c3f4e70ad532156efe1a8f509429b4dfca55ec5",
+              "history_sha256": "802be41cda91fce3abc5ec692e9319178c4167b9e2646c8261b035d1894200d2",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3247,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3247
+            },
+            {
+              "prompt_sha256": "4db20ad83c183d1edd2f18d5b65c5f37be747194cf52adbf078d78c5e629369d",
+              "history_sha256": "b3755f407eea48d72bea1488c18aba01bd91c3abb1b12062d257dcb1a8b1cc50",
+              "raw_sha256": "2c2ce4b2057917d96138805672349a2c174c837b8ad03372a9d4c03ab535efb6",
+              "input_tokens": 3280,
+              "generated_tokens": 33,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3280
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_132",
+      "positive": {
+        "id": "multi_turn_base_132",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_stock_info",
+            "native_arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+            "status": "executed",
+            "arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+            "response_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15"
+          },
+          {
+            "name": "add_to_watchlist",
+            "native_arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+            "status": "executed",
+            "arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+            "response_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87"
+          }
+        ],
+        "state_sha256": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_132",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+        "state_match": false,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9986941408714086,
+        "scoped": 0.999364404712612,
+        "dots": 0.9989493843458888,
+        "letters": 0.9941458236886292
+      },
+      "js_bits": {
+        "full/scoped": 0.00012009497545096133,
+        "full/dots": 0.00021474026993571242,
+        "full/letters": 0.0015932774789591273,
+        "scoped/dots": 0.0001263006866667195,
+        "scoped/letters": 0.001933195388292378,
+        "dots/letters": 0.001383320704092837
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_132",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_stock_info",
+              "native_arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+              "status": "executed",
+              "arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+              "response_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15",
+              "before": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "after": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "feedback_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+              "status": "executed",
+              "arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+              "response_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87",
+              "before": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "after": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "feedback_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87"
+            }
+          ],
+          "state_sha256": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "9f13c85aec8b5fb78a71cca959b3e69c1767727f9a0d433e9486ebbe3c954f97",
+              "history_sha256": "0c8b94a79373e52949d13d901ebbb6841e1d9918d89eba6d5220bf75aedceb8e",
+              "raw_sha256": "e823f998163ba7e4cf376e35be8a8ab13d0c3157d6a3061bec816ccf79f0822e",
+              "input_tokens": 3255,
+              "generated_tokens": 32,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3255
+            },
+            {
+              "prompt_sha256": "c4d18c9e02bd7d849bb03df33b5e6641e1409038af8f5483c4b1357352f71f12",
+              "history_sha256": "69b60f8bcf8cb3fe79e4557724a14bb3f335c8bf53042dbf76db2bf6a28e42bc",
+              "raw_sha256": "f126bcc6948cdd534f853aca9ad08a5e3d1507a57f9ed8939c572963fe942ca6",
+              "input_tokens": 3346,
+              "generated_tokens": 34,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3346
+            },
+            {
+              "prompt_sha256": "7114ba77d60e93e127853fae911671ba26ed946ebec69cf317ee28c74ec9c262",
+              "history_sha256": "d3f8bb19cc2c0f74459db0bfb7522312f3e76d38d9e92b8b0bb66a1e3a239c99",
+              "raw_sha256": "07e9485cf45a1d6920130e1c753e8f39bad94f56a1e7b10428fca5f5ad577bbc",
+              "input_tokens": 3405,
+              "generated_tokens": 78,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3405
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "scoped": {
+          "id": "multi_turn_base_132",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_stock_info",
+              "native_arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+              "status": "executed",
+              "arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+              "response_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15",
+              "before": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "after": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "feedback_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+              "status": "executed",
+              "arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+              "response_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87",
+              "before": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "after": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "feedback_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87"
+            },
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87",
+              "before": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "after": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "feedback_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87"
+            }
+          ],
+          "state_sha256": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "5d78369ebe8629e6bd4b3ee007eeffc7ae6919b4cc34a6f488206163252dd8dd",
+              "history_sha256": "0c8b94a79373e52949d13d901ebbb6841e1d9918d89eba6d5220bf75aedceb8e",
+              "raw_sha256": "4e94c0fc4edd1dbf2936e886ff8ec6af3284c52d6c437ab9b15932b3db6fec44",
+              "input_tokens": 790,
+              "generated_tokens": 17,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3255
+            },
+            {
+              "prompt_sha256": "1071638243c09274cb04e550e0e445a3344a3bb0877b01bb863dd1f598cefb8b",
+              "history_sha256": "20f3eea2c7caac4bc7d10ace97e650dcf82fc09b7f8611ec2cb44dcfb5adb269",
+              "raw_sha256": "f17a8a2f537a62f2ddda7b202b3d2639922f05f40dc84e49c50e3646c00c85c4",
+              "input_tokens": 866,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3331
+            },
+            {
+              "prompt_sha256": "594c25bbf14e66fbe935d7e07519266e7a086b38c0b4d457876141366d8a992b",
+              "history_sha256": "eb5bdf70d142bcca0871b0f6f87019e5f5fca0a98dcc93eff4b807e8c70012c4",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 909,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3374
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "dots": {
+          "id": "multi_turn_base_132",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_stock_info",
+              "native_arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+              "status": "executed",
+              "arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+              "response_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15",
+              "before": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "after": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "feedback_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+              "status": "executed",
+              "arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+              "response_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87",
+              "before": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "after": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "feedback_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87"
+            },
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87",
+              "before": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "after": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "feedback_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87"
+            }
+          ],
+          "state_sha256": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "180873d81ff0f6dc21ee60afe90033fd91782fcf4de5b5bb0f74d3a7b4f6615f",
+              "history_sha256": "a012d894ab31b308d8eb57a07dde2e73dcbbd5906641be7a235de01527aca236",
+              "raw_sha256": "4e94c0fc4edd1dbf2936e886ff8ec6af3284c52d6c437ab9b15932b3db6fec44",
+              "input_tokens": 3255,
+              "generated_tokens": 17,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3255
+            },
+            {
+              "prompt_sha256": "a759d5b63a006f719c94af59c65d43ba239002f2dcf0396296b8a3c97611bcaa",
+              "history_sha256": "fd1966d3fad6a548710d133807ff2e1cd45cbedda040760afb410c3aaeaf1248",
+              "raw_sha256": "f17a8a2f537a62f2ddda7b202b3d2639922f05f40dc84e49c50e3646c00c85c4",
+              "input_tokens": 3331,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3331
+            },
+            {
+              "prompt_sha256": "ee5ad94465e6553817b30647f25760cd5b5b4778fff0be9c95ef25df8fe9fb4f",
+              "history_sha256": "a5591bdf84812647c1fe888a0e92be1f0f3580b6acf147a9652d1252f7f7af57",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3374,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3374
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "letters": {
+          "id": "multi_turn_base_132",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_stock_info",
+              "native_arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+              "status": "executed",
+              "arguments_sha256": "b96871a61d13ac8a88867815dc3f00a09f1f1dd11c0d9e5e6e53811130eb6f9f",
+              "response_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15",
+              "before": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "after": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "feedback_sha256": "137d09f256829305adaf063e039f935862fa23370c79ac3a8fe45e7e31ee8f15"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+              "status": "executed",
+              "arguments_sha256": "3c637d526b60f868e73008f6c1006bcafc6ad3184453f79ed2a5aeeb25f4b7e5",
+              "response_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87",
+              "before": "2beafec08c66d4efd85f1e50e8b6b839a45d0220ddf30de886d8f2264b8e6ea5",
+              "after": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "feedback_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87"
+            },
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87",
+              "before": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "after": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+              "feedback_sha256": "88f3f976ee46c518b774e6b324051525d985a46e36b27b647d95c65756332d87"
+            }
+          ],
+          "state_sha256": "cb0770efa96a94d17450ef0046af5720ceb7bfae941544af59a77870d20157e9",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "caf37e197a08114782c734460ec396eb8b5cf592f52bc198c7816326d66c1906",
+              "history_sha256": "d8ad3a7f0d883179ad8f18322a71d885bf3e2a7800be3ad205b3e1f2299972a5",
+              "raw_sha256": "4e94c0fc4edd1dbf2936e886ff8ec6af3284c52d6c437ab9b15932b3db6fec44",
+              "input_tokens": 3255,
+              "generated_tokens": 17,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3255
+            },
+            {
+              "prompt_sha256": "e2d1c62e3370d30e00d67ed117d0bec202b24535fe34a11a7c75fa73f1fc9b0e",
+              "history_sha256": "94a4562bbfbf1d14b6fecfdb733d50ee4a017cee85055ef41a0072ed8d94a83d",
+              "raw_sha256": "f17a8a2f537a62f2ddda7b202b3d2639922f05f40dc84e49c50e3646c00c85c4",
+              "input_tokens": 3331,
+              "generated_tokens": 18,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3331
+            },
+            {
+              "prompt_sha256": "9e661ed8af4f74aaebfdc1584065a0ff5fb4834aafd9403997c82f6f65064c5d",
+              "history_sha256": "6c8750069bdb1baa52354cd21fe6ce78680ae91298f81c433817b280b95df856",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3374,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3374
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_135",
+      "positive": {
+        "id": "multi_turn_base_135",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "add_to_watchlist",
+            "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+            "status": "executed",
+            "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+            "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+          },
+          {
+            "name": "get_watchlist",
+            "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "status": "executed",
+            "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+          }
+        ],
+        "state_sha256": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_135",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+        "state_match": true,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9998651351217126,
+        "scoped": 0.999806604918057,
+        "dots": 0.9969893966416894,
+        "letters": 0.9956679146984687
+      },
+      "js_bits": {
+        "full/scoped": 4.033854861338802e-05,
+        "full/dots": 0.001225548522038638,
+        "full/letters": 0.0018545727141621021,
+        "scoped/dots": 0.0011351785415807693,
+        "scoped/letters": 0.0017488831930562146,
+        "dots/letters": 0.00010283948742471558
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_135",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "status": "executed",
+              "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            }
+          ],
+          "state_sha256": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "b08747edae270dda293b7cab0ce76db2f49c7f479bc0bdf6155fa511ab52fe0d",
+              "history_sha256": "6c579e830c6a1de2e5a103be38336e204d188518593ff3ac89a4d50573677bc0",
+              "raw_sha256": "7002edb143707251f3e1fac54838413fe6c1384e183e7e7f9124c45fd220c636",
+              "input_tokens": 3242,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3242
+            },
+            {
+              "prompt_sha256": "db39ccab351dacf2d921e3d3674f98ff56e13783d2511b807a58fafa694f84df",
+              "history_sha256": "fc1ff0aaf5e422a11e1a13082b6d14baefdf64f2215c7f2af8aeb50a080c00d0",
+              "raw_sha256": "832d4d69ae793e186756904730fe109d9e22094083b361d6d9de685c85566ee3",
+              "input_tokens": 3276,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3276
+            },
+            {
+              "prompt_sha256": "1570c4a5e450d798d53266073954cd07effcafe5dbeab9f861cb9f1949cd8c2f",
+              "history_sha256": "d27f7aba4a433eeccf356abae010f2c740f0f05f2ac8d6e19ae16b3b45ad1a9f",
+              "raw_sha256": "ad1cc0270324533c41a9583bb76983a54b3edc35c9e66b54da41ce110bd0447a",
+              "input_tokens": 3315,
+              "generated_tokens": 31,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3315
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "scoped": {
+          "id": "multi_turn_base_135",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "status": "executed",
+              "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            },
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            }
+          ],
+          "state_sha256": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "f65100ac9700aa94a28b04213a01ac6bec9ecd74461dce813ed1c29590963812",
+              "history_sha256": "6c579e830c6a1de2e5a103be38336e204d188518593ff3ac89a4d50573677bc0",
+              "raw_sha256": "c5b6bcfe4e85d45ba7c58805b363284a5d199facf9acf6f935b37142b4287e8e",
+              "input_tokens": 777,
+              "generated_tokens": 48,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3242
+            },
+            {
+              "prompt_sha256": "a09f914520393a0f0e5fdcbb009c8c2e61fc7a39a66669b21ed3fc7cbd74d8b0",
+              "history_sha256": "b13c80d532ee23ddcf7babc58ae052495120df423df6b721eece0981846856aa",
+              "raw_sha256": "832d4d69ae793e186756904730fe109d9e22094083b361d6d9de685c85566ee3",
+              "input_tokens": 843,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3308
+            },
+            {
+              "prompt_sha256": "1e505549b1ddf34839f35894006e87cc457c6d74e51d27e32fa86edd763d6c24",
+              "history_sha256": "b2cfe637192bfac980007609c53f95539b5ad18e76665b9bbb99c95abe477c32",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 882,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3347
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "dots": {
+          "id": "multi_turn_base_135",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "status": "executed",
+              "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            },
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            }
+          ],
+          "state_sha256": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "84388817ca373ab62774587f4f369d1715d4cc75420aaa438569d5696c8934ef",
+              "history_sha256": "cfa92ec673b71895b0cfc01688735a3baf25e3da9af387e562350d47a87828ae",
+              "raw_sha256": "810f82d58fc699eaf43d5188c02b73968763ef8d23473a371d86a6277074e85b",
+              "input_tokens": 3242,
+              "generated_tokens": 49,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3242
+            },
+            {
+              "prompt_sha256": "5c2b8e1a8ac4428b9ac5e4c4c1c5a82169d03d6320eaebc0f6bac678acdaf333",
+              "history_sha256": "ff70d04bbc33469eeee4c2dd9aa3650d58c94370e0fe7a448075bf35229b2ef5",
+              "raw_sha256": "832d4d69ae793e186756904730fe109d9e22094083b361d6d9de685c85566ee3",
+              "input_tokens": 3309,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3309
+            },
+            {
+              "prompt_sha256": "1c769dcecddbb4d9d3897cf9284a852007a7365f9de64334c1b1267caf7ff169",
+              "history_sha256": "b12e3beca6018a1477e472b4dc6896aabd4d6b3931712f20284c51c3f3cc2ef5",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3348,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3348
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "letters": {
+          "id": "multi_turn_base_135",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "status": "executed",
+              "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            },
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "after": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            }
+          ],
+          "state_sha256": "35d543dec03cf3d19bd18d71359cd8f62e13c2c5d778e5e3f7270c9a9e875d32",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "1c0bbd95ffd463561986d691f30016c4c2ec26a283f2d3156b1860eb2daaeb40",
+              "history_sha256": "406e594b51b70df07fe04e466f0599dd0711e65f2b890bda9016e5454ce2c546",
+              "raw_sha256": "b51fb8a2010cd08275cd3d1124820becf78f099668c53f18151ab0da12dd2e83",
+              "input_tokens": 3242,
+              "generated_tokens": 47,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3242
+            },
+            {
+              "prompt_sha256": "75964fe792d27feafdf0790534b86c32f9bd1092d74a59e4fc42b011ea934c9c",
+              "history_sha256": "c66e6493b0b1ad53fc4aaaca24a398b06d6d110f8f30b39de6ba906d52f3d8d2",
+              "raw_sha256": "832d4d69ae793e186756904730fe109d9e22094083b361d6d9de685c85566ee3",
+              "input_tokens": 3307,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3307
+            },
+            {
+              "prompt_sha256": "6685de8e273975e2ce10cb85686742f70cba632d9bb23dd31c6639c3bab0be8f",
+              "history_sha256": "83a7ab40f937a6ccd418f7806c67a2cad7ab12424a1012aa443c69e41842ebbf",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3346,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3346
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_142",
+      "positive": {
+        "id": "multi_turn_base_142",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "add_to_watchlist",
+            "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+            "status": "executed",
+            "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+            "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+          }
+        ],
+        "state_sha256": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_142",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+        "state_match": true,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9917068205710887,
+        "scoped": 0.9944804510924795,
+        "dots": 0.9414484302355773,
+        "letters": 0.9397616404019462
+      },
+      "js_bits": {
+        "full/scoped": 0.0002834248302424338,
+        "full/dots": 0.01687089870111444,
+        "full/letters": 0.017747585899939133,
+        "scoped/dots": 0.019662880085452535,
+        "scoped/letters": 0.020522621260811082,
+        "dots/letters": 5.846588664525038e-05
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_142",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "after": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "status": "executed",
+              "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "after": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            }
+          ],
+          "state_sha256": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "9469f22f2a2bce4a010f11d0e19f71024fb0a25bb53e1e252c7a609743411f27",
+              "history_sha256": "0da0f6e666718be3d0ac267592c0cc8cfdf3c0a2af13f6c2f706be1817e3e57e",
+              "raw_sha256": "2625eae90dc9091251490eedcb3ecd46984fa09c331f5db0ee7b49160533a4c9",
+              "input_tokens": 3244,
+              "generated_tokens": 30,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3244
+            },
+            {
+              "prompt_sha256": "f67a4dcb0a941eda4650cd2804baa2357d166b351b9cf6a0949dba0016aafb11",
+              "history_sha256": "17c260dc31596d439cfb15108a0fb03707d3a99839c92ed48ed812c81921971e",
+              "raw_sha256": "832d4d69ae793e186756904730fe109d9e22094083b361d6d9de685c85566ee3",
+              "input_tokens": 3292,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3292
+            },
+            {
+              "prompt_sha256": "931bed9cf108d608a70b5f0350abc59c5f98cbb9f44861dbb3b55dde2cce74ca",
+              "history_sha256": "1517c88729314e814ad49903a15637e56e560bf53ab5eed7228607c8bd03667a",
+              "raw_sha256": "46a82d488d18a967926348560774941ab64e461f4bf91d579c2726bf928e9da5",
+              "input_tokens": 3331,
+              "generated_tokens": 30,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3331
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "scoped": {
+          "id": "multi_turn_base_142",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "after": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "status": "executed",
+              "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "after": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            }
+          ],
+          "state_sha256": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "d8209c87b27b2df457b7b3d9a5e6f8699f6a3ee750c3fe92a472211e6cc596f3",
+              "history_sha256": "0da0f6e666718be3d0ac267592c0cc8cfdf3c0a2af13f6c2f706be1817e3e57e",
+              "raw_sha256": "7be8cb141fb4ece59bbcb57f04f378af40a98055ea8157ba9f98380de6ca3a37",
+              "input_tokens": 779,
+              "generated_tokens": 39,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3244
+            },
+            {
+              "prompt_sha256": "97f893ff1cd6089c9a6cc2e85156785be6b46a1b52a0fa9d62a577dd75d9dd19",
+              "history_sha256": "d7c8af71a2ec84af89d573b0a97fd724712e5879377b5f33ee1cef140058a4b5",
+              "raw_sha256": "832d4d69ae793e186756904730fe109d9e22094083b361d6d9de685c85566ee3",
+              "input_tokens": 836,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3301
+            },
+            {
+              "prompt_sha256": "5dadbe38a0a453a0e8456b41ef33a02d49401ef10c061b3fabc818dc88a962b1",
+              "history_sha256": "117a7a2a3fb1b71a82a69a631c27427e77d30c5b0fc13b718e86df7e018bf73f",
+              "raw_sha256": "23f709f2b27f3f61315aa201d33dc2497f3d989694336a9890b75b778f7a2497",
+              "input_tokens": 875,
+              "generated_tokens": 32,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3340
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "dots": {
+          "id": "multi_turn_base_142",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "after": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "status": "executed",
+              "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "after": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            }
+          ],
+          "state_sha256": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "fa1742d74474652c19ccd0c46af0e56652cfb7d09fba25f613497d28f3471ed1",
+              "history_sha256": "4e8dd99d4de1114296129dcacae1672c6145b7324f6296956551aa120ba9ef42",
+              "raw_sha256": "d0428bb595c725aa4ea4a79f15c16fd4c8fe04b2cde423fff347b60c022cd7f0",
+              "input_tokens": 3244,
+              "generated_tokens": 39,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3244
+            },
+            {
+              "prompt_sha256": "7863a9f872286b35846bd92da2bfcfc71b4ff6b1a3b0a86801b3f141cddfc0f2",
+              "history_sha256": "4d27bac55ff9a1735c5aa5de3a5d1fc2d86842e4330cf6f076d9a8e5e3d121f0",
+              "raw_sha256": "832d4d69ae793e186756904730fe109d9e22094083b361d6d9de685c85566ee3",
+              "input_tokens": 3301,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3301
+            },
+            {
+              "prompt_sha256": "5c6c09d3c364e6998d3ec6f74af9f41b587444ee5d3039dd33d59964dc597910",
+              "history_sha256": "b3594356e752781d8319ef587c78d2009745b9360b56e36d36c5ba81b08c2c26",
+              "raw_sha256": "23f709f2b27f3f61315aa201d33dc2497f3d989694336a9890b75b778f7a2497",
+              "input_tokens": 3340,
+              "generated_tokens": 32,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3340
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        },
+        "letters": {
+          "id": "multi_turn_base_142",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_symbol_by_name",
+              "native_arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "status": "executed",
+              "arguments_sha256": "ebfe4c4463068a7eb9eaf416cbd27ddb5093cefd7afbb1b42bdcb17c03070831",
+              "response_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6",
+              "before": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "after": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "feedback_sha256": "d228a8818cc3e8453b5387178a94192bf2910f15c7ab69c23605584a6f2368b6"
+            },
+            {
+              "name": "add_to_watchlist",
+              "native_arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "status": "executed",
+              "arguments_sha256": "73886cc1aab6dd788c1e8a00813c39e3dcf939363a1ab8c57e244a8617164d25",
+              "response_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca",
+              "before": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "after": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+              "feedback_sha256": "fcdb01c981668a9a9bacd59b46c3ad950792da8298600cc1d6b8ada3d7b8f7ca"
+            }
+          ],
+          "state_sha256": "e04504a60ade8793625355fe68641d5c940d5947268332fd7da16b7549e10919",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "211c0a4b6552e515792fc0ba4bade409f0645b3aab0e0d101f0f80cc10615c95",
+              "history_sha256": "eb62f7ccf17ed3a1f7d6fc9b146907ad0b10619b68655a02e537ca4718c03b96",
+              "raw_sha256": "3a6ff36d05b4b359fe8b1d0cbd8a9f1e1561d95ec407fecf947dec4950fdd0bc",
+              "input_tokens": 3244,
+              "generated_tokens": 37,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3244
+            },
+            {
+              "prompt_sha256": "f59e0bd5e6b262f50dbb93f9232b8e009038b0ee5b936374ca3d43f68a2247cf",
+              "history_sha256": "7c215acc937f22401454755b74f39a3118221d54adf52f9de1156897e14c3453",
+              "raw_sha256": "832d4d69ae793e186756904730fe109d9e22094083b361d6d9de685c85566ee3",
+              "input_tokens": 3299,
+              "generated_tokens": 16,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3299
+            },
+            {
+              "prompt_sha256": "9c05c08cc5856cabc1966a26472db5dae478926549d526c22335f6093db9c13a",
+              "history_sha256": "9bb58ea8eb3dd73bae0a97714de7bd53a902f8a7b475b5ca9ca6cff2877f1f37",
+              "raw_sha256": "23f709f2b27f3f61315aa201d33dc2497f3d989694336a9890b75b778f7a2497",
+              "input_tokens": 3338,
+              "generated_tokens": 32,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3338
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": false
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_146",
+      "positive": {
+        "id": "multi_turn_base_146",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_watchlist",
+            "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "status": "executed",
+            "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "response_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7"
+          }
+        ],
+        "state_sha256": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "no_call": {
+        "id": "multi_turn_base_146",
+        "stop": "normal",
+        "calls": [],
+        "state_sha256": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+        "state_match": true,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "opener_probability": {
+        "full": 0.9932420255557225,
+        "scoped": 0.9994911595825303,
+        "dots": 0.9826743976478208,
+        "letters": 0.9691989565794291
+      },
+      "js_bits": {
+        "full/scoped": 0.002407681135239366,
+        "full/dots": 0.0023145776642440998,
+        "full/letters": 0.006930382201173943,
+        "scoped/dots": 0.007487372623866923,
+        "scoped/letters": 0.014179859538357556,
+        "dots/letters": 0.00236981054656838
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_146",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7",
+              "before": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+              "after": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+              "feedback_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7"
+            }
+          ],
+          "state_sha256": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "c1c73463794383f9210168670df4260d3b6a529f60131cae786801aec84a6c6a",
+              "history_sha256": "aee8a9b527c9cd53c918691837180f5af3433799fd6b0817c220b53e4c5c4802",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3238,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3238
+            },
+            {
+              "prompt_sha256": "92333b1dfd90979d2cfef1b6c1a81396b67acaf48fa3e40e87e76e692e7608a3",
+              "history_sha256": "a4fbc30292a03c1506f864bb2bd55a17b4da99aaddda80517481fd0faea5dd0a",
+              "raw_sha256": "eadae7a7f613286151c55dc9394c2c424ca8bbd96cbef16138edab5e0ef5b682",
+              "input_tokens": 3280,
+              "generated_tokens": 38,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3280
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "scoped": {
+          "id": "multi_turn_base_146",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7",
+              "before": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+              "after": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+              "feedback_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7"
+            }
+          ],
+          "state_sha256": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "7a850dcbdeeefdaec9d6ff8d787c9b045718db4f1ca38328ba4f925823ab3ea7",
+              "history_sha256": "aee8a9b527c9cd53c918691837180f5af3433799fd6b0817c220b53e4c5c4802",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 773,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3238
+            },
+            {
+              "prompt_sha256": "895dd5f2f0cf30a4ee605b8e65a0fdfbd685f9989983b1aa685e28a795b88529",
+              "history_sha256": "a4fbc30292a03c1506f864bb2bd55a17b4da99aaddda80517481fd0faea5dd0a",
+              "raw_sha256": "5b7a8bb2859bcff56a74e7f9b566f5ca794d728b3cab3910c731fb47197eec49",
+              "input_tokens": 815,
+              "generated_tokens": 37,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3280
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "dots": {
+          "id": "multi_turn_base_146",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7",
+              "before": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+              "after": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+              "feedback_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7"
+            }
+          ],
+          "state_sha256": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "354c241f79ba5c03047a716b7e85f83dce3e0ab74c33bcae89800cf253378075",
+              "history_sha256": "2fd8282cc39c53792362f6cba85666651045557fa5857a630185e5387d7eb92a",
+              "raw_sha256": "3317b1f82d46a19349b9361acf7adb33e3903fbd99dd1211b7d87557f2f60d3c",
+              "input_tokens": 3238,
+              "generated_tokens": 30,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3238
+            },
+            {
+              "prompt_sha256": "29a8fb289e004ace4e04ef61f0d6411b6d88014e0c0feb78c71ba66dbd33028a",
+              "history_sha256": "96087c1a6de5049e7aa6b98afbf82195994ffe8eff5d3c06c46b75b8bda9b71f",
+              "raw_sha256": "d73fc083b8b1c5f0aa50537ec31e367c60c7a454d22674b374fb12310f57486f",
+              "input_tokens": 3300,
+              "generated_tokens": 38,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3300
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        },
+        "letters": {
+          "id": "multi_turn_base_146",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_watchlist",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7",
+              "before": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+              "after": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+              "feedback_sha256": "a3ad4b21cb56361c267213b08c5d7e0ae9617e9fce573f5b5d90b957b864c5b7"
+            }
+          ],
+          "state_sha256": "ba599a3bff5381f58dede37be6db04ff4590f3f179459a0ce62f8fbe6d5d341e",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "20b97f0854528a8f848a051ef0b26271b67b2479af2c7ba265ab387d83812461",
+              "history_sha256": "db6175ab0518d94b6305ad63580e184a665ba5b6bcc01f7da68aff6786aa10a1",
+              "raw_sha256": "b71a6a781348dae46979f3ad50124a2e229890149f662e3145c087df50f7b3a6",
+              "input_tokens": 3238,
+              "generated_tokens": 10,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3238
+            },
+            {
+              "prompt_sha256": "771131224dc1c614a4df4fec8b31e02ea1e39a477a3d3615ca0d2ef42685711d",
+              "history_sha256": "e79e605e054ab6cc0365bf0674468973424639af6a869539ed250ab69923bb25",
+              "raw_sha256": "3f6b93d19c7759552c5752f927958bb0425d09240c44e3174fabc627767f552a",
+              "input_tokens": 3280,
+              "generated_tokens": 25,
+              "stop": "stop",
+              "full_catalog_same_history_tokens": 3280
+            }
+          ],
+          "domain_errors": 0,
+          "exact_calls": true
+        }
+      }
+    }
+  ]
+}

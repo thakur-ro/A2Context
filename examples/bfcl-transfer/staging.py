@@ -76,7 +76,8 @@ class Transport(SavedCompletion):
 
 
 class TravelTool(BaseTool):
-    def __init__(self, schema, sim, events, observations=None):
+    def __init__(self, schema, sim, events, observations=None, *, domain="travel"):
+        self.domain = domain
         self.name, self.description, self.parameters = schema["name"], schema["description"], schema["parameters"]
         self.sim, self.events = sim, events
         self.observations = observations
@@ -91,7 +92,7 @@ class TravelTool(BaseTool):
             args = self._verify_json_format_args(params)
         except (ValueError, ValidationError, TypeError):
             event["status"] = "schema_rejection"
-            return "The travel tool rejected these arguments."
+            return f"The {self.domain} tool rejected these arguments."
         event["arguments_sha256"] = digest(args)
         observation["arguments"] = args
         try:
@@ -99,7 +100,7 @@ class TravelTool(BaseTool):
         except (TypeError, KeyError, ValueError, IndexError) as exc:
             event["status"] = "simulator_exception"
             observation["simulator_exception_type"] = type(exc).__name__
-            return f"The travel simulator returned {type(exc).__name__}."
+            return f"The {self.domain} simulator returned {type(exc).__name__}."
         event.update(status="executed", response_sha256=digest(response))
         observation["returned_domain_error"] = isinstance(response, dict) and "error" in response
         return response
@@ -153,16 +154,17 @@ def trial(pkt, schemas, cls, tracer, *, runtime=None, tokenizer=None, saved=None
     return {**row, "generations": transport.receipts}, audit
 
 
-def workflow_score(pkt, cls, sim, events, stop):
+def workflow_score(pkt, cls, sim, events, stop, *, state_view=public_state):
     valid = [e for e in events if e["status"] == "executed"]
     reference = new_sim(cls, pkt["state"])
     outputs = [getattr(reference, n)(**a) for n, a in pkt["ref"]]
     actions_ok = contains_ordered([(e["name"], e["arguments_sha256"]) for e in valid],
                                   [(n, digest(a)) for n, a in pkt["ref"]])
     results_ok = not (Counter(map(digest, outputs)) - Counter(e["response_sha256"] for e in valid))
-    state_ok = sim == reference
+    state_ok = (state_view(sim) == state_view(reference)
+                if cls.__eq__ is object.__eq__ else sim == reference)
     return {"id": pkt["id"], "stop": stop, "calls": events,
-            "state_sha256": digest(public_state(sim)), "state_match": state_ok, "required_actions": actions_ok,
+            "state_sha256": digest(state_view(sim)), "state_match": state_ok, "required_actions": actions_ok,
             "required_responses": results_ok, "usable": stop == "normal" and state_ok and actions_ok and results_ok}
 
 

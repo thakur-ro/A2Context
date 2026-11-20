@@ -34,7 +34,7 @@ def inputs(pkt, schemas, edit=None):
     tools = schemas
     if edit == "tools":
         tools = [{**schema, "description":MARKER} for schema in schemas]
-    messages = [{"role":"system","content":MARKER if edit == "system" else SYSTEM}, *deepcopy(pkt["messages"])]
+    messages = [{"role":"system","content":MARKER if edit == "system" else pkt.get("system", SYSTEM)}, *deepcopy(pkt["messages"])]
     if edit == "customer":
         messages[-1]["content"] = MARKER
     return messages, tools
@@ -49,14 +49,14 @@ def proposals(tokenizer, raw, schemas):
 
 
 def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None, audit=None, first_feedback=None, before_second=None,
-          dispatch_allowed=None):
+          dispatch_allowed=None, state_view=public_state):
     from mlx_lm import stream_generate
     from mlx_lm.sample_utils import make_sampler
 
     sim = new_sim(cls, pkt["state"])
     events, receipts, dispositions = [], [], []
     messages, tools = inputs(pkt, schemas, edit)
-    registry = {s["name"]:TravelTool(s, sim, events, dispositions) for s in schemas}
+    registry = {s["name"]:TravelTool(s, sim, events, dispositions, domain=pkt.get("domain", "travel")) for s in schemas}
     stop = "completion_bound"
     for index in range(3):
         prompt, ids, _, _ = prompt_input(tokenizer, messages, tools)
@@ -94,7 +94,7 @@ def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None, audi
             event = {"name":name,"native_arguments_sha256":digest(args),"status":"unknown_tool"}
             events.append(event)
             if audit is not None:
-                before = digest(public_state(sim))
+                before = digest(state_view(sim))
             if dispatch_allowed is not None and name not in dispatch_allowed:
                 event["status"] = "outside_workflow_scope"
                 result = "This tool is outside the current workflow scope."
@@ -102,11 +102,11 @@ def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None, audi
                 result = registry[name].call(json.dumps(args)) if name in registry else "Unknown travel tool."
             if audit is not None:
                 audit[-1]["callbacks"].append({"name":name,"arguments":args,"returned":result,
-                                              "before":before,"after":digest(public_state(sim))})
+                                              "before":before,"after":digest(state_view(sim))})
             results.append(first_feedback if len(events) == 1 and first_feedback is not None else result)
         messages.extend([{"role":"assistant", "content":raw},
                          {"role":"tool", "content":json.dumps(results, ensure_ascii=False)}])
-    return {**workflow_score(pkt, cls, sim, events, stop), "generations":receipts,
+    return {**workflow_score(pkt, cls, sim, events, stop, state_view=state_view), "generations":receipts,
             "domain_errors":sum(bool(d.get("returned_domain_error")) for d in dispositions)}
 
 

@@ -18,8 +18,8 @@ def digest(value):
     return sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def fetch(root):
-    for name, expected in FILES["sha256"].items():
+def fetch(root, hashes=None):
+    for name, expected in (FILES["sha256"] if hashes is None else hashes).items():
         target = root / name
         if target.exists():
             if sha256(target.read_bytes()).hexdigest() != expected:
