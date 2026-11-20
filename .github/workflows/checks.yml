@@ -50,9 +50,7 @@ jobs:
       - name: Verify saved public QA rankings and passage-order comparison
         if: runner.os == 'Linux'
         run: |
-          python3 examples/public-qa/compare_orders.py
-          python3 examples/public-qa/check_holdout.py
-          python3 examples/public-qa/annotation_gap.py --check-saved
+          make check-qa
           python3 examples/context-screening/replay/prefix-study/study.py
           python3 examples/context-screening/replay/prefix-transfer/study.py
           python3 examples/context-screening/replay/prefix-indirect/study.py
@@ -72,7 +70,7 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/dashboard-browser" --no-audit --no-fund playwright-core@1.57.0
           "$RUNNER_TEMP/dashboard-browser/node_modules/.bin/playwright-core" install --with-deps chromium
-          PLAYWRIGHT_MODULE="$RUNNER_TEMP/dashboard-browser/node_modules/playwright-core/index.mjs" python3 scripts/check_browser.py
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/dashboard-browser/node_modules/playwright-core/index.mjs" make check-ui
       - name: Check bundled views
         run: |
           npm ci --prefix ui/mcp-app --no-audit --no-fund

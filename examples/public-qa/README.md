@@ -1,10 +1,12 @@
 # Which passage should an engineer test first?
 
+[Dataset license and Wikipedia article credits](data-credits.md)
+
 A retrieval workflow sent ten passages to a small language model. Before the model answered, we replaced each passage in turn and measured the shift in its next-token probabilities. We ranked those edits, then let the model answer all eleven requests. This checks whether a large early shift identifies a source worth testing when the workflow has no candidate answers.
 
 The [fresh-question evaluation](holdout.md) tests the same ranking on 20 additional questions with its primary comparison fixed in advance.
 
-Can a workflow flag missing evidence before the model answers? In a separate experiment, both an abstention score and a keyword baseline missed 19 of 20 annotated passage omissions. [Missing-passage experiment](annotation-gap.md)
+Can a workflow flag missing evidence before the model answers? In a separate experiment, both an abstention score and a keyword baseline missed 19 of 20 annotated passage omissions. A follow-up reviewed which requests still contained enough evidence to answer and compared the same pre-answer check on a human-labeled dataset. [Missing-passage experiment](annotation-gap.md) · [Passage support review](support-review/README.md) · [Single-paragraph transfer](support-review/transfer/README.md)
 
 ## What changed in the answers?
 

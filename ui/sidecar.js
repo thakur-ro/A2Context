@@ -155,6 +155,9 @@ function tokenVisual(landmark) {
       element("span", { text: signed(edited - baseline) }))));
 }
 
+const tokenPercent = new Intl.NumberFormat(undefined, {style:"percent", maximumSignificantDigits:4});
+const tokenProbability = logProbability => tokenPercent.format(Math.exp(logProbability));
+
 function trialTable(headers, rows) {
   const headings = headers.map(text => element("th", { text, scope: "col" }));
   function countCell(arm) {
@@ -942,10 +945,9 @@ function recommendationContext(kind, detail) {
   if (kind === "token") {
     const point = detail.landmark;
     const selected = point.positions.find((position) => position.token === point.token);
-    const percent = new Intl.NumberFormat(undefined, { style: "percent", maximumSignificantDigits: 4 });
     return element("div", {},
       element("p", { text: "For the original token " + JSON.stringify(selected.fragment) + ", the probability changed from " +
-        percent.format(Math.exp(selected.baseline)) + " to " + percent.format(Math.exp(selected.edited)) +
+        tokenProbability(selected.baseline) + " to " + tokenProbability(selected.edited) +
         " after editing the source. Both scores use the original output prefix." }),
       element("p", { text: "At this token, the largest tested decoder-block swap was at block " +
         point.block + " (" + signed(point.block_delta) + " log probability)." }));

@@ -16,7 +16,8 @@ function makeContextNetwork(rows) {
     const record = canvasRecord(card);
     const {facts} = record;
     const detail = card.evidence.detail;
-    const finding = add("finding:"+card.id,{type:"finding",name:facts.title,description:facts.observed,href:record.href,kind:facts.kind});
+    const probe = ["prefill","candidate","token"].includes(card.kind) ? {kind:card.kind, detail} : null;
+    const finding = add("finding:"+card.id,{type:"finding",name:facts.title,description:facts.observed,href:record.href,kind:facts.kind,probe});
     for (const source of detail.sources) {
       const name = sourceName(source);
       const {producer, organization, workflow, trace_id, call_id} = card.evidence;
@@ -29,7 +30,8 @@ function makeContextNetwork(rows) {
     for (const [i,arm] of (facts.map?.arms || []).entries()) {
       const id = add("arm:"+card.id+":"+i,{type:"outcome",name:arm.value,kind:arm.label,
         description:facts.map.root,href:record.href});
-      connect(finding,id,card.kind === "conflict" ? "reports a declared value" : "compares outcomes");
+      const relation = {conflict:"reports a declared value",candidate:"compares candidate log odds",token:"compares token probabilities"};
+      connect(finding,id,relation[card.kind] || "compares outcomes");
     }
   }
   return {nodes,edges};
@@ -222,6 +224,14 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
       element("strong",{text:node.name}),element("span",{text:node.description}),
       element("small",{text:plural(neighbors.length,"connection")+" · "+relations}),
       node.href && link("Inspect this evidence →",node.href)));
+    if (node.probe?.kind === "prefill") {
+      body.append(visual("prefill", node.probe.detail));
+    } else if (node.probe) {
+      const {kind, detail} = node.probe;
+      const title = kind === "candidate" ? "Choice scores at this prefix" : "Measured output token " + (detail.landmark.token + 1);
+      body.append(element("section", {className:"panel", "aria-label":title},
+        element("h3", {text:title}), visual(kind, detail), recommendationContext(kind, detail)));
+    }
     if (keyboard) body.querySelector(".network-node.selected").focus({preventScroll:true});
   }
   search.onchange=()=>show(search.value);

@@ -20,7 +20,16 @@ make check
 make verify-image
 ```
 
-The first command checks formatting, lints, Rust tests, JavaScript and end-to-end findings on saved workflows. The second requires Docker and exercises the actual runtime image. To include the independent Protobuf/gzip exporter, run the SDK test in the [validation guide](docs/validation.md). To check your deployment's volume, capture policy, queue and latency budgets, follow the [staging procedure](DEPLOYMENT.md#before-sending-production-traffic).
+The first command checks formatting, lints, Rust tests, JavaScript and end-to-end findings on saved workflows. It also verifies the saved QA experiments. `make check-qa` runs those comparisons alone with Python and no model download. The second command requires Docker and exercises the actual runtime image. [Exporter validation](docs/validation.md) · [Staging procedure](DEPLOYMENT.md#before-sending-production-traffic)
+
+For a dashboard change, run the same desktop and mobile journeys as CI. They start disposable sidecars, follow the findings and context map to recorded evidence, and check the A2UI demo. Run these commands from the repository root with Node and npm installed.
+
+```sh
+browser_tools=$(mktemp -d)
+npm install --prefix "$browser_tools" --no-audit --no-fund playwright-core@1.57.0
+"$browser_tools/node_modules/.bin/playwright-core" install chromium
+PLAYWRIGHT_MODULE="$browser_tools/node_modules/playwright-core/index.mjs" make check-ui
+```
 
 After editing `ui/mcp-app/view.js` or `ui/mcp-app/view.html`, run `npm ci --prefix ui/mcp-app` and `npm run build --prefix ui/mcp-app`. The build refreshes the HTML embedded in the Rust binary and its bundled dependency licenses. Run `npm run check --prefix ui/mcp-app` to verify both generated files before submitting changes.
 

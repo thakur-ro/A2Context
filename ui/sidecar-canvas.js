@@ -27,6 +27,18 @@ function canvasRecord(card) {
       const label = arm.label.replaceAll("-", " ");
       return label[0].toUpperCase() + label.slice(1) + " supplied " + arm.value + ".";
     }).join(" ");
+  } else if (card.kind === "token") {
+    const point = detail.landmark;
+    const selected = point.positions.find(position => position.token === point.token);
+    map = {root:"Probability of " + JSON.stringify(selected.fragment) + " at output token " + (point.token + 1),arms:[
+      {label:"Original request",value:tokenProbability(selected.baseline)},
+      {label:"One source edited",value:tokenProbability(selected.edited)}]};
+    facts.observed = findingDetail(card.kind, detail);
+  } else if (card.kind === "candidate") {
+    map = {root:detail.alternatives.map(entry => entry.id).join(" vs ") + " at a fixed prefix",arms:[
+      {label:"Original request",value:signed(detail.baseline) + " log odds"},
+      {label:"One source edited",value:signed(detail.edited) + " log odds"}]};
+    facts.observed = findingDetail(card.kind, detail);
   } else if (detail.response_pair?.original && detail.response_pair?.edited) {
     const pair = detail.response_pair;
     const preview = trial => [trial.label,trial.outcome_preview].filter(Boolean).join(" · ").slice(0,360) || "Output unavailable";
@@ -186,6 +198,10 @@ function investigationCanvas(impact, page, models) {
     try {
       if (!selected && /^(?:(?:show|open|draw)(?: me)? (?:the |a )?)?(?:context|evidence) (?:map|graph|network)$/i.test(normalize(question))) {
         let rows = loadedPage.rows, offset = loadedPage.next_offset;
+        if (previous && !rows.some(row => row.id === previous.facts.id)) {
+          const selected = await api("findings",{...scope,group:previous.facts.id});
+          rows = [...rows,...selected.rows];
+        }
         const host = element("div",{});
         function draw(focusId) {
           host.replaceChildren(contextNetwork(rows,{focusId,total:currentTotal,onNext:offset == null ? null : async id => {

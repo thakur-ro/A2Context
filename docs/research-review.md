@@ -18,12 +18,19 @@ We searched the web for primary sources in arXiv, NeurIPS, ICLR, ACL Anthology, 
 - Follow-up on 20 November 2026 used `site:aclanthology.org Longpre Entity-Based Knowledge Conflicts in Question Answering substitution contextual answer 2021`.
 - The 20 November 2026 reference-answer follow-up used `RAGChecker fine-grained framework diagnosing retrieval augmented generation context utilization claim checker Amazon NeurIPS official github`.
 - `context-render Claude Code source context view` and `Langfuse trace sessions metadata`
+- The 20 November sufficiency search covered pre-answer RAG context judges and `multi hop question answering remove supporting paragraphs contrastive support DiRe`.
 
 We included primary sources that describe an implemented or evaluated method for trace mining, context provenance, instruction conflict, controlled replay, or internal interventions. We included adjacent observability tools where an existing feature could replace part of the design. We excluded broad LLM monitoring and prompt-management products without a documented mechanism bearing on the question. Preprints and product documentation support claims about their described methods and interfaces. Use the linked paper identifiers and named product documentation to reproduce this reading set.
 
 ### Counterfactual values in question answering
 
 Longpre and colleagues substituted an answer entity in a passage to evaluate whether a QA model followed the new evidence. Subsequent work on multiple passages studied conflicting contextual answers alongside a model’s parametric knowledge. Both are related methods. The journal experiment adapts value substitution to two named workflow instructions. It records the complete answer under each edit. A different answer can still disagree with the replacement, as the follow-up question illustrates. [Longpre et al., EMNLP 2021](https://aclanthology.org/2021.emnlp-main.565/) · [Rich Knowledge Sources Bring Complex Knowledge Conflicts, EMNLP 2022](https://aclanthology.org/2022.emnlp-main.146/) · [Workflow experiment](guide.md#does-the-answer-follow-an-edited-value)
+
+### Evaluating whether retrieved context can answer a question
+
+Joren and colleagues define context sufficiency, evaluate an automated judge against human judgments, and use that signal in selective generation. Their repository publishes the judge prompt. This is the closest comparison for a pre-answer sufficiency alert. Our experiment uses a much smaller Qwen checkpoint, a single YES/NO scoring pass, and paired inventories with source-level evidence annotations. The question is whether that cheaper signal can select a useful intervention. The authors’ benchmark results describe a different model, prompt and evaluation set. [Joren et al., ICLR 2025](https://research.google/pubs/sufficient-context-a-new-lens-on-retrieval-augmented-generation-systems-2/) · [Pinned author repository](https://github.com/hljoren/sufficientcontext/tree/801b465eb3be5bf5216fbe3301e61daee85ff99c) · [Our paired test](../examples/public-qa/support-review/README.md)
+
+For source-removal controls, Trivedi et al. already compared deleting supporting facts with deleting a non-supporting fact and extended the construction to equalize fact counts. MuSiQue also includes deliberately unanswerable contrast questions. Our reviewed-passage experiment addresses an additional practical case in retrieval logs. Several different passage sets can each support an answer, so the target edit intersects each recorded set. The matched control edits the same number of passages. This evaluates a particular model on those edits. [Contrastive support sufficiency, EMNLP 2020, §4.2 and Appendix A.3](https://aclanthology.org/2020.emnlp-main.712/) · [MuSiQue, TACL 2022](https://aclanthology.org/2022.tacl-1.31/) · [Selection protocol](../examples/public-qa/support-review/witness-edits/protocol.md)
 
 ## Closest systems
 

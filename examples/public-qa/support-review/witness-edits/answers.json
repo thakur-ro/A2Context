@@ -1,0 +1,410 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+  "manifest_sha256": "4f3717abe50381cf40f967f205e2b59382e780b53dca1606ff018d5eb2a3b8d0",
+  "cases": [
+    {
+      "row": 2500,
+      "original": {
+        "text": "September 21, 1972",
+        "stop_token_id": 151645,
+        "prompt_sha256": "20d36b9097a4126c51d6f23d2c306a8ce9897f5202076e5b8fe9d962e7812eea",
+        "prompt_tokens": 1409,
+        "generated_tokens": 11,
+        "seconds": 1.7344874589471146,
+        "alias_match": false
+      },
+      "target": {
+        "text": "September 22, 1944",
+        "stop_token_id": 151645,
+        "prompt_sha256": "f641e9629abccda187616ba4ccf9e10d4727f4fdf7f77faff741c3d3afe63e52",
+        "prompt_tokens": 1159,
+        "generated_tokens": 11,
+        "seconds": 1.2962733340682462,
+        "alias_match": false
+      },
+      "control": {
+        "text": "September 21, 1972",
+        "stop_token_id": 151645,
+        "prompt_sha256": "130fba1ff4e5494552e258fb51f7319d4e226650d1ef19753fd7e38ece9c4442",
+        "prompt_tokens": 1128,
+        "generated_tokens": 11,
+        "seconds": 1.2676697089336812,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2525,
+      "original": {
+        "text": "The flag of Myanmar is red, green, and yellow.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "a9d4c38294d188ac0a3b39e1dee6d183165b00bb575a6c91a1fbd3139cf0243e",
+        "prompt_tokens": 1305,
+        "generated_tokens": 13,
+        "seconds": 1.5527580409543589,
+        "alias_match": false
+      },
+      "target": {
+        "text": "The current flag of Myanmar is a horizontal tricolour flag of yellow, green and red charged with a five-pointed white star in the middle of the field.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "bdbf9b50c1910d7e8b65e55e4a6add998c7a902606b76c61cddb3fd46c14e6d5",
+        "prompt_tokens": 1051,
+        "generated_tokens": 34,
+        "seconds": 2.1581283330451697,
+        "alias_match": false
+      },
+      "control": {
+        "text": "The flag of Myanmar is red, green, and yellow.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "414987fc09bcae0bf50fde0703805ee364ae2957f4d5dbd4c558bdd0a40e5f12",
+        "prompt_tokens": 1052,
+        "generated_tokens": 13,
+        "seconds": 1.175485874991864,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2550,
+      "original": {
+        "text": "Donnie Wahlberg sang the theme song to Step by Step.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "c6eb4e90293f50c3c1f092f6f2ccb0f29e32dc83180c2f7bffc213d7f518dac1",
+        "prompt_tokens": 1323,
+        "generated_tokens": 14,
+        "seconds": 1.4269221249269322,
+        "alias_match": false
+      },
+      "target": {
+        "text": "Donnie Wahlberg sang the theme song to \"Step by Step\".",
+        "stop_token_id": 151645,
+        "prompt_sha256": "6c994057884a23c395548e50bf44e2c4e65fa401bbc3807ac03fbea9fcb2e835",
+        "prompt_tokens": 1126,
+        "generated_tokens": 15,
+        "seconds": 1.2509419579291716,
+        "alias_match": false
+      },
+      "control": {
+        "text": "Donnie Wahlberg sang the theme song to Step by Step.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "62ffe7af0e34a5900688d5e9c80d55c1b4581672009d3431819d6fbed37409b7",
+        "prompt_tokens": 1052,
+        "generated_tokens": 14,
+        "seconds": 1.166441542096436,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2575,
+      "original": {
+        "text": "Ricky Nelson",
+        "stop_token_id": 151645,
+        "prompt_sha256": "069ed9e68b0f71f904ebe00cd873b96af875091e702860fa790e9e4cef54505f",
+        "prompt_tokens": 1360,
+        "generated_tokens": 4,
+        "seconds": 1.0540915000019595,
+        "alias_match": true
+      },
+      "target": {
+        "text": "Gary Hunley",
+        "stop_token_id": 151645,
+        "prompt_sha256": "b24449a318da01748700f2caaa24360ef0b9123ec256337110c6152b9bd5a6f8",
+        "prompt_tokens": 1260,
+        "generated_tokens": 4,
+        "seconds": 0.9878352499799803,
+        "alias_match": false
+      },
+      "control": {
+        "text": "Ricky Nelson",
+        "stop_token_id": 151645,
+        "prompt_sha256": "cebd996e390edad976ab6bfae3a275d8721e909336b3ba19966ac21cdb8a652f",
+        "prompt_tokens": 1221,
+        "generated_tokens": 4,
+        "seconds": 0.9562778340186924,
+        "alias_match": true
+      }
+    },
+    {
+      "row": 2600,
+      "original": {
+        "text": "The blood vessels that supply the retinal cells lie in the retina.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "9a40ea876054f7ea3bff31eb5a4dc39c89498de5f29ac3740c551e089af17b4b",
+        "prompt_tokens": 1404,
+        "generated_tokens": 15,
+        "seconds": 1.5332270000362769,
+        "alias_match": false
+      },
+      "target": {
+        "text": "The blood vessels that supply the retinal cells lie in the orbit medially to supply the forehead and scalp.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "4b6eb5043533cf1ddcbba02669156456c5ba0b208619ffabb2e70e260c22beb7",
+        "prompt_tokens": 1143,
+        "generated_tokens": 23,
+        "seconds": 1.553992542088963,
+        "alias_match": false
+      },
+      "control": {
+        "text": "The blood vessels that supply the retinal cells lie in the choroid and the outer retina.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "d949cf52c8ca61d71ca575ba1a4831fffaa6fb329cda6df101495c102776ed5b",
+        "prompt_tokens": 1113,
+        "generated_tokens": 20,
+        "seconds": 1.4128619160037488,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2625,
+      "original": {
+        "text": "The Ring of Power is a powerful ring in LOTR.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "262e49354af1f941d8ce6096253b8bca29e7f43145c913ae7556da7bcf4329af",
+        "prompt_tokens": 1332,
+        "generated_tokens": 13,
+        "seconds": 1.3781679579988122,
+        "alias_match": false
+      },
+      "target": {
+        "text": "The Lord of the Rings has a Ring of Power.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "2651401544da2984041b4364a8578752a81669027d513cf95f6a4617e418ec9c",
+        "prompt_tokens": 784,
+        "generated_tokens": 12,
+        "seconds": 0.8506603749701753,
+        "alias_match": false
+      },
+      "control": {
+        "text": "The One Ring has a ring of power in The Lord of the Rings.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "0b2e167639bb25ad6a4254e51c7294b270fd67462326f932a7302a5bf71cd12e",
+        "prompt_tokens": 803,
+        "generated_tokens": 16,
+        "seconds": 1.0119575839489698,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2650,
+      "original": {
+        "text": "Johannes Kepler",
+        "stop_token_id": 151645,
+        "prompt_sha256": "eaf374a7b229d81d8c5f07fdde5f20e79f814406c93f965da41c75aa22e0a557",
+        "prompt_tokens": 1433,
+        "generated_tokens": 5,
+        "seconds": 1.1933958750450984,
+        "alias_match": false
+      },
+      "target": {
+        "text": "Isaac Newton",
+        "stop_token_id": 151645,
+        "prompt_sha256": "4e72e7408dc8d7d54e66d3530dfa5365b2a597947b5309f5dfaa0148ff5d51ec",
+        "prompt_tokens": 987,
+        "generated_tokens": 4,
+        "seconds": 0.7420555000426248,
+        "alias_match": false
+      },
+      "control": {
+        "text": "Fakhr al-Din al-Razi",
+        "stop_token_id": 151645,
+        "prompt_sha256": "81ee93240069122c12a6a21099f837e44db6669fbfdc7a8bca85d18f8acf2d38",
+        "prompt_tokens": 1005,
+        "generated_tokens": 10,
+        "seconds": 0.9738411250291392,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2512,
+      "original": {
+        "text": "Chris Rea",
+        "stop_token_id": 151645,
+        "prompt_sha256": "5224cfee5689ce967621849e4188fcd185656f91d1ff92b17f7afbba0324b163",
+        "prompt_tokens": 1383,
+        "generated_tokens": 4,
+        "seconds": 1.1082401250023395,
+        "alias_match": true
+      },
+      "target": {
+        "text": "Chris Rea",
+        "stop_token_id": 151645,
+        "prompt_sha256": "e4cd64fead8dd8e62a15eaa2df3ff7bc4899553f38cbc6630b484aafd495c2a7",
+        "prompt_tokens": 1167,
+        "generated_tokens": 4,
+        "seconds": 0.8973712919978425,
+        "alias_match": true
+      },
+      "control": {
+        "text": "Chris Rea",
+        "stop_token_id": 151645,
+        "prompt_sha256": "6e4a89e584e9cabae1999a79271020419479c7c9495d848c0ecc697f5c721663",
+        "prompt_tokens": 1098,
+        "generated_tokens": 4,
+        "seconds": 0.8361232499592006,
+        "alias_match": true
+      }
+    },
+    {
+      "row": 2537,
+      "original": {
+        "text": "Colin McFarlane plays Joker in \"Batman: The Dark Knight\".",
+        "stop_token_id": 151645,
+        "prompt_sha256": "ab2f0722b408c6e2540d2e58ea2de8a88b909c89a4a70c6ebdc45debe982f76f",
+        "prompt_tokens": 1403,
+        "generated_tokens": 16,
+        "seconds": 1.5727777499705553,
+        "alias_match": false
+      },
+      "target": {
+        "text": "Michael Jai White plays Joker in \"Batman: The Dark Knight\".",
+        "stop_token_id": 151645,
+        "prompt_sha256": "f8eee936b3f5eeb7237edcff9fcddb6655e79b6f522a502eb32b1eaad283b625",
+        "prompt_tokens": 1200,
+        "generated_tokens": 15,
+        "seconds": 1.3179112090729177,
+        "alias_match": false
+      },
+      "control": {
+        "text": "Michael Jai White plays Joker in \"The Dark Knight\".",
+        "stop_token_id": 151645,
+        "prompt_sha256": "41a4003d6c520023a8bb8f126a5d84e213575e44751b7d6d458384deeef4f5b9",
+        "prompt_tokens": 1276,
+        "generated_tokens": 13,
+        "seconds": 1.3361039999872446,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2562,
+      "original": {
+        "text": "The Cubs beat the New York Yankees in the 2016 World Series.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "bf8b37256b1bae2026d667666a59314c34b995c1f77d04dae87e11f657176d16",
+        "prompt_tokens": 1402,
+        "generated_tokens": 18,
+        "seconds": 1.6567820420023054,
+        "alias_match": false
+      },
+      "target": {
+        "text": "Los Angeles Dodgers",
+        "stop_token_id": 151645,
+        "prompt_sha256": "b841040aee99542b98e0959d15078f4d7af8ffdb1dfa627bcb67acd1047b3401",
+        "prompt_tokens": 1258,
+        "generated_tokens": 4,
+        "seconds": 0.978485667030327,
+        "alias_match": false
+      },
+      "control": {
+        "text": "The Cubs beat the Los Angeles Dodgers in the 2016 World Series.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "dc7245d4c552f22d55179c5e2363be3aba68f919843e775185ccf4683305daff",
+        "prompt_tokens": 1262,
+        "generated_tokens": 18,
+        "seconds": 1.5267452909611166,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2587,
+      "original": {
+        "text": "SIP",
+        "stop_token_id": 151645,
+        "prompt_sha256": "c7eaac608d16e57b621b27d9536f97532ee55209f397db27092561e13a3667c4",
+        "prompt_tokens": 1275,
+        "generated_tokens": 3,
+        "seconds": 0.9621566659770906,
+        "alias_match": false
+      },
+      "target": {
+        "text": "SIP stands for Session Initiation Protocol.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "c9548274516ecc411be5b37616ffb506546b867ee3660e8144bd31b7d87b2649",
+        "prompt_tokens": 1145,
+        "generated_tokens": 10,
+        "seconds": 1.0894419170217589,
+        "alias_match": true
+      },
+      "control": {
+        "text": "SIP",
+        "stop_token_id": 151645,
+        "prompt_sha256": "15d36d9207002667109e1c0bfac472c679a67be064e3c70140103a622b2725f4",
+        "prompt_tokens": 1143,
+        "generated_tokens": 3,
+        "seconds": 0.8387261669849977,
+        "alias_match": false
+      }
+    },
+    {
+      "row": 2612,
+      "original": {
+        "text": "King's Lynn and Halifax",
+        "stop_token_id": 151645,
+        "prompt_sha256": "c29cc5ec7d7b053ef345bed3733dea4a82c28551f63c2f30d11de8fe269c0e54",
+        "prompt_tokens": 1263,
+        "generated_tokens": 6,
+        "seconds": 1.072148459032178,
+        "alias_match": false
+      },
+      "target": {
+        "text": "King's Lynn and Halifax",
+        "stop_token_id": 151645,
+        "prompt_sha256": "a36a5c1a9699f615389df3a71eed81b40a82f734443a13d48cb808a8e994042d",
+        "prompt_tokens": 1197,
+        "generated_tokens": 6,
+        "seconds": 0.9935070000356063,
+        "alias_match": false
+      },
+      "control": {
+        "text": "The Royal Family (TV series) was filmed in Whitby, Scarborough, City of Bradford and the North Riding of Yorkshire.",
+        "stop_token_id": 151645,
+        "prompt_sha256": "d9ffdbf08c3491be3c90fca6784f6093598d590ef25633ea0682afa2e5467ac7",
+        "prompt_tokens": 1132,
+        "generated_tokens": 26,
+        "seconds": 1.656271709012799,
+        "alias_match": true
+      }
+    }
+  ],
+  "summary": {
+    "complete_triplets": 12,
+    "change_from_original": {
+      "target_only": 5,
+      "control_only": 1,
+      "both": 5,
+      "neither": 1
+    },
+    "target_control_same_answer": 1,
+    "arms": {
+      "original": {
+        "calls": 12,
+        "completed": 12,
+        "truncated": 0,
+        "abstained": 0,
+        "alias_matched": 2,
+        "prompt_tokens": 16292,
+        "generated_tokens": 122,
+        "seconds": 16.24515499989502
+      },
+      "target": {
+        "calls": 12,
+        "completed": 12,
+        "truncated": 0,
+        "abstained": 0,
+        "alias_matched": 2,
+        "prompt_tokens": 13477,
+        "generated_tokens": 142,
+        "seconds": 14.116604377282783
+      },
+      "control": {
+        "calls": 12,
+        "completed": 12,
+        "truncated": 0,
+        "abstained": 0,
+        "alias_matched": 3,
+        "prompt_tokens": 13285,
+        "generated_tokens": 152,
+        "seconds": 14.15850600192789
+      }
+    }
+  }
+}

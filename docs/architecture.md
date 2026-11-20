@@ -38,6 +38,19 @@ flowchart LR
 
 The sidecar updates recommendations as evidence arrives. Use the request preview to compare inputs and verified probes before the original inference request is sent. [Deployment](sidecar.md) · [Sidecar methods](methods.md)
 
+### What supplies a measurement on the context map?
+
+The browser builds the map from findings in the selected scope. It reads the representative call and named sources for each finding. A shared source node connects calls that name the same producer, organization, workflow, source, version and role. Selecting a first-token, candidate or token finding shows the values from that call. No model runs when an engineer opens the map.
+
+| Available evidence | What an engineer can inspect |
+| --- | --- |
+| Captured source and declared rule | A source’s location and which values were declared together. A recurring source can connect several findings. |
+| Full next-token distributions for each tested source edit | The Jensen–Shannon divergence from the original request before generation, alongside measured changes to completed proposals where a runner supplied them. |
+| Candidate scores for an original request and a source edit | Which of two continuations the runner favored at a fixed prefix and how far its log odds moved. An untested continuation could still win. |
+| Instrumented token and decoder-block comparisons | The original token’s probability under the edited request at the same output prefix, plus the measured effect of a swap at a named block. |
+
+A question about missing *knowledge* needs a separate test. A second retrieved passage may support the same answer, or several passages may support it together. In the paired retrieval study, an explicit sufficiency check falsely flagged six of twenty supported requests. It runs only in the research harness. [Context map and tested limits](research-preview.md) · [Source-level evidence annotations](../examples/public-qa/support-review/README.md)
+
 ## What the algorithms measure
 
 | Question | How it works | What you can conclude |
