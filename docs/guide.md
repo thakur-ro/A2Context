@@ -655,6 +655,7 @@ Use the same request schemas as the MCP tools. These routes accept HTTP `POST` w
 | Route | What it returns |
 | --- | --- |
 | [`/api/activation-effects`](../schema/activation-effects-query-1.json) | Comparable checkpoint effects by organization, user, thread, or time window. Add a group key to get the contributing decisions and source links. |
+| [`/api/replay-effects`](../schema/replay-effect-query-1.json) | Comparable single edits, joint edits, and negative-control contrasts. Compare scopes or time windows and page through the original decisions. |
 | [`/api/turn-evidence`](../schema/turn-evidence-request-1.json) | Recorded call order, context links, conflicts, and available measurement report IDs for a turn. |
 | [`/api/output-token-effects`](../schema/output-token-effects-request-1.json) | Effects of source interventions on each recorded token at one decoder block. |
 | [`/api/generation-branches`](../schema/generation-branches-request-1.json) | Measured continuations after an activation swap, including the zero-based index of the first token that differs from the recorded output. |
@@ -691,7 +692,7 @@ curl -fsS -H 'Content-Type: application/json' \
 
 The endpoint accepts one uncompressed JSON report up to 16 MiB. It returns `201` for a new report, `200` for an identical retry, and `400` for an invalid report, including an unavailable or mismatched captured request. A `409` means the decision is unavailable or another report already uses that ID at the decision. If the decision is still on its way, send the trace and retry. Accepted reports persist in `replay-reports/` inside the OTLP store. Reports for decisions loaded from an evidence file need that file again after restart.
 
-Select **Refresh traces** in the browser, then open **Replay results** on the recorded turn. **Patterns → Replay effects** groups comparable measurements across calls. A live MCP client reads the same report on its next `get_turn_evidence` call. [Compare effects across conversations](#compare-measured-effects-across-conversations)
+Select **Refresh traces** in the browser, then open **Replay results** on the recorded turn. **Patterns → Replay effects** groups comparable measurements across calls. A live MCP client reads the same report with `get_turn_evidence` or `query_replay_effects`. [Query replay groups](#query-replay-effects-through-mcp-or-http)
 
 Try the [saved Qwen replay](../examples/send_otlp_replay.py) without running a model. The example sends the original inference as OTLP and attaches its saved trials. Follow the printed link to the FAQ edit. The baseline matched the recorded 60-day answer in one of one greedy trials, and the edited request matched in zero of one. Run the example again with a different conversation ID to see how the inspector groups the same measurement across two threads.
 
@@ -1056,6 +1057,37 @@ cargo run --locked -- inspect --replay data/return-replay.json fixtures/support.
 ```
 
 The JSON output includes `replay_effects` with per-test counts, original call timestamps when available, and run, call, decision, and replay IDs. Loading an identical report twice counts it once.
+
+### Query replay effects through MCP or HTTP
+
+Call `query_replay_effects` through MCP or send the same JSON to `POST /api/replay-effects`. The tool is available when MCP loads saved replay reports or follows a live store. Choose a source and experiment type, then filter by organization, user, thread, or recorded date. Use `compare` for a second selection. Both sides use the same comparison key and keep their own counts. [Query schema](../schema/replay-effect-query-1.json)
+
+The example compares all of `support-17`'s loaded conversations with the user's calls from November 20 onward. The two saved Qwen reports each measured a drop of 100 percentage points after the FAQ edit, with one baseline and one edited trial per report.
+
+```sh
+replay_view=$(mktemp)
+cat > "$replay_view" <<'JSON'
+{
+  "version": 1,
+  "kind": "single",
+  "source_id": "journal-faq",
+  "min_conversations": 2,
+  "selection": {"scope": {"kind": "user", "organization_id": "journal-north", "user_id": "support-17"}},
+  "compare": {"scope": {"kind": "user", "organization_id": "journal-north", "user_id": "support-17"},
+              "after": "2026-11-20T00:00:00Z"}
+}
+JSON
+cargo run --locked -- query-replay-effects "$replay_view" \
+  --replay examples/context-screening/replay/report.json \
+  --replay examples/context-screening/replay/report-policy.json \
+  examples/context-screening/replay/evidence.json
+```
+
+The group has two decisions on the primary side and one on the comparison side. `min_conversations` retains groups with that many identified conversations with a usable effect on either side. A usable zero counts. The summary counts each decision once, even if multiple reports measured it. Each report scores its own recorded outcome using the group's match rule.
+
+Use the returned `key` as `group` with the same filters to page through trials' summary counts and call timestamps. The response gives each side its own `next_offset`. Use `offset` for the primary side and `compare_offset` for the comparison. Pass a row's `location` to `get_turn_evidence` or follow its `inspector_path` to the exact single, joint, or negative-control test. MCP Apps can display both scopes and open the contributing turns inline.
+
+Replacement text is available with `include_excerpts: true` when the MCP host enables excerpts. The effect query returns summarized trial counts and score changes. Open the inspector for individual trial outcomes.
 
 ### Recorded local-model example
 

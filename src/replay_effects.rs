@@ -1,5 +1,7 @@
 //! Group comparable interventions and retain the individual decision evidence.
 
+pub mod query;
+
 use crate::{replay, Call, Run};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -142,6 +144,13 @@ pub fn group<'a>(
     reports: &'a [replay::Replay],
 ) -> Result<Vec<EffectGroup<'a>>, String> {
     let runs: BTreeMap<_, _> = runs.iter().map(|&run| (run.id.as_str(), run)).collect();
+    group_reports(&runs, reports)
+}
+
+fn group_reports<'a>(
+    runs: &BTreeMap<&str, &'a Run>,
+    reports: impl IntoIterator<Item = &'a replay::Replay>,
+) -> Result<Vec<EffectGroup<'a>>, String> {
     let mut comparisons: BTreeMap<_, Vec<_>> = BTreeMap::new();
 
     for report in reports {

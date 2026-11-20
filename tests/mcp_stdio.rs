@@ -263,6 +263,11 @@ fn live_mcp_reads_replays_published_after_startup() {
     let location = serde_json::to_value(&report.location).unwrap();
     let before = client.call("get_turn_evidence", location.clone());
     assert_eq!(before["structuredContent"]["counts"]["replay_tests"], 0);
+    let mut query = json!({"version": 1, "source_id": "journal-faq", "kind": "single"});
+    assert_eq!(
+        client.call("query_replay_effects", query.clone())["structuredContent"]["total_groups"],
+        0
+    );
 
     let reports = directory.path().join("replay-reports");
     std::fs::create_dir(&reports).unwrap();
@@ -280,6 +285,49 @@ fn live_mcp_reads_replays_published_after_startup() {
     }));
     assert_eq!(after["structuredContent"]["counts"]["replay_tests"], 3);
     assert_eq!(client.call("get_turn_evidence", location), after);
+    let groups = client.call("query_replay_effects", query.clone());
+    let group = &groups["structuredContent"]["groups"][0];
+    assert_eq!(group["primary"]["lower"], 1);
+    query["group"] = group["key"].clone();
+    let evidence = client.call("query_replay_effects", query);
+    let row = &evidence["structuredContent"]["primary"]["rows"][0];
+    assert_eq!(row["replay_id"], report.id);
+    assert_eq!(row["context_id"], "return-faq");
+}
+
+#[test]
+fn file_mcp_filters_replays_outside_the_host_scope_after_loading() {
+    let directory = tempfile::tempdir().unwrap();
+    let scope = directory.path().join("scope.json");
+    std::fs::write(
+        &scope,
+        r#"{"kind":"organization","organization_id":"journal-south"}"#,
+    )
+    .unwrap();
+    let mut client = Client::start(
+        &[
+            "--scope",
+            scope.to_str().unwrap(),
+            "--replay",
+            "examples/context-screening/replay/report.json",
+            "examples/context-screening/replay/evidence.json",
+        ],
+        false,
+    );
+    let tools = client.request("tools/list", json!({}));
+    assert!(!tools["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tool| tool["name"] == "query_replay_effects"));
+    let response = client.call("get_turn_evidence", json!({
+        "run_id": "qwen-journal-followup", "call_id": "model-inference", "decision_id": "return-window"
+    }));
+    assert_eq!(
+        response["structuredContent"]["organization_id"],
+        "journal-south"
+    );
+    assert_eq!(response["structuredContent"]["counts"]["replay_tests"], 0);
 }
 
 #[test]

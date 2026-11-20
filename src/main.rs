@@ -32,6 +32,7 @@ const USAGE: &str = "Usage:
   nexusweave query-candidate-patterns <view.json> <evidence.json> [...]
   nexusweave query-shadow-patterns <view.json> <evidence.json> [...]
   nexusweave query-screening-patterns <view.json> [--replay <report.json>]... <evidence.json> [...]
+  nexusweave query-replay-effects <view.json> [--replay <report.json>]... <evidence.json> [...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] [evidence.json ...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
   nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
@@ -240,7 +241,7 @@ fn run(args: Vec<String>) -> Result<()> {
             serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
             println!();
         }
-        ["query-screening-patterns", spec, args @ ..] => {
+        [command @ ("query-screening-patterns" | "query-replay-effects"), spec, args @ ..] => {
             let options = inspection_options(args, false)?;
             if !options.activation_reports.is_empty() {
                 return Err(USAGE.into());
@@ -248,9 +249,14 @@ fn run(args: Vec<String>) -> Result<()> {
             let runs = read_runs(options.evidence)?;
             validate_loaded_runs(&runs)?;
             let replays = read_replays(&options.reports, &runs)?;
-            let spec = serde_json::from_reader(fs::File::open(spec)?)?;
-            let page =
-                context_screening::patterns::query_with_replays(&spec, &runs, &replays, true)?;
+            let spec = fs::File::open(spec)?;
+            let page = if *command == "query-replay-effects" {
+                let request = serde_json::from_reader(spec)?;
+                replay_effects::query::query(&request, &runs, &replays, true)?
+            } else {
+                let request = serde_json::from_reader(spec)?;
+                context_screening::patterns::query_with_replays(&request, &runs, &replays, true)?
+            };
             serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
             println!();
         }

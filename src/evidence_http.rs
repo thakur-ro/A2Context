@@ -1,6 +1,8 @@
 //! Serve paginated evidence queries over the inspector's current data.
 
-use nexusweave::{activation, context_screening, replay, source_profiles, turn_evidence, Run};
+use nexusweave::{
+    activation, context_screening, replay, replay_effects, source_profiles, turn_evidence, Run,
+};
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use tiny_http::{Method, Request};
@@ -45,6 +47,9 @@ pub fn route<'a>(
         }),
         "/api/screening-patterns" => query(request, |input| {
             context_screening::patterns::query_with_replays(input, runs, replays, true)
+        }),
+        "/api/replay-effects" => query(request, |input| {
+            replay_effects::query::query(input, runs, replays, true)
         }),
         "/api/context-sources" => query(request, |input| {
             source_profiles::query::query(input, runs, replays, reports)

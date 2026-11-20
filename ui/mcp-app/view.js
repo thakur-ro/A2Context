@@ -28,7 +28,9 @@ function openPage(page, back, focus = false) {
   if (back) {
     const screenBack = back.page.kind.startsWith("screening_")
       ? (back.page.kind.endsWith("_groups") ? "Back to screened pairs" : "Back to contributing turns") : null;
-    const label = screenBack ?? sourceHistoryBackLabel(back.page.kind) ?? visibilityBackLabel(back.page.kind) ?? (back.page.kind === "turn" ? "Back to turn evidence" :
+    const replayBack = back.page.kind.startsWith("replay_effect_")
+      ? (back.page.kind.endsWith("_groups") ? "Back to replay groups" : "Back to contributing replays") : null;
+    const label = screenBack ?? replayBack ?? sourceHistoryBackLabel(back.page.kind) ?? visibilityBackLabel(back.page.kind) ?? (back.page.kind === "turn" ? "Back to turn evidence" :
       back.page.kind.startsWith("activation_evidence") ? "Back to activation evidence" :
       page.kind === "turn" ? "Back to contributing decisions" :
       page.kind.startsWith("activation_evidence") ? "Back to activation groups" : "Back to conflict groups");
@@ -45,6 +47,7 @@ function openPage(page, back, focus = false) {
   else if (page.kind === "activation_groups" || page.kind === "activation_group_comparison") renderActivationGroups(page, back);
   else if (page.kind.startsWith("activation_evidence")) renderActivationEvidence(page, back);
   else if (/^(candidate|shadow|screening)_pattern_/.test(page.kind)) renderAssessmentPatterns(page, back);
+  else if (page.kind.startsWith("replay_effect_")) renderReplayEffects(page, back);
   else if (page.kind.startsWith("visibility_")) renderVisibility(result, page, requestPage, pageControls);
   else if (page.kind.startsWith("context_source_")) renderSourceHistory(result, page, requestPage, pageControls);
   else if (page.kind === "pending_evidence") renderPending(page);
@@ -614,6 +617,89 @@ function renderActivationOccurrences(parent, side, page, back, index) {
   });
 }
 
+const replayEffectsTool = "query_replay_effects";
+
+function replayEffectTitle(group) {
+  const { kind, edits } = group.setup;
+  const names = edits.map((edit) => [edit.source_id || edit.context_role || edit.context_kind, edit.source_version]
+    .filter(Boolean).join(" · "));
+  return names.join(kind === "control" ? " vs " : " + ");
+}
+
+function replayEffectStats(parent, stats) {
+  const { min_difference_pp: min, max_difference_pp: max } = stats;
+  const range = min == null ? "No usable effect" : (min === max ? signed.format(min) :
+    signed.format(min) + " to " + signed.format(max)) + " pp";
+  const counts = ["lower", "unchanged", "higher", "mixed", "unavailable"]
+    .filter((key) => stats[key]).map((key) => stats[key] + " " + key);
+  parent.append(element("p", range + " · " + counts.join(" · ")),
+    element("p", [countLabel(stats.decisions, "decision"), countLabel(stats.conversations, "identified conversation"),
+      stats.verified_baselines + " of " + stats.measurements + " baselines verified"].join(" · "), "muted"));
+}
+
+function replayEffectDetails(parent, group) {
+  const { kind, model, runner_id, decision_label, match_rule, sampling_design, edits } = group.setup;
+  const method = { single: "Single edit", pair: "Joint edit", control: "Target minus control" }[kind];
+  const sampling = sampling_design === "independent" ? "Independent sampling" : null;
+  parent.append(element("p", [method, decision_label, model, runner_id, match_rule.replaceAll("_", " "), sampling]
+    .filter(Boolean).join(" · "), "muted"));
+  edits.forEach((edit) => appendExcerpt(parent, edit.replacement_excerpt));
+}
+
+function renderReplayEffects(page, back) {
+  const { data, args } = page;
+  const canQuery = args.version === 1;
+  const scopes = { version: args.version, ...args.selection, compare: args.compare };
+  if (canQuery && data.captured_excerpts_enabled && !args.include_excerpts) {
+    result.append(button("Show tested edits", () => requestPage(
+      replayEffectsTool, { ...args, include_excerpts: true }, page.title, back,
+    )));
+  }
+  if (data.kind === "replay_effect_groups") {
+    result.append(element("p", countLabel(data.total_groups, "comparable replay group"), "muted"));
+    for (const group of data.groups) {
+      const row = element("section", undefined, "row");
+      const title = replayEffectTitle(group);
+      row.append(canQuery ? button(title, () => requestPage(replayEffectsTool,
+        { ...args, group: group.key, offset: 0, compare_offset: 0 }, title, { page, previous: back })) : element("h2", title));
+      replayEffectDetails(row, group);
+      if (data.compared) scopeColumns(row, scopes, [group.primary, group.comparison], replayEffectStats, "No comparable replays");
+      else replayEffectStats(row, group.primary);
+      result.append(row);
+    }
+    if (canQuery) pageControls(page, replayEffectsTool, back);
+    return;
+  }
+  replayEffectDetails(result, data.group);
+  const renderSide = (parent, side, index) => {
+    const stats = index ? data.group.comparison : data.group.primary;
+    if (!stats) {
+      parent.append(element("p", "No comparable replays", "muted"));
+      return;
+    }
+    replayEffectStats(parent, stats);
+    for (const item of side.rows) {
+      const row = element("section", undefined, "row");
+      const title = item.conversation_id || item.location.run_id;
+      const trialCount = ({ matched, completed, unscored = 0, attempted }) =>
+        matched + "/" + (completed - unscored) + " matched" + (attempted === completed - unscored ? "" : " of " + attempted + " attempted");
+      const effect = item.difference_pp == null ? "Effect unavailable" : signed.format(item.difference_pp) + " pp";
+      row.append(button(title, () => requestPage("get_turn_evidence", item.location, title, { page, previous: back })),
+        element("p", "Baseline " + trialCount(item.baseline) + " · " + (item.control ? "Target " : "Edited ") + trialCount(item.variant)
+          + (item.control ? " · Control " + trialCount(item.control) : "") + " · " + effect),
+        element("p", [item.started_at, item.organization_id, item.user_id, item.turn_id].filter(Boolean).join(" · "), "muted"));
+      const path = element("details");
+      path.append(element("summary", "Local replay link"), element("code", item.inspector_path));
+      parent.append(row, path);
+    }
+    if (canQuery) pageControls(page, replayEffectsTool, back, {
+      container: parent, offsetKey: index ? "compare_offset" : "offset", next: side.next_offset,
+    });
+  };
+  if (data.compared) scopeColumns(result, scopes, [data.primary, data.comparison], renderSide, "No comparable replays");
+  else renderSide(result, data.primary, 0);
+}
+
 app.ontoolinput = ({ arguments: args }) => { initialQuery = args; };
 app.ontoolresult = (response) => {
   try {
@@ -635,6 +721,8 @@ app.ontoolresult = (response) => {
       shadow_pattern_evidence: () => probeGroupName(data.group.setup),
       screening_pattern_groups: () => "Screened context pairs",
       screening_pattern_evidence: () => screeningGroupName(data.group),
+      replay_effect_groups: () => data.compared ? "Compare replay effects" : "Recurring replay effects",
+      replay_effect_evidence: () => replayEffectTitle(data.group),
       pending_evidence: () => "Before inference",
       turn_evidence: () => "Turn evidence",
     };

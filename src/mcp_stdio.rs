@@ -2,8 +2,8 @@
 
 use super::{otlp_http, report_store};
 use nexusweave::{
-    activation, conflict_query, context_screening, pending, replay, source_profiles, turn_evidence,
-    Run,
+    activation, conflict_query, context_screening, pending, replay, replay_effects,
+    source_profiles, turn_evidence, Run,
 };
 use rmcp::{
     model::{
@@ -34,6 +34,7 @@ const VISIBILITY_PATTERNS: &str = "query_visibility_patterns";
 const CANDIDATE_PATTERNS: &str = "query_candidate_patterns";
 const SHADOW_PATTERNS: &str = "query_shadow_patterns";
 const SCREENING_PATTERNS: &str = "query_screening_patterns";
+const REPLAY_EFFECTS: &str = "query_replay_effects";
 const PENDING: &str = "inspect_pending";
 const SHADOW_CHECK: &str = "validate_shadow_case";
 const APP_URI: &str = "ui://nexusweave/conflict-evidence.html";
@@ -84,13 +85,14 @@ pub fn serve(mut args: &[&str]) -> super::Result<()> {
     };
     let fixed_ids = store.map(|_| runs.iter().map(|run| run.id.clone()).collect());
     let mut activations = super::read_activation_reports(&activation_paths, &runs)?;
+    let mut replays = super::read_replays(&report_paths, &runs)?;
     if let Some(scope) = &scope {
         runs.retain(|run| scope.includes(run));
         let allowed: BTreeSet<_> = runs.iter().map(|run| run.id.as_str()).collect();
         activations.retain(|report| allowed.contains(report.location().run_id.as_str()));
+        replays.retain(|report| allowed.contains(report.location.run_id.as_str()));
     }
     super::validate_loaded_runs(&runs)?;
-    let replays = super::read_replays(&report_paths, &runs)?;
     let fixed = Evidence {
         runs,
         replays,
@@ -255,6 +257,13 @@ impl Inspector {
             definitions.push(tool(SCREENING_PATTERNS,
                 "Find recurring screening flags and verified replay coverage for captured source pairs. Compare scopes or date ranges and use a group key to list the contributing turns and tested decisions.",
                 serde_json::from_str(include_str!("../schema/screening-pattern-query-1.json"))?).with_meta(ui()));
+        }
+        if matches!(&source, Source::Live(_))
+            || matches!(&source, Source::Files(evidence) if !evidence.replays.is_empty())
+        {
+            definitions.push(tool(REPLAY_EFFECTS,
+                "Find groups of comparable controlled replay effects for single, joint, or target-versus-control edits. Compare scopes or time windows and use a group key for the contributing decisions.",
+                serde_json::from_str(include_str!("../schema/replay-effect-query-1.json"))?).with_meta(ui()));
         }
         if file_reports
             .is_none_or(|reports| reports.iter().any(activation::Report::has_checkpoints))
@@ -427,6 +436,12 @@ fn execute_query<'a>(
             runs,
             &evidence.replays,
             false,
+        ),
+        REPLAY_EFFECTS => replay_effects::query::query(
+            &from_arguments(args)?,
+            runs,
+            &evidence.replays,
+            allow_excerpts,
         ),
         _ => Err("This tool is unavailable.".into()),
     }
