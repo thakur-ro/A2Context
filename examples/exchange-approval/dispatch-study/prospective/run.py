@@ -33,8 +33,10 @@ def digest(value):
     return sha256(value.encode()).hexdigest()
 
 
-def pending(case, arm, history, cache):
+def pending(case, arm, history, cache, tools=None):
     body = {"model": demo.MODEL, "messages": history, "temperature": 0, "max_tokens": LIMIT}
+    if tools is not None:
+        body["tools"] = tools
     sources = []
     for name, role, text, consent in [
         ("confirmation-cache", "system", cache, case["approved"] if arm == "repair" else not case["approved"]),
@@ -68,6 +70,9 @@ class LocalGeneration(SavedCompletion):
         self.runtime, self.saved, self.tokenizer = runtime, saved, tokenizer
         self.boundary = self.generation = None
 
+    def model_inputs(self, history):
+        return history, None
+
     def _chat_stream(self, messages, delta_stream, generate_cfg):
         self.emissions += 1
         if self.emissions != 1:
@@ -75,11 +80,12 @@ class LocalGeneration(SavedCompletion):
         history = [{"role": msg.role, "content": msg.content} for msg in messages]
         if any(not isinstance(msg["content"], str) for msg in history):
             raise ValueError("Expected plain text history after Nous preprocessing.")
-        self.boundary = pending(self.case, self.arm, history, self.cache_text)
+        history, tools = self.model_inputs(history)
+        self.boundary = pending(self.case, self.arm, history, self.cache_text, tools)
         if self.saved and self.boundary != self.saved["pending_request"]:
             raise ValueError("The reconstructed model request differs from the recorded boundary.")
         if self.runtime:
-            prompt, ids, _, _ = self.runtime.prompt_input(history, None)
+            prompt, ids, _, _ = self.runtime.prompt_input(history, tools)
             start = perf_counter()
             with self.runtime.torch.inference_mode():
                 output = generate_tokens(self.runtime, ids, LIMIT)
@@ -92,7 +98,7 @@ class LocalGeneration(SavedCompletion):
         else:
             self.generation = self.saved["generation"]
             if self.tokenizer:
-                prompt = self.tokenizer.apply_chat_template(history, tools=None, tokenize=False, add_generation_prompt=True)
+                prompt = self.tokenizer.apply_chat_template(history, tools=tools, tokenize=False, add_generation_prompt=True)
                 ids = self.tokenizer.encode(prompt, add_special_tokens=False)
                 g = self.generation
                 output = g["output_ids"]
@@ -112,7 +118,7 @@ class LocalGeneration(SavedCompletion):
         yield [Message(role="assistant", content=g["raw"])]
 
 
-def attempt(case, arm, tracer, enforce, runtime=None, saved=None, tokenizer=None):
+def attempt(case, arm, tracer, enforce, runtime=None, saved=None, tokenizer=None, *, transport_type=LocalGeneration):
     workflow_request, cache = workflow(case, arm, demo.TOOLS, demo.MODEL)
     args = case["pending_arguments"]
     checkpoint = {case["previous_order"]: "exchange_requested", args["order_id"]: "delivered"}
@@ -127,7 +133,7 @@ def attempt(case, arm, tracer, enforce, runtime=None, saved=None, tokenizer=None
 
     before = dispatch({})["orders"]
     tools = [LocalTool(t["function"], invoke, tracer) for t in demo.TOOLS]
-    transport = LocalGeneration(case, arm, cache, tracer, runtime, saved, tokenizer)
+    transport = transport_type(case, arm, cache, tracer, runtime, saved, tokenizer)
     agent = FnCallAgent(function_list=tools, llm=transport, system_message="")
     call = None
     try:

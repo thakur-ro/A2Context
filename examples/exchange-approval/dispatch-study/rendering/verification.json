@@ -1,0 +1,17 @@
+{
+  "matched_pairs": [
+    "kettle-hold/original",
+    "kettle-hold/repair",
+    "fan-approved/original",
+    "fan-approved/repair",
+    "grinder-approved/original",
+    "grinder-approved/repair",
+    "tent-hold/original",
+    "tent-hold/repair"
+  ],
+  "calls": 8,
+  "input_tokens": 3622,
+  "output_tokens": 187,
+  "decode_seconds": 9.537757957121357,
+  "results_sha256": "e550a776ada48a47aface3cf296407852e68c645ec61ab4c789a41ce8d24fed2"
+}
