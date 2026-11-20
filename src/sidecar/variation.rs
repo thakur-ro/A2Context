@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub(super) struct Input<'a> {
     digest: String,
     order_design: Option<String>,
-    positions: BTreeMap<&'a str, (&'a RequestFragment, usize, usize)>,
+    pub(super) positions: BTreeMap<&'a str, (&'a RequestFragment, usize, usize)>,
 }
 
 impl<'a> Input<'a> {

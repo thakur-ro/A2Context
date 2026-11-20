@@ -45,6 +45,13 @@ impl Store {
              CREATE INDEX IF NOT EXISTS observations_factor ON observations(json_extract(detail,'$.factor'),observed);
              CREATE INDEX IF NOT EXISTS observations_prior ON observations(json_extract(detail,'$.prior.partition'),
                 observed DESC,trace_id,n) WHERE json_extract(detail,'$.prior.partition') IS NOT NULL;
+             CREATE TABLE IF NOT EXISTS position_results (
+                 pair TEXT NOT NULL, id TEXT NOT NULL, first_trace TEXT NOT NULL REFERENCES traces(id) ON DELETE CASCADE,
+                 second_trace TEXT NOT NULL REFERENCES traces(id) ON DELETE CASCADE, body TEXT NOT NULL, summary TEXT NOT NULL,
+                 PRIMARY KEY(pair,id)
+             );
+             CREATE INDEX IF NOT EXISTS position_results_first ON position_results(first_trace);
+             CREATE INDEX IF NOT EXISTS position_results_second ON position_results(second_trace);
              CREATE TABLE IF NOT EXISTS reports (
                  trace_id TEXT REFERENCES traces(id) ON DELETE CASCADE, kind TEXT, call_id TEXT, decision_id TEXT, id TEXT, body TEXT,
                  PRIMARY KEY(trace_id,kind,call_id,decision_id,id)
@@ -262,6 +269,132 @@ impl Store {
         load_reports(&self.0, id)
     }
 
+    pub fn position_plan(
+        &self,
+        filters: &BTreeMap<String, String>,
+    ) -> Result<replay::position::Plan> {
+        let transaction = self.0.unchecked_transaction()?;
+        let plan = self.resolve_position_plan(filters)?;
+        transaction.commit()?;
+        Ok(plan)
+    }
+
+    fn resolve_position_plan(
+        &self,
+        filters: &BTreeMap<String, String>,
+    ) -> Result<replay::position::Plan> {
+        let row = self.selected_position_pair(filters)?;
+        super::position_plan::prepare(self, &row)
+    }
+
+    fn selected_position_pair(&self, filters: &BTreeMap<String, String>) -> Result<Value> {
+        for key in ["factor", "group", "baseline_trials", "edit_trials", "pair"] {
+            if filters.get(key).is_none_or(String::is_empty) {
+                return Err(format!("position plan requires {key}").into());
+            }
+        }
+        let listed = self.list("replay-variations", filters)?;
+        let row = listed["rows"]
+            .as_array()
+            .and_then(|rows| rows.first())
+            .filter(|row| row["position_pair"].as_str() == Some(filters["pair"].as_str()))
+            .ok_or("this pair of measured requests is unavailable in the selected scope")?;
+        Ok(row.clone())
+    }
+
+    pub(super) fn attach_position(
+        &self,
+        submitted: super::position_plan::Submission,
+    ) -> std::result::Result<bool, Rejected> {
+        let filters = submitted.filters().map_err(|e| (400, e.to_string()))?;
+        let tx = self.0.unchecked_transaction().map_err(storage)?;
+        let plan = self
+            .resolve_position_plan(&filters)
+            .map_err(|e| (400, e.to_string()))?;
+        let mut result = submitted.result;
+        let [present, replaced] = plan.verify(&result).map_err(|e| (400, e))?;
+        result.trials.sort_by(|a, b| {
+            (
+                &a.location,
+                &a.replay_id,
+                &a.context_id,
+                a.condition.position,
+                a.condition.source_replaced,
+            )
+                .cmp(&(
+                    &b.location,
+                    &b.replay_id,
+                    &b.context_id,
+                    b.condition.position,
+                    b.condition.source_replaced,
+                ))
+        });
+        let mut canonical = serde_json::to_value(&result).map_err(storage)?;
+        canonical.sort_all_objects();
+        let id = super::position_plan::digest(&canonical.to_string());
+        let body = serde_json::to_string(&result).map_err(storage)?;
+        let present_already: bool = tx
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM position_results WHERE pair=? AND id=?)",
+                params![plan.pair, id],
+                |r| r.get(0),
+            )
+            .map_err(storage)?;
+        if present_already {
+            return Ok(false);
+        }
+        let [a, b] = plan.backgrounds.each_ref().map(|bg| &bg.location.run_id);
+        for trace in [a, b] {
+            let bytes: usize = tx
+                .query_row(
+                    "SELECT coalesce(sum(length(cast(body AS blob))),0) FROM position_results
+                WHERE first_trace=?1 OR second_trace=?1",
+                    [trace],
+                    |r| r.get(0),
+                )
+                .map_err(storage)?;
+            if bytes + body.len() > MAX_REPORT_BYTES_PER_TRACE {
+                return Err((413, "position results exceed 4 MiB for a trace".into()));
+            }
+        }
+        let summary =
+            json!({"id":id,"runner_id":result.runner_id,"present":present,"replaced":replaced});
+        tx.execute("INSERT INTO position_results(pair,id,first_trace,second_trace,body,summary) VALUES(?,?,?,?,?,?)",
+            params![plan.pair,id,a,b,body,summary.to_string()]).map_err(storage)?;
+        tx.commit().map_err(storage)?;
+        Ok(true)
+    }
+
+    pub fn position_results(&self, filters: &BTreeMap<String, String>) -> Result<Value> {
+        let tx = self.0.unchecked_transaction()?;
+        self.selected_position_pair(filters)?;
+        let pair = &filters["pair"];
+        let data = if let Some(id) = filters.get("id") {
+            let body: String = tx.query_row(
+                "SELECT body FROM position_results WHERE pair=? AND id=?",
+                [pair, id],
+                |r| r.get(0),
+            )?;
+            serde_json::from_str(&body)?
+        } else {
+            let offset = filters
+                .get("report_offset")
+                .map(|v| v.parse::<u32>())
+                .transpose()?
+                .unwrap_or(0);
+            let mut stmt = tx.prepare("SELECT summary FROM position_results WHERE pair=? ORDER BY rowid DESC LIMIT ? OFFSET ?")?;
+            let mut rows: Vec<Value> = stmt
+                .query_map(params![pair, PAGE + 1, offset], |r| r.get::<_, String>(0))?
+                .map(|r| Ok(serde_json::from_str(&r?)?))
+                .collect::<Result<_>>()?;
+            let next = (rows.len() > PAGE).then(|| offset.saturating_add(PAGE as u32));
+            rows.truncate(PAGE);
+            json!({"rows":rows,"next_offset":next})
+        };
+        tx.commit()?;
+        Ok(data)
+    }
+
     pub fn activations(&self, id: &str) -> Result<Vec<activation::Report>> {
         load_reports(&self.0, id)
     }
@@ -369,6 +502,20 @@ impl Store {
                 if let Some(value) = filters.get(key).filter(|value| !value.is_empty()) {
                     sql.push_str(&format!(" AND {field}=?"));
                     args.push(value.clone());
+                }
+            }
+            if view == "replay-variations" {
+                for (key, path) in [
+                    ("baseline_trials", "$.measurement.baseline.attempted"),
+                    ("edit_trials", "$.measurement.variant.attempted"),
+                ] {
+                    if let Some(count) = filters.get(key) {
+                        let count = count.parse::<u32>()?;
+                        sql.push_str(&format!(
+                            " AND json_extract(o.detail,'{path}')=CAST(? AS INTEGER)"
+                        ));
+                        args.push(count.to_string());
+                    }
                 }
             }
             append_window(&mut sql, &mut args, "o.observed", filters)?;
@@ -489,7 +636,19 @@ impl Store {
         }
         if view == "replay-variations" {
             for row in &mut rows {
-                row["matched_fragment_order"] = json!(super::variation::matched_order(row));
+                let matched = super::variation::matched_order(row);
+                row["matched_fragment_order"] = json!(matched);
+                if matched {
+                    let pair = super::position_plan::pair_id(row);
+                    let (count,summary): (usize,Option<String>) = self.0.query_row(
+                        "SELECT count(*),(SELECT summary FROM position_results WHERE pair=?1 ORDER BY rowid DESC LIMIT 1) FROM position_results WHERE pair=?1",
+                        [&pair], |r| Ok((r.get(0)?,r.get(1)?)))?;
+                    row["position_pair"] = json!(pair);
+                    if let Some(summary) = summary {
+                        row["latest_position_result"] = serde_json::from_str(&summary)?;
+                        row["position_reports"] = json!(count);
+                    }
+                }
             }
         }
         Ok(json!({"rows":rows,"next_offset":next}))

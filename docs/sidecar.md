@@ -32,6 +32,20 @@ Expand **Scored replays** on the overview or a source factor to see how many con
 
 For named fragments in a string field, the sidecar checks the captured UTF-8 bytes and excludes overlapping or ambiguous inventories from the order comparison. It fingerprints the surrounding request, the gaps between fragments, and a sorted inventory of each eligible field's source identities, versions and contents. A matching fingerprint and different positions of the edited source establish that the displayed requests differ only in fragment order. Several sources can move together. Sampling can also affect replay results. Each example links to its own trial. With more than two eligible inputs, the view uses a deterministic example from each group. [Public QA comparison](../examples/public-qa/README.md#compare-an-edit-across-inputs)
 
+### Run the position test on a matched comparison
+
+**Download position test** prepares eight conditions. On each of the two captured backgrounds, it keeps the other named fragments in their relative order, puts the selected source at each tested position, and applies the original replacement at each slot. The download contains the full request bodies. Preparation makes zero model calls. **Attach completed trials** binds each returned proposal to its background, replay, source, slot, replacement state and request digest.
+
+Agents can follow the same route. From a `replay-variations` row with a `position_pair`, carry the current scope plus `factor`, `group`, `pair=position_pair`, `baseline_trials` and `edit_trials` to `GET /api/sidecar/position-plan`. Read the two trial counts from the changed example's baseline and variant measurements. A stale pair or a filter that excludes one background makes the plan unavailable. Each condition references a compact JSON string in `requests` by SHA-256. Numbered slots are one-based. Each background retains its original position and evidence location.
+
+```sh
+nexusweave run-position-plan plan.json my-runner-revision trials.json -- my-proposal-runner
+```
+
+The explicit runner receives one JSON request on stdin and returns a proposal with `kind`, `label` and `outcome` on stdout. The CLI checks the table and hashes before invoking it once per condition. A failed or unreadable proposal is recorded as failed. The plan names the historical runner. The CLI argument names the runner you actually use. A tool-call experiment should return the proposed call for comparison.
+
+Submit `{"selection":{…},"result":{…}}` to `POST /api/position-results` using the same scope and selection fields. The sidecar reconstructs the plan and verifies the trial bindings, then compares the full returned proposals across slots separately for the intact and replaced source. Each count requires two completed proposals on the same background. The model outcomes come from the runner. An identical submission, including a reordered trial list, returns the existing receipt. The data expire with either underlying trace. Up to 4 MiB of position results can reference a trace. The card shows the latest submitted result. `GET /api/sidecar/position-results` accepts the selection and returns receipt summaries with `report_offset` pagination. Add `id` for one complete set of eight outcomes. [Public example and saved trials](../examples/public-qa/README.md#run-the-downloaded-test)
+
 ### Preview an assembled request
 
 Choose **Check a new request against earlier edits** in the demo. Earlier replays suggest testing the dispatch guide. Choose **Compare with model scores for this request** to see why editing the routing note reversed the model's preference between `UNKNOWN` and `KITE` on the pending Ash input. Both views use saved measurements. The dashboard makes zero model calls. [Runnable scored request](../examples/redundant-routing/candidate-checks/ash-routing-note.json) · [Held-out results](methods.md#what-do-model-scores-add-before-generation)

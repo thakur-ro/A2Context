@@ -273,9 +273,109 @@ function factorRow(factor, featured = false) {
     element("span", { className: "arrow", "aria-hidden": "true", text: "→" }));
 }
 
+function positionTrialTable(result, selection) {
+  const table = element("div", {});
+  const section = element("details", {}, element("summary", { text: "Compare all eight proposals" }), table);
+  let loaded = false;
+  section.addEventListener("toggle", async () => {
+    if (!section.open || loaded) return;
+    loaded = true;
+    try {
+      const receipt = await api("position-results", { ...selection, id: result.latest_position_result.id });
+      const rows = [];
+      for (const example of [result.changed_example, result.equal_example]) {
+        const m = example.measurement;
+        const arms = receipt.trials.filter((t) => t.location.run_id === m.location.run_id &&
+          t.location.call_id === m.location.call_id && t.location.decision_id === m.location.decision_id &&
+          t.replay_id === m.replay_id && t.context_id === m.context_id);
+        for (const slot of [...new Set(arms.map((t) => t.position))].sort((a,b) => a-b)) {
+          const outcomes = [false,true].map((replaced) => {
+            const trial = arms.find((t) => t.position === slot && t.source_replaced === replaced).trial;
+            if (trial.status === "failed") return "No completed proposal";
+            const choice = trial.choice;
+            const value = typeof choice.outcome === "string" ? choice.outcome : JSON.stringify(choice.outcome);
+            return choice.kind === "model_output" ? value : choice.label + " · " + value;
+          });
+          rows.push(element("tr", {}, element("th", { scope: "row", text: "Originally " + example.fragment_order.position }),
+            element("td", { text: slot }), ...outcomes.map((text) => element("td", {}, element("code", { text })))));
+        }
+      }
+      table.replaceChildren(element("table", {}, element("thead", {}, element("tr", {},
+        ...["Background", "Test slot", "Source present", "Source replaced"].map((text) => element("th", { scope: "col", text })))),
+        element("tbody", {}, ...rows)));
+    } catch (error) {
+      loaded = false;
+      table.textContent = error.message;
+    }
+  });
+  return section;
+}
+
+function positionExperiment(result) {
+  const m = result.changed_example.measurement;
+  const selection = { ...scope, factor: result.factor, group: result.group, pair: result.position_pair,
+    baseline_trials: m.baseline.attempted, edit_trials: m.variant.attempted };
+  const button = element("button", { type: "button", text: "Download position test" });
+  const status = element("span", { role: "status", className: "label" });
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    status.textContent = "Preparing the requests…";
+    try {
+      const plan = await api("position-plan", selection);
+      const href = URL.createObjectURL(new Blob([JSON.stringify(plan, null, 2)], { type: "application/json" }));
+      const download = element("a", { href, download: "position-test-" + plan.pair.slice(0, 12) + ".json" });
+      download.click();
+      setTimeout(() => URL.revokeObjectURL(href), 1000);
+      status.textContent = "Prepared eight conditions for your runner.";
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  const upload = element("input", { type: "file", accept: ".json,application/json" });
+  const message = element("p", { role: "status" });
+  upload.addEventListener("change", async () => {
+    const file = upload.files[0];
+    if (!file) return;
+    upload.disabled = true;
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error("Choose a result file under 2 MiB.");
+      const response = await fetch("/api/position-results", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selection, result: JSON.parse(await file.text()) }) });
+      if (!response.ok) throw new Error((await response.json()).message || "Position results could not be saved.");
+      await render();
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      upload.disabled = false;
+      upload.value = "";
+    }
+  });
+  const latest = result.latest_position_result;
+  const resultUrl = "/api/sidecar/position-results?" + new URLSearchParams(selection);
+  return element("div", {},
+    latest ? element("section", { className: "position-result" }, element("h3", { text: "Measured position test" }),
+      element("p", { text: "Moving the intact source changed the proposal in " + latest.present.changed +
+        " of " + plural(latest.present.compared, "scored background") + ". With the source replaced, it changed in " +
+        latest.replaced.changed + " of " + latest.replaced.compared + "." }),
+      element("p", { className: "label", text: "Latest submitted runner · " + latest.runner_id }),
+      positionTrialTable(result, selection),
+      element("p", { text: latest.present.compared < 2 || latest.replaced.compared < 2 ?
+        "Repeat the incomplete conditions before comparing the two backgrounds." :
+        latest.replaced.changed ? "Try a second replacement to check whether its wording affected the result." :
+        "Repeat the position test on another request before changing the workflow." }),
+      result.position_reports > 1 ? element("p", {}, link("Browse submitted reports (" + result.position_reports + ")", resultUrl)) : null) : null,
+    element("div", { className: "actions" }, button, status),
+    element("details", {}, element("summary", { text: "Attach completed trials" }),
+      element("label", { text: "Results from run-position-plan" }, upload), message));
+
+}
+
 function variationComparison(result) {
   const first = result.changed_example.fragment_order, second = result.equal_example.fragment_order;
   const permutation = result.matched_fragment_order;
+  const source = result.changed_example.sources[0];
   function example(label, detail) {
     const m = detail.measurement;
     const target = { factor: result.factor, recommendation: result.group, trace: m.location.run_id,
@@ -288,7 +388,9 @@ function variationComparison(result) {
       replayTrials(detail), link("Inspect this replay", url(target), "action"));
   }
   return element("section", { className: "panel variation" },
-    element("h2", { text: sourceName(result.changed_example.sources[0]) }),
+    element("h2", { text: sourceName(source) }),
+    source.version ? element("p", { className: "label", title: source.version, text: "Source version " +
+      (/^[a-f0-9]{64}$/i.test(source.version) ? source.version.slice(0, 12) : source.version) }) : null,
     element("p", { text: "The match rate changed on " + plural(result.changed_inputs, "distinct input") +
       " and held steady on " + plural(result.equal_inputs, "other input") + "." }),
     result.mixed_inputs ? element("p", { text: "Repeated tests gave both results on " +
@@ -297,8 +399,9 @@ function variationComparison(result) {
       first.position + " to " + second.position + "." }) : null,
     element("div", { className: "variation-examples" },
       example("Match rate changed", result.changed_example), example("Match rate held steady", result.equal_example)),
-    element("h3", { text: "What to test next" }),
-    element("p", { text: permutation ? "Move this source alone and keep the remaining sources in their relative order. Replay both conditions." : "Keep the edit fixed and vary one surrounding input at a time. Compare the answers under the same decoding settings." }));
+    !result.latest_position_result ? element("h3", { text: "What to test next" }) : null,
+    !result.latest_position_result ? element("p", { text: permutation ? "Move this source alone and keep the remaining sources in their relative order. Replay both conditions." : "Keep the edit fixed and vary one surrounding input at a time. Compare the answers under the same decoding settings." }) : null,
+    result.position_pair ? positionExperiment(result) : null);
 }
 
 function findingCard(card) {

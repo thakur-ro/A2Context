@@ -1,6 +1,7 @@
 mod findings;
 mod history;
 mod order;
+mod position_plan;
 mod recommendations;
 mod replacement;
 mod store;
@@ -166,6 +167,7 @@ pub fn serve(args: &[&str]) -> Result<()> {
             && matches!(
                 request.url(),
                 "/v1/traces"
+                    | "/api/position-results"
                     | "/api/replay-reports"
                     | "/api/activation-reports"
                     | "/api/sidecar/preview"
@@ -261,7 +263,10 @@ fn work(
                 body.to_string().into_bytes(),
             );
         } else {
-            let reply = if request.url() == "/api/replay-reports" {
+            let reply = if request.url() == "/api/position-results" {
+                replay_http::read_json::<position_plan::Submission>(&mut request, LIMIT)
+                    .and_then(|submitted| store.attach_position(submitted))
+            } else if request.url() == "/api/replay-reports" {
                 replay_http::read_json::<replay::Replay>(&mut request, LIMIT)
                     .and_then(|report| store.attach(&report, now()))
             } else {
@@ -324,6 +329,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/replay-variations"
                 | "/api/sidecar/occurrences" => {
                     store.list(path.rsplit('/').next().expect("view path"), &fields)?
+                }
+                "/api/sidecar/position-results" => store.position_results(&fields)?,
+                "/api/sidecar/position-plan" => {
+                    return Ok(Some(serde_json::to_vec(&store.position_plan(&fields)?)?))
                 }
                 "/api/sidecar/trace" => {
                     let id = required(&fields, "id")?;

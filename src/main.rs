@@ -20,6 +20,7 @@ const USAGE: &str = "Usage:
   nexusweave import-otlp <traces.json|traces.jsonl> <evidence.json>
   nexusweave annotate <evidence.json> <annotations.json> <output.json>
   nexusweave replay <evidence.json> <case.json> <report.json> -- <runner> [args...]
+  nexusweave run-position-plan <plan.json> <runner-id> <trials.json> -- <runner> [args...]
   nexusweave plan-replay <evidence.json> <case.json> <plan.json>
   nexusweave score-replay <evidence.json> <case.json> <trials.json> <report.json>
   nexusweave rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>
@@ -110,6 +111,21 @@ fn run(args: Vec<String>) -> Result<()> {
                 report.baseline.len(),
                 report.variants.len() + usize::from(report.pair.is_some())
             );
+        }
+        ["run-position-plan", plan, runner_id, output, "--", program, runner_args @ ..] => {
+            if Path::new(output).exists() {
+                return Err(format!("position test output already exists: {output}").into());
+            }
+            let plan: replay::position::Plan = serde_json::from_reader(fs::File::open(plan)?)?;
+            let result =
+                plan.execute(runner_id, |request| sample(program, runner_args, request))?;
+            write_new(output, &serde_json::to_vec_pretty(&result)?)?;
+            let completed = result
+                .trials
+                .iter()
+                .filter(|row| matches!(row.trial, replay::Trial::Completed { .. }))
+                .count();
+            println!("Saved {completed} completed proposals across eight conditions to {output}.");
         }
         ["plan-replay", input, specification, output] => {
             let runs = read_runs(&[input])?;

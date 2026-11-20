@@ -92,6 +92,25 @@ python3 examples/public-qa/replay_source_position.py /tmp/nexus-qa.jsonl.gz /pat
   --output /tmp/nexus-film-position.json
 ```
 
+### Run the downloaded test
+
+With both saved studies in the sidecar, open the film comparison for source version `77e0876f48fc`. Choose **Download position test**. To see the measured result immediately, open **Attach completed trials** and select the [saved CLI trials](film-position-trials.json). Expand **Compare all eight proposals** to see the answers for each passage position.
+
+![Position test for the film question. Moving the intact source changed both answers. Moving the replacement left both answers unchanged.](../../docs/media/position-test-result.png)
+
+To reproduce those proposals, use the pinned Qwen snapshot and the downloaded filename in the following command. The sidecar prepares the requests. This explicit CLI command runs eight local generations.
+
+```sh
+target/debug/nexusweave run-position-plan /path/to/position-test.json qwen2.5-0.5b-eaa56b5-cpu-greedy \
+  /tmp/film-trials.json -- python3 scripts/propose_qwen.py /path/to/qwen/snapshot --model-id Qwen/Qwen2.5-0.5B-Instruct
+```
+
+All eight answers from this CLI run matched the independent single-passage experiment above. Across the 37 eligible comparison cards, all 296 planned conditions reproduced the expected compact request bytes when assembled separately from the pinned passages. Repeat the byte check with both studies loaded.
+
+```sh
+python3 examples/public-qa/check_position_plans.py /tmp/nexus-qa.jsonl.gz --url http://127.0.0.1:8040
+```
+
 ## Repeat the model measurements
 
 We used Qwen2.5-0.5B-Instruct with Transformers 4.57.6, PyTorch 2.11.0, eager attention, CPU float32 and four PyTorch threads. The runner loads local files only. It saves the runtime identity and tokenizer hash. The measured weights had SHA-256 `fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe`. [Pinned Qwen checkpoint](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/tree/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2)

@@ -171,3 +171,7 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 .variation-example .comparison { margin-block: 12px; }
 .variation-example h3 { margin: 0; }
 .order-evidence { border-inline-start: 3px solid var(--accent); padding-inline-start: 12px; margin-top: 12px; }
+
+.position-result { background: var(--mist); margin-block: 16px; padding: 16px; border-radius: 8px; }
+.position-result table { width: 100%; table-layout: fixed; margin-block: 8px; }
+.position-result td, .position-result th { padding: 5px; text-align: start; overflow-wrap: anywhere; }
