@@ -1,44 +1,40 @@
 # NexusWeave
 
-**Find the conversations where a context edit changed a model’s answer.**
+**Find which context edits change an LLM’s answer or tool call.**
 
-NexusWeave recommends what to change or test when instructions conflict, an input repeats, or a controlled source edit changes a model’s behavior. Review an assembled request before inference, or let the Rust sidecar surface new evidence as it arrives over OpenTelemetry.
+Ship NexusWeave as a small Rust service beside your LLM workflow. When a policy, retrieved passage, or tool description gives a surprising result, start with the affected conversations. Follow a recommendation to the exact source, the edit someone tested, and the answers it changed.
 
-![NexusWeave shows conversation coverage and groups the recommendations by the sources involved](docs/media/findings.png)
+https://github.com/user-attachments/assets/c3038ec0-4445-47e8-babd-64daa2b0d139
 
-[Quickstart](#try-the-demo) · [Deploy a sidecar](docs/sidecar.md) · [Methods](docs/methods.md) · [Research review](docs/research-review.md) · [Rust API](docs/rust-api.md)
+*In the recording, removing a rehearsal duration changes two answers from 30 to 60 minutes. That fixes the greenhouse booking and breaks the rehearsal booking.* [Reproduce this walkthrough](docs/demo.md)
+
+## What can I learn?
+
+| Your question | Evidence NexusWeave uses |
+| --- | --- |
+| Which conversations share a context problem? | It groups declared rule conflicts and exact repeated inputs by source, version, and scope. Open a group to read the affected turns. |
+| Which source should I test before answering? | Check the assembled request. If your scorer supplies probabilities, compare candidate continuations before and after a named source edit at the same answer prefix. |
+| Would this edit fix the answer elsewhere? | Compare original and edited generations against a supplied reference. The dashboard surfaces matched questions where the same edit had opposite effects on correctness. |
+
+The workflow exports spans asynchronously over OTLP/HTTP. A bounded worker normalizes them and stores findings in SQLite. The Rust binary serves the dashboard. Default analysis makes zero model calls. You can attach replay results or measurements from an instrumented model when you need stronger evidence. A trace records the observable request and response. Internal activation claims require a model intervention. [Algorithms and limits](docs/methods.md) · [Research and related systems](docs/research-review.md)
 
 ## Try the demo
 
-From the checkout, run with a stable Rust toolchain and open [Recommendations](http://127.0.0.1:8040).
+From the checkout with stable Rust installed:
 
 ```sh
 cargo run --locked -- sidecar --demo
 ```
 
-**Read a conversation with a conflicting answer.** Follow the jacket question from the proposed order lookup to the 60-day answer. The finding on that call opens the two sources that disagree. [Open the conversation](http://127.0.0.1:8040/?view=threads&thread=%5B%22fixture%22%2C%22Northland+Retail%22%2C%22Customer+042%22%2C%22Return+a+jacket%22%5D) · [Try eight public retail sessions](docs/sidecar.md#read-a-conversation-turn-by-turn) · [Find the next conversation to test](docs/sidecar.md#find-the-next-conversation-to-test)
+Open the address printed by the process. The built-in demo uses saved examples and requires no API key. Choose **Compare runs** on the recommended investigation to see which tool calls were proposed for the same request. [Run the booking example from the video](docs/demo.md)
 
-**Check whether an edit held up.** With the original instruction and both tools available, the proposed tool changed in two of four runs on the same input. Open **Compare runs** for the repeats, or expand **Answers or tool calls compared** to find changed and matching proposals across conversations. [Compare two setups](http://127.0.0.1:8040/?org=routing-sampling&proposal_result=both)
+## Ship it beside your service
 
-**Find out why a proposed fix needs another look.** Three return questions missed the exact answer `45`. In two, another opening token led under every tested edit. In the third, one edit produced `45 days`. Open the first group to compare token scores or the second to inspect the extra text. [Find recurring misses](http://127.0.0.1:8040/?org=journal-window-study&targets=1) · [Inspect scores before generation](http://127.0.0.1:8040/?view=preview&scenario=window-before) · [See the fresh question](http://127.0.0.1:8040/?view=preview&scenario=window-fresh)
+Send traces from your application's batch exporter or fan out from your existing OpenTelemetry Collector. Keep your existing observability backend. The sidecar listens on loopback within the workflow’s network namespace. Content capture is off by default. [Deployment and Kubernetes example](DEPLOYMENT.md)
 
-1. **Check a recommendation before answering.** Editing the dispatch guide changed two earlier answers. On a new request the same edit shifted first-token probabilities. Both answers were `UNKNOWN`. For a workflow with a known answer format, compare source edits at the field you care about. [See which edit changes a return window](http://127.0.0.1:8040/?view=preview&scenario=prefix-before) · [Compare the dispatch answers](http://127.0.0.1:8040/?view=preview&scenario=checked-history)
-2. **Check which copy of an instruction mattered.** Choose **Compare the two source orders**. With one replacement, moving a dispatch record from the earlier slot to the later one changed the answer after that record was edited. Try the neutral wording in the same view to see where the match counts held. [Experiment](docs/methods.md#check-the-result-against-new-parcel-codes-and-source-order)
-3. **See where the answer depended on a source edit.** Select the refund window in the original answer, then open the edited generation to see it change from four days to seven. [Open the refund example](http://127.0.0.1:8040/?recommendation=6158b8bd5e64d129e9be699f6c78c0965402edc0b7367df671e02ff744171bb1#output-token-14)
-4. **Find a recurring instruction conflict.** The journal policy says 30 days and the FAQ says 60. Replacing the FAQ changed two answers from 60 to 30. On a follow-up, replacing the policy changed the answer from 30 to 120. [Compare the questions and source edits](docs/sidecar.md#when-the-same-edit-changes-different-answers) · [See what a fresh question reveals before the first token](http://127.0.0.1:8040/?view=preview&scenario=opening-before) · [Follow a changed answer to the first digit that differed](docs/sidecar.md#find-answers-that-changed-after-the-same-opening)
+```sh
+make check          # Exercise the source, UI scripts and detector fixtures
+make verify-image   # Build and test the actual container, including container replacement
+```
 
-[Compare four fresh routing requests](http://127.0.0.1:8040/?org=retail-south&factor=5c8549a0e4d873d64b7ffaad88d52f1b33a55c1c3f566abdb43a637e9d906c93&recommendation=fa537f0fdb14f11a458787b85cf6d007e5a02fa1add79ee079258bf3f2578cd9). Two reproduced the earlier edit’s effect on the full response. Only one reproduced its effect on tool selection. Open an example to see the user messages and the trials behind that difference.
-
-The demo uses saved measurements and makes zero model calls. For an example before generation, follow a booking question from its predicted source edit to a two-request experiment. [Test a source suggestion](docs/sidecar.md#test-a-suggested-source-before-seeing-the-answer) · [Compare two questions where the same edit helped one answer and hurt the other](docs/sidecar.md#when-the-same-edit-helps-and-hurts)
-
-On 20 held-out public QA questions, two lower-ranked passage edits changed answers that the top edit preserved. Follow one from the recommendation to the token where the answers diverged. A separate reference check flags three questions where removing a passage lost an accepted answer. [Explore the public QA study](examples/public-qa/holdout.md#when-did-a-lower-ranked-edit-change-the-answer)
-
-## Connect a workflow
-
-Send OTLP/HTTP from a batch exporter in your application or OpenTelemetry Collector. The sidecar processes spans in the background and stores findings in SQLite. Declare stable source IDs, versions, and rule scopes to connect a finding to the original input. [Deploy and configure capture](docs/sidecar.md)
-
-Check an assembled request before serving it with [preflight](docs/guide.md#check-context-before-inference). Use a [controlled replay](docs/guide.md#try-a-decision-replay) to measure how an edit changes a selected outcome. [Read what each finding supports](docs/methods.md).
-
-## Project
-
-NexusWeave uses the [Apache License 2.0](LICENSE). The retail trace excerpt uses [CDLA Permissive 2.0](LICENSES/CDLA-Permissive-2.0.txt). [Contributing](CONTRIBUTING.md) · [Research and dataset credits](CREDITS.md)
+[Developer setup](CONTRIBUTING.md) · [Staging checks and resource measurements](docs/validation.md) · [Rust API](docs/rust-api.md) · [Research and dataset credits](CREDITS.md) · [Apache 2.0 license](LICENSE)

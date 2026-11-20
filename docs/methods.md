@@ -48,7 +48,14 @@ The overview assigns each conversation to the first category supported by a find
 
 This ordering describes the outcome an engineer can inspect. One changed answer in a single pair supplies no estimate of how often the effect will recur. The counts cover findings on individual calls. Source-position experiments that compare multiple requests appear under the source factor.
 
-The coverage panel asks a separate question. Among the findings in scope, did any edit change a complete proposal, and did any comparison preserve one? Each identified conversation counts once according to those two observations. In the saved demo, 13 conversations contain both results, two have matching proposals only, and six have no comparable pair. A conversation can contain different inputs, edits, models or tool inventories. Evidence for both outcomes therefore calls for inspecting the two examples before concluding that repeats disagreed. Standalone proposal trials qualify even when both arms missed the expected answer. [Open the comparisons](http://127.0.0.1:8040/#proposal-coverage)
+The coverage panel asks a separate question. Among the findings in scope, did any edit change a complete proposal, and did any comparison preserve one? Each identified conversation counts once according to those two observations. In the saved demo, 13 conversations contain both results, two have matching proposals only, and six have no comparable pair. A conversation can contain different inputs, edits, models or tool inventories. Evidence for both outcomes therefore calls for inspecting the two examples before concluding that repeats disagreed. Standalone proposal trials qualify even when both arms missed the expected answer.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the comparisons at `http://127.0.0.1:8040/#proposal-coverage`
+
+</details>
 
 Within a category, the source view keeps every finding at the strongest level for each identified conversation. It groups those findings by versioned source set and counts distinct conversations and requests. Groups with the most conversations appear first. Request count and the stable group ID break ties. Selecting a group returns the latest qualifying finding from that group for each member. Selecting another group cannot move a conversation into a weaker category.
 
@@ -174,7 +181,15 @@ We fixed eight new journal-return questions and four rules for choosing an edit 
 | Larger first-token distribution shift | 8/8 | 1/8 | 3 |
 | Only edit that switched the most likely opening token | 1/8 | 1/1 selected | 0 |
 
-Four questions had at least one verified answer change. Across the 16 individual edits, one switched the highest-scoring first token and changed the answer. Of the 15 edits that kept the same token on top, three changed the answer, six preserved it and six comparisons were unresolved. In the sentence-completion example, the FAQ edit produced the largest distribution shift. The policy edit alone changed the answer from “A journal may be returned within 30 days.” to “A journal may be returned within 60 days.” [Inspect this request before generation](http://127.0.0.1:8040/?view=preview&scenario=opening-before) · [See the complete proposals](http://127.0.0.1:8040/?view=preview&scenario=opening-checked)
+Four questions had at least one verified answer change. Across the 16 individual edits, one switched the highest-scoring first token and changed the answer. Of the 15 edits that kept the same token on top, three changed the answer, six preserved it and six comparisons were unresolved. In the sentence-completion example, the FAQ edit produced the largest distribution shift. The policy edit alone changed the answer from “A journal may be returned within 30 days.” to “A journal may be returned within 60 days.”
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Inspect this request before generation at `http://127.0.0.1:8040/?view=preview&scenario=opening-before`
+- See the complete proposals at `http://127.0.0.1:8040/?view=preview&scenario=opening-checked`
+
+</details>
 
 These counts describe one model, one conflict and eight authored questions. For a new workflow, verifying the full proposal still matters when the opening holds. Selecting the larger distribution shift also missed changes here. The sidecar shows each signal alongside any complete proposal tests for the same source and request. No confidence percentage is inferred from this sample. [Per-question scores and answers](../examples/context-screening/replay/question-results.json)
 
@@ -284,7 +299,7 @@ The model's supplied-prefix preference identified a single edit on 11/16 questio
 
 A retrospective check used the requested calendar's duration from each frozen case as its reference. The dashboard's literal-beginning grade agreed with the study's independent numeric-field evaluator on all 32 original versus single-edit comparisons, including unresolved answers. With trials withheld, four of the 11 selected edits favored the reference only after the edit. That view records zero verified restorations. The literal rule could accept `60` at the start of `600` on another task. This result concerns two supplied continuations on one checkpoint. [Reference test](../tests/sidecar_prefix_reference.py) · [Dashboard walkthrough](sidecar.md#did-the-edit-restore-the-expected-answer)
 
-A second retrospective check compared the same calendar edit across different questions while keeping the earlier request and trial design fixed. Two of the eight matched setups supplied opposing reference outcomes. In bookings 13 and 14, removing the rehearsal duration moved both answers from 30 to 60. The greenhouse question called for 60, the rehearsal question for 30. Bookings 3 and 4 showed the same pattern with the other calendar. Each arm used one greedy generation. The reference changed with the question, so the opposite grades can arise from the same behavioral response to the edit. [Paired questions and original answers](sidecar.md#when-the-same-edit-helps-and-hurts)
+A second retrospective check compared the same calendar edit across different questions while keeping the earlier request and trial design fixed. Two of the eight matched setups supplied opposing reference outcomes. In bookings 13 and 14, removing the rehearsal duration moved both answers from 30 to 60. The greenhouse question called for 60, the rehearsal question for 30. Bookings 3 and 4 showed the same pattern with the other calendar. Each arm used one greedy generation. The reference changed with the question, so the opposite grades can arise from the same behavioral response to the edit. [Paired questions and original answers](sidecar.md#when-the-same-edit-helps-and-hurts) A local Qwen follow-up measured the next-digit margin after transplanting one internal state at each decoder block. [Block-swap results and controls](../examples/context-screening/replay/prefix-blocks/README.md)
 
 ### What do model scores add before generation?
 

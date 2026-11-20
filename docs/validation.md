@@ -1,5 +1,7 @@
 # Private release validation
 
+From the checkout, `make check` runs source checks and `make verify-image` builds and exercises the container with a sibling OTLP producer. Use the [deployment guide](../DEPLOYMENT.md) to verify your own exporter in staging. The tests below cover specific interfaces, evidence claims, and load conditions.
+
 The evaluation uses synthetic trace labels and saved local and hosted model trials. The labels describe which cards an engineer should investigate. This is a test of the initial design and its failure modes. It makes no estimate of production accuracy.
 
 ## Reproduce the checks

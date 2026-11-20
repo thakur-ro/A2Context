@@ -27,13 +27,27 @@ python3 examples/public-qa/view_rankings.py /tmp/nexus-qa.jsonl.gz \
   --results examples/public-qa/holdout-results.json
 ```
 
-Open **Only the first listed edit changed it**. For the question about the University of Michigan’s school of public health, both the baseline and the model-ranked edit returned `17th`. Editing the first passage returned `17`. All three answers missed the dataset reference `#4`. Here an exact text difference was enough to count as a change. Open **Missing a completed pair** to inspect a ranking whose effect on the answer remains unknown. [Open the imported holdout](http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0&ranking=all)
+Open **Only the first listed edit changed it**. For the question about the University of Michigan’s school of public health, both the baseline and the model-ranked edit returned `17th`. Editing the first passage returned `17`. All three answers missed the dataset reference `#4`. Here an exact text difference was enough to count as a change. Open **Missing a completed pair** to inspect a ranking whose effect on the answer remains unknown.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the imported holdout at `http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0&ranking=all`
+
+</details>
 
 ![On 17 paired calls, only the ranked edit changed four answers, only the first edit changed one, both changed ten, and neither changed two. Three calls lacked a pair.](../../docs/media/public-qa-ranking.png)
 
 ## When did a lower-ranked edit change the answer?
 
-Across the 20 holdout questions, the highest-ranked edit changed the answer on 14. On two others it preserved the answer while a lower-ranked edit changed it. All ten answers held on one question. Three questions lacked enough completed generations to classify. The dashboard counts each call once and opens the two source edits on the same request. [Explore the measured calls](http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0-tokens&ranking=all&review=lower_changed)
+Across the 20 holdout questions, the highest-ranked edit changed the answer on 14. On two others it preserved the answer while a lower-ranked edit changed it. All ten answers held on one question. Three questions lacked enough completed generations to classify. The dashboard counts each call once and opens the two source edits on the same request.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Explore the measured calls at `http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0-tokens&ranking=all&review=lower_changed`
+
+</details>
 
 We reran all three conditions for each of the two misses on the pinned checkpoint. We selected these cases after seeing the outcomes. The reruns reproduced all six answer texts and the first-token shifts for both edits on both questions.
 
@@ -75,7 +89,14 @@ python3 examples/public-qa/view_rankings.py /tmp/nexus-qa.jsonl.gz --references
 python3 examples/public-qa/check_holdout.py --dataset /tmp/nexus-qa.jsonl.gz --references --sidecar http://127.0.0.1:8040
 ```
 
-Open the recommended investigation, then pick a question to see the original and edited text. The checker verifies the reference counts and exact questions for gains and losses under both selectors. The sidecar lowercases Unicode text, while the independent study checker uses Unicode case folding. Both produced the same labels on the saved completed answers checked here. [Open the reference study](http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0-references)
+Open the recommended investigation, then pick a question to see the original and edited text. The checker verifies the reference counts and exact questions for gains and losses under both selectors. The sidecar lowercases Unicode text, while the independent study checker uses Unicode case folding. Both produced the same labels on the saved completed answers checked here.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the reference study at `http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0-references`
+
+</details>
 
 ## Protocol
 

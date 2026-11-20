@@ -1,5 +1,7 @@
 # NexusWeave guide
 
+[Watch the booking walkthrough](demo.md) or run the command for the example you want to inspect. Once the service starts, open the loopback address it prints (by default `http://127.0.0.1:8040`).
+
 Run the commands in this guide from the repository root.
 
 NexusWeave helps you investigate the inputs to an LLM workflow decision. Check a pending request for rule conflicts, or start from a recorded tool choice, argument, or answer. Inspect its prompt sources and tool results, then replay a targeted edit to measure how often the decision changes.
@@ -23,7 +25,7 @@ Traces show what was recorded. Conflict checks use declared rules, and replay ef
 cargo run --locked -- serve
 ```
 
-Open **Before inference** and select **Load returns example**. Expand the conflict to see what each source declares. Under **Captured inputs**, open a source to see its context ID and any matching JSON Pointer or text range. Use those locations when specifying a candidate or shadow edit. [Open the local inspector](http://127.0.0.1:8040)
+Open **Before inference** and select **Load returns example**. Expand the conflict to see what each source declares. Under **Captured inputs**, open a source to see its context ID and any matching JSON Pointer or text range. Use those locations when specifying a candidate or shadow edit.
 
 To inspect your workflow, paste the versioned pending request JSON used by preflight. The inspector checks declared rules and compares captured text for exact reuse. Under **Attach existing model reports**, you can add a saved context screen, candidate probe, or shadow probe. For example, paste the saved Qwen routing request, attach its candidate and shadow reports, and select **Inspect request**. You'll see whether an edit changes preference between two fixed continuations or the rate of a generated proposal. The inspector checks the supplied reports against this request and displays why a stale report failed verification. [Routing request](../examples/runtime-comparison/pending-routing/request.json) · [Candidate report](../examples/runtime-comparison/pending-routing/report.json) · [Shadow report](../examples/runtime-comparison/pending-routing/shadow-report.json)
 
@@ -84,7 +86,7 @@ cargo run --locked -- import-langsmith examples/preflight-returns-langsmith.json
 cargo run --locked -- serve "$demo_dir/evidence.json"
 ```
 
-Open **Conversation** and select the turn evidence. Under **Preflight**, expand either source to see its original text and request range beside the 60-day answer. The chronological **Timeline** shows the same check on the inference call. If the captured inputs differ from the receipt or are unavailable, the inspector shows why the check could not be verified. The MCP `get_turn_evidence` tool returns the verification status and matching findings, with declared values available when captured excerpts are enabled and requested. [Open the local inspector](http://127.0.0.1:8040)
+Open **Conversation** and select the turn evidence. Under **Preflight**, expand either source to see its original text and request range beside the 60-day answer. The chronological **Timeline** shows the same check on the inference call. If the captured inputs differ from the receipt or are unavailable, the inspector shows why the check could not be verified. The MCP `get_turn_evidence` tool returns the verification status and matching findings, with declared values available when captured excerpts are enabled and requested.
 
 ## Screen captured text for overlap
 
@@ -200,7 +202,14 @@ python3 examples/send_otlp_replay.py --conversation-id journal-followup --follow
 
 ### Did an edit reach the intended answer?
 
-The workflow can declare a target before running a shadow experiment. For the journal example we specified the exact answer `45` and tested changing the policy, the FAQ, and both to 45 days. The dashboard scores every condition against that same target. [Open the first question](http://127.0.0.1:8040/?view=preview&scenario=window-earlier)
+The workflow can declare a target before running a shadow experiment. For the journal example we specified the exact answer `45` and tested changing the policy, the FAQ, and both to 45 days. The dashboard scores every condition against that same target.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the first question at `http://127.0.0.1:8040/?view=preview&scenario=window-earlier`
+
+</details>
 
 | Question | Original | Policy edit | FAQ edit | Both edits | Follow-up |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -220,7 +229,14 @@ python3 examples/context-screening/replay/test_declared_window.py "$qwen_dir" /t
 
 ### Which edit moved a target token to the top before generation?
 
-Open the score-only example and select `45`. The table compares the original request with three edited requests. The FAQ edit alone made `4` the highest-scoring opening token on the first question. Select the alternative `30` to inspect the same conditions from the other direction. **Compare with generated answers** opens a separate set of greedy trials. [Inspect scores before generation](http://127.0.0.1:8040/?view=preview&scenario=window-before)
+Open the score-only example and select `45`. The table compares the original request with three edited requests. The FAQ edit alone made `4` the highest-scoring opening token on the first question. Select the alternative `30` to inspect the same conditions from the other direction. **Compare with generated answers** opens a separate set of greedy trials.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Inspect scores before generation at `http://127.0.0.1:8040/?view=preview&scenario=window-before`
+
+</details>
 
 We scored three previously tested questions and wrote a fourth before its first run. Here is what happened when **both** sources changed to 45 days. Each probability uses the model’s full vocabulary.
 
@@ -231,7 +247,14 @@ We scored three previously tested questions and wrote a fourth before its first 
 | Unopened journal | `1` | 9.80% | 47.14% | `120` |
 | Fresh question | `4` | 20.39% | 99.56% | `45 days` |
 
-On the follow-up, the model generated `1` first. To score the second digit of the target, the probe supplied `4` anyway. That 95.81% describes a hypothetical continuation. On the fresh question the two target digits both led, yet the model appended “ days”. Scoring a prefix leaves the probability of stopping after it unmeasured. [Inspect the fresh question](http://127.0.0.1:8040/?view=preview&scenario=window-fresh)
+On the follow-up, the model generated `1` first. To score the second digit of the target, the probe supplied `4` anyway. That 95.81% describes a hypothetical continuation. On the fresh question the two target digits both led, yet the model appended “ days”. Scoring a prefix leaves the probability of stopping after it unmeasured.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Inspect the fresh question at `http://127.0.0.1:8040/?view=preview&scenario=window-fresh`
+
+</details>
 
 ![The fresh question, its four generated answers, and the first-token scores for the same source edits.](media/target-tokens.png)
 
@@ -331,7 +354,7 @@ cargo run --locked -- import-langsmith examples/runtime-comparison/pending-routi
 cargo run --locked -- serve "$demo_dir/evidence.json"
 ```
 
-In **Conversation**, open the turn evidence and expand **Candidate probes**. The original request favors `stock`. Editing the request type shifts the score to `price`. Expand that source to inspect the captured text, JSON Pointer, UTF-8 byte range, and replacement. The same evidence is available on the call in **Timeline**, in **Decisions**, and through MCP `get_turn_evidence`. MCP includes the exact prefix, continuations, and replacement text when you enable and request captured excerpts. [Open the local inspector](http://127.0.0.1:8040)
+In **Conversation**, open the turn evidence and expand **Candidate probes**. The original request favors `stock`. Editing the request type shifts the score to `price`. Expand that source to inspect the captured text, JSON Pointer, UTF-8 byte range, and replacement. The same evidence is available on the call in **Timeline**, in **Decisions**, and through MCP `get_turn_evidence`. MCP includes the exact prefix, continuations, and replacement text when you enable and request captured excerpts.
 
 ### Grade a source edit against a known continuation
 
@@ -349,7 +372,7 @@ cargo run --locked -- import-langsmith examples/runtime-comparison/pending-routi
 cargo run --locked -- serve "$demo_dir/evidence.json"
 ```
 
-Open **Patterns → Candidate preference shifts**. Select the `retail-north / routing-demo` user, enter `request-type` under **Source**, and select the `retail-south` organization under **Compare with**. The group has two contributing conversations in Scope A and one in Scope B. Use the thread and UTC date filters to narrow either side. **See contributing turns** lists the calls in time order. **Open source on turn** expands the exact probe and edited source in Conversation. On an individual probe, **Find recurring shifts** opens the source's patterns in that user's scope. [Open the local inspector](http://127.0.0.1:8040)
+Open **Patterns → Candidate preference shifts**. Select the `retail-north / routing-demo` user, enter `request-type` under **Source**, and select the `retail-south` organization under **Compare with**. The group has two contributing conversations in Scope A and one in Scope B. Use the thread and UTC date filters to narrow either side. **See contributing turns** lists the calls in time order. **Open source on turn** expands the exact probe and edited source in Conversation. On an individual probe, **Find recurring shifts** opens the source's patterns in that user's scope.
 
 A group requires verified reports, a stable source ID, and the same captured source content, version, role, edit, ordered candidates, fixed prefix, tokenizer, scorer, and model revision. Surrounding context can vary across calls. A reversal counts a change in which candidate is favored. Each scope reports its own measurements, distinct calls, identified conversations, organizations, and range of log-odds shifts. **Recurring only** requires at least two identified conversations in either selected scope. Date windows use the recorded call start time.
 
@@ -406,7 +429,7 @@ cargo run --locked -- import-langsmith examples/runtime-comparison/pending-routi
 cargo run --locked -- serve "$demo_dir/evidence.json"
 ```
 
-The demo puts the saved Qwen shadow report beside a recorded `stock` proposal. Under **Shadow probes** on the turn, expand `request-type` to see the original text, exact request range, and replacement next to its +100 percentage point change in `price(42)` proposals. The same report appears on the model call in **Timeline** and in **Decisions**. MCP `get_turn_evidence` returns the verification, counts, and paginated effects. Enable and request captured excerpts to see the expected outcome and replacement text through MCP. [Open the local inspector](http://127.0.0.1:8040)
+The demo puts the saved Qwen shadow report beside a recorded `stock` proposal. Under **Shadow probes** on the turn, expand `request-type` to see the original text, exact request range, and replacement next to its +100 percentage point change in `price(42)` proposals. The same report appears on the model call in **Timeline** and in **Decisions**. MCP `get_turn_evidence` returns the verification, counts, and paginated effects. Enable and request captured excerpts to see the expected outcome and replacement text through MCP.
 
 ### Find recurring shadow proposal shifts
 
@@ -418,7 +441,7 @@ cargo run --locked -- import-langsmith examples/runtime-comparison/pending-routi
 cargo run --locked -- serve "$demo_dir/evidence.json"
 ```
 
-In **Patterns → Shadow proposal shifts**, select **User · retail-north / routing-demo**, enter `request-type` under **Source**, and select **Organization · retail-south** under **Compare with**. North shows two increases of +100 percentage points. South shows one increase and one unchanged result. **See contributing turns** lists the baseline and edited trial counts in time order. Use **Open source on turn** to open the exact edited source. From that source on a turn, **Find recurring proposal shifts** opens the pattern view for the current user and source. Use the thread and UTC date filters to narrow either side. [Open the local inspector](http://127.0.0.1:8040)
+In **Patterns → Shadow proposal shifts**, select **User · retail-north / routing-demo**, enter `request-type` under **Source**, and select **Organization · retail-south** under **Compare with**. North shows two increases of +100 percentage points. South shows one increase and one unchanged result. **See contributing turns** lists the baseline and edited trial counts in time order. Use **Open source on turn** to open the exact edited source. From that source on a turn, **Find recurring proposal shifts** opens the pattern view for the current user and source. Use the thread and UTC date filters to narrow either side.
 
 Groups require the same named source, captured content, version, role and kind, edit, runner, sampling design, and proposal criterion. The criterion follows the report's match rule. The demo tracks tool kind and name, so product IDs can differ across trials. A rule that scores selected argument fields requires the same expected values for those fields. Each scope reports its own range of measured shifts and counts of increased, decreased, unchanged, and unavailable comparisons. **Recurring only** requires scored comparisons in at least two identified conversations in either scope. Open a contributing turn to inspect the joint and negative-control comparisons.
 
@@ -441,7 +464,7 @@ The CLI, local API, and MCP share the probe pattern query format. Save a view su
 cargo run --locked -- serve --replay examples/local-mlx/report.json examples/local-mlx/evidence.json
 ```
 
-Open the turn evidence and expand **Replay results**. In the saved local-model trials, the baseline request yielded a 30-day return window in 3 of 3 runs. Withholding the returns policy changed all three answers to 60 days. Withholding the store name preserved the 30-day answer. The replay case supplies the baseline request. The inspector reads the saved trials locally. [Open the inspector](http://127.0.0.1:8040)
+Open the turn evidence and expand **Replay results**. In the saved local-model trials, the baseline request yielded a 30-day return window in 3 of 3 runs. Withholding the returns policy changed all three answers to 60 days. Withholding the store name preserved the 30-day answer. The replay case supplies the baseline request. The inspector reads the saved trials locally.
 
 ![Decision inspector showing the recorded answer, captured inputs, and replay results for the returns policy and store-name control](media/decision-inspector.png)
 
@@ -453,7 +476,7 @@ With a Rust toolchain installed:
 cargo run --locked -- serve fixtures/conversation.json fixtures/support.json
 ```
 
-Open the local inspector, choose **Return a jacket**, and select the evidence on either turn. Switch the second turn's **Decision or step** selector between the answer and the order lookup. **Open decision details** opens the full inspector for that step. **Back to conversation** returns to the selected turn. [Open the inspector](http://127.0.0.1:8040)
+Open the local inspector, choose **Return a jacket**, and select the evidence on either turn. Switch the second turn's **Decision or step** selector between the answer and the order lookup. **Open decision details** opens the full inspector for that step. **Back to conversation** returns to the selected turn.
 
 **Conversation** groups consecutive captured user messages in an identified turn when they have adjacent positions in the same message stream. Gaps, role changes, and unavailable messages end the group. Calls without a turn ID show the newest captured user message and suppress repeats across calls in the same trace.
 
@@ -465,7 +488,7 @@ On the chronological **Timeline**, expand a call's findings to open the exact ru
 
 ## Follow a conflict from one turn to an organization
 
-Start the inspector with `cargo run --locked -- serve fixtures/support.json`. Use the `return-eligibility` conversation for this walkthrough. All five conversations in the fixture are synthetic. [Open the local inspector](http://127.0.0.1:8040)
+Start the inspector with `cargo run --locked -- serve fixtures/support.json`. Use the `return-eligibility` conversation for this walkthrough. All five conversations in the fixture are synthetic.
 
 | View | What to open | What you should see |
 | --- | --- | --- |

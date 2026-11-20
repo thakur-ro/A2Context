@@ -1,0 +1,27 @@
+# Strategic merge patch for an existing Kubernetes Deployment.
+spec:
+  template:
+    spec:
+      containers:
+        - name: nexusweave
+          image: registry.example/nexusweave:private
+          args: ["--db", "/state/evidence.sqlite", "--retain-days", "7"]
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: nexusweave-state
+              mountPath: /state
+      volumes:
+        - name: nexusweave-state
+          persistentVolumeClaim:
+            claimName: nexusweave-state

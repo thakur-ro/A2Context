@@ -1,5 +1,7 @@
 # Run NexusWeave beside inference
 
+[Watch the embedded walkthrough](demo.md) · [Build and verify the shipping image](../DEPLOYMENT.md)
+
 The sidecar receives [OTLP/HTTP](https://opentelemetry.io/docs/specs/otlp/) trace exports and writes normalized evidence to embedded SQLite. The dashboard opens on **Recommendations**. It counts distinct identified conversations with findings, and groups them by what the captured evidence shows. Select a count to see which source groups contributed that level of evidence, then open a conversation and its measurement. Select a source factor to see where its findings recur. Each occurrence links to its original conversation and span. URL filters carry across those layers.
 
 ```sh
@@ -13,9 +15,16 @@ Existing detail links resolve through the sidecar when it has the referenced tra
 
 ### Read a conversation turn by turn
 
-Open **See this call in its conversation** on a recommendation. The selected call has a green outline. Read the preceding question, the proposed tool and the recorded answer in order. When the exporter supplies a turn ID, adjacent calls in that turn appear together. Otherwise each call has its own entry. The latest captured user text can come from earlier in the conversation.
+Open **See this call in its conversation** on a recommendation. The selected call has a focus outline. Read the preceding question, the proposed tool and the recorded answer in order. When the exporter supplies a turn ID, adjacent calls in that turn appear together. Otherwise each call has its own entry. The latest captured user text can come from earlier in the conversation.
 
-In the jacket demo, the assistant first quotes a 30-day return window. On the next turn it proposes an order lookup and answers 60 days. Select **Declared instructions disagree** on that answer to compare the policy and FAQ. The conflict establishes that the instructions disagree. A controlled edit would be needed to test which one influenced that answer. [Open the jacket conversation](http://127.0.0.1:8040/?view=threads&thread=%5B%22fixture%22%2C%22Northland+Retail%22%2C%22Customer+042%22%2C%22Return+a+jacket%22%5D)
+In the jacket demo, the assistant first quotes a 30-day return window. On the next turn it proposes an order lookup and answers 60 days. Select **Declared instructions disagree** on that answer to compare the policy and FAQ. The conflict establishes that the instructions disagree. A controlled edit would be needed to test which one influenced that answer.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the jacket conversation at `http://127.0.0.1:8040/?view=threads&thread=%5B%22fixture%22%2C%22Northland+Retail%22%2C%22Customer+042%22%2C%22Return+a+jacket%22%5D`
+
+</details>
 
 ![Two user questions, an order lookup and the policy conflict attached to the jacket answer](media/conversation-findings.png)
 
@@ -132,7 +141,14 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 
 The dashboard counts each identified conversation once after applying the current filters. A conversation can move to another category when new findings arrive or a filter excludes a measurement. Within a category, the most recent eligible finding supplies the evidence link. Requests without a conversation ID contribute to a separate count. [Category definitions](methods.md#what-changed-in-a-conversation)
 
-Expand **Answers or tool calls compared** on the overview or a source factor. Select a row to see conversations where proposals changed, held, or did both across the available comparisons. **No comparable proposal pair** includes input-only findings and tests that failed to establish a consistent answer in each condition. Each conversation contributes once to `impact.proposal_outcomes`. On the sampled routing example, open both links to compare the same request-type edit with different tools available. [Open the sampled conversation](http://127.0.0.1:8040/?org=routing-sampling&proposal_result=both)
+Expand **Answers or tool calls compared** on the overview or a source factor. Select a row to see conversations where proposals changed, held, or did both across the available comparisons. **No comparable proposal pair** includes input-only findings and tests that failed to establish a consistent answer in each condition. Each conversation contributes once to `impact.proposal_outcomes`. On the sampled routing example, open both links to compare the same request-type edit with different tools available.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the sampled conversation at `http://127.0.0.1:8040/?org=routing-sampling&proposal_result=both`
+
+</details>
 
 Within that panel, **Scored replays** gives the separate match-rate counts in `impact.replay_outcomes`. Two different answers can pass the same scoring rule. A single trial per arm can also give equal rates. Open the recommendation for the complete proposal comparison and trial counts.
 
@@ -140,7 +156,14 @@ Within that panel, **Scored replays** gives the separate match-rate counts in `i
 
 ### Investigate a recurring target miss
 
-Under **Recurring target misses**, open the 45-day return experiment. Three of four conversations missed `45` under every tested edit. **Compare the opening token** narrows the list to the two questions where another token led under every condition. **Inspect text after the target** opens the investigation of the third miss, where the combined edit produced `45 days`. On the unopened-journal question, `1` outscored `4` on the original request and each edit. The token scores open above the separately generated answers. **Show all experiments** also shows the successful question, where the FAQ edit produced `45`. [Open the scoped group list](http://127.0.0.1:8040/?targets=1&org=journal-window-study)
+Under **Recurring target misses**, open the 45-day return experiment. Three of four conversations missed `45` under every tested edit. **Compare the opening token** narrows the list to the two questions where another token led under every condition. **Inspect text after the target** opens the investigation of the third miss, where the combined edit produced `45 days`. On the unopened-journal question, `1` outscored `4` on the original request and each edit. The token scores open above the separately generated answers. **Show all experiments** also shows the successful question, where the FAQ edit produced `45`.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the scoped group list at `http://127.0.0.1:8040/?targets=1&org=journal-window-study`
+
+</details>
 
 ![Four journal conversations tested the same FAQ and policy edits. Two missed questions link to opening-token scores and one links to extra text in a completion.](media/target-pattern.png)
 
@@ -162,11 +185,25 @@ An identified conversation enters the denominator when a normalized call matches
 
 The conversations-without-findings page shows one screened pair per conversation. The sidecar prefers a call with a flagged pair, then a call with text. Within a call it selects the first flagged conflict, falling back to the first flagged overlap in report order. It checks the report against the captured source versions, text digests and score contract. The scores come from the supplied classifier. Once verified replay evidence arrives, the dashboard updates the conversation’s evidence category. [Test the same pair on the follow-up question](guide.md#test-the-pair-on-a-follow-up-question)
 
-For assembled requests, send an optional `screening` report in the `POST /api/sidecar/preview` envelope. Read `screen_suggestion` for the pair. A stale report returns no pair and an issue in `unverified_probes`. Previewing leaves the stored conversation counts intact. [Open the before-inference example](http://127.0.0.1:8040/?view=preview&scenario=screen)
+For assembled requests, send an optional `screening` report in the `POST /api/sidecar/preview` envelope. Read `screen_suggestion` for the pair. A stale report returns no pair and an issue in `unverified_probes`. Previewing leaves the stored conversation counts intact.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the before-inference example at `http://127.0.0.1:8040/?view=preview&scenario=screen`
+
+</details>
 
 ### See which source edit changed the answer across conversations
 
-Open **Flagged source pairs** on the overview and choose the journal policy and FAQ. Three demo conversations contain the same flagged instructions. The FAQ edit changed both tested answers. The policy edit preserved both. The third conversation opens on its original question with a link to prepare a test. [Explore flagged pairs](http://127.0.0.1:8040/?screens=1)
+Open **Flagged source pairs** on the overview and choose the journal policy and FAQ. Three demo conversations contain the same flagged instructions. The FAQ edit changed both tested answers. The policy edit preserved both. The third conversation opens on its original question with a link to prepare a test.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Explore flagged pairs at `http://127.0.0.1:8040/?screens=1`
+
+</details>
 
 ![Three journal conversations share a classifier flag. The table counts the conversations where each individual edit changed or preserved the proposal.](media/screened-pair-comparisons.png)
 
@@ -176,15 +213,36 @@ The page lists untested occurrences first. Each example refers to the same call 
 
 ### Find recurring sources within an outcome
 
-Select **Generated proposal changed**. Filter to `retail-south`, open **request-type**, and choose a conversation. On item 28 the edit switched the proposed tool from `stock` to `price`. On item 73 it changed the answer text with the same tool selection. Both links open the measured pair in the relevant routing setup. The store name also appeared in the first-token tests. Its presence alone gives it no credit for either change. [Open the two routing conversations](http://127.0.0.1:8040/?level=1&by=edit&org=retail-south&cohort_factor=6b94e71fcf1ba0bd63252e19ac47ede2674751f1abd4d92e0860293bd2143855)
+Select **Generated proposal changed**. Filter to `retail-south`, open **request-type**, and choose a conversation. On item 28 the edit switched the proposed tool from `stock` to `price`. On item 73 it changed the answer text with the same tool selection. Both links open the measured pair in the relevant routing setup. The store name also appeared in the first-token tests. Its presence alone gives it no credit for either change.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the two routing conversations at `http://127.0.0.1:8040/?level=1&by=edit&org=retail-south&cohort_factor=6b94e71fcf1ba0bd63252e19ac47ede2674751f1abd4d92e0860293bd2143855`
+
+</details>
 
 ![Edits ranked by the number of conversations in which the generated proposal changed.](media/outcome-sources.png)
 
-A source pair appears as **Edited together** when the joint edit changed the proposal. A conversation may appear under several qualifying edits. **By conversation** lists each conversation once. The earlier source-group view still lists all sources involved in a finding, including comparison sources. [Open the original source groups](http://127.0.0.1:8040/?level=1&by=source)
+A source pair appears as **Edited together** when the joint edit changed the proposal. A conversation may appear under several qualifying edits. **By conversation** lists each conversation once. The earlier source-group view still lists all sources involved in a finding, including comparison sources.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the original source groups at `http://127.0.0.1:8040/?level=1&by=source`
+
+</details>
 
 ### See what happened when two sources changed together
 
-Open the Cedar dispatch recommendation. The cards show the original answer, an edit to each source, and the joint edit. Under **Where did this pattern recur?**, select the result to open either of the two conversations. The counts separate reports, identified conversations and distinct captured JSON requests. Each report compares the same edits, model, runner, rule, and number of trials per condition. A conversation can contain different results. [Open Cedar in the demo](http://127.0.0.1:8040/?recommendation=602208c5e9c068fab608137a9c92699923591b1f349ab8504b57e65084f85808) · [Compare the wordings and scoring rules](methods.md#when-both-single-edits-preserve-the-answer)
+Open the Cedar dispatch recommendation. The cards show the original answer, an edit to each source, and the joint edit. Under **Where did this pattern recur?**, select the result to open either of the two conversations. The counts separate reports, identified conversations and distinct captured JSON requests. Each report compares the same edits, model, runner, rule, and number of trials per condition. A conversation can contain different results. [Compare the wordings and scoring rules](methods.md#when-both-single-edits-preserve-the-answer)
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open Cedar in the demo at `http://127.0.0.1:8040/?recommendation=602208c5e9c068fab608137a9c92699923591b1f349ab8504b57e65084f85808`
+
+</details>
 
 ![The Cedar replay shows the original answer and each edited answer, with two conversations behind the joint-only result.](media/joint-proposals.png)
 
@@ -192,11 +250,25 @@ For clients, a joint replay card returns `joint_patterns` for the selected facto
 
 ### Follow a source edit through an answer
 
-Open a token recommendation. It selects the output position and source edit with the largest measured shift. Choose another token to see which tested edits affected its probability. Expand a source to see the replacement and the answer the model generated with it. The coverage count lists captured inputs that still need a test. [Open the refund example](http://127.0.0.1:8040/?recommendation=6158b8bd5e64d129e9be699f6c78c0965402edc0b7367df671e02ff744171bb1#output-token-14)
+Open a token recommendation. It selects the output position and source edit with the largest measured shift. Choose another token to see which tested edits affected its probability. Expand a source to see the replacement and the answer the model generated with it. The coverage count lists captured inputs that still need a test.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the refund example at `http://127.0.0.1:8040/?recommendation=6158b8bd5e64d129e9be699f6c78c0965402edc0b7367df671e02ff744171bb1#output-token-14`
+
+</details>
 
 ![The refund-policy edit changes the probability of the original four-day window and the separately generated answer says seven days.](media/token-path.png)
 
-In the tool example, the model wrote `42` in a stock lookup and repeated it in the explanation. Choose **Compare the same token at position 21** to see how the effect of editing the product ID differs across the two positions. The edited generation shows which argument the model actually proposed. [Open the tool example](http://127.0.0.1:8040/?recommendation=a40da3144994322a6a46f98bd239219307918b750e9626c0f2247b19c8597a95#output-token-8)
+In the tool example, the model wrote `42` in a stock lookup and repeated it in the explanation. Choose **Compare the same token at position 21** to see how the effect of editing the product ID differs across the two positions. The edited generation shows which argument the model actually proposed.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the tool example at `http://127.0.0.1:8040/?recommendation=a40da3144994322a6a46f98bd239219307918b750e9626c0f2247b19c8597a95#output-token-8`
+
+</details>
 
 ### Find an edit whose effect varies across inputs
 
@@ -224,13 +296,28 @@ Load the output file in **Before inference**, or pass `{"request": <file content
 
 Pass `--opening-tokens` to the Qwen scoring adapter to include the full-vocabulary argmax for the original request and each edit. This readout reuses the forward passes for divergence. An adapter supplies the optional integer `top_token_id` in `scores` and on every effect. The tokenizer digest identifies the ID space. With tied scores the Qwen adapter takes the lowest maximizing token ID. The evidence API can return `opening_changed` without revealing token IDs when excerpts are disabled.
 
-In **Before inference**, the table shows which edits changed the most likely opening token. The complete-proposal column starts as **Unmeasured**. Attach a shadow report to compare answers or tool proposals. Each arm must match the captured request, source and edited request digest. Incomplete and varying trials have their own labels. Use **Compare generated proposals** to see the outcomes and runner. [Try the saved comparison](http://127.0.0.1:8040/?view=preview&scenario=opening-before) · [Eight-question evaluation](methods.md#can-the-opening-token-identify-which-conflicting-source-to-test)
+In **Before inference**, the table shows which edits changed the most likely opening token. The complete-proposal column starts as **Unmeasured**. Attach a shadow report to compare answers or tool proposals. Each arm must match the captured request, source and edited request digest. Incomplete and varying trials have their own labels. Use **Compare generated proposals** to see the outcomes and runner. [Eight-question evaluation](methods.md#can-the-opening-token-identify-which-conflicting-source-to-test)
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Try the saved comparison at `http://127.0.0.1:8040/?view=preview&scenario=opening-before`
+
+</details>
 
 Other model adapters can implement the same batch interface. On stdin, version 1 supplies `baseline`, its `baseline_request_sha256`, and 1–32 single `edits` with exact request bodies, source IDs, versions and digests. The adapter returns version 1, model ID and revision, runtime, tokenizer hash, baseline digest and one effect per edit in input order. Each effect echoes the context ID, source ID, version and request digest, and adds `js_bits` in [0, 1]. Declare byte ranges when equal text occurs in multiple fields. Full-vocabulary access is required by this metric. [Reference adapter](../scripts/score_qwen_prefill.py) · [Algorithm and interpretation](methods.md#which-source-would-you-test-without-candidate-answers)
 
 ### Compare source edits at a supplied answer prefix
 
-A workflow engineer can score a specific part of an answer before the model generates it. In the demo, choose **Before inference**, **Try a policy conflict**, then **Compare edits at a supplied answer prefix**. The user asked for a receipt starting with “Return window: ”. The policy edit switches which of the two deadlines scores higher. **Compare with freely generated answers** shows whether the runner actually used that opening and which deadline came next. [Open the scores](http://127.0.0.1:8040/?view=preview&scenario=prefix-before) · [Compare the generated answers](http://127.0.0.1:8040/?view=preview&scenario=prefix-checked)
+A workflow engineer can score a specific part of an answer before the model generates it. In the demo, choose **Before inference**, **Try a policy conflict**, then **Compare edits at a supplied answer prefix**. The user asked for a receipt starting with “Return window: ”. The policy edit switches which of the two deadlines scores higher. **Compare with freely generated answers** shows whether the runner actually used that opening and which deadline came next.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the scores at `http://127.0.0.1:8040/?view=preview&scenario=prefix-before`
+- Compare the generated answers at `http://127.0.0.1:8040/?view=preview&scenario=prefix-checked`
+
+</details>
 
 ![The policy edit switches the preferred continuation to 60. The three independent generated answers appear below the scores.](media/supplied-prefix.png)
 
@@ -250,7 +337,14 @@ cargo run --locked -- sidecar --db /tmp/calendar-study.sqlite --capture-content
 python3 examples/view_calendar_prefixes.py --url http://127.0.0.1:8040
 ```
 
-Open **Inspect 8 conversations with verified source edits**. Pick a pair, then **Inspect this edit** to see the user question, captured source, replacement, score and generated answer. A source row filters the list to conversations with that source and result. **Read this conversation** opens the selected call in its thread. [Open the loaded study](http://127.0.0.1:8040/?org=calendar-prefix-study) · [Study design and baselines](methods.md#does-the-suggested-edit-follow-the-question-when-source-order-changes)
+Open **Inspect 8 conversations with verified source edits**. Pick a pair, then **Inspect this edit** to see the user question, captured source, replacement, score and generated answer. A source row filters the list to conversations with that source and result. **Read this conversation** opens the selected call in its thread. [Study design and baselines](methods.md#does-the-suggested-edit-follow-the-question-when-source-order-changes)
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the loaded study at `http://127.0.0.1:8040/?org=calendar-prefix-study`
+
+</details>
 
 ![Two questions name different calendars. Each card shows the question, the source edited and the resulting change in minutes.](media/calendar-prefix-sources.png)
 
@@ -268,7 +362,14 @@ Load the activity study into the running sidecar. The sender withholds every gen
 python3 examples/view_calendar_prefixes.py --indirect --scores-only
 ```
 
-Open **Test source suggestions from 11 conversations**, pick a calendar, then a question. The card shows the text the model received, the edit the scorer tested, and the preferred continuation on each input. In five of the sixteen conversations the scores identified no single edit. The full source breakdown includes those abstentions. [Open the loaded forecasts](http://127.0.0.1:8040/?org=activity-prefix-study-scored)
+Open **Test source suggestions from 11 conversations**, pick a calendar, then a question. The card shows the text the model received, the edit the scorer tested, and the preferred continuation on each input. In five of the sixteen conversations the scores identified no single edit. The full source breakdown includes those abstentions.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the loaded forecasts at `http://127.0.0.1:8040/?org=activity-prefix-study-scored`
+
+</details>
 
 ![A forecast for a booking question shows the original and edited continuations, the captured source and a two-request test.](media/activity-source-test.png)
 
@@ -294,7 +395,15 @@ python3 examples/view_calendar_prefixes.py --indirect --scores-only --reference
 python3 examples/view_calendar_prefixes.py --indirect --reference
 ```
 
-[Open the forecasts](http://127.0.0.1:8040/?org=activity-prefix-study-scored-reference). Four edits shifted the model's preference toward the requested duration before any trial results were available. [Open the tested edits](http://127.0.0.1:8040/?org=activity-prefix-study-reference). Four suggested edits restored the reference, seven lost it, and five questions had no single suggested edit. From the matched comparison open **See all reference results**, **Restored**, **birch-calendar**, then **Booking 16**. The musicians asked about rehearsal time. Removing the greenhouse duration changed the answer from 30 to 60 minutes. Expand **Compare the other source edits** to see what happened when the rehearsal record was edited instead.
+Four edits shifted the model's preference toward the requested duration before any trial results were available. Four suggested edits restored the reference, seven lost it, and five questions had no single suggested edit. From the matched comparison open **See all reference results**, **Restored**, **birch-calendar**, then **Booking 16**. The musicians asked about rehearsal time. Removing the greenhouse duration changed the answer from 30 to 60 minutes. Expand **Compare the other source edits** to see what happened when the rehearsal record was edited instead.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Open the forecasts at `http://127.0.0.1:8040/?org=activity-prefix-study-scored-reference`
+- Open the tested edits at `http://127.0.0.1:8040/?org=activity-prefix-study-reference`
+
+</details>
 
 ![The rehearsal question, its expected beginning, the greenhouse calendar edit, and both generated answers](media/reference-source-outcome.png)
 
@@ -304,7 +413,14 @@ On 128 synthetic conversations drawn from these 16 inputs, p95 loopback reads to
 
 ### When the same edit helps and hurts
 
-In the [loaded activity study](http://127.0.0.1:8040/?org=activity-prefix-study-reference), open **Compare two questions**. Removing the rehearsal duration from the Birch calendar changed the answer from 30 to 60 minutes twice. For the greenhouse question that restored the requested duration. For the rehearsal question it lost the correct answer. The selector shows a second matched comparison for Atlas. Choose **Inspect this edit** on either question to see the captured source, its replacement, the runner, and the generated answers.
+In the loaded activity study, open **Compare two questions**. Removing the rehearsal duration from the Birch calendar changed the answer from 30 to 60 minutes twice. For the greenhouse question that restored the requested duration. For the rehearsal question it lost the correct answer. The selector shows a second matched comparison for Atlas. Choose **Inspect this edit** on either question to see the captured source, its replacement, the runner, and the generated answers.
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- loaded activity study at `http://127.0.0.1:8040/?org=activity-prefix-study-reference`
+
+</details>
 
 ![Two booking questions with the same earlier request and calendar edit. Both answers changed to 60 minutes. Only the greenhouse booking called for 60.](media/matched-reference-edits.png)
 
@@ -400,7 +516,14 @@ The sidecar reconstructs all eight requests and checks their digests before comp
 
 ### Compare a routing test across conversations
 
-Select **Repeats disagreed** on the overview to compare four runs on one input. The **Tool changed** column counts switches between proposed tools or between text and a tool call. Under the original instruction with both tools available, two runs switched tools. A third changed only the text answer. Expand **Compare tool selection** to open the exact setup in a changed and an unchanged run. [Sampled example](http://127.0.0.1:8040/?org=routing-sampling) · [Experiment and reproduction](../examples/runtime-comparison/pending-routing/sampled.md)
+Select **Repeats disagreed** on the overview to compare four runs on one input. The **Tool changed** column counts switches between proposed tools or between text and a tool call. Under the original instruction with both tools available, two runs switched tools. A third changed only the text answer. Expand **Compare tool selection** to open the exact setup in a changed and an unchanged run. [Experiment and reproduction](../examples/runtime-comparison/pending-routing/sampled.md)
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Sampled example at `http://127.0.0.1:8040/?org=routing-sampling`
+
+</details>
 
 ![Repeat counts for full proposals and tool selection under four instruction and inventory combinations](media/repeat-trials.png)
 
@@ -439,7 +562,14 @@ Submit `{"selection":{…},"result":{…}}` to `POST /api/position-results` usin
 
 ### Preview an assembled request
 
-Choose **Check a new request against earlier edits** in the demo. Two earlier answers changed after editing the dispatch guide. Open **See the tested edit on this request** to compare the original and edited answers for Ash. Both were `UNKNOWN`. The alternate-source experiment shows that editing the routing note reversed the model’s preference between `UNKNOWN` and `KITE`. The dashboard reads saved measurements and makes zero model calls. [Tested request](http://127.0.0.1:8040/?view=preview&scenario=checked-history) · [Held-out results](methods.md#what-do-model-scores-add-before-generation)
+Choose **Check a new request against earlier edits** in the demo. Two earlier answers changed after editing the dispatch guide. Open **See the tested edit on this request** to compare the original and edited answers for Ash. Both were `UNKNOWN`. The alternate-source experiment shows that editing the routing note reversed the model’s preference between `UNKNOWN` and `KITE`. The dashboard reads saved measurements and makes zero model calls. [Held-out results](methods.md#what-do-model-scores-add-before-generation)
+
+<details>
+<summary>Addresses for the running example</summary>
+
+- Tested request at `http://127.0.0.1:8040/?view=preview&scenario=checked-history`
+
+</details>
 
 For live traffic, supply `nexusweave.organization.id` and the same user identity as the captured calls. The producer defaults to `otlp`. For another producer, set `nexusweave.history.source` to the stored run source. A missing user matches only calls with no user ID. Named, versioned sources must bind to verified text fragments or complete message content. Settings, tools, message roles, fixed text and source positions must agree. Only the text inside bound sources and a separate final plain user question can vary.
 

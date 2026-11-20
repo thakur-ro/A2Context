@@ -1,16 +1,16 @@
 :root {
   color-scheme: light dark;
-  --background: light-dark(#f8f7f3, #1c201f);
-  --surface: light-dark(#fffefa, #242926);
-  --ink: light-dark(#242d30, #ecf0ed);
-  --muted: light-dark(#515d5d, #b1bfba);
-  --line: light-dark(#d8ded8, #414944);
-  --accent: light-dark(#254f68, #b5d8ee);
-  --accent-surface: light-dark(#e1ecf1, #273e4b);
+  --background: light-dark(#f6f6f8, #16171b);
+  --surface: light-dark(#ffffff, #22242a);
+  --ink: light-dark(#191a1e, #f1f2f5);
+  --muted: light-dark(#555963, #b6bac4);
+  --line: light-dark(#d9dbe1, #454851);
+  --accent: light-dark(#254f9e, #b3ceff);
+  --accent-surface: light-dark(#eef2fa, #27364e);
   --warning: light-dark(#8a3909, #ffd0ac);
   --warning-surface: light-dark(#fff0e2, #493121);
   --effect-lower: light-dark(#a94727, #ef9a7c);
-  --effect-higher: light-dark(#086b78, #78ced8);
+  --effect-higher: light-dark(#275999, #a6cbff);
   --effect-mixed: light-dark(#6749a8, #baa2f6);
   font: 15px/1.5 "Instrument Sans", system-ui, sans-serif;
 }

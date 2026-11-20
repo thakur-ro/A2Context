@@ -6,7 +6,7 @@ COPY ui ui
 COPY schema schema
 COPY fixtures fixtures
 COPY examples examples
-RUN cargo build --release --locked
+RUN cargo build --release --locked && strip /src/target/release/nexusweave
 
 FROM debian:bookworm-slim
 RUN install -d -o 10001 -g 10001 /state
