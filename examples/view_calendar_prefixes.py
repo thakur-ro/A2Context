@@ -10,7 +10,7 @@ CASES = Path(__file__).parent / "context-screening/replay/prefix-transfer/cases.
 ORG = "calendar-prefix-study"
 
 
-def trace_for(case, index, *, org=ORG, scores_only=False):
+def trace_for(case, index, *, org=ORG, scores_only=False, reference=False):
     envelope = case["envelope"]
     fields = envelope["request"]["attributes"].copy()
     body = json.loads(fields["nexusweave.request.body"])
@@ -20,6 +20,10 @@ def trace_for(case, index, *, org=ORG, scores_only=False):
         "nexusweave.candidate_probes": [envelope["candidate"]],
         "gen_ai.input.messages": [{"role":m["role"],"parts":[{"type":"text","content":m["content"]}]} for m in body["messages"]],
     })
+    if reference:
+        candidate = dict(envelope["candidate"], reference_target={
+            "set":"original-booking-duration-v1", "candidate_id":str(case["minutes"][case["requested"]])})
+        fields["nexusweave.candidate_probes"] = [candidate]
     if not scores_only:
         shadow = envelope["shadow"]
         fields["nexusweave.shadow_probes"] = [shadow]
@@ -38,15 +42,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8040")
     parser.add_argument("--scores-only", action="store_true", help="Withhold all generated outputs and shadow trials.")
+    parser.add_argument("--reference", action="store_true", help="Attach the expected duration from the original booking as evaluation metadata.")
     parser.add_argument("--org", help="Organization for this copy of the study.")
     parser.add_argument("--indirect", action="store_true", help="Load the study with activity paraphrases.")
     args = parser.parse_args()
     base = args.url.rstrip("/")
     org = args.org or (("activity-prefix-study" if args.indirect else ORG) + ("-scored" if args.scores_only else ""))
+    if args.reference and not args.org:
+        org += "-reference"
     path = CASES.parent.parent / "prefix-indirect/cases.json" if args.indirect else CASES
     cases = json.loads(path.read_text())
     for i, case in enumerate(cases, 1):
-        trace = trace_for(case, i, org=org, scores_only=args.scores_only)
+        trace = trace_for(case, i, org=org, scores_only=args.scores_only, reference=args.reference)
         request = Request(base + "/v1/traces", json.dumps(trace).encode(), {"Content-Type":"application/json"})
         with urlopen(request, timeout=30) as response:
             response.read()

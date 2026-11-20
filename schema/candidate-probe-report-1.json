@@ -4,12 +4,16 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "id", "scorer_id", "captured_request_sha256", "assistant_prefix", "candidates", "scores", "baseline_log_odds", "effects"],
+  "dependentSchemas": {
+    "reference_target": { "required": ["assistant_prefix"], "properties": { "assistant_prefix": { "minLength": 1 } } }
+  },
   "properties": {
     "version": { "const": 1 },
     "id": { "$ref": "candidate-probe-1.json#/properties/id" },
     "scorer_id": { "$ref": "candidate-probe-1.json#/properties/scorer_id" },
     "captured_request_sha256": { "$ref": "#/$defs/digest" },
     "assistant_prefix": { "type": "string" },
+    "reference_target": { "$ref": "candidate-probe-1.json#/properties/reference_target" },
     "candidates": { "$ref": "candidate-probe-1.json#/properties/candidates" },
     "scores": { "$ref": "#/$defs/scores" },
     "joint_request_sha256": { "$ref": "#/$defs/digest" },

@@ -38,6 +38,31 @@ fn scores(work: &candidates::ScoringRequest<'_>) -> candidates::ScoringResult {
 }
 
 #[test]
+fn reference_labels_stay_out_of_the_scorer_input() {
+    let (input, mut case) = setup();
+    let target = json!({"set":"held-out-reference","candidate_id":case.candidates[0].id});
+    case.assistant_prefix = "Answer: ".into();
+    case.reference_target = Some(target.clone());
+    let labeled = candidates::execute(input.clone(), &case, |work| {
+        assert!(!serde_json::to_string(work)
+            .unwrap()
+            .contains("held-out-reference"));
+        Ok(scores(work))
+    })
+    .unwrap();
+    assert_eq!(labeled.reference_target, Some(target));
+    case.reference_target = None;
+    let plain = candidates::execute(input.clone(), &case, |work| Ok(scores(work))).unwrap();
+    assert_eq!(labeled.scores, plain.scores);
+    assert_eq!(labeled.effects, plain.effects);
+    case.reference_target = Some(json!({"set":"frozen","candidate_id":"missing-alternative"}));
+    assert!(candidates::execute(input, &case, |_| panic!(
+        "invalid reference reached the scorer"
+    ))
+    .is_err());
+}
+
+#[test]
 fn scores_fixed_candidates_in_one_batch_without_a_recorded_output() {
     let (input, case) = setup();
     let body = input.attributes["nexusweave.request.body"]

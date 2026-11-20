@@ -30,6 +30,8 @@ pub struct Case {
     #[serde(default)]
     pub assistant_prefix: String,
     pub candidates: [Candidate; 2],
+    /// Optional evaluation metadata. The scoring adapter never receives it.
+    pub reference_target: Option<Value>,
     pub interventions: Vec<Intervention>,
     #[serde(default)]
     pub test_pair: bool,
@@ -112,6 +114,8 @@ pub struct Report {
     pub captured_request_sha256: String,
     pub assistant_prefix: String,
     pub candidates: [Candidate; 2],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference_target: Option<Value>,
     pub scores: ScoringResult,
     pub baseline_log_odds: f64,
     pub effects: Vec<Effect>,
@@ -154,6 +158,9 @@ pub fn execute(
         &case.candidates,
         case.interventions.len(),
     )?;
+    if let Some(reference) = &case.reference_target {
+        prefix::reference_index(reference, &case.candidates, &case.assistant_prefix)?;
+    }
     let (call, request, _) = preflight::pending_call(input)?;
     let request = request.ok_or("A candidate probe requires the captured request body.")?;
     let edits = prepare_edits(&call, &request, &case.interventions, case.test_pair)?;
@@ -231,6 +238,7 @@ pub fn execute(
         ),
         assistant_prefix: case.assistant_prefix.clone(),
         candidates: case.candidates.clone(),
+        reference_target: case.reference_target.clone(),
         scores,
         baseline_log_odds,
         effects,

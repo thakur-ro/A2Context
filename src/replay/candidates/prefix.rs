@@ -61,7 +61,11 @@ pub fn prefix_reviews(
             })
             .collect();
         let verdict = verdict(&conditions, &reversals, &runs);
-        reviews.push(json!({"report":report.id, "prefix":measurement.assistant_prefix,
+        let reference = report
+            .reference_target
+            .as_ref()
+            .map(|raw| reference_check(raw, measurement, &reversals, &runs));
+        reviews.push(json!({"report":report.id, "reference":reference, "prefix":measurement.assistant_prefix,
             "verdict":verdict, "scorer":measurement.scorer_id, "tokenizer_sha256":measurement.tokenizer_sha256,
             "labels":measurement.candidates.each_ref().map(|c| &c.id),
             "alternatives":measurement.candidates.each_ref().map(|c| &c.continuation), "model":measurement.model_id,
@@ -165,19 +169,28 @@ fn verdict(conditions: &[Value], reversals: &[usize], runs: &[Value]) -> &'stati
             "no_selection"
         };
     };
+    compare_trials(*selected, runs, |a, b| {
+        if conditions[0]["preferred"] == a && conditions[*selected]["preferred"] == b {
+            "confirmed"
+        } else {
+            "disagreed"
+        }
+    })
+}
+
+fn compare_trials(
+    selected: usize,
+    runs: &[Value],
+    grade: impl Fn(usize, usize) -> &'static str,
+) -> &'static str {
     let mut result = None;
     for run in runs {
         let rows = &run["rows"];
-        if rows[*selected].is_null() {
+        if rows[selected].is_null() {
             continue;
         }
-        let status = match unanimous_start(&rows[0]).zip(unanimous_start(&rows[*selected])) {
-            Some((a, b))
-                if conditions[0]["preferred"] == a && conditions[*selected]["preferred"] == b =>
-            {
-                "confirmed"
-            }
-            Some(_) => "disagreed",
+        let status = match unanimous_start(&rows[0]).zip(unanimous_start(&rows[selected])) {
+            Some((a, b)) => grade(a, b),
             None => "unresolved",
         };
         if result.is_some_and(|old| old != status) {
@@ -186,6 +199,60 @@ fn verdict(conditions: &[Value], reversals: &[usize], runs: &[Value]) -> &'stati
         result = Some(status);
     }
     result.unwrap_or("untested")
+}
+
+pub(super) fn reference_index(
+    raw: &Value,
+    candidates: &[Candidate; 2],
+    prefix: &str,
+) -> Result<usize, &'static str> {
+    let reference = raw
+        .as_object()
+        .filter(|r| r.len() == 2)
+        .ok_or("A reference target needs a set and candidate_id.")?;
+    if prefix.is_empty()
+        || reference
+            .get("set")
+            .and_then(Value::as_str)
+            .is_none_or(|s| s.trim().is_empty() || s.chars().count() > 128)
+    {
+        return Err("A reference target requires a supplied prefix and a reference set of 1 to 128 characters.");
+    }
+    candidates
+        .iter()
+        .position(|c| reference.get("candidate_id").and_then(Value::as_str) == Some(c.id.as_str()))
+        .ok_or("The reference candidate_id must name one of the two candidates.")
+}
+
+fn reference_check(
+    raw: &Value,
+    measurement: &Measurement,
+    reversals: &[usize],
+    runs: &[Value],
+) -> Value {
+    let target = match reference_index(raw, measurement.candidates, measurement.assistant_prefix) {
+        Ok(index) => index,
+        Err(issue) => return json!({"issue":issue}),
+    };
+    let effect = |a, b| match (a == target, b == target) {
+        (false, true) => "restored",
+        (true, false) => "lost",
+        (true, true) => "kept",
+        (false, false) => "missed",
+    };
+    let edits: Vec<_> = (1..=measurement.effects.len())
+        .map(|i| compare_trials(i, runs, effect))
+        .collect();
+    let (prediction, outcome) = match reversals {
+        [selected] => {
+            let original = usize::from(measurement.baseline_log_odds < 0.0);
+            let edited = usize::from(measurement.effects[*selected - 1].log_odds < 0.0);
+            (Some(effect(original, edited)), edits[*selected - 1])
+        }
+        _ => (None, "unselected"),
+    };
+    json!({"set":raw["set"],"candidate_id":measurement.candidates[target].id,
+        "continuation":measurement.candidates[target].continuation,"prediction":prediction,"outcome":outcome,"edits":edits})
 }
 
 fn trial_run(candidate: &Measurement, trials: &shadow::Measurement, origin: &str) -> Option<Value> {

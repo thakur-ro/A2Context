@@ -828,6 +828,38 @@ try {
       assert.equal(groups.rows[0].needs_trial,expected-1);
     }
   }
+  if (process.env.PREFIX_REFERENCE_URL) {
+    const origin = process.env.PREFIX_REFERENCE_URL;
+    for (const device of [page,mobile]) {
+      await device.goto(origin + "/?org=activity-prefix-study-reference");
+      await device.getByRole("link",{name:/Review 4 conversations where an edit restored/}).click();
+      await device.getByRole("heading",{name:"Restored the expected continuation",exact:true}).waitFor();
+      const source = device.getByRole("row").filter({has:device.getByRole("rowheader",{name:"birch-calendar"})});
+      await source.getByRole("link",{name:"Restored the expected continuation"}).click();
+      const sample = device.getByRole("link",{name:/Booking 16 ·/});
+      await sample.click();
+      const check = device.getByRole("region",{name:"Reference continuation check"});
+      await check.getByText("Activity length: 30",{exact:true}).waitFor();
+      await check.getByText("Activity length: 60",{exact:true}).waitFor();
+      await check.getByText("Compare the other source edits",{exact:true}).click();
+      await check.getByRole("row").filter({hasText:"atlas-calendar"}).getByText("Missed the expected continuation twice").waitFor();
+      if (device === page && process.env.PREFIX_REFERENCE_SCREENSHOT) await check.screenshot({path:process.env.PREFIX_REFERENCE_SCREENSHOT});
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      await device.getByRole("link",{name:"Back to source results"}).click();
+      assert.equal(new URL(device.url()).searchParams.get("ref_set"),"original-booking-duration-v1");
+      await device.getByRole("link",{name:"Lost · 7"}).click();
+      await device.getByRole("heading",{name:"Lost the expected continuation",exact:true}).waitFor();
+      await device.getByRole("link",{name:/Booking [0-9]+ ·/}).first().click();
+      await check.getByRole("heading",{name:"Lost the expected continuation"}).waitFor();
+      await device.goto(origin + "/?org=activity-prefix-study-scored-reference");
+      await device.getByRole("link",{name:/Test 4 conversations where scores shifted to the expected continuation/}).click();
+      await device.getByRole("link",{name:/Booking 16 ·/}).click();
+      const forecast = device.getByRole("region",{name:"Suggested source test"});
+      await forecast.getByText("Expected continuation",{exact:true}).waitFor();
+      assert.equal(await check.count(),0);
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+    }
+  }
   assert.deepEqual(errors, []);
   console.log("Verified recommendations, before-inference preview, measured choices and tokens, legacy links, and desktop and mobile layouts.");
 } finally {

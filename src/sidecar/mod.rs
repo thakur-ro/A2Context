@@ -356,6 +356,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/prefix-contrasts"
                 | "/api/sidecar/prefix-groups"
                 | "/api/sidecar/prefix-sources"
+                | "/api/sidecar/prefix-references"
                 | "/api/sidecar/prefix-cases"
                 | "/api/sidecar/target-patterns"
                 | "/api/sidecar/target-examples"

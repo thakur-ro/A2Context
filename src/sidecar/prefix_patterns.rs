@@ -78,7 +78,7 @@ pub(super) fn index(tx: &Transaction, run: &Run, call: &Call) -> rusqlite::Resul
                     .to_string(),
                 )
             });
-            let choices = json!({"trial_key":trial_key,"alternatives":r["alternatives"],"model":r["model"],"revision":r["revision"],"runtime":r["runtime"],"scorer":r["scorer"],
+            let choices = json!({"reference_set":r["reference"]["set"],"reference_outcome":r["reference"]["outcome"],"reference_prediction":r["reference"]["prediction"],"trial_key":trial_key,"alternatives":r["alternatives"],"model":r["model"],"revision":r["revision"],"runtime":r["runtime"],"scorer":r["scorer"],
                 "original":preferred(&r["conditions"][0]),"edited":selection.and_then(preferred)});
             insert.execute(params![
                 run.id,
@@ -210,10 +210,16 @@ pub(super) const GROUPS: &str = " SELECT json_object('design',design,'prefix',pr
     'conversations',count(DISTINCT thread_key),'inputs',count(DISTINCT input),
     'exceptions',count(DISTINCT thread_key) FILTER (WHERE verdict IN ('disagreed','unselected_change','mixed')),
     'confirmed',count(DISTINCT thread_key) FILTER (WHERE verdict='confirmed'),
+    'referenced',count(DISTINCT thread_key) FILTER (WHERE choices->>'reference_set' IS NOT NULL),
+    'restored',count(DISTINCT thread_key) FILTER (WHERE choices->>'reference_outcome'='restored'),
+    'lost',count(DISTINCT thread_key) FILTER (WHERE choices->>'reference_outcome'='lost'),
+    'forecast_restore',count(DISTINCT thread_key) FILTER (WHERE needs_trial AND choices->>'reference_prediction'='restored'),
     'untested',count(DISTINCT thread_key) FILTER (WHERE verdict='untested'),
     'needs_trial',count(DISTINCT thread_key) FILTER (WHERE needs_trial),
     'experiments',count(DISTINCT choices->>'trial_key') FILTER (WHERE needs_trial))
     FROM checks GROUP BY design,prefix ORDER BY
+    count(DISTINCT thread_key) FILTER (WHERE choices->>'reference_outcome'='restored') DESC,
+    count(DISTINCT thread_key) FILTER (WHERE choices->>'reference_outcome'='lost') DESC,
     count(DISTINCT thread_key) FILTER (WHERE verdict IN ('disagreed','unselected_change','mixed')) DESC,
     count(DISTINCT thread_key) FILTER (WHERE needs_trial) DESC,
     count(DISTINCT thread_key) FILTER (WHERE verdict='confirmed') DESC,
@@ -222,6 +228,11 @@ pub(super) const GROUPS: &str = " SELECT json_object('design',design,'prefix',pr
 pub(super) const BREAKDOWN: &str = " SELECT json_object('source',source,'verdict',verdict,
     'conversations',count(DISTINCT thread_key),'inputs',count(DISTINCT input))
     FROM checks GROUP BY source,verdict ORDER BY count(DISTINCT thread_key) DESC,source,verdict LIMIT ? OFFSET ?";
+
+pub(super) const REFERENCES: &str = " SELECT json_object('source',source,'reference_set',choices->>'reference_set',
+    'outcome',choices->>'reference_outcome','conversations',count(DISTINCT thread_key),'inputs',count(DISTINCT input))
+    FROM checks WHERE choices->>'reference_set' IS NOT NULL GROUP BY source,choices->>'reference_set',choices->>'reference_outcome'
+    ORDER BY count(DISTINCT thread_key) DESC,source,choices->>'reference_set',choices->>'reference_outcome' LIMIT ? OFFSET ?";
 
 pub(super) const CASES: &str = ", witnesses AS (
     SELECT *,row_number() OVER(PARTITION BY thread_key ORDER BY started DESC,trace_id,call_id,report) AS sample

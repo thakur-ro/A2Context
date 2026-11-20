@@ -2121,7 +2121,7 @@ async function render(refresh = false) {
       const gap = !pageOffset && impact.conflict_gap;
       const cohort = prefixes.rows[0];
       const measuredFactor = factors.rows.some(f => ["routing_repeats","routing","order","replacement","joint_proposal","joint","variation","replay","shadow"].includes(f.signal));
-      const prefixLead = cohort && ((cohort.needs_trial && !measuredFactor) || (cohort.conversations > 1 && (cohort.exceptions || cohort.confirmed))) &&
+      const prefixLead = cohort && (cohort.restored || cohort.lost || (cohort.needs_trial && !measuredFactor) || (cohort.conversations > 1 && (cohort.exceptions || cohort.confirmed))) &&
         !losses && !opening && !lower && !pattern && !gap;
       const featured = !prefixLead && !losses && !opening && !lower && !pattern && !gap && !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
@@ -2220,7 +2220,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      ...(prefixCohorts ? {prefixes:1,design:query.get("design"),needs_trial:query.get("needs_trial"),verdict:query.get("verdict"),source:query.get("source"),unnamed:query.get("unnamed"),report:query.get("report")} : {}),
+      ...(prefixCohorts ? {prefixes:1,design:query.get("design"),reference:query.get("reference"),ref_set:query.get("ref_set"),ref_outcome:query.get("ref_outcome"),ref_prediction:query.get("ref_prediction"),needs_trial:query.get("needs_trial"),verdict:query.get("verdict"),source:query.get("source"),unnamed:query.get("unnamed"),report:query.get("report")} : {}),
       opening:openingStudy ? 1 : null,slot:openingSlot,opening_context:query.get("opening_context"),ranking, quality, review, conflict_design:conflictDesign, conflict_coverage:conflictCoverage,from_coverage:query.get("from_coverage"),pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();

@@ -285,6 +285,23 @@ Within the current filters, a previously tested prediction on an identical reque
 
 For integration, `GET /api/sidecar/prefix-input` takes the same design, trace, call and report locator as `prefix-check`. Submit `{"scope":{...},"shadow":{...}}` to `POST /api/prefix-results` with that locator and the report from `checked-input.json`. Only a content-capturing sidecar accepts these reports. In the built-in read-only demo, use **Before inference** to inspect a checked input. [End-to-end test](../tests/sidecar_prefix_experiment.py)
 
+### Did the edit restore the expected answer?
+
+Start a sidecar with `--capture-content`, then load the same 16 booking questions twice. The first command sends the saved scores with a reference for the duration requested. The second adds the recorded free generations in a separate organization. Neither command runs a model.
+
+```sh
+python3 examples/view_calendar_prefixes.py --indirect --scores-only --reference
+python3 examples/view_calendar_prefixes.py --indirect --reference
+```
+
+[Open the forecasts](http://127.0.0.1:8040/?org=activity-prefix-study-scored-reference). Four edits shifted the model's preference toward the requested duration before any trial results were available. [Open the tested edits](http://127.0.0.1:8040/?org=activity-prefix-study-reference). Four suggested edits restored the reference, seven lost it, and five questions had no single suggested edit. Select **Restored**, **birch-calendar**, then **Booking 16**. The musicians asked about rehearsal time. Removing the greenhouse duration changed the answer from 30 to 60 minutes. Expand **Compare the other source edits** to see what happened when the rehearsal record was edited instead.
+
+![The rehearsal question, its expected beginning, the greenhouse calendar edit, and both generated answers](media/reference-source-outcome.png)
+
+`GET /api/sidecar/prefix-references` groups results by scoring design, suggested source, reference set, and observed outcome. Use the returned set and outcome as `ref_set` and `ref_outcome` on `prefix-cases` to retrieve the supporting conversations. With no reference, the dashboard still reports whether a predicted change occurred. [Reference definition](guide.md#grade-a-source-edit-against-a-known-continuation) · [Study limits](methods.md#does-the-suggested-edit-follow-the-question-when-source-order-changes)
+
+On 128 synthetic conversations drawn from these 16 inputs, p95 loopback reads took 0.88 ms for the group, 0.53 ms for restored results by source, and 0.99 ms for the corresponding conversation page (30 warm reads each). The release container, including the Python driver, peaked at 32.0 MiB with one CPU and a 512 MiB limit. The run indexed saved reports. It did not measure model scoring or production inference latency. [Benchmark driver](../tests/sidecar_prefix_reference.py)
+
 ### Find answers that changed after the same opening
 
 Open **Recommendations** and select **Review 3 conversations where the top opening token held and the proposal changed**. Choose `journal-policy`, then the sentence-completion question. The original and edited answers agree for seven tokens. At token eight the policy edit changes the first digit of the return window. **See this call in its conversation** brings up the surrounding dialogue.

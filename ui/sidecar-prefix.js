@@ -31,6 +31,10 @@ function prefixReview(review, question, action) {
     element("p", {className:"row-extra",text:runs.length ? "The proposal trials below allowed the runner to choose its own opening." :
       selected ? "Test the complete answer after editing " + selected.label + " to see whether the generated text follows this prefix." :
       "Compare the generated answers under each edit. The scores identify no single edit to test first."}),
+    review.reference?.set && element("p",{},"Expected beginning in " + review.reference.set + " ",
+      element("code",{text:JSON.stringify(prefix + review.reference.continuation)}),
+      " · " + prefixOutcomes[review.reference.outcome]),
+    review.reference?.issue && element("p",{text:review.reference.issue}),
     action, ...trials,
     element("details", {}, element("summary", {text:"Scoring conditions"}),
       ...conditions.slice(1).map(c => element("p", {text:c.label + " · " + signed(c.change_log_odds) + " change in log odds"})),
@@ -66,15 +70,70 @@ function prefixGroupRow(group) {
     url({prefixes:1,design:group.design}));
 }
 
+const prefixOutcomes = {
+  restored:"Restored the expected continuation", lost:"Lost the expected continuation",
+  kept:"Kept the expected continuation", missed:"Missed the expected continuation twice",
+  unselected:"No single edit selected", untested:"Awaiting a trial", unresolved:"Trials were unresolved",
+  mixed:"Reports gave different reference results"
+};
+
+function referenceNavigation(group, selection) {
+  const options = [["restored","Restored",group.restored],["lost","Lost",group.lost]];
+  return element("nav",{className:"coverage-options","aria-label":"Reference outcomes"},
+    ...options.filter(([, ,n]) => n).map(([outcome,label,count]) =>
+      link(label + " · " + count,url({...selection,ref_outcome:outcome}),null,query.get("ref_outcome") === outcome)),
+    link("All reference results",url({...selection,reference:1}),null,query.get("reference") === "1"));
+}
+
+function prefixReferenceDetail(review, question) {
+  const ref = review.reference;
+  const index = review.reversals.length === 1 ? review.reversals[0] : null;
+  const edited = index && review.conditions[index];
+  const checked = index ? review.runs.filter(r => r.rows[index]) : [];
+  const others = review.conditions.slice(1).flatMap((c,i) => i+1 === index ? [] : [[c,ref.edits[i]]]);
+  return element("section",{className:"panel prefix-forecast","aria-label":"Reference continuation check"},
+    element("p",{className:"label",text:"Reference continuation check"}),element("h2",{text:prefixOutcomes[ref.outcome]}),
+    question && element("blockquote",{text:question}),
+    element("p",{},"Expected beginning ",element("code",{text:JSON.stringify(review.prefix + ref.continuation)})),
+    element("small",{text:"Reference set · " + ref.set}),
+    edited && element("p",{},element("b",{text:"Source tested "}),edited.label,
+      edited.original && element("span",{text:" · " + edited.original})),
+    edited && element("p",{},element("b",{text:"Edit "}),edited.edit.operation === "remove_json" ? "Remove the field." : edited.edit.replacement),
+    ...checked.map(run => element("div",{},element("div",{className:"comparison forecast-values"},
+      ...[[0,"Original answer"],[review.reversals[0],"After the edit"]].map(([index,label]) => {
+        const row = run.rows[index];
+        return element("div",{},element("small",{text:label}),row.example != null && element("strong",{text:row.example}),
+          prefixTrialResult(row,review.alternatives));
+      })),element("small",{text:"Runner · " + run.runner}))),
+    others.length > 0 && element("details",{},element("summary",{text:index ? "Compare the other source edits" : "Compare individual source edits"}),
+      comparisonTable(["Source","Reference result"],others.map(([c,outcome]) => element("tr",{},
+        element("th",{scope:"row",text:c.label}),element("td",{text:prefixOutcomes[outcome]}))))));
+}
+
 function prefixInvestigation(group) {
   const pending = !group.exceptions && group.needs_trial > 0;
-  const headline = group.exceptions ? "Review " + plural(group.exceptions,"conversation") + " where scores and trials need a closer look" :
-    pending ? "Test source suggestions from " + plural(group.needs_trial,"conversation") :
-    "Inspect " + plural(group.confirmed,"conversation") + " with verified source edits";
-  const detail = pending ? plural(group.experiments,"distinct edit test") + " across " + plural(group.conversations,"scored conversation") + ". Check whether the score change predicts a change in the generated answer." :
-    "Compare the suggested edit with what the runner generated after " + JSON.stringify(group.prefix) + ".";
+  let filter = {}, headline, detail;
+  if (group.restored || group.lost) {
+    const restored = group.restored > 0;
+    filter = {ref_outcome:restored ? "restored" : "lost"};
+    headline = "Review " + plural(restored ? group.restored : group.lost,"conversation") + " where an edit " +
+      (restored ? "restored" : "lost") + " the expected continuation";
+    detail = restored && group.lost ? "Edits also lost the expected continuation in " + plural(group.lost,"conversation") + ". Compare the answers and sources for each result." :
+      "Compare the original answer and the edited answer against the reference supplied for each request.";
+  } else if (pending && group.forecast_restore) {
+    filter = {needs_trial:1,verdict:"untested",ref_prediction:"restored"};
+    headline = "Test " + plural(group.forecast_restore,"conversation") + " where scores shifted to the expected continuation";
+    detail = "The reference favors the edited prediction. A free-generation trial can check both answers.";
+  } else {
+    filter = pending ? {verdict:"untested",needs_trial:1} : {};
+    headline = group.exceptions ? "Review " + plural(group.exceptions,"conversation") + " where scores and trials need a closer look" :
+      pending ? "Test source suggestions from " + plural(group.needs_trial,"conversation") :
+      "Inspect " + plural(group.confirmed,"conversation") + " with verified source edits";
+    detail = pending ? plural(group.experiments,"distinct edit test") + " across " + plural(group.conversations,"scored conversation") + ". Check whether the score change predicts a change in the generated answer." :
+      "Compare the suggested edit with what the runner generated after " + JSON.stringify(group.prefix) + ".";
+  }
   return element("section",{className:"investigation"},element("h2",{text:"Recommended investigation"}),
-    element("a",{className:"featured",href:url({prefixes:1,design:group.design,...(pending && {verdict:"untested",needs_trial:1})})},element("div",{},
+    element("a",{className:"featured",href:url({prefixes:1,design:group.design,...filter})},element("div",{},
       element("h3",{text:headline}),element("p",{text:detail}))));
 }
 
@@ -132,6 +191,8 @@ function prefixForecast(review, question, params, captureEnabled, matchingTrial)
         element("div",{},element("small",{text:label}),element("strong",{text:predicted(row)})))),
     edited.original && element("p",{},element("b",{text:"Captured source "}),edited.original),
     element("p",{},element("b",{text:"Test edit "}),edited.edit.operation === "remove_json" ? "Remove the field." : edited.edit.replacement),
+    review.reference?.set && element("p",{},element("b",{text:"Expected continuation "}),
+      element("code",{text:JSON.stringify(review.reference.continuation)})," · " + review.reference.set),
     matchingTrial ? link("See the matching trial in " + matchingTrial.thread,url({prefixes:1,design:params.design,
       trace:matchingTrial.trace,call:matchingTrial.call,report:matchingTrial.report}),"action") :
     captureEnabled ? prefixExperiment(params) : link("Check a scored input in Before inference",url({view:"preview"})),
@@ -176,7 +237,7 @@ async function prefixCohort() {
     pagination(groups.next_offset,selection);
     return panel("Scored across conversations",back,listing(groups.rows,prefixGroupRow));
   }
-  const filter = Object.fromEntries(["source","verdict","unnamed","needs_trial"].filter(k => query.has(k)).map(k => [k,query.get(k)]));
+  const filter = Object.fromEntries(["source","verdict","unnamed","needs_trial","reference","ref_outcome","ref_set","ref_prediction"].filter(k => query.has(k)).map(k => [k,query.get(k)]));
   const params = {...scope,design,...filter};
   if (traceId) {
     const locator = {...params,trace:traceId,call:query.get("call"),report:query.get("report")};
@@ -185,35 +246,45 @@ async function prefixCohort() {
     if (!data) return panel("Comparison unavailable in this scope",previous);
     byId("title").textContent = data.example.thread;
     byId("summary").textContent = data.matching_trial ? "An identical input and edit have trial results in this scope." : prefixVerdicts[data.review.verdict];
+    const referenceDetail = data.review.reference?.set && data.review.verdict !== "untested";
     return element("div",{className:"feed"},previous,
+      referenceDetail && prefixReferenceDetail(data.review,data.example.question),
       data.review.verdict === "untested" ? prefixForecast(data.review,data.example.question,locator,data.capture_enabled,data.matching_trial) :
-        prefixReview(data.review,data.example.question),
+        referenceDetail ? element("details",{className:"panel"},element("summary",{text:"Inspect scores and all trial conditions"}),prefixReview(data.review,null)) :
+          prefixReview(data.review,data.example.question),
       link("Read this conversation",url({view:"threads",thread:data.example.thread_key,focus_trace:traceId,focus_call:data.example.call})));
   }
+  const references = Boolean(filter.reference || filter.ref_outcome || filter.ref_prediction);
   const [overview, breakdown, contrasts, examples] = await Promise.all([api("prefix-groups",{...scope,design}),
-    api("prefix-sources",{...scope,design,...(filter.needs_trial && {needs_trial:1}),offset:sourceOffset}),
-    filter.verdict ? {rows:[]} : api("prefix-contrasts",{...scope,design,offset:pairOffset}),
+    api(references ? "prefix-references" : "prefix-sources",{...params,offset:sourceOffset}),
+    filter.verdict || references ? {rows:[]} : api("prefix-contrasts",{...scope,design,offset:pairOffset}),
     api("prefix-cases",{...params,offset:pageOffset})]);
   const group = overview.rows[0];
   if (!group) return panel("No prefix comparisons in this scope",back);
-  byId("title").textContent = filter.verdict === "untested" ? "Which source edit should I test?" : "Which source suggestions held up?";
+  byId("title").textContent = filter.ref_outcome ? prefixOutcomes[filter.ref_outcome] : filter.reference ? "How did the answers compare with the reference?" : filter.verdict === "untested" ? "Which source edit should I test?" : "Which source suggestions held up?";
   byId("summary").textContent = plural(group.conversations,"conversation") + " · " + plural(group.inputs,"distinct input") +
     " · Scores after " + JSON.stringify(group.prefix);
   pagination(examples.next_offset,{...selection,...filter});
   const rows = breakdown.rows.map(row => {
-    const target = {...selection,...(filter.needs_trial && {needs_trial:1}),verdict:row.verdict,...(row.source ? {source:row.source} : {unnamed:1})};
-    return element("tr",{},element("th",{scope:"row",text:row.source || (["no_selection","unselected_change"].includes(row.verdict) ? "No single edit" : "Unnamed source")}),
-      element("td",{},link(prefixVerdicts[row.verdict],url(target),null,filter.verdict === row.verdict && (filter.source || null) === row.source)),
+    const status = references ? prefixOutcomes[row.outcome] : prefixVerdicts[row.verdict];
+    const target = {...selection,...filter,...(references ? {ref_outcome:row.outcome,ref_set:row.reference_set} : {verdict:row.verdict}),
+      source:row.source,unnamed:row.source ? null : 1};
+    const noSelection = references ? row.outcome === "unselected" : ["no_selection","unselected_change"].includes(row.verdict);
+    const active = (filter.source || null) === row.source && (references ?
+      filter.ref_outcome === row.outcome && filter.ref_set === row.reference_set : filter.verdict === row.verdict);
+    return element("tr",{},element("th",{scope:"row",text:row.source || (noSelection ? "No single edit" : "Unnamed source")}),
+      references && element("td",{text:row.reference_set}),element("td",{},link(status,url(target),null,active)),
       element("td",{text:row.conversations}));
   });
-  return element("div",{className:"feed"},back,element("section",{className:"panel target-check"},element("h2",{text:"Results by suggested source"}),
-    comparisonTable(["Source","What the trials showed","Conversations"],rows),
+  return element("div",{className:"feed"},back,group.referenced > 0 && referenceNavigation(group,selection),
+    element("section",{className:"panel target-check"},element("h2",{text:"Results by suggested source"}),
+    comparisonTable(["Source",...(references ? ["Reference set"] : []),"What the trials showed","Conversations"],rows),
     sourceOffset > 0 && link("Previous sources",url({...selection,...filter,source_offset:Math.max(0,sourceOffset-15)})),
     breakdown.next_offset != null && link("More sources",url({...selection,...filter,source_offset:breakdown.next_offset})),
-    element("p",{className:"label",text:"Each row counts conversations once. A confirmed switch measures how the answer changed. Whether the edit improved it requires a reference."})),
+    element("p",{className:"label",text:references ? "Each row counts conversations once. A match requires the generated answer to begin with the supplied prefix and its declared continuation." : "Each row counts conversations once. A confirmed switch measures how the answer changed. Whether the edit improved it requires a reference."})),
     questionContrasts(contrasts,selection,pairOffset),
     panel(filter.verdict ? prefixVerdicts[filter.verdict] : "Conversations",
-      filter.verdict && link("Show all results",url(selection)),listing(examples.rows,row => rowLink(row.question || row.thread,
+      (filter.verdict || references) && link("Show all results",url(selection)),listing(examples.rows,row => rowLink(row.question || row.thread,
         [row.thread,row.source,prefixVerdicts[row.verdict]].filter(Boolean).join(" · "),
         url({...selection,...filter,trace:row.trace,call:row.call,report:row.report,from_offset:pageOffset || null})))),
     link("All scored prefixes",url({prefixes:1})));

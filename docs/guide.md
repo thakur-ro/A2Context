@@ -333,6 +333,12 @@ cargo run --locked -- serve "$demo_dir/evidence.json"
 
 In **Conversation**, open the turn evidence and expand **Candidate probes**. The original request favors `stock`. Editing the request type shifts the score to `price`. Expand that source to inspect the captured text, JSON Pointer, UTF-8 byte range, and replacement. The same evidence is available on the call in **Timeline**, in **Decisions**, and through MCP `get_turn_evidence`. MCP includes the exact prefix, continuations, and replacement text when you enable and request captured excerpts. [Open the local inspector](http://127.0.0.1:8040)
 
+### Grade a source edit against a known continuation
+
+For a labeled evaluation request, include `"reference_target": {"set": "original-booking-duration-v1", "candidate_id": "60"}` on the candidate case or saved candidate report. Supply a nonempty `assistant_prefix` and choose one of the two candidate IDs. The set identifies the version of your reference labels. The reference applies to the original task across both arms. The scorer and proposal runner receive their usual inputs without the label.
+
+The evaluator checks the literal beginning of every freely generated answer on the original request and the same source edit. Both arms must resolve unambiguously to one of the supplied continuations. Each arm can then match or miss the reference. A missed match followed by a match counts as restored. The reverse counts as lost. Missing trials, incomplete or differing answers, and disagreements across reports have separate statuses. A matching beginning can still have an incorrect ending. [Inspect a worked example](sidecar.md#did-the-edit-restore-the-expected-answer)
+
 ### Find recurring candidate preference shifts
 
 The routing cohort contains three measured Qwen2.5 probes whose requests vary the product ID and surrounding question. Its organizations, user, thread IDs, and timestamps are synthetic. Each probe favors `stock` on the original request and `price` after the request-type edit. The saved reports let you explore these patterns without loading a model. [Routing cohort](../examples/runtime-comparison/pending-routing/cohort.json)

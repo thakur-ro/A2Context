@@ -31,6 +31,10 @@ impl Store {
                     "call",
                     "report",
                     "verdict",
+                    "reference",
+                    "ref_set",
+                    "ref_outcome",
+                    "ref_prediction",
                     "needs_trial",
                     "offset",
                 ] {
@@ -54,6 +58,7 @@ impl Store {
         // A retried upload must still resolve after its pending recommendation closes.
         scope.remove("needs_trial");
         scope.remove("verdict");
+        scope.remove("ref_outcome");
         let required = |key| required(&scope, key).map_err(|e| (400, e.to_string()));
         let trace_id = required("trace")?;
         let call_id = required("call")?;

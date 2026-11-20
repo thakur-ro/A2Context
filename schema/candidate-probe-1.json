@@ -8,12 +8,22 @@
     "if": { "required": ["test_pair"], "properties": { "test_pair": { "const": true } } },
     "then": { "properties": { "interventions": { "minItems": 2, "maxItems": 2 } } }
   }],
+  "dependentSchemas": {
+    "reference_target": { "required": ["assistant_prefix"], "properties": { "assistant_prefix": { "minLength": 1 } } }
+  },
   "properties": {
     "version": { "const": 1 },
     "id": { "type": "string", "pattern": "\\S" },
     "scorer_id": { "type": "string", "pattern": "\\S" },
     "test_pair": { "type":"boolean", "default":false },
     "assistant_prefix": { "type": "string", "default": "" },
+    "reference_target": {
+      "type": "object", "additionalProperties": false, "required": ["set", "candidate_id"],
+      "properties": {
+        "set": { "type": "string", "pattern": "\\S", "maxLength": 128 },
+        "candidate_id": { "type": "string", "minLength": 1 }
+      }
+    },
     "candidates": {
       "type": "array",
       "minItems": 2,

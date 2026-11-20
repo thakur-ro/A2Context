@@ -247,10 +247,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 28 {
+        if version == 29 {
             return Ok(());
         }
-        if !(0..28).contains(&version) {
+        if !(0..29).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -308,7 +308,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 28)?;
+        self.0.pragma_update(None, "user_version", 29)?;
         Ok(())
     }
 
@@ -805,7 +805,11 @@ impl Store {
         }
         if matches!(
             view,
-            "prefix-groups" | "prefix-sources" | "prefix-cases" | "prefix-contrasts"
+            "prefix-groups"
+                | "prefix-sources"
+                | "prefix-references"
+                | "prefix-cases"
+                | "prefix-contrasts"
         ) {
             sql.push_str(super::prefix_patterns::SCOPED);
             if view != "prefix-groups" || filters.contains_key("design") {
@@ -824,7 +828,25 @@ impl Store {
             } else {
                 sql.push_str(", checks AS (SELECT * FROM scoped_checks p WHERE 1");
             }
+            if matches!(
+                view,
+                "prefix-cases" | "prefix-references" | "prefix-sources"
+            ) {
+                for (key, column) in [
+                    ("ref_outcome", "reference_outcome"),
+                    ("ref_set", "reference_set"),
+                    ("ref_prediction", "reference_prediction"),
+                ] {
+                    if let Some(value) = filters.get(key) {
+                        sql.push_str(&format!(" AND p.choices->>'{column}'=?"));
+                        args.push(value.clone());
+                    }
+                }
+            }
             if view == "prefix-cases" {
+                if filters.get("reference").is_some_and(|v| v == "1") {
+                    sql.push_str(" AND p.choices->>'reference_set' IS NOT NULL");
+                }
                 for (key, column) in [
                     ("verdict", "p.verdict"),
                     ("trial_key", "p.choices->>'trial_key'"),
@@ -934,6 +956,7 @@ impl Store {
                 sql.push_str(" ORDER BY observed DESC,trace_id,call_id LIMIT ? OFFSET ?");
             }
             "prefix-groups" => sql.push_str(super::prefix_patterns::GROUPS),
+            "prefix-references" => sql.push_str(super::prefix_patterns::REFERENCES),
             "prefix-sources" => sql.push_str(super::prefix_patterns::BREAKDOWN),
             "prefix-cases" => sql.push_str(super::prefix_patterns::CASES),
             "prefix-contrasts" => sql.push_str(super::prefix_patterns::CONTRASTS),
