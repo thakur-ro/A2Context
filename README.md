@@ -16,6 +16,8 @@ From the checkout, run with a stable Rust toolchain and open [Recommendations](h
 cargo run --locked -- sidecar --demo
 ```
 
+**Read a conversation with a conflicting answer.** Follow the jacket question from the proposed order lookup to the 60-day answer. The finding on that call opens the two sources that disagree. [Open the conversation](http://127.0.0.1:8040/?view=threads&thread=%5B%22fixture%22%2C%22Northland+Retail%22%2C%22Customer+042%22%2C%22Return+a+jacket%22%5D) · [Try eight public retail sessions](docs/sidecar.md#read-a-conversation-turn-by-turn)
+
 **Check whether an edit held up.** With the original instruction and both tools available, the proposed tool changed in two of four runs on the same input. Open **Compare runs** for the repeats, or expand **Answers or tool calls compared** to find changed and matching proposals across conversations. [Compare two setups](http://127.0.0.1:8040/?org=routing-sampling&proposal_result=both)
 
 **Find out why a proposed fix needs another look.** Three return questions missed the exact answer `45`. In two, another opening token led under every tested edit. In the third, one edit produced `45 days`. Open the first group to compare token scores or the second to inspect the extra text. [Find recurring misses](http://127.0.0.1:8040/?org=journal-window-study&targets=1) · [Inspect scores before generation](http://127.0.0.1:8040/?view=preview&scenario=window-before) · [See the fresh question](http://127.0.0.1:8040/?view=preview&scenario=window-fresh)

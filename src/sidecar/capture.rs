@@ -2,7 +2,7 @@
 use super::store::at;
 use nexusweave::{
     context_screening::{self, Assessment, Pair, Source, Suggestion},
-    Availability, Call, Run,
+    Availability, Call, ContextItem, Run,
 };
 use rusqlite::{params, Transaction};
 use serde_json::{json, Value};
@@ -59,7 +59,7 @@ fn review_pair(call: &Call, report: &context_screening::Report) -> Option<Value>
     )
 }
 
-pub(super) fn last_user_text(call: &Call) -> Option<Value> {
+pub(super) fn last_user_message(call: &Call) -> Option<&ContextItem> {
     call.context
         .iter()
         .filter(|item| {
@@ -80,6 +80,10 @@ pub(super) fn last_user_text(call: &Call) -> Option<Value> {
         })
         .max_by_key(|(position, _)| *position)
         .map(|(_, item)| item)
+}
+
+pub(super) fn last_user_text(call: &Call) -> Option<Value> {
+    last_user_message(call)
         .filter(|item| item.availability == Availability::Included)
         .and_then(|item| item.text.as_deref())
         .map(|s| {
@@ -179,6 +183,7 @@ pub(super) fn replace(tx: &Transaction<'_>, id: &str, run: Option<&Run>) -> rusq
                 index_pairs(tx, id, call, report)?;
             }
         }
+        super::conversation::index(tx, run)?;
     }
     Ok(())
 }

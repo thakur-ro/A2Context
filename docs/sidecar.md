@@ -11,12 +11,33 @@ Use `http://127.0.0.1:8040/v1/traces` as the traces endpoint of an asynchronous 
 
 Existing detail links resolve through the sidecar when it has the referenced trace. Legacy thread or workspace snapshots are limited to eight traces or 8 MiB of trace data. The conversation and request lists support pagination.
 
+### Read a conversation turn by turn
+
+Open **See this call in its conversation** on a recommendation. The selected call has a green outline. Read the preceding question, the proposed tool and the recorded answer in order. When the exporter supplies a turn ID, adjacent calls in that turn appear together. Otherwise each call has its own entry. The latest captured user text can come from earlier in the conversation.
+
+In the jacket demo, the assistant first quotes a 30-day return window. On the next turn it proposes an order lookup and answers 60 days. Select **Declared instructions disagree** on that answer to compare the policy and FAQ. The conflict establishes that the instructions disagree. A controlled edit would be needed to test which one influenced that answer. [Open the jacket conversation](http://127.0.0.1:8040/?view=threads&thread=%5B%22fixture%22%2C%22Northland+Retail%22%2C%22Customer+042%22%2C%22Return+a+jacket%22%5D)
+
+![Two user questions, an order lookup and the policy conflict attached to the jacket answer](media/conversation-findings.png)
+
+Each call links to one example per finding type. The lead link favors a measured token divergence, then evidence of a changed proposal, then other measurements and captured input findings. The view shows up to three outputs per call and abbreviates excerpts longer than 360 characters. **Open call** leads to the original evidence.
+
+To try public conversations, [prepare the pinned Exgentic retail sample](guide.md#import-public-retail-traces). Start a separate sidecar with content capture and load the sample from another terminal.
+
+```sh
+cargo run --locked -- sidecar --db ./retail.sqlite --capture-content --listen 127.0.0.1:8041
+# In another terminal
+python3 scripts/view_retail_conversations.py data/exgentic-retail.jsonl --url http://127.0.0.1:8041 --verify-content
+```
+
+The script prints eight conversation links and checks all 99 call IDs and their displayed user text, answers and tool proposals against the archive in time order. It preserves the original span IDs, derives a stable OTLP trace ID per session, and reads the archive’s timezone-free timestamps as UTC. These sessions contain recorded inputs and outputs. They supply no source-edit experiments.
+
 ### Read recommendations from another dashboard
 
 The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC dates (`after` inclusive, `before` exclusive) and allowlisted metadata pair (`meta_key`, `meta_value`) through each step. Omit dates to include undated observations. A paged response contains `rows` and `next_offset`. Supply that offset on the same query to continue.
 
 | GET route under `/api/sidecar/` | Use |
 | --- | --- |
+| `thread-calls?thread=…` | Read 15 calls in order using the opaque thread key from `threads` or an evidence link. Add `focus_trace` and `focus_call` to open the page containing that call. The response includes the effective `offset`, captured dialogue previews and call-specific finding links. |
 | `impact` | Compare identified conversations with findings (`conversations`) against all identified conversations with a normalized call in scope (`captured_conversations`). Read `evidence_counts` for the strongest finding per conversation. |
 | `conversations-without-findings` | Page through the remainder. Each row identifies a call and counts how many calls in scope include input text. The optional `screen` contains a classifier suggestion with excerpts, source digests and scores in both directions. |
 | `proposal-conversations?result=both` | List conversations with changed and matching complete proposals. Other values are `changed_only`, `held_only` and `no_pair`. Each row returns one recent evidence link per represented outcome, or one finding for a conversation without a pair. Accepts the same scope, factor and date filters as `impact`. |

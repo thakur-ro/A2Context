@@ -177,6 +177,50 @@ def check_capture(binary, folder, producer_python=None):
         assert get(base, "impact", org="heldout")["captured_conversations"] == 0
 
 
+def check_thread_calls(binary, folder):
+    # Deliberately reverse span IDs within one second across two traces.
+    spans = []
+    for index in range(19):
+        span = case_span("page", "conflict", org="thread-test")
+        span.update(traceId=f"{1 + index % 2:032x}", spanId=f"{100 - index:016x}",
+                    startTimeUnixNano=str(CLOCK * 10**9 + index * 1000))
+        span["attributes"] += attrs({"nexusweave.turn.id": f"turn-{index // 2}"})
+        spans.append(span)
+    key = json.dumps(["otlp", "thread-test", "case-owner", "thread-0"], separators=(",", ":"))
+    db = folder / "conversation.sqlite"
+    flags = ("--capture-content", "--metadata", "deployment.environment.name")
+    with server(binary, db, *flags) as base:
+        send_traces(base, export(*reversed(spans[1:])))
+        send_traces(base, export(spans[0]))
+        send_traces(base, export(*spans))
+        first = get(base, "thread-calls", thread=key)
+        second = get(base, "thread-calls", thread=key, offset=first["next_offset"])
+        assert second["offset"] == 15 and second["next_offset"] is None
+        rows = first["rows"] + second["rows"]
+        assert [row["call"] for row in rows] == [span["spanId"] for span in spans]
+        assert rows[0]["dialogue"]["turn"] == "turn-0"
+        assert rows[0]["dialogue"]["user"]["text"] == "Alternative declaration for page"
+        assert rows[0]["dialogue"]["output_count"] == 0 and rows[0]["findings"][0]["kind"] == "conflict"
+        focus = {"focus_trace": rows[-1]["trace"], "focus_call": rows[-1]["call"]}
+        assert get(base, "thread-calls", thread=key, **focus) == second
+        for restriction in [{"user": "other"}, {"org": "other"}, {"workflow": "other"},
+                            {"meta_key": "deployment.environment.name", "meta_value": "other"},
+                            {"after": "2026-10-13"}, {"focus_call": "unknown", "focus_trace": rows[0]["trace"]}]:
+            assert get(base, "thread-calls", thread=key, **restriction)["rows"] == []
+        for query in ["", "?thread="]:
+            assert send(base, "/api/sidecar/thread-calls" + query, expected=None)[0] == 400
+    with sqlite3.connect(db) as sql:
+        sql.execute("DROP TABLE conversation_calls")
+        sql.execute("PRAGMA user_version=22")
+    with server(binary, db, *flags) as base:
+        assert get(base, "thread-calls", thread=key, **focus) == second
+    with server(binary, folder / "private-conversation.sqlite") as base:
+        send_traces(base, export(spans[0]))
+        row, = get(base, "thread-calls", thread=key)["rows"]
+        assert "Alternative declaration for page" not in json.dumps(row)
+        assert not (row["dialogue"]["user"] or {}).get("text")
+
+
 def check_conversation_population(binary, db):
     org = "population"
     early = case_span("clear", "undeclared", org=org)
@@ -1382,6 +1426,7 @@ def main():
         check_capture(args.binary, folder, args.sdk_python)
         check_screen_suggestions(args.binary, folder)
         check_conversation_population(args.binary, folder / "population.sqlite")
+        check_thread_calls(args.binary, folder)
         check_external_batch(args.binary, folder)
         check_current_history_test(args.binary)
         check_proposal_coverage(args.binary, folder / "proposal-coverage.sqlite")

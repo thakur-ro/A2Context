@@ -260,3 +260,20 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 
 .rank-witness meter { width: 100%; max-width: 9rem; }
 .rank-witness details { font-weight: 400; }
+
+.conversation-feed { display: grid; gap: 1.1rem; max-width: 54rem; }
+.dialogue-call { background: var(--solid); border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem 1.4rem; overflow-wrap: anywhere; }
+.dialogue-call footer { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .4rem 1rem; }
+.dialogue-call h2 { margin: 0; font-size: 1.13rem; }
+.dialogue-messages { display: grid; gap: .85rem; margin-block: 1rem; }
+.dialogue-messages strong { font-size: .83rem; }
+.dialogue-messages p { white-space: pre-wrap; margin: .25rem 0 0; }
+.dialogue-user { background: var(--mist); padding: .75rem 1rem; border-radius: 6px; }
+.dialogue-output { border-inline-start: 3px solid #597f74; padding: .15rem 1rem; }
+.dialogue-evidence { border-top: 1px solid var(--line); padding-top: .75rem; }
+.call-finding { display: block; width: fit-content; font-weight: 650; margin-block: .2rem; }
+.dialogue-evidence details { margin-top: .5rem; }
+.dialogue-call footer { margin-top: .75rem; color: var(--muted); font-size: .83rem; }
+
+.dialogue-step + .dialogue-step { border-top: 1px solid var(--line); margin-top: 1rem; padding-top: .35rem; }
+.dialogue-step[aria-current="step"] { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 3px; }

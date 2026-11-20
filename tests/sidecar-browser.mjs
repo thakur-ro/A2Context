@@ -121,7 +121,8 @@ try {
   assert.ok(selected.searchParams.get("finding"));
   await page.getByText("Evidence at " + selected.searchParams.get("call"), { exact: true }).first().waitFor();
   await page.locator("#summary a").click();
-  await page.getByText("Traces in chronological order.").waitFor();
+  await page.locator("#selected-call:focus").waitFor();
+  assert.equal(new URL(page.url()).searchParams.get("focus_call"),selected.searchParams.get("call"));
   assert.equal(new URL(page.url()).searchParams.get("user"), "user-042");
 
   await page.goto(base);
@@ -216,6 +217,24 @@ try {
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
   mobile.on("pageerror", (error) => errors.push(error.message));
+  const jacketThread = JSON.stringify(["fixture","Northland Retail","Customer 042","Return a jacket"]);
+  for (const device of [page, mobile]) {
+    await device.goto(base + "/?" + new URLSearchParams({view:"threads",thread:jacketThread}));
+    const turns = device.locator(".dialogue-call");
+    await turns.first().waitFor();
+    assert.equal(await turns.count(),2);
+    assert.equal(await device.getByRole("link",{name:"Open call",exact:true}).count(),3);
+    assert.equal(await device.getByText(/My order is J-104/).count(),1);
+    assert.deepEqual(await turns.last().locator(".dialogue-output strong").allTextContents(),["Proposed tool · look_up_order","Assistant"]);
+    await turns.last().getByText(/up to 60 days/).waitFor();
+    if (device === page && process.env.CONVERSATION_SCREENSHOT) await device.screenshot({path:process.env.CONVERSATION_SCREENSHOT,fullPage:true});
+    await device.getByRole("link",{name:/Declared instructions disagree.*Returns policy and Support FAQ/}).click();
+    await device.getByRole("link",{name:"Back to conversation",exact:true}).click();
+    await device.locator("#selected-call:focus").getByText(/up to 60 days/).waitFor();
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+    await device.getByRole("link",{name:"Browse traces in this conversation"}).click();
+    await device.locator("a").filter({hasText:"jacket-return-trace"}).waitFor();
+  }
   for (const device of [page, mobile]) {
     await device.goto(base);
     await device.getByRole("link", {name:/3 flagged conversations · 2 with a completed single-source comparison/}).click();
@@ -557,6 +576,10 @@ try {
           assert.equal(await readout.getByRole("columnheader",{name:"End of answer"}).count(),1);
           assert.match(await readout.getByRole("row").last().innerText(),/94.6% · chosen/);
           if (device === page && process.env.TOKEN_CONTRAST_SCREENSHOT) await device.getByRole("region",{name:"Measured source contrast"}).screenshot({path:process.env.TOKEN_CONTRAST_SCREENSHOT});
+          await device.getByRole("link",{name:"See this call in its conversation"}).click();
+          const original = device.locator("#selected-call:focus");
+          await original.getByRole("link",{name:/The choice changed at token 3.*UC Berkeley School of Public Health/}).click();
+          await readout.getByRole("heading",{name:"The choice changed at token 3"}).waitFor();
         } else {
           assert.match(await readout.getByRole("row").last().innerText(),/19% · chosen/);
         }

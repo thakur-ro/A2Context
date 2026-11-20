@@ -751,9 +751,9 @@ function rowLink(title, subtitle, href, current = false) {
     subtitle ? element("span", { className: "row-extra", text: subtitle }) : null);
 }
 
-function pagination(next, params = {}) {
+function pagination(next, params = {}, offset = pageOffset) {
   byId("pagination").replaceChildren(...[
-    pageOffset > 0 ? link("Previous", url({ view, ...params, offset: Math.max(0, pageOffset - 15) || null })) : null,
+    offset > 0 ? link("Previous", url({ view, ...params, offset: Math.max(0, offset - 15) || null })) : null,
     next == null ? null : link("Next", url({ view, ...params, offset: next })),
   ].filter(Boolean));
 }
@@ -762,6 +762,76 @@ function traceRows(rows) {
   return listing(rows, (item) => rowLink(item.workflow || item.source, [item.id, fullDate(item.start),
     item.thread ? "Thread " + item.thread : "", item.with_inputs + "/" + item.calls + " inference spans with inputs"].filter(Boolean).join(" · "),
   url({ view: "traces", trace: item.id })));
+}
+
+function callFinding(row, finding) {
+  const sources = [finding.source, finding.kind === "conflict" && finding.other_source].filter(Boolean).join(" and ");
+  const titles = {
+    0:"The choice changed at token " + finding.token_position,
+    1:"A lower-ranked edit changed the proposal",
+    2:"A source edit changed the proposal",
+    3:kindLabels[finding.kind], 4:kindLabels[finding.kind], 5:"Review the recorded test",
+    6:"Declared instructions disagree", 7:kindLabels[finding.kind]
+  };
+  const params = {recommendation:finding.group, trace:row.trace, call:row.call, report:finding.report,
+    replay:finding.replay, decision:finding.decision, context:finding.context, thread:threadId};
+  if (finding.priority <= 1) Object.assign(params,{ranking:"all",review:"lower_changed"});
+  return link(titles[finding.priority] + (sources ? " · " + sources : ""),url(params),"call-finding");
+}
+
+function dialogueCall(row, showUser, focus) {
+  const d = row.dialogue;
+  const messages = [
+    showUser && element("div", {className:"dialogue-user"},element("strong",{text:"Latest user text"}),
+      element("p",{text:d.user?.text ?? (d.user?.availability === "redacted" ? "Input was redacted." : "User text unavailable.")})),
+    ...d.outputs.map(output => element("div",{className:"dialogue-output"},
+      element("strong",{text:output.kind === "tool_call" ? "Proposed tool · " + output.label : "Assistant"}),
+      element("p",{text:output.text ?? "Output content unavailable."})))
+  ];
+  if (!d.output_count) messages.push(element("p",{className:"label",text:"No answer or tool proposal captured."}));
+  if (d.output_count > d.outputs.length) messages.push(element("p",{className:"label",text:"Showing " + d.outputs.length + " of " + plural(d.output_count,"captured output") + "."}));
+  const [first,...others] = row.findings;
+  return element("section",{className:"dialogue-step",...(focus && {"aria-current":"step",id:"selected-call",tabindex:"-1"})},
+    element("div",{className:"dialogue-messages"},...messages),
+    first ? element("div",{className:"dialogue-evidence"},callFinding(row,first),
+      others.length ? element("details",{},element("summary",{text:"Other findings on this call"}),...others.map(f=>callFinding(row,f))) : null) :
+      element("p",{className:"label",text:"No finding recorded for this call."}),
+    element("footer",{},element("span",{text:[d.model, fullDate(row.started), d.included+" of "+plural(d.inputs,"context item")+" captured"].filter(Boolean).join(" · ")}),
+      link("Open call",url({view:"traces",trace:row.trace,call:row.call}))));
+}
+
+async function conversationView() {
+  const focusTrace = query.get("focus_trace"), focusCall = query.get("focus_call");
+  const focus = focusTrace && focusCall ? {focus_trace:focusTrace, focus_call:focusCall} : {};
+  const page = await api("thread-calls",{...scope,thread:threadId,offset:pageOffset,...focus});
+  byId("title").textContent = page.rows[0]?.thread || "Conversation";
+  byId("summary").textContent = "Captured calls in time order. Select a finding to see the source and its evidence.";
+  pagination(page.next_offset,{thread:threadId},page.offset);
+  const groups = [];
+  page.rows.forEach((row,i) => {
+    const turn = row.dialogue.turn;
+    let group = groups.at(-1);
+    if (!turn || !group || group.turn !== turn) {
+      group = {turn, rows:[], label:turn ? "Turn " + turn : "Call " + (page.offset+i+1)};
+      groups.push(group);
+    }
+    group.rows.push(row);
+  });
+  return element("div",{className:"conversation-feed"},
+    ...groups.map(group => {
+      const firstUser = group.rows[0].dialogue.user;
+      const question = group.turn && firstUser?.text && !firstUser.truncated && firstUser.text.length <= 150 ? firstUser.text : null;
+      return element("article", {className:"dialogue-call"},
+        question && element("p", {className:"label", text:"User turn · " + plural(group.rows.length,"call") + " on this page"}),
+        element("h2", {text:question || group.label}),
+        ...group.rows.map((row,i) => {
+          const user = row.dialogue.user;
+          const repeated = i && user?.text && user.truncated === false && user.text === group.rows[i-1].dialogue.user?.text;
+          return dialogueCall(row, !(i === 0 && question) && !repeated, row.trace === focusTrace && row.call === focusCall);
+        }));
+    }),
+    !page.rows.length && element("p",{className:"empty",text:"No matching captured call in the selected filters."}),
+    link("Browse traces in this conversation",url({view:"traces",thread:threadId})));
 }
 
 function advancedHref(trace, call, item) {
@@ -985,7 +1055,7 @@ function findingReview(card, occurrences) {
       element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + fullDate(row.observed) }),
       element("p", { text: findingTitle(row.kind, row.detail) }), visual(row.kind, row.detail),
       element("div", { className: "actions" },
-        row.thread_key ? link("Open conversation", url({ view: "threads", thread: row.thread_key })) : null,
+        row.thread_key ? link("Open conversation", url({ view: "threads", thread: row.thread_key, focus_trace:row.trace, focus_call:row.call })) : null,
         link("Open span " + row.call, url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))))));
 }
 
@@ -1605,7 +1675,7 @@ function traceDetail({ trace, findings, activation_reports, prefill_issues = {},
   byId("title").textContent = "Trace";
   const thread = JSON.stringify([trace.source, trace.organization_id, trace.user_id, trace.conversation_id]);
   byId("summary").replaceChildren(trace.id, ...(trace.conversation_id ?
-    [" · ", link(trace.conversation_id, url({ view: "threads", thread }))] : []));
+    [" · ", link(trace.conversation_id, url({ view: "threads", thread, ...(call && {focus_trace:trace.id,focus_call:call.id}) }))] : []));
   const matching = findings.filter((item) => item.call_id === call?.id);
   const focus = matching.find((item) => item.group === query.get("finding"));
   const detailItems = focus ? [focus, ...matching.filter((item) => item !== focus)] : matching;
@@ -1641,11 +1711,7 @@ async function render(refresh = false) {
   if (view === "traces" && traceId) {
     body = traceDetail(await api("trace", { id: traceId }));
   } else if (view === "threads" && threadId) {
-    const data = await api("traces", { ...scope, thread: threadId, offset: pageOffset });
-    byId("title").textContent = data.rows[0]?.thread || "Thread";
-    byId("summary").textContent = "Traces in chronological order.";
-    body = data.rows.length ? traceRows(data.rows) : null;
-    pagination(data.next_offset, { thread: threadId });
+    body = await conversationView();
   } else if (view === "findings") {
     if (ranking && !recommendationId) {
       body = await rankingView();
@@ -1664,11 +1730,18 @@ async function render(refresh = false) {
           element("p", {className:"empty", text:"No matching comparisons in this scope."}));
       pagination(data.next_offset, selection);
     } else if (recommendationId) {
-      const filters = { ...scope, ...measuredExample, group: recommendationId, ...(factorId && { factor: factorId }) };
+      const filters = { ...scope, ...(threadId && {thread:threadId}), ...measuredExample, group: recommendationId, ...(factorId && { factor: factorId }) };
       const [cards, occurrences] = await Promise.all([api("findings", filters),
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) {
         body = findingReview(cards.rows[0], occurrences);
+        if (threadId || cards.rows[0].evidence.thread_key) {
+          const key = threadId || cards.rows[0].evidence.thread_key;
+          const conversationLink = link(threadId ? "Back to conversation" : "See this call in its conversation",
+            url({view:"threads",thread:key,focus_trace:cards.rows[0].evidence.trace_id,focus_call:cards.rows[0].evidence.call_id}));
+          if (threadId) body.prepend(conversationLink);
+          else body.append(conversationLink);
+        }
         if (screenedPattern && screenedPairs) body.prepend(link("Back to flagged pair", url(screenSelection)));
         if (comparisonResult) body.prepend(link("Back to compared conversations", url({proposal_result:comparisonResult,coverage_factor:comparisonScope})));
         if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel, ...cohortMode, cohort_factor:cohortFactor})));
@@ -1814,13 +1887,14 @@ async function render(refresh = false) {
       pagination(factors.next_offset);
     }
   } else {
-    const data = await api(view, { ...scope, offset: pageOffset });
+    const data = await api(view, { ...scope, ...(threadId && {thread:threadId}), offset: pageOffset });
     if (data.rows.length) body = view === "traces" ? traceRows(data.rows) : listing(data.rows, (item) => rowLink(item.thread,
       [item.org, item.user, plural(item.trace_count, "trace"), fullDate(item.start)].filter(Boolean).join(" · "), url({ view, thread: item.id })));
-    pagination(data.next_offset);
+    pagination(data.next_offset,{thread:threadId});
   }
   byId("content").replaceChildren(body || element("p", { className: "empty", text: view === "findings" ?
     "No recommendations in this scope. Cards appear as supported evidence arrives." : "No captured records in this scope." }));
+  if (view === "threads") byId("selected-call")?.focus();
 }
 
 async function status() {
@@ -1856,7 +1930,7 @@ async function main() {
   byId("summary").textContent = { findings: "",
     preview: "Check an assembled request and any supplied tests before committing a decision.",
     traces: "Open a trace to inspect its spans and captured sources.",
-    threads: "Browse traces grouped by their recorded conversation." }[view];
+    threads: "Open a conversation to read its calls and findings in order." }[view];
   if (view === "preview") {
     byId("filters").hidden = true;
     byId("capture").hidden = true;

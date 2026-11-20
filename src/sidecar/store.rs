@@ -59,6 +59,7 @@ impl Store {
              );",
         )?;
         db.execute_batch(super::capture::SCHEMA)?;
+        db.execute_batch(super::conversation::SCHEMA)?;
         db.execute_batch(super::target_patterns::SCHEMA)?;
         db.execute_batch(super::screened::INDEX)?;
         Ok(Self(db))
@@ -243,10 +244,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 22 {
+        if version == 23 {
             return Ok(());
         }
-        if !(0..22).contains(&version) {
+        if !(0..23).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -258,12 +259,11 @@ impl Store {
             let mut stmt = tx.prepare(
                 "SELECT t.id, EXISTS (
                 SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='prefill'
-            ) AS has_ranking FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND
-            (?2<18 OR (?2<20 AND instr(t.run,'\"shadow_probes\"')>0) OR has_ranking)
+            ) AS has_ranking FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL
             ORDER BY t.id LIMIT 16",
             )?;
             let ids = stmt
-                .query_map(params![after, version], |r| {
+                .query_map([&after], |r| {
                     Ok((r.get::<_, String>(0)?, r.get::<_, bool>(1)?))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -271,11 +271,13 @@ impl Store {
             let Some(last) = ids.last() else { break };
             for (id, has_ranking) in &ids {
                 let run = load_run(&tx, id)?;
-                if version < 20 {
-                    super::capture::replace(&tx, id, run.as_ref())?;
-                }
-                if *has_ranking {
-                    if let Some(run) = run {
+                if let Some(run) = run {
+                    if version < 20 {
+                        super::capture::replace(&tx, id, Some(&run))?;
+                    } else {
+                        super::conversation::index(&tx, &run)?;
+                    }
+                    if version < 22 && *has_ranking {
                         refresh_findings(&tx, &run)?;
                     }
                 }
@@ -283,7 +285,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 22)?;
+        self.0.pragma_update(None, "user_version", 23)?;
         Ok(())
     }
 
@@ -626,7 +628,7 @@ impl Store {
             append_window(&mut sql, &mut args, "t.start", filters)?;
         }
         sql.push(')');
-        let offset = filters
+        let mut offset = filters
             .get("offset")
             .map(|offset| offset.parse::<u32>())
             .transpose()?
@@ -1042,6 +1044,29 @@ impl Store {
                        d.completed DESC,d.inputs DESC,chosen.observed DESC,chosen.trace_id,chosen.call_id,chosen.n LIMIT 1)
                  ORDER BY priority,threads DESC,traces DESC,latest DESC,g.group_id");
             }
+            "thread-calls" => {
+                if super::required(filters, "thread")?.is_empty() {
+                    return Err("a conversation key is required".into());
+                }
+                sql.push_str(super::conversation::START);
+                append_window(&mut sql, &mut args, "c.started", filters)?;
+                sql.push(')');
+                let order = super::conversation::ORDER;
+                if filters.contains_key("focus_trace") || filters.contains_key("focus_call") {
+                    let mut focus_args = args.clone();
+                    focus_args.push(super::required(filters,"focus_trace")?.to_owned());
+                    focus_args.push(super::required(filters,"focus_call")?.to_owned());
+                    let locate = format!("{sql} SELECT row_index FROM (SELECT trace_id,call_id,row_number() OVER (ORDER BY {order})-1 AS row_index FROM thread_calls) WHERE trace_id=? AND call_id=?");
+                    let position: Option<u32> = self.0.query_row(&locate,params_from_iter(focus_args),|r| r.get(0)).optional()?;
+                    let Some(position) = position else {
+                        return Ok(json!({"rows":[],"offset":0,"next_offset":null}));
+                    };
+                    offset = position / PAGE as u32 * PAGE as u32;
+                }
+                sql.push_str(", call_page AS MATERIALIZED (SELECT * FROM thread_calls ORDER BY ");
+                sql.push_str(order);
+                sql.push_str(super::conversation::PAGE);
+            }
             "traces" => {
                 sql.push_str(" SELECT json_object('id',id,'start',start,'org',org,'user',user,'thread',thread,
                       'thread_key',thread_key,'workflow',workflow,'source',source,'calls',calls,'with_inputs',with_inputs,
@@ -1099,7 +1124,11 @@ impl Store {
                 }
             }
         }
-        Ok(json!({"rows":rows,"next_offset":next}))
+        let mut page = json!({"rows":rows,"next_offset":next});
+        if view == "thread-calls" {
+            page["offset"] = json!(offset);
+        }
+        Ok(page)
     }
 }
 
