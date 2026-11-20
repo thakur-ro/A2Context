@@ -1381,7 +1381,7 @@ function trialGaps(counts) {
 function replayEffectTable(occurrences, group) {
   const paired = Boolean(group.pair);
   const controlled = Boolean(group.control_edit);
-  const table = node("table", undefined, "effects-table");
+  const table = node("table", undefined, "effects-table replay-effects-table");
   const caption = table.createCaption();
   caption.className = "replay-trial-counts";
   caption.textContent = "Matches out of scored trials";
