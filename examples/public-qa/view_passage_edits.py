@@ -116,7 +116,7 @@ def main():
         raise ValueError("Study identity or summary differs from saved measurements.")
     base = args.url.rstrip("/")
     uploaded = 0
-    for (row, record), case in zip(dataset_records(args.dataset), study["cases"], strict=True):
+    for (row, record), case in zip(dataset_records(args.dataset, study.get("cohort", "pilot")), study["cases"], strict=True):
         if row != case["row"]:
             raise ValueError("Dataset row differs from the measured input.")
         if case["baseline"] is None:

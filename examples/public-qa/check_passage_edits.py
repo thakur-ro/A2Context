@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from probe_transformers_answer_timeline import load_runtime
 
 DATA_SHA = "f8425253dafc19cd9de31c06ab6c8b57d4da2bf48b8ea2d0790b805fb3aa1968"
-ROWS = range(0, 1000, 100)
+COHORTS = {"pilot": range(0, 1000, 100), "holdout": range(1000, 2000, 50)}
 SYSTEM = "Answer the question using the passages. Give only the short answer. If the passages do not give an answer, reply UNKNOWN."
 
 
@@ -138,14 +138,15 @@ def summarize(cases):
     return result
 
 
-def dataset_records(path):
+def dataset_records(path, cohort="pilot"):
+    selected = COHORTS[cohort]
     if sha256(path.read_bytes()).hexdigest() != DATA_SHA:
         raise ValueError("Expected the pinned Lost in the Middle gold-at-4 ten-document dataset.")
     with gzip.open(path, "rt") as rows:
         for row, line in enumerate(rows):
-            if row > ROWS[-1]:
+            if row > selected[-1]:
                 break
-            if row in ROWS:
+            if row in selected:
                 yield row, json.loads(line)
 
 
@@ -153,6 +154,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("dataset", type=Path)
     parser.add_argument("snapshot", type=Path)
+    parser.add_argument("--cohort", choices=COHORTS, default="pilot")
     parser.add_argument("--rotation", type=int, choices=range(10), default=0)
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--revision", required=True)
@@ -162,14 +164,14 @@ def main():
     cases = []
     seconds = []
     with runtime.torch.inference_mode():
-        for row, record in dataset_records(args.dataset):
+        for row, record in dataset_records(args.dataset, args.cohort):
             case, elapsed = evaluate(runtime, row, record, args.rotation)
             cases.append(case)
             seconds.append(elapsed)
             print(f"Checked public row {row}.", file=sys.stderr, flush=True)
-    assert len(cases) == len(ROWS)
+    assert len(cases) == len(COHORTS[args.cohort])
     result = {
-        "scoring_seconds": seconds, "finished_unix_ns": time.time_ns(), "rotation": args.rotation,
+        "cohort": args.cohort, "scoring_seconds": seconds, "finished_unix_ns": time.time_ns(), "rotation": args.rotation,
         "dataset_sha256": DATA_SHA, "model": args.model_id, "revision": args.revision,
         "runtime": runtime.identity, "tokenizer_sha256": sha256((args.snapshot / "tokenizer.json").read_bytes()).hexdigest(),
         "cases": cases, "summary": summarize(cases),
