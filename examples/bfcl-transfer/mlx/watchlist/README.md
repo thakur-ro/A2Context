@@ -9,7 +9,7 @@ The full catalog and all three smaller-catalog conditions reached the requested 
 | Five, padded with periods | 5/9 | 0 / 1 | 9/9 |
 | Five, padded with letters | 5/9 | 0 / 1 | 9/9 |
 
-**What changed before the first generated token?** On task 132, the tool-call opener had probability 99.87% with the full catalog and 99.94% with the short catalog. The full next-token distributions differed by 0.00012 bits of Jensen–Shannon divergence. The first proposed tool, both required calls, their arguments, and their returns matched. The workflows diverged on the third decision. Earlier generated text already differed between the full and short conditions, so the comparison leaves open whether catalog content or the intervening dialogue explains the extra read.
+**What changed before the first generated token?** On task 132, the tool-call opener had probability 99.87% with the full catalog and 99.94% with the short catalog. The full next-token distributions differed by 0.00012 bits of Jensen–Shannon divergence. The first proposed tool, both required calls, their arguments, and their returns matched. The workflows diverged on the third decision. Earlier generated text already differed between the full and short conditions. A follow-up held the callback results fixed and crossed the catalog with each earlier assistant message at the third decision. [Which part of the request led to the extra read?](checkpoint/README.md)
 
 Task 116 illustrates the other direction. Letter padding lowered the opener probability from 99.98% to 86.22%. The model still made exactly the correct read and finished in every condition. A change in the opening-token score alone gives little guidance about whether to ship this edit.
 

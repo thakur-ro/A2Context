@@ -54,6 +54,8 @@ Load the same file under **Before inference**. The sample quote permits a fare l
 
 The map groups definitions from the original request. Counts show how often a completed trial proposed that function name. They include completed text replies in the denominator and exclude failed trials. A proposal whose name has no matching catalog entry appears separately. An unavailable report leaves counts unmeasured. Search spans all branches, and each page shows up to eight matching entries.
 
+When a verified report contains a change, the panel highlights one function and the source edit that shifted its proposal rate. It considers fully completed comparisons within the selected report, prioritizes changes to functions declared outside scope, then takes the largest absolute rate difference. **Compare all edits** shows the counts for the original request and every tested edit in that report. The two columns give proposals per completed trial and completions per attempt. One greedy trial describes one generated result. [Follow an extra watchlist read to an earlier assistant message](../examples/bfcl-transfer/mlx/watchlist/checkpoint/README.md)
+
 ### Prepare a shadow probe from captured sources
 
 Select **Prepare shadow probe** beside the request evidence. You can also start from an editable input, flagged pair, or rule conflict. Choose the outcome to measure and the exact locations to edit. If you start from an editable two-source finding, the planner selects both sources and includes a joint condition.

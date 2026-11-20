@@ -1,3 +1,48 @@
+// Compare counts only within one request-verified report.
+function catalogProposalChange(report, outside) {
+  const [original, ...edits] = report.conditions;
+  if (!original?.completed || original.completed !== original.attempted) return null;
+  const baseline = new Map(Object.entries(original.names));
+  let best = null;
+  for (const edit of edits) {
+    if (!edit.completed || edit.completed !== edit.attempted) continue;
+    const counts = new Map(Object.entries(edit.names));
+    for (const name of new Set([...baseline.keys(), ...counts.keys()])) {
+      const before = baseline.get(name) || 0;
+      const after = counts.get(name) || 0;
+      const difference = Math.abs(after / edit.completed - before / original.completed);
+      if (!difference) continue;
+      const priority = Number(outside.has(name));
+      if (!best || priority > best.priority || (priority === best.priority &&
+          (difference > best.difference || (difference === best.difference && name < best.name)))) {
+        best = {name, before, after, edit, difference, priority};
+      }
+    }
+  }
+  return best;
+}
+
+function catalogEditComparison(report, change) {
+  const name = change.name;
+  const editing = change.edit.edits.map(e => e.source).join(" + ");
+  const original = report.conditions[0];
+  const rows = report.conditions.map(condition => {
+    const label = condition.edits.map(e => e.source).join(" + ") || "Original request";
+    const count = Object.hasOwn(condition.names, name) ? condition.names[name] : 0;
+    return element("tr", {}, element("th", {scope:"row", text:label}),
+      element("td", {text:condition.completed ? count + "/" + condition.completed : "Unmeasured"}),
+      element("td", {text:condition.completed + "/" + condition.attempted}));
+  });
+  return element("section", {className:"catalog-change", "aria-label":"Observed proposal change"},
+    element("h3", {text:"What changed for " + name + "?"}),
+    element("p", {text:"The model proposed this function in " + change.before + "/" + original.completed +
+      " original trials and " + change.after + "/" + change.edit.completed + " after editing " + editing + "."}),
+    element("details", {}, element("summary", {text:"Compare all edits"}),
+      element("table", {"aria-label":"Source edits for " + name},
+        element("thead", {}, element("tr", {}, ...["Source edit","Proposed","Completed"].map(text => element("th", {scope:"col",text})))),
+        element("tbody", {}, ...rows)), element("small", {text:report.runner + " · " + report.id})));
+}
+
 function pendingToolScope(check, map, issue) {
   if (!check) return null;
   const section = element("section", {className:"panel catalog-panel", "aria-label":"Tool catalog scope"});
@@ -5,15 +50,17 @@ function pendingToolScope(check, map, issue) {
   const caption = check.captured == null ? "The assembled tools array is unavailable." :
     plural(check.captured, "tool definition") + " · " + check.outside.length + " outside scope · " + check.unclassified.length + " unclassified";
   section.append(element("p", {className:"catalog-caption", text:caption}));
+  const outside = new Set(check.outside.map(entry => entry.name));
+  const highlight = element("div");
   const trials = (map?.trials || []).flatMap(report => report.conditions.map(condition => ({
-    ...condition, report:report.id, runner:report.runner, baseline:report.conditions[0]
+    ...condition, report:report.id, study:report, runner:report.runner, baseline:report.conditions[0]
   })));
   const selector = element("select", {"aria-label":"Proposal trial condition"});
   for (const [index, trial] of trials.entries()) {
     const name = trial.edits.length ? "Edit " + trial.edits.map(edit => edit.source).join(" + ") : "Original request";
     selector.append(element("option", {value:index, text:map.trials.length > 1 ? trial.report + " · " + name : name}));
   }
-  if (trials.length) section.append(element("label", {className:"catalog-condition"}, "Proposal trials ", selector));
+  if (trials.length) section.append(highlight, element("label", {className:"catalog-condition"}, "Proposal trials ", selector));
   const trialSummary = element("div", {className:"catalog-caption"});
   const original = [
     {id:"outside", label:"Outside scope", entries:check.outside},
@@ -25,11 +72,17 @@ function pendingToolScope(check, map, issue) {
   const tree = element("div", {className:"catalog-tree", role:"group", "aria-label":"Catalog branches"});
   const listing = element("div", {className:"catalog-entries"});
   let selected = check.outside.length ? "outside" : check.unclassified.length ? "unknown" : "permitted";
+  let shownReport;
   let page = 0;
   const pageSize = 8;
 
   function draw() {
     const trial = trials[Number(selector.value)];
+    if (trial && trial.study !== shownReport) {
+      shownReport = trial.study;
+      const change = catalogProposalChange(shownReport, outside);
+      highlight.replaceChildren(...(change ? [catalogEditComparison(shownReport, change)] : []));
+    }
     const counts = new Map(Object.entries(trial?.names || {}));
     const baseline = new Map(Object.entries(trial?.baseline.names || {}));
     trialSummary.replaceChildren(trial ? element("details",{},

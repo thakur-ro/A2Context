@@ -555,6 +555,12 @@ body:has(.canvas-home) { background:#f6f6f4; }
 .source-destinations a::before { left:-4px; width:6px; height:6px; margin-top:-3px; background:#687888; }
 
 .catalog-panel { max-width:58rem; }
+.catalog-change { border-left:2px solid var(--accent); padding:.1rem .8rem; margin:.5rem 0; overflow-wrap:anywhere; }
+.catalog-change h3,.catalog-change p { margin:.2rem 0 .4rem; }
+.catalog-change table { width:100%; margin:.6rem 0; font-size:.84rem; border-collapse:collapse; }
+.catalog-change th,.catalog-change td { padding:.35rem .2rem; text-align:left; border-bottom:1px solid var(--line); }
+.catalog-change td { font-variant-numeric:tabular-nums; }
+.catalog-change small { color:var(--muted); }
 .catalog-caption,.catalog-next,.catalog-root small,.catalog-entries code,.catalog-count,.catalog-pages span { color:var(--muted); font-size:.82rem; }
 .catalog-condition { display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; }
 .catalog-condition select { max-width:100%; margin:0; }

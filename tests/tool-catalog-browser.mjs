@@ -20,6 +20,16 @@ try {
     await page.getByRole("link",{name:"Inspect proposals under a stock-only scope"}).click();
     const condition = catalog.getByLabel("Proposal trial condition");
     await condition.waitFor();
+    const change = catalog.getByRole("region",{name:"Observed proposal change"});
+    await change.getByRole("heading",{name:"What changed for price?"}).waitFor();
+    await change.getByText("The model proposed this function in 0/1 original trials and 1/1 after editing request-type.").waitFor();
+    await change.getByText("Compare all edits").click();
+    const comparisons = change.getByRole("row");
+    assert.deepEqual(await comparisons.allTextContents(), [
+      "Source editProposedCompleted","Original request0/11/1","request-type1/11/1",
+      "store-name0/11/1","request-type + store-name1/11/1"]);
+    assert.ok(await catalog.evaluate(el => el.scrollWidth <= el.clientWidth));
+    await change.getByText("Compare all edits").click();
     const row = catalog.getByRole("listitem");
     await row.filter({hasText:"price"}).getByText("Proposed in 0/1 trials",{exact:true}).waitFor();
     await condition.selectOption({label:"Edit request-type"});
@@ -39,6 +49,7 @@ try {
     await load({request,allowed_tools:["stock"],shadow:{...shadow,captured_request_sha256:"f".repeat(64)}});
     await catalog.getByText("No verified proposal trials for this request.").waitFor();
     assert.equal(await condition.count(),0);
+    assert.equal(await change.count(),0);
     const body = JSON.stringify({tools:large});
     await load({request:{version:1,attributes:{"nexusweave.request.body":body}},allowed_tools:["lookup_14"]});
     await catalog.getByRole("button",{name:/Outside scope\s*1199/}).waitFor();
@@ -52,6 +63,17 @@ try {
     await catalog.getByRole("searchbox").fill("nonexistent");
     await catalog.getByText("No matching functions.").waitFor();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
+    if (process.env.WATCHLIST_PREVIEW) {
+      await load(JSON.parse(await readFile(process.env.WATCHLIST_PREVIEW,"utf8")));
+      await change.getByRole("heading",{name:"What changed for get_watchlist?"}).waitFor();
+      await change.getByText(/0\/1 original trials and 1\/1 after editing update-message/).waitFor();
+      await change.getByText("Compare all edits").click();
+      assert.deepEqual(await change.getByRole("row").allTextContents(),[
+        "Source editProposedCompleted","Original request0/11/1","lookup-message0/11/1",
+        "update-message1/11/1","lookup-message + update-message1/11/1"]);
+      assert.ok(await catalog.evaluate(el => el.scrollWidth <= el.clientWidth));
+      if (width === 1152 && process.env.WATCHLIST_CAPTURE) await catalog.screenshot({path:process.env.WATCHLIST_CAPTURE});
+    }
     assert.deepEqual(errors,[]);
     await page.close();
   }
