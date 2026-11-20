@@ -4,7 +4,7 @@
 
 Ship NexusWeave as a small Rust service beside your LLM workflow. Open the recommendation cards and ask which instructions disagreed, where the problem recurred, or what a source edit changed. Each answer can open the underlying call or replay. [Use the chat canvas with your model](docs/chat-canvas.md)
 
-https://github.com/user-attachments/assets/d65e33bb-a204-46ed-8af3-924b7591a7df
+[![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 
 A customer pauses the second of two exchanges. The agent still proposes it after its confirmation cache is refreshed. Ask which instructions disagreed. Then compare what the same proposal did with and without an approval check at dispatch. [Run the walkthrough](docs/demo.md) · [Download the recording](docs/media/exchange-approval.mp4)
 

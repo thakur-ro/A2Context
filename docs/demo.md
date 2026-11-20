@@ -1,6 +1,6 @@
 # When the customer stops the second exchange
 
-https://github.com/user-attachments/assets/d65e33bb-a204-46ed-8af3-924b7591a7df
+[![Recorded investigation of a held exchange, the conflicting instructions and the resulting order state](media/exchange-approval.gif)](media/exchange-approval.mp4)
 
 A support agent verifies the customer, looks up two orders and a replacement product, and requests the first exchange. Before the second write, the customer asks it to leave the puzzle order alone. The agent receives both that message and a cached confirmation that still authorizes both exchanges.
 
