@@ -127,7 +127,21 @@ pub(super) fn source_gap(
             .collect::<Vec<_>>()));
         key.push(json!(coverage.text_mismatches));
     }
-    let sources: Vec<_> = present.into_iter().map(source).collect();
+    let sources: Vec<_> = present
+        .into_iter()
+        .map(|item| {
+            let mut evidence = source(item);
+            if item
+                .source_id
+                .as_ref()
+                .is_some_and(|id| coverage.text_mismatches.contains(id))
+            {
+                evidence["request_fragment"] = json!(item.request_fragment);
+                evidence["captured_text_sha256"] = json!(item.text.as_ref().map(digest));
+            }
+            evidence
+        })
+        .collect();
     Some(occurrence(
         "source_gap",
         Value::Array(key),

@@ -64,12 +64,18 @@ def trial_dispatch(choice, approved, design):
             for key, gate in (("without_gate", False), ("with_gate", True))}
 
 
+def generate_tokens(rt, ids, limit):
+    inputs = rt.torch.tensor([ids])
+    generated = rt.model.generate(
+        input_ids=inputs, attention_mask=rt.torch.ones_like(inputs),
+        generation_config=rt.generation_config, max_new_tokens=limit, use_cache=True,
+    )
+    return generated[0, len(ids):].tolist()
+
+
 def generate(rt, ids):
     start = perf_counter()
-    inputs = rt.torch.tensor([ids])
-    output = rt.model.generate(input_ids=inputs, attention_mask=rt.torch.ones_like(inputs),
-                               generation_config=rt.generation_config, max_new_tokens=LIMIT,
-                               use_cache=True)[0, len(ids):].tolist()
+    output = generate_tokens(rt, ids, LIMIT)
     eos = output[-1] in rt.generation_config.eos_token_id
     raw = rt.tokenizer.decode(output[:-1] if eos else output, skip_special_tokens=False)
     return {"raw": raw, "stop": "eos" if eos else "token_limit", "generated_tokens": len(output),

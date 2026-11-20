@@ -10,3 +10,7 @@ Stop after the four unchanged requests. Before spending more on context edits in
 python3 examples/airline-transfer/baseline_budget.py --data /tmp/airline-study --snapshot /path/to/qwen/snapshot --output /tmp/baseline-budget.json
 python3 examples/airline-transfer/baseline_budget.py --check /tmp/baseline-budget.json
 ```
+
+## Result
+
+All four longer runs reproduced the saved 128-token prefix exactly. Task 29 still reached the new limit. Task 30 ended at 218 tokens, task 32 at 233 and task 37 at 234. All three completed with plain text. The recorded agent had proposed a reservation update on tasks 30 and 37, and three flight searches on task 32. Together with the unchanged task 44 text reply from the first run, the local runner produced text on all four historical tool-call checkpoints. Expanding the output budget recovered three completed replies and zero historical tool proposals. Further source edits on this runner cannot yet explain those recorded actions. [Four paired continuations](baseline-budget.json) · [Original five baselines](results.json)

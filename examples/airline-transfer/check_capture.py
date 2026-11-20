@@ -20,7 +20,7 @@ def source_ranges(case, arms):
     return ranges
 
 
-def coverage(binary, messages, tools, ranges, pins, edited=None, omit=False):
+def pending_request(messages, tools, ranges, pins, edited=None, omit=False):
     sources = []
     for name, (index, start, length) in ranges.items():
         if name == edited:
@@ -36,8 +36,13 @@ def coverage(binary, messages, tools, ranges, pins, edited=None, omit=False):
     attributes = {"nexusweave.request.body": canonical({"messages": messages, "tools": tools}),
                   "nexusweave.context.semantics": {"version": 1, "request_sources": sources},
                   "nexusweave.required_sources": requirement}
+    return {"version": 1, "attributes": attributes}
+
+
+def coverage(binary, messages, tools, ranges, pins, edited=None, omit=False):
+    request = pending_request(messages, tools, ranges, pins, edited, omit)
     output = subprocess.check_output([binary, "preflight", "-"], text=True,
-                                     input=json.dumps({"version": 1, "attributes": attributes}))
+                                     input=json.dumps(request))
     report = json.loads(output)
     assert report["receipt"]["version"] == (3 if pins else 2)
     assert report["anchor_overlap"]["shared_bytes"] == 0
@@ -71,9 +76,27 @@ def measure(data, binary):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, required=True)
-    parser.add_argument("--binary", type=Path, required=True)
-    parser.add_argument("--check", action="store_true", help="Compare with capture-results.json")
+    parser.add_argument("--binary", type=Path)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true", help="Compare with capture-results.json")
+    mode.add_argument("--request", nargs=2, metavar=("TASK", "SOURCE"),
+                      help="Print a pinned substitution request for the sidecar preview")
     args = parser.parse_args()
+    if args.request:
+        task, source = args.request
+        manifest, packets, tools, _ = cohort(args.data)
+        assert manifest == json.loads((HERE / "selection.json").read_text())
+        for case, packet in zip(manifest["cases"], packets, strict=True):
+            if case["task"] == task and source in case["anchors"]:
+                pins = {name: anchor["sha256"] for name, anchor in case["anchors"].items()}
+                request = pending_request(packet["arms"][source], tools, source_ranges(case, packet["arms"]), pins, source)
+                print(json.dumps({"request": request}, ensure_ascii=False))
+                break
+        else:
+            parser.error("Choose a task and source from selection.json.")
+        raise SystemExit(0)
+    if not args.binary:
+        parser.error("--binary is required for the capture comparison.")
     result = measure(args.data, args.binary.resolve())
     if args.check:
         assert result == json.loads((HERE / "capture-results.json").read_text())

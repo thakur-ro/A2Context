@@ -56,6 +56,8 @@ check-dispatch-study:
 	$(PYTHON) examples/context-screening/replay/prefix-transfer/study.py
 	$(PYTHON) examples/context-screening/replay/prefix-indirect/study.py
 	$(PYTHON) examples/exchange-approval/dispatch-study/compare_parsers.py --check
+	$(PYTHON) examples/airline-transfer/run.py --check examples/airline-transfer/results.json
+	$(PYTHON) examples/airline-transfer/baseline_budget.py --check examples/airline-transfer/baseline-budget.json
 
 check-qwen-agent:
 	cargo build --locked

@@ -1105,6 +1105,14 @@ mkdir -p data
 python3 -c 'import json; print(json.dumps(json.load(open("fixtures/replay-case.json"))["request"]))' > data/support-request.json
 ```
 
+When reconstructing a recorded decision, first check whether your runner can reproduce it with the unchanged request:
+
+```sh
+cargo run --locked -- replay --baseline-only fixtures/support.json fixtures/replay-case.json -- python3 scripts/replay_synthetic.py
+```
+
+This validates the case and invokes the runner only for the configured number of baseline samples. Read `attempted`, `completed` and `matched` under `baseline_summary`. The optional `unscored` count identifies completed outputs the match rule could not grade. If none reproduce the decision, inspect the model, template, output limit, parser and match rule before paying for source edits. The full experiment still samples fresh baselines in its original condition order. [Airline baseline study](../examples/airline-transfer/baseline-budget.md)
+
 Choose `data/support-request.json` on the first `return-eligibility` call and use `Synthetic rule runner v1` as the runner ID. Substitute the downloaded file for `fixtures/replay-case.json` in the command below.
 
 ```sh

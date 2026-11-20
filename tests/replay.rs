@@ -31,6 +31,27 @@ fn runner(request: &Value) -> replay::Choice {
 }
 
 #[test]
+fn baseline_only_uses_the_planned_original_samples_and_match_rule() {
+    let (runs, mut case) = inputs();
+    let mut seen = 0;
+    let summary = replay::check_baseline(&case, &runs, |request| {
+        assert_eq!(request, &case.request);
+        seen += 1;
+        (seen != 1).then(|| runner(request))
+    })
+    .unwrap();
+    assert_eq!(seen, case.samples);
+    assert_eq!(summary.attempted, seen);
+    assert_eq!(summary.completed, seen - 1);
+    assert_eq!(summary.matched, seen - 1);
+    case.interventions[0].pointer = "/missing".into();
+    assert!(
+        replay::check_baseline(&case, &runs, |_| panic!("invalid case reached the runner"))
+            .is_err()
+    );
+}
+
+#[test]
 fn capture_inventory_distinguishes_exact_fields_from_unavailable_evidence() {
     let (mut runs, case) = inputs();
     let call = &mut runs[0].calls[0];

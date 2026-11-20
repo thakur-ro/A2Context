@@ -218,6 +218,18 @@ function requiredSourceList(coverage) {
   })));
 }
 
+function sourceMismatchEvidence(detail) {
+  const fragments = detail.sources.filter(source => source.request_fragment && source.captured_text_sha256);
+  if (!fragments.length) return null;
+  return element("details", {}, element("summary", {text:"Inspect differing fragments"}), ...fragments.map(source => {
+    const {pointer, text_range} = source.request_fragment;
+    return element("div", {}, element("strong", {text:sourceName(source)}),
+      element("p", {}, element("code", {text:pointer}), " · UTF-8 bytes ["+text_range.start_byte+", "+text_range.end_byte+")"),
+      element("p", {}, "Expected SHA-256 ", element("code", {text:detail.coverage.expected_text_sha256[source.source]})),
+      element("p", {}, "Captured SHA-256 ", element("code", {text:source.captured_text_sha256})));
+  }));
+}
+
 function overlappingAnchors(report) {
   if (!report?.shared_bytes) return null;
   function drawRange({pointer,text_range:shared,sources,source_count:count}) {
@@ -243,7 +255,7 @@ function overlappingAnchors(report) {
 }
 
 function visual(kind, detail, rows = []) {
-  if (kind === "source_gap") return requiredSourceList(detail.coverage);
+  if (kind === "source_gap") return element("div",{},requiredSourceList(detail.coverage),sourceMismatchEvidence(detail));
   if (kind === "prefill") return firstTokenPreview(detail, true);
   if (kind === "source_mask") return maskComparison(detail.mask);
   const [label, body] = kind === "replacement" ? ["Trials matching the recorded outcome", replacementVisual(detail)] :
@@ -2042,6 +2054,7 @@ function pendingPreview() {
         sources && element("section",{className:"panel","aria-label":"Required source coverage"},
           element("h2",{text:(sources.matched ? "Sources captured for " : "Check sources for ") + sources.name}),
           requiredSourceList(sources),
+          sourceGap && sourceMismatchEvidence(sourceGap.detail),
           sourceGap && element("p",{text:sourceGap.action.next})),
         gap && element("section",{className:"panel","aria-label":"Rule capture gap"},
           element("h2",{text:"Check capture for " + coverage.scope.key}),

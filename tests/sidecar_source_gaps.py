@@ -1,4 +1,5 @@
 """Verify required-source receipts across real preflight, OTLP and the findings store."""
+from hashlib import sha256
 import json
 from pathlib import Path
 import subprocess
@@ -85,6 +86,11 @@ def verify(binary):
             changed, missing = sorted(pinned, key=lambda row: -row["occurrences"])
             assert (changed["occurrences"], missing["occurrences"]) == (2, 1)
             assert changed["evidence"]["detail"]["coverage"]["text_mismatches"] == ["latest-customer-message"]
+            mismatch, = [s for s in changed["evidence"]["detail"]["sources"] if "request_fragment" in s]
+            assert mismatch["request_fragment"]["pointer"] == "/messages/3/content"
+            assert mismatch["captured_text_sha256"] == sha256(
+                b"Please pause the puzzle exchange. Keep the boots exchange as it is."
+            ).hexdigest()
             assert changed["action"]["title"] == "Compare captured text with the upstream source"
             assert "text_mismatches" not in missing["evidence"]["detail"]["coverage"]
         with server(binary, path, "--capture-content") as base:

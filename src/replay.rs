@@ -290,6 +290,19 @@ pub fn validate_case<'a>(
     Ok(())
 }
 
+/// Check whether the unchanged request reproduces the recorded choice before paying for edits.
+/// Uses the planned sample count, source validation and match rule from a normal replay.
+pub fn check_baseline(
+    case: &Case,
+    runs: &[Run],
+    sample: impl FnMut(&Value) -> Option<Choice>,
+) -> Result<Summary, String> {
+    let prepared = prepare_case(case, runs)?;
+    let matcher = Matcher::new(&prepared.match_rule, &prepared.recorded)?;
+    let trials = sample_conditions(std::slice::from_ref(&case.request), case.samples, sample);
+    Ok(summarize(&trials[0], &matcher))
+}
+
 pub fn execute(
     case: &Case,
     runs: &[Run],

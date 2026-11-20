@@ -47,6 +47,8 @@ The dashboard adapts the force-directed graph layout by Thomas Fruchterman and E
 
 Qwen-Agent’s Nous tool parser and registered tool interface supplied an independent execution path for the exchange study. The replay uses the published framework with a saved-text transport and application-owned OpenTelemetry spans. [Qwen-Agent 0.0.34](https://pypi.org/project/qwen-agent/0.0.34/) · [Replay implementation](examples/exchange-approval/dispatch-study/framework/README.md)
 
+Sierra Research’s τ-Bench leaderboard supplies the recorded agent dialogue and reservation lookups for the airline transfer study. The public task split, reference actions and tool signatures come from its pinned benchmark release. The checkout includes checkpoint identifiers, digests, and test results. Reproduction downloads the original data separately. The Exgentic airline census identifies the participant whose telemetry was available in that corpus. [Study and source manifest](examples/airline-transfer/README.md) · [Sierra leaderboard submission](https://github.com/sierra-research/tau2-bench/blob/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/web/leaderboard/public/submissions/claude-opus-4-5_sierra_2026-02-26/submission.json)
+
 ## Interoperability
 
 The local stdio adapter uses the official Rust SDK for Model Context Protocol. [Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)

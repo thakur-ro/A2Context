@@ -1,0 +1,101 @@
+{
+  "source_results_sha256": "25c7ad8ba96fcf84ecbda7c23db781a527d65a5006b9fb9fefdfe2fe8ac26add",
+  "limit": 256,
+  "cases": [
+    {
+      "task": "29",
+      "prompt_sha256": "f06c09ad3992ef508e4379e7e62d0cbc5ad194486508b78ae2c81c136f4e6ec0",
+      "prefix_sha256": "46380b06c178c0490614d333ac441af95410b10604f7728ed11d401e27533f9a",
+      "output_sha256": "4715521bbd2a9301093bfb86b95a20a020ef156489de1484c4d9e66fc2582a8d",
+      "generated_tokens": 256,
+      "stop": "token_limit",
+      "action": {
+        "kind": "truncated",
+        "calls": [],
+        "write": null
+      },
+      "historical": {
+        "kind": "text",
+        "calls": [],
+        "write": false
+      }
+    },
+    {
+      "task": "30",
+      "prompt_sha256": "a14c81aa72bea60e827e45b5b7d5647cca937cfa55a5319b2a85be7bda3ee484",
+      "prefix_sha256": "c1286294370aef46fdffcb6c5ecfef1ba9752b3687c45787bb833062bee7296e",
+      "output_sha256": "c0609dcda5cf947c0c09ff0c6e13fe79ed30803907c660266851eeaf6b770c1d",
+      "generated_tokens": 218,
+      "stop": "eos",
+      "action": {
+        "kind": "text",
+        "calls": [],
+        "write": false
+      },
+      "historical": {
+        "kind": "tools",
+        "calls": [
+          {
+            "name": "update_reservation_flights",
+            "arguments_sha256": "b57cddcb76e3bf6e116fd5256b647b7320e1509d273b5f0394cde8073ef4fa6e"
+          }
+        ],
+        "write": true
+      }
+    },
+    {
+      "task": "32",
+      "prompt_sha256": "3ba2e94a096581e83f328f6e03fd959e5809833131e723cb7a79afedbff02d29",
+      "prefix_sha256": "1626c21c5c4496de12f64e582ffffa8c0009a0330e125365f36fd4b2b9958cb4",
+      "output_sha256": "a199cef32af23e93be4f2c8dd95739f8ec25b4977d7d7421e543ece0b491c8c9",
+      "generated_tokens": 233,
+      "stop": "eos",
+      "action": {
+        "kind": "text",
+        "calls": [],
+        "write": false
+      },
+      "historical": {
+        "kind": "tools",
+        "calls": [
+          {
+            "name": "search_direct_flight",
+            "arguments_sha256": "62a0000978b1165df213d51a06ae5f637dc78df6435c90495fe25ab425d4be41"
+          },
+          {
+            "name": "search_direct_flight",
+            "arguments_sha256": "a062aba3e7aaec2dfbbe2a79681a351d5a6da6e1a25fb7f55a2d789ccdf2cf20"
+          },
+          {
+            "name": "search_direct_flight",
+            "arguments_sha256": "8ea6f409e63a2941fc1fc37bbdc3b6f342b1f12024c64dce11f07502a575a541"
+          }
+        ],
+        "write": false
+      }
+    },
+    {
+      "task": "37",
+      "prompt_sha256": "2ad70e4350aa56186d555e500210321814f569d7fbb8ed65c64f499ed71d973b",
+      "prefix_sha256": "713724654cc6e2f2c461e9376698fd3f077bd3d69b5b16f60a6becf8aaa7f434",
+      "output_sha256": "9825266fdcdd655a83dcd48d57e9ea6e7412f8968aefb3630c7430b5df86f627",
+      "generated_tokens": 234,
+      "stop": "eos",
+      "action": {
+        "kind": "text",
+        "calls": [],
+        "write": false
+      },
+      "historical": {
+        "kind": "tools",
+        "calls": [
+          {
+            "name": "update_reservation_flights",
+            "arguments_sha256": "8f0e368ebcc2c993307b5ca95ab2b83f082a7c61329c4666d3dd26e9908dcd3a"
+          }
+        ],
+        "write": true
+      }
+    }
+  ]
+}

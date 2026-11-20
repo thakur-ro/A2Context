@@ -306,6 +306,9 @@ try {
   await page.locator('input[type="file"]').setInputFiles({name:"changed.json",mimeType:"application/json",
     buffer:Buffer.from(JSON.stringify({request:substitution}))});
   await required.getByText(/Captured text differs: retail\/returns-policy/).waitFor();
+  await required.getByText("Inspect differing fragments").click();
+  await required.getByText("/messages/0/content",{exact:true}).waitFor();
+  assert.equal(await required.getByText("a".repeat(64),{exact:true}).count(),1);
   assert.equal(await page.getByText("No supported issues or measured shifts in this request.").count(),0);
   const declarations = missingRule.attributes["nexusweave.context.semantics"].request_sources;
   declarations.push({id:"handbook",source_id:"retail/handbook",

@@ -1,0 +1,615 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+  "selection_sha256": "b82704c339aedfd48f034f36e160bcd55624dc71d10d6aab3577fc37b737d523",
+  "cases": [
+    {
+      "task": "29",
+      "ranked": [
+        "user",
+        "policy",
+        "latest_tool",
+        "lookup"
+      ],
+      "latest_tool_arm": "latest_tool",
+      "historical": {
+        "kind": "text",
+        "calls": [],
+        "write": false
+      },
+      "arms": {
+        "original": {
+          "prompt_sha256": "f06c09ad3992ef508e4379e7e62d0cbc5ad194486508b78ae2c81c136f4e6ec0",
+          "input_tokens": 6227,
+          "probe_seconds": 13.631622832966968,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 18.785557625000365,
+          "output_sha256": "46380b06c178c0490614d333ac441af95410b10604f7728ed11d401e27533f9a",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "policy": {
+          "prompt_sha256": "f1e2557c7ca58de54cfffc90351d4d18c31914e2f64c7e13ace30d9fbdb489a4",
+          "input_tokens": 6186,
+          "js_bits": 0.0036237417724643752,
+          "probe_seconds": 10.430070457980037,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 18.433132959064096,
+          "output_sha256": "c94a745bf3eeff1516fd6886a58b15b3c0ed21036a8fb70d25a0003afe4b2f4c",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "lookup": {
+          "prompt_sha256": "53810643fbb4e7b68bd3c8886ae63da3d2ac50b3b5b78cdda2d590b00562a496",
+          "input_tokens": 5862,
+          "js_bits": 0.0025864201632726544,
+          "probe_seconds": 9.497383707901463,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 17.163751250016503,
+          "output_sha256": "d3b4f9b8d1e03432e51bdf1825daae251e8ed6d63e527b3bb0f61e5d40a4ef98",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "latest_tool": {
+          "prompt_sha256": "49bc15a51d70448ccbbc670070efc80c55c72be79fd9e5afc870964f42d46481",
+          "input_tokens": 5720,
+          "js_bits": 0.002769109823954131,
+          "probe_seconds": 9.010541249997914,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 16.543517041951418,
+          "output_sha256": "6886265dd077b739e90fe8073bf3b1d37d5b4bb817c5909592ebde85f2a22100",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "user": {
+          "prompt_sha256": "2efcfa5b4953e4bc5324f56d88ef18efe3f0623ccc9f6e60785f13a9cd8f4c75",
+          "input_tokens": 6130,
+          "js_bits": 0.38202949318894375,
+          "probe_seconds": 10.277949832961895,
+          "stop": "eos",
+          "generated_tokens": 68,
+          "decode_seconds": 14.409820292028598,
+          "output_sha256": "d9ae1f0eb292913c73e9adbef513b91861dd92afd938f5ce5c00b5742e166004",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "withdrawal": {
+          "prompt_sha256": "67ee9c3bf65133e7b24c20c7c285d3d702621bc63d9962bfb86679f3cbd19c1e",
+          "input_tokens": 6150,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 18.32759962498676,
+          "output_sha256": "34c7adfd9ea73b3740b925333f58826374e03218aa0305fa7be48c8cf675b202",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        }
+      }
+    },
+    {
+      "task": "30",
+      "ranked": [
+        "user",
+        "lookup",
+        "latest_tool",
+        "policy"
+      ],
+      "latest_tool_arm": "latest_tool",
+      "historical": {
+        "kind": "tools",
+        "calls": [
+          {
+            "name": "update_reservation_flights",
+            "arguments_sha256": "b57cddcb76e3bf6e116fd5256b647b7320e1509d273b5f0394cde8073ef4fa6e"
+          }
+        ],
+        "write": true
+      },
+      "arms": {
+        "original": {
+          "prompt_sha256": "a14c81aa72bea60e827e45b5b7d5647cca937cfa55a5319b2a85be7bda3ee484",
+          "input_tokens": 5293,
+          "probe_seconds": 8.234010000014678,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 15.518649250036106,
+          "output_sha256": "c1286294370aef46fdffcb6c5ecfef1ba9752b3687c45787bb833062bee7296e",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "policy": {
+          "prompt_sha256": "77b439137758a312bd4106b4bd55f981f8af8ca42be44ac09f4dcf17ac528c49",
+          "input_tokens": 5252,
+          "js_bits": 0.00046878962079965365,
+          "probe_seconds": 8.055327708949335,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 16.106070957961492,
+          "output_sha256": "c1286294370aef46fdffcb6c5ecfef1ba9752b3687c45787bb833062bee7296e",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "lookup": {
+          "prompt_sha256": "672ccff48ddaf65ee66cf9c2630e87cb9debc6c098d0067065c412b5bbb123d9",
+          "input_tokens": 4946,
+          "js_bits": 0.04774072493630839,
+          "probe_seconds": 7.260868666926399,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 15.656960166990757,
+          "output_sha256": "fbf5464db315848b31bb7f089ca9dea67344a48bf379acddea82e03b2ce4bf9a",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "latest_tool": {
+          "prompt_sha256": "5c6932da221430a46330b4aae495e1d05da0ba35a72318f97b55d7d7444ff9bb",
+          "input_tokens": 5043,
+          "js_bits": 0.015164744598966771,
+          "probe_seconds": 7.49123858299572,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 14.868934624944814,
+          "output_sha256": "4602428fcbf68cba643ff721fd3c82300ad3c6d9959cc3f942d991422515da43",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "user": {
+          "prompt_sha256": "52cd855bc11c77392cb4f8ba72f0f98bbf57c621892114a63e90c40fbc28ae93",
+          "input_tokens": 5259,
+          "js_bits": 0.5691498174744914,
+          "probe_seconds": 8.132467124960385,
+          "stop": "eos",
+          "generated_tokens": 56,
+          "decode_seconds": 12.073579667019658,
+          "output_sha256": "ad37344757631110678eca8ebfea36a91f8f556d0a7a6845a63867e97e036db5",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "withdrawal": {
+          "prompt_sha256": "26407b03f80199123115baa663a324796fc326016e638c9110fd656909fc05fa",
+          "input_tokens": 5279,
+          "stop": "eos",
+          "generated_tokens": 32,
+          "decode_seconds": 10.958484250004403,
+          "output_sha256": "8efd057d3eaf360440159d319573bca8c8f8ad67a1ece7715e87126fa8ab6cb3",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        }
+      }
+    },
+    {
+      "task": "32",
+      "ranked": [
+        "user",
+        "lookup",
+        "policy"
+      ],
+      "latest_tool_arm": "lookup",
+      "historical": {
+        "kind": "tools",
+        "calls": [
+          {
+            "name": "search_direct_flight",
+            "arguments_sha256": "62a0000978b1165df213d51a06ae5f637dc78df6435c90495fe25ab425d4be41"
+          },
+          {
+            "name": "search_direct_flight",
+            "arguments_sha256": "a062aba3e7aaec2dfbbe2a79681a351d5a6da6e1a25fb7f55a2d789ccdf2cf20"
+          },
+          {
+            "name": "search_direct_flight",
+            "arguments_sha256": "8ea6f409e63a2941fc1fc37bbdc3b6f342b1f12024c64dce11f07502a575a541"
+          }
+        ],
+        "write": false
+      },
+      "arms": {
+        "original": {
+          "prompt_sha256": "3ba2e94a096581e83f328f6e03fd959e5809833131e723cb7a79afedbff02d29",
+          "input_tokens": 5497,
+          "probe_seconds": 8.814193582977168,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 16.33720470906701,
+          "output_sha256": "1626c21c5c4496de12f64e582ffffa8c0009a0330e125365f36fd4b2b9958cb4",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "policy": {
+          "prompt_sha256": "28caec5442cb7132bdb2b6b9797c0f1de3dff291438f344094365948f3a26b09",
+          "input_tokens": 5456,
+          "js_bits": 0.002159438934717709,
+          "probe_seconds": 8.745134667027742,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 15.940036125015467,
+          "output_sha256": "edea7585bfb1ee574de544f75222541c6f654ee846a9112ddd6032f2911da0ce",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "lookup": {
+          "prompt_sha256": "7b9590f3eb523bfb80cadd79c4973600d10563fc0043643b8c46b58556d7e4ce",
+          "input_tokens": 5162,
+          "js_bits": 0.017213599591327077,
+          "probe_seconds": 8.00407837505918,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 15.058459917083383,
+          "output_sha256": "bed58df53b150b7c1fdc115afada5a25aefd7fd214da827843a6bfd0fa0cb6f1",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "user": {
+          "prompt_sha256": "9101d65dca67910565998e163ce1a3346b5bb79e7b42458de0733eb9a20d75a1",
+          "input_tokens": 5304,
+          "js_bits": 0.7795760176087146,
+          "probe_seconds": 8.212218458997086,
+          "stop": "eos",
+          "generated_tokens": 30,
+          "decode_seconds": 9.770050749997608,
+          "output_sha256": "d853187c50eeb480304c22c0a21bc531d7482fd08f24cc69c231cb4be24c3f7c",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "withdrawal": {
+          "prompt_sha256": "eac7487f7ae9fe6201828c3f44aa6b0b8c405bee0ee40047edee5ff00d5d7c16",
+          "input_tokens": 5324,
+          "stop": "eos",
+          "generated_tokens": 38,
+          "decode_seconds": 10.873432166990824,
+          "output_sha256": "384182013e0b19cd1412322609de05cedad33c5fdb2f878239836ff0473c99d7",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        }
+      }
+    },
+    {
+      "task": "37",
+      "ranked": [
+        "user",
+        "latest_tool",
+        "lookup",
+        "policy"
+      ],
+      "latest_tool_arm": "latest_tool",
+      "historical": {
+        "kind": "tools",
+        "calls": [
+          {
+            "name": "update_reservation_flights",
+            "arguments_sha256": "8f0e368ebcc2c993307b5ca95ab2b83f082a7c61329c4666d3dd26e9908dcd3a"
+          }
+        ],
+        "write": true
+      },
+      "arms": {
+        "original": {
+          "prompt_sha256": "2ad70e4350aa56186d555e500210321814f569d7fbb8ed65c64f499ed71d973b",
+          "input_tokens": 6817,
+          "probe_seconds": 21.311263707932085,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 21.774567665997893,
+          "output_sha256": "713724654cc6e2f2c461e9376698fd3f077bd3d69b5b16f60a6becf8aaa7f434",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "policy": {
+          "prompt_sha256": "2f4ab35cff37cfc32bdfa45730dd48e872786ba5f11104573391a0fb8c236144",
+          "input_tokens": 6776,
+          "js_bits": 0.0039913342204076765,
+          "probe_seconds": 13.971460167085752,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 21.328954332973808,
+          "output_sha256": "713724654cc6e2f2c461e9376698fd3f077bd3d69b5b16f60a6becf8aaa7f434",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "lookup": {
+          "prompt_sha256": "bb816ab07c528ae1157092c6d86c3620b121e7ddffa2b97132bae50b90e414d2",
+          "input_tokens": 6513,
+          "js_bits": 0.015453682024550296,
+          "probe_seconds": 12.410047292010859,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 20.017731667030603,
+          "output_sha256": "713724654cc6e2f2c461e9376698fd3f077bd3d69b5b16f60a6becf8aaa7f434",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "latest_tool": {
+          "prompt_sha256": "a583a0773c9cd09a2dfb467b09264b8e5b4c9ea46a03d3c7cfe15c0101b28919",
+          "input_tokens": 6309,
+          "js_bits": 0.0369525581198108,
+          "probe_seconds": 11.498454665997997,
+          "stop": "token_limit",
+          "generated_tokens": 128,
+          "decode_seconds": 19.25503179198131,
+          "output_sha256": "713724654cc6e2f2c461e9376698fd3f077bd3d69b5b16f60a6becf8aaa7f434",
+          "action": {
+            "kind": "truncated",
+            "calls": [],
+            "write": null
+          }
+        },
+        "user": {
+          "prompt_sha256": "7ab9b64dc26867ad3e5087e1678a9f5365886deae1be821a5903ed42a9ff740c",
+          "input_tokens": 6777,
+          "js_bits": 0.3584569950107608,
+          "probe_seconds": 13.094431124976836,
+          "stop": "eos",
+          "generated_tokens": 34,
+          "decode_seconds": 20.426832791999914,
+          "output_sha256": "c305e1f66780490a79b13ea105135e51195e27e97f7835037ab66a6407d80c7c",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "withdrawal": {
+          "prompt_sha256": "9aaccda24beaa7949c334a9219b07ed2fc68fdc9564f05eec4064049b3d607b6",
+          "input_tokens": 6797,
+          "stop": "eos",
+          "generated_tokens": 30,
+          "decode_seconds": 17.878574874950573,
+          "output_sha256": "b2326759fa9fa18c1344240ac9d2bd21871d56d298ef0f0db975a1c9fcac9a78",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        }
+      }
+    },
+    {
+      "task": "44",
+      "ranked": [
+        "user",
+        "lookup",
+        "policy",
+        "latest_tool"
+      ],
+      "latest_tool_arm": "latest_tool",
+      "historical": {
+        "kind": "tools",
+        "calls": [
+          {
+            "name": "transfer_to_human_agents",
+            "arguments_sha256": "f4a061837d04c6e61721838b32076587e2db8dee7843126c6e2e62c4a4818c95"
+          }
+        ],
+        "write": false
+      },
+      "arms": {
+        "original": {
+          "prompt_sha256": "b468980e3af894d8576d50e6f9ff53acc25a0620a6d859711b8a748661bd9c5f",
+          "input_tokens": 6587,
+          "probe_seconds": 12.615329375024885,
+          "stop": "eos",
+          "generated_tokens": 46,
+          "decode_seconds": 15.249870124971494,
+          "output_sha256": "1f6c1b7ff9da77f517d8f8360f9bb7aba11127b5611bfec8b823d3757f6f44d3",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "policy": {
+          "prompt_sha256": "882a18c55aef0a9f4d191d2e2adf83384b05e2554ca00af96877d230479194ec",
+          "input_tokens": 6546,
+          "js_bits": 0.001751954888455385,
+          "probe_seconds": 12.128663458046503,
+          "stop": "eos",
+          "generated_tokens": 34,
+          "decode_seconds": 16.557742874952964,
+          "output_sha256": "1afdce8f832e9d60ded9a71a8fd865f5e1e51e42811bda75c84a2a536dd34c30",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "lookup": {
+          "prompt_sha256": "bd6e75f943d4317788b6efa178dc54ea00a1dcc14aad4c95a09bb6bc106a0c44",
+          "input_tokens": 6316,
+          "js_bits": 0.0071157717601734016,
+          "probe_seconds": 11.428581958054565,
+          "stop": "eos",
+          "generated_tokens": 67,
+          "decode_seconds": 17.058890540967695,
+          "output_sha256": "4a98b9de50eb7aa83f10cc5f3659a88c454b7e21e62947906597bdee64b51734",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "latest_tool": {
+          "prompt_sha256": "2e6af2c588df109030789a43dc679a903fed9b2a3c435249600052b13416c530",
+          "input_tokens": 6587,
+          "js_bits": 0.00046316844298364366,
+          "probe_seconds": 12.39240129198879,
+          "stop": "eos",
+          "generated_tokens": 46,
+          "decode_seconds": 15.369210582925007,
+          "output_sha256": "1f6c1b7ff9da77f517d8f8360f9bb7aba11127b5611bfec8b823d3757f6f44d3",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "user": {
+          "prompt_sha256": "a08b869b2f343ca2c0bf59db3b4b6a13d38b3647406aa81cf24663a4162597ef",
+          "input_tokens": 6448,
+          "js_bits": 0.4802586715362005,
+          "probe_seconds": 11.561680458020419,
+          "stop": "eos",
+          "generated_tokens": 40,
+          "decode_seconds": 14.199105332954787,
+          "output_sha256": "fd8995751d3c84dff0a71cde2a6f10f3f779848671cd1f5434c3b3740cc1d7a7",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        },
+        "withdrawal": {
+          "prompt_sha256": "05c4cde76ec8eca7f091e4cdb3279f25374c4a18229130ced9ad5bf4e455c04f",
+          "input_tokens": 6468,
+          "stop": "eos",
+          "generated_tokens": 32,
+          "decode_seconds": 14.014820041018538,
+          "output_sha256": "f29394c4cd7fa5ff6ec533259016a79a1fee280979ed86b6a18de7ef250cb7ff",
+          "action": {
+            "kind": "text",
+            "calls": [],
+            "write": false
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "complete_cases": 1,
+    "incomplete_cases": [
+      "29",
+      "30",
+      "32",
+      "37"
+    ],
+    "primary": {
+      "ranked": {
+        "changed": 0,
+        "paired_scorable": 1,
+        "paired_changed": 0
+      },
+      "first": {
+        "changed": 0,
+        "paired_scorable": 1,
+        "paired_changed": 0
+      },
+      "latest_message": {
+        "changed": 0,
+        "paired_scorable": 1,
+        "paired_changed": 0
+      },
+      "latest_tool": {
+        "changed": 0,
+        "paired_scorable": 1,
+        "paired_changed": 0
+      }
+    },
+    "secondary": {
+      "ranked": {
+        "changed": 0,
+        "paired_scorable": 1,
+        "paired_changed": 0
+      },
+      "first": {
+        "changed": 0,
+        "paired_scorable": 1,
+        "paired_changed": 0
+      },
+      "latest_message": {
+        "changed": 0,
+        "paired_scorable": 1,
+        "paired_changed": 0
+      },
+      "latest_tool": {
+        "changed": 0,
+        "paired_scorable": 1,
+        "paired_changed": 0
+      }
+    },
+    "withdrawal": {
+      "truncated": 1,
+      "nonwrite": 4
+    },
+    "withdrawal_from_valid_original_write": {},
+    "historical": {
+      "valid_baselines": 1,
+      "same_response_kind": 0,
+      "both_text": 0,
+      "historical_tool_turns": 4,
+      "same_tool_names": 0,
+      "exact_ordered_calls": 0
+    },
+    "cost": {
+      "generations": 29,
+      "generation_input_tokens": 173031,
+      "generated_tokens": 2601,
+      "decode_seconds": 469.95657400088385,
+      "probe_calls": 24,
+      "probe_input_tokens": 143013,
+      "probe_seconds": 258.20941874885466
+    }
+  }
+}

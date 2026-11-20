@@ -19,6 +19,7 @@ const USAGE: &str = "Usage:
   nexusweave import-langsmith <runs.json|runs.jsonl> <evidence.json>
   nexusweave import-otlp <traces.json|traces.jsonl> <evidence.json>
   nexusweave annotate <evidence.json> <annotations.json> <output.json>
+  nexusweave replay --baseline-only <evidence.json> <case.json> -- <runner> [args...]
   nexusweave replay <evidence.json> <case.json> <report.json> -- <runner> [args...]
   nexusweave run-position-plan <plan.json> <runner-id> <trials.json> -- <runner> [args...]
   nexusweave plan-replay <evidence.json> <case.json> <plan.json>
@@ -97,6 +98,21 @@ fn run(args: Vec<String>) -> Result<()> {
             add_annotations(&mut runs, annotations)?;
             inspect(&runs)?;
             write_new(output, &serde_json::to_vec_pretty(&runs)?)?;
+        }
+        ["replay", "--baseline-only", input, specification, "--", program, runner_args @ ..] => {
+            let runs = read_runs(&[input])?;
+            inspect(&runs)?;
+            let case: replay::Case = serde_json::from_reader(fs::File::open(specification)?)?;
+            let summary = replay::check_baseline(&case, &runs, |request| {
+                sample(program, runner_args, request)
+            })?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "case":case.id, "runner_id":case.runner_id, "location":case.location,
+                    "match_rule":case.match_rule, "baseline_summary":summary
+                }))?
+            );
         }
         ["replay", input, specification, output, "--", program, runner_args @ ..] => {
             if Path::new(output).exists() {

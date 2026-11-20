@@ -183,12 +183,40 @@ def census(directory):
     return counts
 
 
+def discover_shards():
+    """Read only the benchmark column from every published Parquet shard."""
+    from huggingface_hub import HfApi, HfFileSystem
+    from pyarrow.parquet import ParquetFile
+
+    revision = "70036b93a04e61b0ea2706a68b962f4f26774587"
+    repository = "Exgentic/agent-llm-traces"
+    storage = HfFileSystem()
+    paths = HfApi().list_repo_files(repository, repo_type="dataset", revision=revision)
+    shards = sorted(path for path in paths if path.endswith(".parquet"))
+    containing = []
+    for shard in shards:
+        with storage.open(f"datasets/{repository}@{revision}/{shard}", "rb", block_size=65536) as raw:
+            benchmark = ParquetFile(raw).read(columns=["benchmark"]).column(0)
+            if "tau2_airline" in benchmark.to_pylist():
+                containing.append(Path(shard).name)
+    expected = sorted(name for name, source in FILES.items() if source.get("census_only"))
+    if containing != expected:
+        raise ValueError("The census shard list does not cover the pinned release.")
+    return {"shards_checked": len(shards), "airline_shards": containing}
+
+
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory",type=Path)
     parser.add_argument("--fetch",action="store_true")
     parser.add_argument("--census",action="store_true")
+    parser.add_argument("--discover-shards", action="store_true", help="Verify the census covers the entire public release.")
     args=parser.parse_args()
+    if args.discover_shards:
+        if args.fetch or args.census:
+            parser.error("--discover-shards is a separate metadata scan")
+        print(json.dumps(discover_shards(), indent=2))
+        raise SystemExit(0)
     if args.fetch:
         fetch(args.directory,args.census)
     output=census(args.directory) if args.census else cohort(args.directory)[0]

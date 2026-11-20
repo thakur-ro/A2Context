@@ -57,11 +57,9 @@ Of those four approved exchanges, the ranked edit restored two expected writes a
 
 The harness exported 236 application-instrumented OpenTelemetry spans to a disposable sidecar across 80 traces and eight threads. The two dispatch policies reused the same generated text. The exporter captured stage boundaries without prompt or response bodies. These spans establish where a proposal stopped. They cannot establish which context the model used. [Framework implementation, saved receipts and sidecar check](../examples/exchange-approval/dispatch-study/framework/README.md)
 
-## Next validation
+## Does the ranking transfer to a second workflow?
 
 We allowed one fresh local generation after each of the 22 argument rejections. Every retry produced plain text. Twelve approved exchange trials still lacked their expected write. The pre-answer ranking picked the latest customer message on all eight requests. A selector based only on message position would have tested the same edits on these requests. The result supports keeping model-based ranking opt-in. [Per-request figure, retry protocol and reproduction](../examples/exchange-approval/dispatch-study/framework/README.md#what-happened-when-the-model-could-try-again)
-
-The next test needs a second workflow where evidence can come from a retrieved document, a tool result or the latest message. Register its expected outcome and compare the ranking to latest-message and first-listed selection before proposing a default. Use preflight to check whether the edits share request bytes. Have a workflow engineer investigate an affected request without guidance and record time to identify the failed stage and whether the recommended edit restores the outcome on a fresh request. The current fixtures supply no independent usability result.
 
 We froze five trial-zero checkpoints from Sierra’s public airline submission. Each follows a linked reservation lookup and stops immediately before an agent response. Across those checkpoints, all 19 controlled substitutions kept their source ID and passed the name-only preflight check. With independently pinned text digests, preflight flagged all 19 substitutions, distinguished all 19 missing-anchor controls, and passed all five intact requests. The source ranges were disjoint in each request. This measures whether exact upstream text survived assembly. It requires the workflow to know which text to expect. [Frozen checkpoints](../examples/airline-transfer/selection.json) · [Capture results](../examples/airline-transfer/capture-results.json)
 
@@ -72,6 +70,19 @@ cargo build --locked
 python3 examples/airline-transfer/check_capture.py --data /tmp/airline-study --binary target/debug/nexusweave --check
 ```
 
+To inspect a substitution yourself, export one reconstructed request and choose it in the dashboard’s **Before inference** view. Task 32 replaces a reservation lookup with a placeholder while preserving its source label. Open **Inspect differing fragments** to see the JSON field, its byte range and the two digests. The file contains public simulated conversation history.
+
+```sh
+python3 examples/airline-transfer/check_capture.py --data /tmp/airline-study --request 32 lookup > /tmp/airline-lookup.json
+```
+
+On those five airline requests, the most disruptive edit at the first token was always the latest customer message. Choosing by recency would have selected exactly the same five edits. Only one unchanged Qwen generation finished within 128 tokens. It gave a text reply where the recorded agent proposed transferring the customer to a human. No completed baseline reproduced a historical tool call. The outcome comparison has one scorable request and four unknowns. [Per-request results, scoring and CPU costs](../examples/airline-transfer/README.md)
+
+Doubling the generation limit recovered three of the four truncated replies. Each completed with text on a checkpoint where the historical agent had used tools. All four longer runs reproduced their earlier 128-token prefixes exactly. We stopped before running more source edits with this runner. [Budget comparison and all four stop reasons](../examples/airline-transfer/baseline-budget.md)
+
+This changes the order of an investigation. To explain a specific historical action, first try the unchanged request with the proposed runner, parser and match rule. The replay CLI now supports a baseline-only check. On fresh workflow evaluations, record expected outcomes separately so that a different valid proposal can receive credit. Automatic edit selection remains opt-in. [Baseline check](guide.md#test-a-context-item-with-a-controlled-replay)
+
+The next transfer test needs either the original execution stack or a runner that first reproduces a recorded tool proposal on an unchanged request. For a fresh evaluation without historical mimicry, register the acceptable action and arguments with the workflow owner before testing edits. A separate usability test should ask an engineer to locate the substituted lookup and recover its original text from the source reference. The browser suite verifies the path. It supplies no independent measurement of how quickly a new user can follow it.
 
 ## Release scope
 
