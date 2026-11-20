@@ -1223,7 +1223,9 @@ cargo run --locked -- serve \
   examples/local-mlx-tool/evidence.json
 ```
 
-To repeat the experiment on Apple Silicon, use the [saved case](../examples/local-mlx-tool/case.json) or the [tool-result case](../examples/local-mlx-tool/case-result.json) with the included [MLX runner](../examples/local-mlx-tool/runner.py).
+A replay check on 20 November 2026 reproduced the archived inventory lookup on the pinned MLX study environment. For the inventory-result request, both the original and current runner returned `2` where the saved baseline reports 42 units. The cause is unresolved. Treat the quantity comparison above as an archived result. [Pinned model and environment used for this check](../examples/bfcl-transfer/mlx/README.md#reproduce)
+
+To run the experiment on Apple Silicon, use the [saved case](../examples/local-mlx-tool/case.json) or the [tool-result case](../examples/local-mlx-tool/case-result.json) with the included [MLX runner](../examples/local-mlx-tool/runner.py).
 
 ### Test two context items together
 

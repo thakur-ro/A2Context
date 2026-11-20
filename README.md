@@ -8,7 +8,7 @@ NexusWeave runs beside your LLM workflow. It flags conflicting instructions and 
 
 ## Try the demo
 
-A customer puts an exchange on hold, but the agent’s confirmation cache still says “approved.” To run this private preview, you need checkout access, Git, stable Rust and your platform’s C build tools. The demo needs no API key or model download. [Install Rust](https://rustup.rs/)
+A customer puts an exchange on hold, but the agent’s confirmation cache still says “approved.” To run this research preview, you need Git, stable Rust and your platform’s C build tools. The demo needs no API key or model download. [Install Rust](https://rustup.rs/)
 
 ```sh
 git clone https://github.com/thakur-ro/NexusWeave.git
