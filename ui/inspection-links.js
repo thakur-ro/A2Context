@@ -339,10 +339,12 @@ function restoreInspectionLink() {
         unavailableLink("The linked evidence is unavailable on this call.");
       } else if (params.get("plan") === "edit") {
         const run = data.runs[position.run], call = run.calls[position.call], decision = call.decisions[position.decision];
-        const source = call.context.find(item => item.id === reference?.context_item_id);
+        const ids = [reference?.context_item_id];
+        if (params.has("other_context")) ids.push(params.get("other_context"));
+        const editable = id => call.context.some(item => item.id === id && item.availability === "included" && typeof item.text === "string");
         if (params.has("decision") && ["model_output","tool_call"].includes(decision?.kind) && decision.outcome != null &&
-            source?.availability === "included" && typeof source.text === "string") {
-          openReplayPlanner(run, call, decision, [source.id]);
+            ids.every(editable) && new Set(ids).size === ids.length) {
+          openReplayPlanner(run, call, decision, ids);
         } else {
           unavailableLink("This source and outcome cannot be used for a replay.");
         }

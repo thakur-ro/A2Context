@@ -49,6 +49,46 @@ python3 examples/send_otlp_replay.py --url http://127.0.0.1:8042 --declare-windo
 
 Open the link printed by the sender. **Prepare edit to journal-faq** opens the planner with that source selected. Choose **Use captured request**, set the replacement and runner, then download the validated case. When capture omitted the original body, the planner needs the engineer’s copy of the request. Request provenance remains unverified in that case. Preparing a case makes no model calls.
 
+### Find the next conversation to test
+
+When the same declared rule conflict appears in multiple identified conversations, the overview can recommend the conversations that still need a test. Open the recommendation and choose a coverage category. Each row opens the least-tested conflicting call in that conversation. **Compare both edits in one replay** opens the planner with the two sources selected for separate edits.
+
+| Category | What the captured evidence establishes |
+| --- | --- |
+| No comparable replay | No eligible single-source comparison on any conflicting call in this conversation. |
+| Partially tested | At least one source has a comparison. At least one conflicting call still lacks a report that tested both sources separately against the same original proposal. |
+| Both sources compared on every call | Every conflicting call has an eligible report with both individual edits. Matching and changed proposals both count as measurements. |
+
+Counts group the rule and rule scope within the same source factor, which includes the organization and versioned source identities. The counts cover identified conversations in the current user, workflow, metadata and date filters. They measure test coverage. To compare outcomes, open the actual trial on a selected call. A repeated request in another conversation counts as another conversation.
+
+![Three journal conversations grouped by test coverage. The partially tested policy question still needs a FAQ comparison.](media/recurring-conflict-coverage.png)
+
+Start a fresh sidecar with content capture. The example exports three saved Qwen questions into one demonstration organization and keeps their original user IDs. Initially, it submits a full report for the standard question, the policy arm for the policy question, and just the captured follow-up call. Open the dashboard to see the two remaining conversations.
+
+```sh
+cargo run --locked -- sidecar --db ./journal-coverage.sqlite --capture-content --listen 127.0.0.1:8043
+# In another terminal
+python3 examples/view_conflict_coverage.py --url http://127.0.0.1:8043
+```
+
+Run the sender again with `--finish` to attach the remaining saved trials. All three conversations then have both sources tested on every conflicting call. Refresh the overview to see the recommendation clear. The sender reuses the same span IDs and makes no model calls.
+
+#### Cost on the journal fixture
+
+The release binary handled 384 synthetic conversations built from the three saved request bodies, with 128 conversations per coverage category. With one Linux CPU and a 512 MiB cgroup limit, 30 warm loopback reads gave these timings. The harness followed all nine pages of partially tested conversations and verified all 128 conversation IDs.
+
+| Read | Median | 95th percentile |
+| --- | ---: | ---: |
+| Overview with recommended investigation | 6.27 ms | 7.42 ms |
+| Conflict coverage counts | 0.97 ms | 1.07 ms |
+| First page of conversations awaiting a comparison | 1.25 ms | 1.43 ms |
+
+Peak cgroup memory for the sidecar and Python harness together was 38.1 MiB. These timings cover dashboard reads on repeated inputs. Inference-path latency needs a separate measurement with a live exporter. Reproduce the fixture after building the release binary.
+
+```sh
+python3 tests/sidecar_conflict_coverage.py target/release/nexusweave --measure
+```
+
 ### Read recommendations from another dashboard
 
 The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC dates (`after` inclusive, `before` exclusive) and allowlisted metadata pair (`meta_key`, `meta_value`) through each step. Omit dates to include undated observations. A paged response contains `rows` and `next_offset`. Supply that offset on the same query to continue.
@@ -57,6 +97,8 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 | --- | --- |
 | `thread-calls?thread=…` | Read 15 calls in order using the opaque thread key from `threads` or an evidence link. Add `focus_trace` and `focus_call` to open the page containing that call. The response includes the effective `offset`, captured dialogue previews and call-specific finding links. |
 | `impact` | Compare identified conversations with findings (`conversations`) against all identified conversations with a normalized call in scope (`captured_conversations`). Read `evidence_counts` for the strongest finding per conversation. |
+| `conflict-coverage?group=…&factor=…` | Count identified conversations with a declared conflict by `untested`, `partial` and `complete`. On the overview, `impact.conflict_gap` identifies one recurring group with existing tests and remaining gaps. |
+| `conflict-conversations?group=…&factor=…&coverage=partial` | Page through one category. Each row includes the selected trace and call, its two sources, and the IDs with a completed individual comparison. |
 | `conversations-without-findings` | Page through the remainder. Each row identifies a call and counts how many calls in scope include input text. The optional `screen` contains a classifier suggestion with excerpts, source digests and scores in both directions. |
 | `proposal-conversations?result=both` | List conversations with changed and matching complete proposals. Other values are `changed_only`, `held_only` and `no_pair`. Each row returns one recent evidence link per represented outcome, or one finding for a conversation without a pair. Accepts the same scope, factor and date filters as `impact`. |
 | `screened-pairs` | Group all verified classifier flags in identified conversations by unordered source identities, scorer and relation. Each group includes individual replay coverage and per-source changed and unchanged conversation counts keyed by text digest. |

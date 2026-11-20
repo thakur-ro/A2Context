@@ -333,6 +333,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/threads"
                 | "/api/sidecar/thread-calls"
                 | "/api/sidecar/impact"
+                | "/api/sidecar/conflict-coverage"
+                | "/api/sidecar/conflict-conversations"
                 | "/api/sidecar/conversations-without-findings"
                 | "/api/sidecar/target-patterns"
                 | "/api/sidecar/target-examples"

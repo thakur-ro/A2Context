@@ -3,15 +3,16 @@
 import argparse
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 
-def prepare(conversation_id, *, followup=False, declare_windows=False):
+def prepare(conversation_id, *, followup=False, declare_windows=False, report_file=None, archived=False):
     fixtures = Path(__file__).parent / "context-screening" / "replay"
-    report_file = "report-followup.json" if followup else "report.json"
+    report_file = report_file or ("report-followup.json" if followup else "report.json")
     report = json.loads((fixtures / report_file).read_text(encoding="utf-8"))
     runs = json.loads((fixtures / "evidence.json").read_text(encoding="utf-8"))
     run = next(run for run in runs if run["id"] == report["location"]["run_id"])
@@ -60,11 +61,16 @@ def prepare(conversation_id, *, followup=False, declare_windows=False):
         }]),
     }
     timestamp = time.time_ns()
+    if archived:
+        key = "nexusweave/journal-coverage/" + run["id"] + "/" + conversation_id
+        trace_id, span_id = uuid5(NAMESPACE_URL, key).hex, uuid5(NAMESPACE_URL, key + "/call").hex[:16]
+        timestamp = int(datetime.fromisoformat(call["started_at"].replace("Z", "+00:00")).timestamp()) * 10**9
+
     span = {
         "traceId": trace_id,
         "spanId": span_id,
         "name": "Journal return answer",
-        "startTimeUnixNano": str(timestamp - 1),
+        "startTimeUnixNano": str(timestamp if archived else timestamp - 1),
         "endTimeUnixNano": str(timestamp),
         "attributes": [
             {"key": key, "value": {"stringValue": value}} for key, value in attributes.items()

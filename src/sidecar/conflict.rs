@@ -1,8 +1,86 @@
 //! Resolve the evidence and editable fields for one declared disagreement on one call.
 use crate::Result;
-use nexusweave::{replay, Availability, Call};
+use nexusweave::{replay, Availability, Call, Decision, Run};
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
+use std::collections::{BTreeMap, BTreeSet};
+
+fn eligible(decision: &Decision, detail: &Value) -> bool {
+    matches!(decision.kind.as_str(), "model_output" | "tool_call")
+        && !decision.outcome.is_null()
+        && decision
+            .applies_to
+            .as_ref()
+            .is_none_or(|s| detail["rule"] == s.key && detail["scope"] == s.scope)
+}
+
+/// Keep each report's two individual arms together. Separate reports may target
+/// different decisions, models or replacements even on the same call.
+pub(super) fn annotate(
+    run: &Run,
+    reports: &[replay::Replay],
+    findings: &mut [super::findings::Observation],
+) {
+    if reports.is_empty() || !findings.iter().any(|f| f.kind == "conflict") {
+        return;
+    }
+    let mut measured = BTreeMap::new();
+    for finding in findings.iter().filter(|f| {
+        f.kind == "replay"
+            && f.detail["edit"] == "individual"
+            && f.detail["response_pair"]["changed"].is_boolean()
+    }) {
+        let m = &finding.detail["measurement"];
+        if let (Some(decision), Some(report), Some(source)) = (
+            m["location"]["decision_id"].as_str(),
+            m["replay_id"].as_str(),
+            finding.detail["sources"][0]["id"].as_str(),
+        ) {
+            measured
+                .entry(finding.call_id.clone())
+                .or_insert_with(BTreeMap::new)
+                .entry((decision.to_owned(), report.to_owned()))
+                .or_insert_with(BTreeSet::new)
+                .insert(source.to_owned());
+        }
+    }
+    if measured.is_empty() {
+        return;
+    }
+    for finding in findings.iter_mut().filter(|f| f.kind == "conflict") {
+        let Some(trials) = measured.get(&finding.call_id) else {
+            continue;
+        };
+        let Some(call) = run.calls.iter().find(|c| c.id == finding.call_id) else {
+            continue;
+        };
+        let sources = &finding.detail["sources"];
+        let mut individual = BTreeSet::new();
+        let mut together = false;
+        for ((decision, _), edits) in trials {
+            if !call
+                .decisions
+                .iter()
+                .any(|d| d.id == *decision && eligible(d, &finding.detail))
+            {
+                continue;
+            }
+            let matched: Vec<_> = sources
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|s| s["id"].as_str())
+                .filter(|id| edits.contains(*id))
+                .collect();
+            together |= matched.len() == 2;
+            individual.extend(matched);
+        }
+        if !individual.is_empty() {
+            finding.detail["conflict_trials"] =
+                json!({"sources":individual,"same_report":together});
+        }
+    }
+}
 
 pub(super) fn followup(db: &Connection, evidence: &Value) -> Result<Value> {
     let trace = evidence["trace_id"]
@@ -32,13 +110,7 @@ pub(super) fn followup(db: &Connection, evidence: &Value) -> Result<Value> {
     let decisions: Vec<_> = call
         .decisions
         .iter()
-        .filter(|d| {
-            matches!(d.kind.as_str(), "model_output" | "tool_call")
-                && !d.outcome.is_null()
-                && d.applies_to
-                    .as_ref()
-                    .is_none_or(|s| detail["rule"] == s.key && detail["scope"] == s.scope)
-        })
+        .filter(|d| eligible(d, detail))
         .collect();
     let ids = serde_json::to_string(&decisions.iter().map(|d| &d.id).collect::<Vec<_>>())?;
     let mut query = db.prepare_cached(
@@ -80,3 +152,41 @@ pub(super) fn followup(db: &Connection, evidence: &Value) -> Result<Value> {
     Ok(json!({"recorded_request":body.is_some(),"sources":sources,
         "decisions":decisions.iter().map(|d| json!({"id":d.id,"label":d.label})).collect::<Vec<_>>()}))
 }
+
+// A conversation with a tested and an untested call still has a gap. Keep source
+// factors separate since an installation can receive the same rule from multiple organizations.
+pub(super) const COVERAGE: &str = ", conflict_calls AS (
+    SELECT group_id,factor,thread_key,thread,observed,trace_id,call_id,n,
+        CASE WHEN json_extract(detail,'$.conflict_trials.same_report') THEN 2
+             WHEN json_array_length(detail,'$.conflict_trials.sources')>0 THEN 1 ELSE 0 END AS tested
+    FROM events WHERE kind='conflict' AND thread_key IS NOT NULL
+), conflict_threads AS (
+    SELECT group_id,factor,thread_key,count(*) AS calls,max(observed) AS latest,
+        CASE WHEN min(tested)=2 THEN 'complete' WHEN max(tested)=0 THEN 'untested' ELSE 'partial' END AS coverage
+    FROM conflict_calls GROUP BY group_id,factor,thread_key
+), conflict_groups AS (
+    SELECT group_id,factor,count(*) AS conversations,sum(calls) AS calls,max(latest) AS latest,
+        sum(coverage='complete') AS complete,sum(coverage='untested') AS untested,sum(coverage='partial') AS partial
+    FROM conflict_threads GROUP BY group_id,factor
+)";
+
+pub(super) const SUMMARY: &str =
+    "SELECT json_object('group',group_id,'factor',factor,'conversations',conversations,
+    'calls',calls,'complete',complete,'untested',untested,'partial',partial,
+    'conflict',json((SELECT json_object('rule',json_extract(e.detail,'$.rule'),'scope',json_extract(e.detail,'$.scope'),
+        'sources',json_extract(e.detail,'$.sources'),'org',e.org) FROM events e
+        WHERE (e.group_id,e.factor)=(g.group_id,g.factor) AND e.thread_key IS NOT NULL
+        ORDER BY e.observed DESC,e.trace_id,e.n LIMIT 1)))
+    FROM conflict_groups g";
+
+pub(super) const CONVERSATIONS: &str = ", page AS (
+    SELECT * FROM conflict_threads WHERE coverage=? ORDER BY latest DESC,thread_key LIMIT ? OFFSET ?
+), examples AS (
+    SELECT c.*,p.calls,p.coverage,p.latest,row_number() OVER (
+        PARTITION BY c.thread_key ORDER BY c.tested,c.observed DESC,c.trace_id,c.call_id,c.n) AS example
+    FROM page p JOIN conflict_calls c USING(group_id,factor,thread_key)
+) SELECT json_object('thread',e.thread,'thread_key',e.thread_key,'calls',e.calls,'coverage',e.coverage,
+    'trace',e.trace_id,'call',e.call_id,'group',e.group_id,'factor',e.factor,'tested',e.tested,
+    'sources',json_extract(o.detail,'$.sources'),'tested_sources',coalesce(json_extract(o.detail,'$.conflict_trials.sources'),json('[]')))
+    FROM examples e JOIN observations o ON (o.trace_id,o.n)=(e.trace_id,e.n)
+    WHERE example=1 ORDER BY e.latest DESC,e.thread_key";

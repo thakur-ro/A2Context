@@ -290,6 +290,7 @@ pub fn derive(
             ));
         }
     }
+    super::conflict::annotate(run, reports, &mut findings);
     super::replacement::compare(run, reports, &mut findings);
     Ok(findings)
 }

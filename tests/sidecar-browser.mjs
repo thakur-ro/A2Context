@@ -569,6 +569,36 @@ try {
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
   }
+  if (process.env.CONFLICT_COVERAGE_URL) {
+    for (const device of [page,mobile]) {
+      await device.goto(process.env.CONFLICT_COVERAGE_URL);
+      await device.getByRole("link",{name:/Compare the conflicting sources in 2 conversations/}).click();
+      const categories = device.getByRole("navigation",{name:"Conflict test coverage"});
+      await device.getByRole("link",{name:/Return follow-up.*Awaiting an individual comparison/}).waitFor();
+      await categories.getByRole("link",{name:"1 · Partially tested"}).click();
+      const example = device.getByRole("link",{name:/Policy question.*Awaiting an individual comparison · journal-faq/});
+      await example.waitFor();
+      if (device === page && process.env.CONFLICT_COVERAGE_SCREENSHOT) await device.screenshot({path:process.env.CONFLICT_COVERAGE_SCREENSHOT});
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      await example.click();
+      await device.getByRole("link",{name:"Compare both edits in one replay"}).click();
+      const planner = device.getByRole("dialog",{name:"Prepare controlled replay"});
+      await planner.getByRole("button",{name:"Use captured request"}).click();
+      const selected = planner.locator(".replay-candidate").filter({has:device.locator("input:checked")});
+      await selected.first().waitFor();
+      assert.equal(await selected.count(),2);
+      await planner.getByLabel("Runner ID").fill("coverage-check");
+      const download = device.waitForEvent("download");
+      await planner.getByRole("button",{name:"Download replay case"}).click();
+      const test = JSON.parse(await readFile(await (await download).path(),"utf8"));
+      assert.deepEqual(test.interventions.map(edit=>edit.context_id).sort(),["input:0:0","input:1:0"]);
+      await device.goBack();
+      await device.getByRole("link",{name:"Back to conflict test coverage"}).click();
+      await example.waitFor();
+      await categories.getByRole("link",{name:"1 · Both sources compared on every call"}).click();
+      await device.getByRole("link",{name:/Standard return.*Both sources compared in one report/}).waitFor();
+    }
+  }
   if (process.env.CONFLICT_TEST_URL) {
     for (const device of [page, mobile]) {
       await device.goto(process.env.CONFLICT_TEST_URL);

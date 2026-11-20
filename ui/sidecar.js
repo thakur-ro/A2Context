@@ -10,6 +10,7 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
+const conflictCoverage = query.get("conflict_coverage");
 const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
 const targetPatterns = query.get("targets") === "1";
@@ -732,7 +733,8 @@ function findingCard(card) {
     element("div", {}, tag(kind), element("h2", { text: kind === "prefill" ? prefillSummary(card.prefill_counts) : findingTitle(kind, detail) }),
       repeatedRouting(card) ? element("p", {text:routingCoverage(card)}) : kind === "prefill" ? prefillFollowup(card) : element("p", { text: findingDetail(kind, detail) }),
       element("p", { className: "label", text: plural(card.occurrences, "observation") + " · " + plural(card.traces, "request") }),
-      link("Review recommendation", url({ factor: factorId, recommendation: card.id }), "action")),
+      link("Review recommendation", url({ factor: factorId, recommendation: card.id }), "action"),
+      card.kind === "conflict" && card.threads > 1 && factorId ? link("Review test coverage across conversations",url({recommendation:card.id,factor:factorId,conflict_coverage:"all"})) : null),
     element("div", { className: "suggestion" }, element("span", { className: "label", text: "Next experiment" }),
       element("p", { text: card.action.title })));
 }
@@ -997,30 +999,60 @@ function jointRecurrence(card) {
     element("p", {text:"These reports used the same source edits, runner and scoring rule, with " + plural(samples, "trial") + " per condition. A conversation can appear in more than one row."}));
 }
 
+const coverageNames = {untested:"No comparable replay", partial:"Partially tested", complete:"Both sources compared on every call"};
+
+async function conflictCoverageView() {
+  const filters = {...scope,group:recommendationId,factor:factorId};
+  const selection = {recommendation:recommendationId,factor:factorId};
+  const summary = (await api("conflict-coverage",filters)).rows[0];
+  byId("title").textContent = "Conflict test coverage";
+  if (!summary) return element("p",{className:"empty",text:"No identified conversations with this conflict in scope."});
+  const category = Object.hasOwn(coverageNames,conflictCoverage) ? conflictCoverage :
+    (summary.untested ? "untested" : summary.partial ? "partial" : "complete");
+  const page = await api("conflict-conversations",{...filters,coverage:category,offset:pageOffset});
+  byId("summary").textContent = factorName(summary.conflict.sources) + " · " + summary.conflict.rule + " · " + summary.conflict.scope;
+  pagination(page.next_offset,{...selection,conflict_coverage:category});
+  return element("div",{className:"feed"}, link("Back to source factor",url({factor:factorId})),
+    panel(plural(summary.conversations,"conversation") + " · " + plural(summary.calls,"conflicting call"),
+      element("p",{text:"A call counts as tested on both sides when one report edits each source separately against the same original proposal."}),
+      element("nav",{className:"coverage-options","aria-label":"Conflict test coverage"},...Object.entries(coverageNames).map(([key,label]) =>
+        link(summary[key] + " · " + label,url({...selection,conflict_coverage:key}),null,key===category)))),
+    panel(coverageNames[category], page.rows.length ? listing(page.rows,row => {
+      const missing = row.sources.filter(s => !row.tested_sources.includes(s.id)).map(sourceName);
+      const evidence = row.tested === 2 ? "Both sources compared in one report" :
+        missing.length ? "Awaiting an individual comparison · " + missing.join(" and ") :
+        "Each source was tested in a separate report";
+      return rowLink(row.thread,plural(row.calls,"conflicting call") + " · " + evidence,
+        url({...selection,trace:row.trace,call:row.call,from_coverage:category,from_offset:pageOffset || null}));
+    }) : element("p",{text:"No conversations in this category."})));
+}
+
 function conflictTest(card) {
   const test = card.conflict_test;
   if (!test) return null;
   const {trace_id:trace, call_id:call, detail} = card.evidence;
   const hasTrials = test.sources.some(s => s.comparisons.length);
   const chooseOutcome = element("select", {}, ...test.decisions.map(d => element("option", {value:d.id, text:d.label})));
+  const editable = s => s.captured && s.matching_fields !== 0;
+  function plan(label, first, second) {
+    const action = link(label,"#");
+    const setTarget = () => {
+      const hash = new URLSearchParams({v:1,view:"decisions",run:trace,call,decision:chooseOutcome.value,context:first,plan:"edit"});
+      if (second) hash.set("other_context",second);
+      action.href = "/details?" + new URLSearchParams({run:trace}) + "#" + hash;
+    };
+    setTarget();
+    chooseOutcome.addEventListener("change",setTarget);
+    return action;
+  }
   const sources = test.sources.map(result => {
     const source = detail.sources.find(s => s.id === result.id);
     const name = sourceName(source);
     const trials = result.comparisons.map(t => element("div", {}, link(plural(t.reports, "replay report") + (t.changed ? " with a changed proposal" : " with a matching proposal"),
       url({recommendation:t.group,trace,call,decision:t.decision,replay:t.replay,context:result.id}) + "#proposal-pair"),
       element("p",{className:"row-extra",text:"Example · " + proposalLabel(t.pair.original,t.pair) + " → " + proposalLabel(t.pair.edited,t.pair)})));
-    const canPrepare = test.decisions.length && result.captured && result.matching_fields !== 0;
-    let action;
-    if (canPrepare) {
-      const label = test.recorded_request ? "Prepare edit to " + name : "Supply request to test " + name;
-      action = link(label,"#");
-      const setTarget = () => {
-        const hash = new URLSearchParams({v:1,view:"decisions",run:trace,call,decision:chooseOutcome.value,context:result.id,plan:"edit"});
-        action.href = "/details?" + new URLSearchParams({run:trace}) + "#" + hash;
-      };
-      setTarget();
-      chooseOutcome.addEventListener("change",setTarget);
-    }
+    const label = test.recorded_request ? "Prepare edit to " + name : "Supply request to test " + name;
+    const action = test.decisions.length && editable(result) && plan(label,result.id);
     return element("div", {}, element("strong", {text:name + version(source.version)}),
       ...trials,
       !trials.length && element("p",{text:"No comparable single-source replay."}),
@@ -1033,7 +1065,9 @@ function conflictTest(card) {
       "Keep the other declaration in place and compare the original and edited proposals."}),
     !test.recorded_request && element("p",{className:"uncertainty",text:"The original request body was not captured. Supply it to locate the editable field."}),
     test.decisions.length > 1 && element("label",{}, "Outcome to test ",chooseOutcome),
-    element("div",{className:"comparison"},...sources));
+    element("div",{className:"comparison"},...sources),
+    !detail.conflict_trials?.same_report && test.decisions.length && test.sources.length === 2 && test.sources.every(editable) &&
+      plan("Compare both edits in one replay",test.sources[0].id,test.sources[1].id));
 }
 
 function findingReview(card, occurrences) {
@@ -1088,6 +1122,8 @@ function findingReview(card, occurrences) {
     card.kind === "token" ? element("details", {className:"panel"}, element("summary", {text:"Peak score change and block swap"}),
       recommendationDetail(card.kind, detail, card.action, card.trend)) : recommendationDetail(card.kind, detail, card.action, card.trend, card.conflict_test?.sources.some(s => s.comparisons.length)),
     conflictTest(card),
+    card.kind === "conflict" && card.threads > 1 && factorId ? link("Review test coverage across conversations",
+      url({recommendation:card.id,factor:factorId,conflict_coverage:"all"})) : null,
     jointRecurrence(card),
     measuredExample.trace ? link("See this recommendation across requests", url({ recommendation: card.id, factor: factorId })) : null,
     card.threads > 1 ? compareForm(card.id) : null, evidence,
@@ -1753,7 +1789,9 @@ async function render(refresh = false) {
   } else if (view === "threads" && threadId) {
     body = await conversationView();
   } else if (view === "findings") {
-    if (ranking && !recommendationId) {
+    if (conflictCoverage && recommendationId && factorId) {
+      body = await conflictCoverageView();
+    } else if (ranking && !recommendationId) {
       body = await rankingView();
     } else if (targetPatterns) {
       body = await targetPatternView();
@@ -1783,6 +1821,8 @@ async function render(refresh = false) {
           else body.append(conversationLink);
         }
         if (screenedPattern && screenedPairs) body.prepend(link("Back to flagged pair", url(screenSelection)));
+        if (query.has("from_coverage")) body.prepend(link("Back to conflict test coverage",
+          url({recommendation:recommendationId,factor:factorId,conflict_coverage:query.get("from_coverage"),offset:query.get("from_offset")})));
         if (comparisonResult) body.prepend(link("Back to compared conversations", url({proposal_result:comparisonResult,coverage_factor:comparisonScope})));
         if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel, ...cohortMode, cohort_factor:cohortFactor})));
       }
@@ -1905,7 +1945,8 @@ async function render(refresh = false) {
       byId("content").dataset.signature = signature;
       const losses = !pageOffset && impact.ranked_reference_losses;
       const lower = !pageOffset && impact.lower_edit_changes;
-      const featured = !losses && !lower && !pageOffset && factors.rows[0];
+      const gap = !pageOffset && impact.conflict_gap;
+      const featured = !losses && !lower && !gap && !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
       body = element("div", {className:"overview"}, impactPanel(impact),
         losses ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}),
@@ -1916,6 +1957,10 @@ async function render(refresh = false) {
           element("a",{className:"featured",href:url({ranking:"all",review:"lower_changed"})},element("div",{},
             element("h3",{text:"Inspect " + plural(lower,"call") + " where a lower-ranked edit changed the proposal"}),
             element("p",{text:plural(impact.lower_edit_conversations,"linked conversation") + ". The edit with the largest first-token shift kept the original proposal."})))) :
+        gap ? element("section",{className:"investigation"},element("h2",{text:"Recommended investigation"}),
+          element("a",{className:"featured",href:url({recommendation:gap.group,factor:gap.factor,conflict_coverage:gap.untested ? "untested" : "partial"})},
+            element("div",{},element("h3",{text:"Compare the conflicting sources in " + plural(gap.untested+gap.partial,"conversation")}),
+              element("p",{text:factorName(gap.conflict.sources) + " · " + gap.complete + " of " + plural(gap.conversations,"conversation") + " with both source edits compared at every conflicting call."})))) :
         featured ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}), factorRow(featured, true)) : null,
         targets.rows.length ? element("section", {className:"factors"}, element("h2", {text:"Recurring target misses"}),
           listing(targets.rows.slice(0,1), targetPatternRow), targets.rows.length > 1 ? link("Review all recurring misses",url({targets:1})) : null) : null,
@@ -1990,7 +2035,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      ranking, quality, review, pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
+      ranking, quality, review, conflict_coverage:conflictCoverage,from_coverage:query.get("from_coverage"),pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

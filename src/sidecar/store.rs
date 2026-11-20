@@ -244,10 +244,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 23 {
+        if version == 24 {
             return Ok(());
         }
-        if !(0..23).contains(&version) {
+        if !(0..24).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -259,25 +259,31 @@ impl Store {
             let mut stmt = tx.prepare(
                 "SELECT t.id, EXISTS (
                 SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='prefill'
-            ) AS has_ranking FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL
+            ) AS has_ranking, EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='conflict')
+               AND EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='replay') AS has_conflict_trials
+            FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR has_conflict_trials)
             ORDER BY t.id LIMIT 16",
             )?;
             let ids = stmt
-                .query_map([&after], |r| {
-                    Ok((r.get::<_, String>(0)?, r.get::<_, bool>(1)?))
+                .query_map(params![after, version], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, bool>(1)?,
+                        r.get::<_, bool>(2)?,
+                    ))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
             drop(stmt);
             let Some(last) = ids.last() else { break };
-            for (id, has_ranking) in &ids {
+            for (id, has_ranking, has_conflict_trials) in &ids {
                 let run = load_run(&tx, id)?;
                 if let Some(run) = run {
                     if version < 20 {
                         super::capture::replace(&tx, id, Some(&run))?;
-                    } else {
+                    } else if version < 23 {
                         super::conversation::index(&tx, &run)?;
                     }
-                    if version < 22 && *has_ranking {
+                    if (version < 22 && *has_ranking) || *has_conflict_trials {
                         refresh_findings(&tx, &run)?;
                     }
                 }
@@ -285,7 +291,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 23)?;
+        self.0.pragma_update(None, "user_version", 24)?;
         Ok(())
     }
 
@@ -645,6 +651,8 @@ impl Store {
                 | "factors"
                 | "impact"
                 | "conversations-without-findings"
+                | "conflict-conversations"
+                | "conflict-coverage"
                 | "outcome-factors"
                 | "conversation-outcomes"
                 | "proposal-conversations"
@@ -707,6 +715,12 @@ impl Store {
             }
             append_window(&mut sql, &mut args, "o.observed", filters)?;
             sql.push(')');
+        }
+        if matches!(
+            view,
+            "conflict-coverage" | "conflict-conversations" | "impact"
+        ) {
+            sql.push_str(super::conflict::COVERAGE);
         }
         if matches!(view, "order-tests" | "factors") {
             sql.push_str(super::order::MATCHED);
@@ -906,13 +920,31 @@ impl Store {
                     FROM page p JOIN observations o ON o.trace_id=p.trace_id AND o.n=p.n
                     JOIN traces t ON t.id=p.trace_id ORDER BY p.level,p.observed DESC,p.thread_key");
             }
+            "conflict-coverage" | "conflict-conversations" => {
+                for key in ["group","factor"] {
+                    if super::required(filters,key)?.is_empty() { return Err(format!("missing {key}").into()); }
+                }
+                if view=="conflict-coverage" {
+                    sql.push_str(super::conflict::SUMMARY);
+                    sql.push_str(" LIMIT ? OFFSET ?");
+                } else {
+                    let coverage=super::required(filters,"coverage")?;
+                    if !matches!(coverage,"untested"|"partial"|"complete") { return Err("unknown conflict coverage".into()); }
+                    args.push(coverage.to_owned());
+                    sql.push_str(super::conflict::CONVERSATIONS);
+                }
+            }
             "replay-variations" => sql.push_str(super::variation::EXAMPLES),
             "order-tests" => sql.push_str(" SELECT json_object('factor',factor,'design',design,
                 'differs',differs,'total',count(*) OVER (),'differing',sum(differs) OVER (),
                 'forward',json(forward),'reverse',json(reverse)) FROM pairs
                 ORDER BY differs DESC,factor,design LIMIT ? OFFSET ?"),
             "impact" => {
-                sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
+                sql.push_str(" SELECT json_object('conflict_gap',json((");
+                sql.push_str(super::conflict::SUMMARY);
+                sql.push_str(" WHERE conversations>=2 AND (complete+partial)>0 AND (untested+partial)>0
+                    ORDER BY untested DESC,partial DESC,conversations DESC,latest DESC,group_id,factor LIMIT 1)),
+                    'conversations',count(DISTINCT thread_key),
                     'ranked_calls',count(*) FILTER (WHERE kind='prefill' AND json_type(detail,'$.selector_check')='object'),
                     'lower_edit_changes',count(*) FILTER (WHERE kind='prefill' AND json_extract(detail,'$.selector_check.rank_review.status')='lower_changed'),
                     'lower_edit_conversations',count(DISTINCT thread_key) FILTER (WHERE kind='prefill' AND json_extract(detail,'$.selector_check.rank_review.status')='lower_changed'),
