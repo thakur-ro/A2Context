@@ -11,6 +11,7 @@ include = [
     "/ui/*.js",
     "/ui/*.html",
     "/ui/*.css",
+    "/ui/*.svg",
     "/ui/mcp-app/*.json",
     "/ui/mcp-app/*.html",
     "/ui/mcp-app/*.js",
@@ -43,4 +44,4 @@ tempfile = "3"
 tiny_http = "0.12"
 time = { version = "0.3", features = ["formatting", "parsing"] }
 tokio = { version = "1", features = ["rt"] }
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["bundled", "functions"] }

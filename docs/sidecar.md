@@ -36,6 +36,10 @@ For named fragments in a string field, the sidecar checks the captured UTF-8 byt
 
 **Download position test** prepares eight conditions. On each of the two captured backgrounds, it keeps the other named fragments in their relative order, puts the selected source at each tested position, and applies the original replacement at each slot. The download contains the full request bodies. Preparation makes zero model calls. **Attach completed trials** binds each returned proposal to its background, replay, source, slot, replacement state and request digest.
 
+On the overview, a factor with contrasting edit effects shows the latest position-test counts when both requests match the active filters. Within the replay tier, a test that changed both proposals with the source present and neither with it replaced comes first. This ordering rule describes two backgrounds on the submitted runner. Accurate answers and repeatability on new requests require separate checks.
+
+Agents can read `position_test` on a `factors` row to get the group, pair, trial counts and latest result. It is null when there is no receipt for the current comparison. If a factor has several tested comparisons, the overview prefers the two-background result described above, then the most recently submitted receipt. The detail view lists the other comparisons.
+
 Agents can follow the same route. From a `replay-variations` row with a `position_pair`, carry the current scope plus `factor`, `group`, `pair=position_pair`, `baseline_trials` and `edit_trials` to `GET /api/sidecar/position-plan`. Read the two trial counts from the changed example's baseline and variant measurements. A stale pair or a filter that excludes one background makes the plan unavailable. Each condition references a compact JSON string in `requests` by SHA-256. Numbered slots are one-based. Each background retains its original position and evidence location.
 
 ```sh

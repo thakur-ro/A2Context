@@ -94,6 +94,10 @@ python3 examples/public-qa/replay_source_position.py /tmp/nexus-qa.jsonl.gz /pat
 
 ### Run the downloaded test
 
+Once the saved trials are attached, the overview highlights the film source. Open the card to see the positions tested, the runner and the eight returned answers. Both orders of the passages came from one question.
+
+![Public QA overview with ten conversations and a measured source-position recommendation for the film question.](../../docs/media/position-overview.png)
+
 With both saved studies in the sidecar, open the film comparison for source version `77e0876f48fc`. Choose **Download position test**. To see the measured result immediately, open **Attach completed trials** and select the [saved CLI trials](film-position-trials.json). Expand **Compare all eight proposals** to see the answers for each passage position.
 
 ![Position test for the film question. Moving the intact source changed both answers. Moving the replacement left both answers unchanged.](../../docs/media/position-test-result.png)

@@ -38,6 +38,9 @@ def check(binary, folder):
         row, = get(base, "replay-variations", org="public-qa")["rows"]
         selection = {"factor": row["factor"], "group": row["group"], "pair": row["position_pair"],
                      "baseline_trials": 1, "edit_trials": 1, "org": "public-qa"}
+        factor_scope = {"org": selection["org"], "factor": row["factor"]}
+        factor, = get(base, "factors", **factor_scope)["rows"]
+        assert factor["position_test"] is None
         plan = get(base, "position-plan", **selection)
         plan_path, result_path = folder/"plan", folder/"result"
         plan_path.write_text(json.dumps(plan))
@@ -48,6 +51,14 @@ def check(binary, folder):
         # Reordered uploads with identical observations refer to the same receipt.
         payload = {"selection": selection, "result": result}
         send(base, "/api/position-results", payload, expected=201)
+        top = get(base, "factors", org=selection["org"])["rows"][0]
+        test = top["position_test"]
+        assert top["id"] == selection["factor"] and test["result"]["present"] == {"changed": 2, "compared": 2}
+        assert all(test[key] == selection[key] for key in ("pair", "group", "baseline_trials", "edit_trials"))
+        for bg in plan["backgrounds"]:
+            partial, = get(base, "factors", **factor_scope, trace=bg["location"]["run_id"])["rows"]
+            assert partial["position_test"] is None
+        assert get(base, "factors", org="another-workspace")["rows"] == []
         result["trials"].reverse()
         send(base, "/api/position-results", payload)
         for field in ("pair", "user", "baseline_trials"):
@@ -70,9 +81,17 @@ def check(binary, folder):
         assert row["position_reports"] == 2 and row["latest_position_result"]["present"]["compared"] == 1
         assert row["latest_position_result"]["replaced"] == {"changed": 0, "compared": 2}
         latest, earlier = get(base, "position-results", **selection)["rows"]
+        factor, = get(base, "factors", **factor_scope)["rows"]
+        assert factor["position_test"]["result"] == latest
         assert earlier["present"] == {"changed": 2, "compared": 2}
         saved = get(base, "position-results", **selection, id=latest["id"])
         assert len(saved["trials"]) == 8
+    # Even two correct trace IDs cannot identify a test if its compared sources have changed.
+    with sqlite3.connect(database) as db:
+        db.execute("UPDATE position_results SET pair=?", ("0"*64,))
+    with server(binary, database, "--capture-content") as base:
+        factor, = get(base, "factors", **factor_scope)["rows"]
+        assert factor["position_test"] is None
     with sqlite3.connect(database) as db:
         db.execute("PRAGMA foreign_keys=ON")
         db.execute("DELETE FROM traces WHERE id=?", (plan["backgrounds"][1]["location"]["run_id"],))

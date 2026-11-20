@@ -20,6 +20,7 @@ type Rejected = (u16, String);
 impl Store {
     pub fn open(path: &Path) -> Result<Self> {
         let db = Connection::open(path)?;
+        super::position_plan::register_pair_id(&db)?;
         db.busy_timeout(Duration::from_secs(2))?;
         db.execute_batch(
             "PRAGMA journal_mode=WAL;
@@ -527,6 +528,9 @@ impl Store {
         if matches!(view, "replay-variations" | "factors") {
             sql.push_str(super::variation::BY_INPUT);
         }
+        if view == "factors" {
+            sql.push_str(super::variation::TESTED_POSITIONS);
+        }
         match view {
             "replay-variations" => sql.push_str(super::variation::EXAMPLES),
             "order-tests" => sql.push_str(" SELECT json_object('factor',factor,'design',design,
@@ -561,11 +565,15 @@ impl Store {
                         WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' THEN 2 WHEN kind='token' THEN 3
                         WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 6 ELSE 7 END) END AS signal
                 FROM events GROUP BY factor)
-                SELECT json_object('id',factor,'sources',json(sources),'org',org,'conversations',conversations,
+                SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,
+                    'position_test',CASE WHEN t.pair IS NOT NULL THEN json_object(
+                        'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
+                        'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -3 THEN 'order' WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
                         WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
-                FROM grouped ORDER BY signal,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,factor LIMIT ? OFFSET ?"),
+                FROM grouped g LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
+                ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
             "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
                 'thread_key',thread_key,'observed',observed,'kind',kind,'detail',json(detail)) FROM events
                 ORDER BY observed DESC,trace_id,call_id,n LIMIT ? OFFSET ?"),

@@ -18,8 +18,15 @@ pub(super) fn digest(text: &str) -> String {
 }
 
 pub(super) fn pair_id(row: &Value) -> String {
-    let references = ["changed_example", "equal_example"].map(|key| {
-        let example = &row[key];
+    comparison_digest(
+        &row["factor"],
+        &row["group"],
+        [&row["changed_example"], &row["equal_example"]],
+    )
+}
+
+fn comparison_digest(factor: &Value, group: &Value, examples: [&Value; 2]) -> String {
+    let references = examples.map(|example| {
         let m = &example["measurement"];
         json!([
             m["location"],
@@ -29,7 +36,28 @@ pub(super) fn pair_id(row: &Value) -> String {
             example["fragment_order"]
         ])
     });
-    digest(&json!([row["factor"], row["group"], references]).to_string())
+    digest(&json!([factor, group, references]).to_string())
+}
+
+// The overview and plan export must identify the same two observations after filtering.
+pub(super) fn register_pair_id(db: &rusqlite::Connection) -> rusqlite::Result<()> {
+    use rusqlite::functions::FunctionFlags;
+    db.create_scalar_function(
+        "position_pair_id",
+        4,
+        FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+        |ctx| {
+            let detail = |i| -> rusqlite::Result<Value> {
+                serde_json::from_str(ctx.get_raw(i).as_str()?)
+                    .map_err(|e| rusqlite::Error::UserFunctionError(e.into()))
+            };
+            Ok(comparison_digest(
+                &json!(ctx.get_raw(0).as_str()?),
+                &json!(ctx.get_raw(1).as_str()?),
+                [&detail(2)?, &detail(3)?],
+            ))
+        },
+    )
 }
 
 pub(super) fn prepare(store: &Store, row: &Value) -> Result<Plan> {

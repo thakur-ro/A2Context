@@ -116,6 +116,25 @@ pub(super) const BY_INPUT: &str = ", input_results AS (
     HAVING min(high)=0 AND max(low)=1
 )";
 
+// Restrict candidates to receipts for both representative traces before checking
+// their full comparison digest. CROSS JOIN fixes the lookup order so untested
+// candidates never hash either observation. Each pair uses its latest receipt.
+pub(super) const TESTED_POSITIONS: &str = ", measured_positions AS (
+    SELECT v.factor,v.group_id,v.baseline_trials,v.edit_trials,r.pair,r.summary,r.rowid AS receipt,
+        (json_extract(r.summary,'$.present.changed')=2 AND json_extract(r.summary,'$.replaced.compared')=2
+         AND json_extract(r.summary,'$.replaced.changed')=0) AS isolated
+    FROM variations v
+    CROSS JOIN position_results r INDEXED BY position_results_first ON r.first_trace=json_extract(v.changed_example,'$[0]')
+        AND r.second_trace=json_extract(v.equal_example,'$[0]')
+    CROSS JOIN observations a ON a.trace_id=r.first_trace AND a.n=json_extract(v.changed_example,'$[1]')
+    CROSS JOIN observations b ON b.trace_id=r.second_trace AND b.n=json_extract(v.equal_example,'$[1]')
+    WHERE r.rowid=(SELECT max(newest.rowid) FROM position_results newest WHERE newest.pair=r.pair)
+      AND r.pair=position_pair_id(v.factor,v.group_id,a.detail,b.detail)
+), tested_factors AS (
+    SELECT *,row_number() OVER (PARTITION BY factor ORDER BY isolated DESC,receipt DESC) AS priority
+    FROM measured_positions
+)";
+
 // Resolve only the two representative observations for each returned comparison.
 pub(super) const EXAMPLES: &str = " SELECT json_object(
     'factor',v.factor,'group',v.group_id,'changed_inputs',v.changed_inputs,

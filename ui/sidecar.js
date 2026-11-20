@@ -13,6 +13,9 @@ const factorId = query.get("factor");
 const traceId = query.get("trace");
 const measuredExample = Object.fromEntries(["trace", "call", "replay", "context"]
   .filter((key) => recommendationId && query.has(key)).map((key) => [key, query.get(key)]));
+const positionPair = query.get("pair");
+const positionDesign = positionPair ? Object.fromEntries(["group", "baseline_trials", "edit_trials"]
+  .filter((key) => query.has(key)).map((key) => [key, query.get(key)])) : {};
 const threadId = query.get("thread");
 const pageOffset = Number(query.get("offset")) || 0;
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
@@ -218,7 +221,10 @@ function tag(kind) {
 }
 
 function factorName(sources) {
-  return sources.map((source) => sourceName(source) + (source.version ? " (" + source.version + ")" : "")).join(" + ");
+  return sources.map((source) => {
+    const revision = /^[a-f0-9]{64}$/i.test(source.version) ? source.version.slice(0, 12) : source.version;
+    return sourceName(source) + (revision ? " (" + revision + ")" : "");
+  }).join(" + ");
 }
 
 function replayCoverage(impact) {
@@ -248,6 +254,17 @@ function impactPanel(impact) {
       replayCoverage(impact)));
 }
 
+function positionLink(factor, test) {
+  return url({ factor, variation: 1, pair: test.pair, group: test.group,
+    baseline_trials: test.baseline_trials, edit_trials: test.edit_trials });
+}
+
+function positionReadout(result) {
+  const { present, replaced } = result;
+  if (present.compared < 2 || replaced.compared < 2) return "Position test has incomplete trials";
+  return "Changed proposals · source present " + present.changed + "/2 · source replaced " + replaced.changed + "/2";
+}
+
 function factorRow(factor, featured = false) {
   const signals = { variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
@@ -258,18 +275,21 @@ function factorRow(factor, featured = false) {
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
     duplicate: "Check whether one copy can be removed", dialogue: "Check the repeated message positions",
     equal: "Review the equal match rates" };
+  const test = factor.signal === "variation" && factor.position_test;
+  const isolated = test && test.result.present.changed === 2 && test.result.replaced.compared === 2 && test.result.replaced.changed === 0;
+  const headline = isolated ? "Moving this source changed both proposals" : "Review the source-position test";
   const name = factorName(factor.sources);
   const counts = [factor.org, plural(factor.conversations, "identified conversation"), plural(factor.requests, "request"),
     plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ");
   return element("a", { className: featured ? "factor-row featured" : "factor-row",
-    href: url({ factor: factor.id, ...(factor.signal === "order" && { order: 1 }), ...(factor.signal === "variation" && { variation: 1 }) }) },
+    href: test ? positionLink(factor.id, test) : url({ factor: factor.id, ...(factor.signal === "order" && { order: 1 }), ...(factor.signal === "variation" && { variation: 1 }) }) },
     element("div", {},
-      featured ? element("span", { className: "first-step", text: "Recommended next step" }) : null,
-      element("strong", { text: featured ? step[factor.signal] : name }),
+      featured ? element("span", { className: "first-step", text: test ? "Measured position test" : "Recommended next step" }) : null,
+      element("strong", { text: featured ? (test ? headline : step[factor.signal]) : name }),
       featured ? element("span", { className: "source-names", text: name }) : null,
       element("span", { className: "row-extra", text: counts })),
     element("span", { className: ["conflict", "duplicate", "dialogue"].includes(factor.signal) ? "basis" : "basis measured",
-      text: signals[factor.signal] }),
+      text: test ? positionReadout(test.result) : signals[factor.signal] }),
     element("span", { className: "arrow", "aria-hidden": "true", text: "→" }));
 }
 
@@ -770,13 +790,24 @@ async function render(refresh = false) {
       if (cards.rows.length) body = review(cards.rows[0], occurrences);
       pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, ...measuredExample });
     } else if (factorId && query.has("variation")) {
-      const data = await api("replay-variations", { ...scope, factor: factorId, offset: pageOffset });
+      const data = await api("replay-variations", { ...scope, factor: factorId, ...positionDesign, offset: pageOffset });
       byId("title").textContent = "When does the edit matter?";
       byId("summary").textContent = "The same source edit had different effects on distinct requests. Each replay scored its own recorded outcome.";
-      body = element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId })),
-        ...data.rows.map(variationComparison),
-        !data.rows.length ? element("p", { className: "empty", text: "No contrasting replay results in this scope." }) : null);
-      pagination(data.next_offset, { factor: factorId, variation: 1 });
+      if (positionPair) {
+        const row = data.rows.find((item) => item.position_pair === positionPair && item.latest_position_result);
+        byId("title").textContent = "Source-position test";
+        byId("summary").textContent = row ? factorName(row.changed_example.sources) + " · Positions " +
+          row.changed_example.fragment_order.position + " and " + row.equal_example.fragment_order.position +
+          " of " + row.changed_example.fragment_order.total : "The selected comparison is unavailable in this scope.";
+        body = element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId })),
+          row ? positionExperiment(row) : null);
+        pagination(null);
+      } else {
+        body = element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId })),
+          ...data.rows.map(variationComparison),
+          !data.rows.length ? element("p", { className: "empty", text: "No contrasting replay results in this scope." }) : null);
+        pagination(data.next_offset, { factor: factorId, variation: 1 });
+      }
     } else if (factorId && query.has("order")) {
       const data = await api("order-tests", { ...scope, factor: factorId, offset: pageOffset });
       const result = data.rows[0];
@@ -789,12 +820,14 @@ async function render(refresh = false) {
       pagination(data.next_offset, { factor: factorId, order: 1 });
     } else if (factorId) {
       const filters = { ...scope, factor: factorId };
-      const [data, impact, orders, variations] = await Promise.all([api("findings", { ...filters, offset: pageOffset }),
-        api("impact", filters), api("order-tests", filters), api("replay-variations", filters)]);
+      const [data, impact, orders, variations, factors] = await Promise.all([api("findings", { ...filters, offset: pageOffset }),
+        api("impact", filters), api("order-tests", filters), api("replay-variations", filters), api("factors", filters)]);
+      const test = factors.rows[0]?.position_test;
       byId("title").textContent = data.rows.length ? factorName(data.rows[0].evidence.detail.sources) : "Source factor";
       byId("summary").textContent = "Each recommendation below uses its own comparison and outcome.";
       body = element("div", { className: "feed" }, link("All source factors", url({})),
         data.rows.length ? replayCoverage(impact) : null,
+        test ? link("Review the source-position test", positionLink(factorId, test), "action") : null,
         variations.rows.length ? link("Compare where the edit mattered", url({ factor: factorId, variation: 1 }), "action") : null,
         orders.rows.length ? link("Compare the two source orders", url({ factor: factorId, order: 1 }), "action") : null,
         ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
@@ -872,7 +905,8 @@ async function main() {
       delete values.meta_value;
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
-      span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"), recommendation: recommendationId, ...measuredExample }, values);
+      span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
+      pair: positionPair, ...positionDesign, recommendation: recommendationId, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

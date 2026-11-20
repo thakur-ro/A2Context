@@ -41,6 +41,9 @@ jobs:
       - name: Verify saved public QA rankings and passage-order comparison
         if: runner.os == 'Linux'
         run: python3 examples/public-qa/compare_orders.py
+      - name: Verify the installable crate
+        if: runner.os == 'Linux'
+        run: cargo +stable package --locked
       - name: Build Rust API documentation
         env:
           RUSTDOCFLAGS: -D warnings
