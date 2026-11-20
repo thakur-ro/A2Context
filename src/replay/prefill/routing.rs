@@ -151,14 +151,49 @@ pub(super) fn checked(
             }
             trials.push(view);
         }
-        let changed = match (&pair[0].trial, &pair[1].trial) {
-            (Trial::Completed { choice: a }, Trial::Completed { choice: b }) => Some(a != b),
-            _ => None,
+        let (changed, tool_changed) = match (&pair[0].trial, &pair[1].trial) {
+            (Trial::Completed { choice: a }, Trial::Completed { choice: b }) => {
+                fn tool(choice: &Choice) -> Option<&str> {
+                    (choice.kind == "tool_call").then_some(choice.label.as_str())
+                }
+                (Some(a != b), Some(tool(a) != tool(b)))
+            }
+            _ => (None, None),
         };
-        rows.push(json!({"changed":changed,"trials":trials}));
+        rows.push(json!({"changed":changed,"tool_changed":tool_changed,"trials":trials}));
     }
-    let mut view =
-        json!({"runner":report.runner_id,"context_id":report.design.context_id,"cells":rows});
+    // The parent finding fixes the original conditions and the full set of edits.
+    // Bind the selected edit by location so a request-local ID can change between calls.
+    let edit = probe
+        .interventions
+        .iter()
+        .find(|e| e.context_id == report.design.context_id)
+        .ok_or("Missing tested source.")?;
+    let (source, _) = super::recorded_context(call, &edit.context_id)?;
+    let design = digest(&json!([
+        report.runner_id,
+        edit.pointer,
+        edit.text_range,
+        edit.operation,
+        edit.replacement,
+        source.source_id.as_ref().unwrap_or(&source.id),
+        source.source_version,
+        report.design.instruction_index,
+        &body["tools"],
+        report.design.alternate_instruction,
+        report.design.alternate_tools
+    ]));
+    let signature = |field: &str| {
+        rows.iter()
+            .map(|cell| match cell[field].as_bool() {
+                Some(true) => '1',
+                Some(false) => '0',
+                None => '?',
+            })
+            .collect::<String>()
+    };
+    let mut view = json!({"runner":report.runner_id,"context_id":report.design.context_id,"design":design,
+        "signature":signature("changed"),"tool_signature":signature("tool_changed"),"cells":rows});
     let shifts: Vec<_> = rows.iter().map(|cell| cell["changed"].as_bool()).collect();
     view["pattern"] = json!(match shifts.as_slice() {
         [Some(a), Some(b), Some(c), Some(d)] if a == c && b == d && a != b => "tools",
@@ -168,6 +203,22 @@ pub(super) fn checked(
         _ => "incomplete",
     });
     if excerpts {
+        let messages = body["messages"]
+            .as_array()
+            .expect("validated chat messages");
+        let mut surrounding: Vec<_> = messages
+            .iter()
+            .enumerate()
+            .rev()
+            .filter(|(index, message)| {
+                message["role"] == "user"
+                    && !edit.pointer.starts_with(&format!("/messages/{index}/"))
+            })
+            .filter_map(|(_, message)| message["content"].as_str().map(excerpt))
+            .take(3)
+            .collect();
+        surrounding.reverse();
+        view["other_user_text"] = json!(surrounding);
         view["instructions"] = json!([
             excerpt(
                 body["messages"][report.design.instruction_index]["content"]

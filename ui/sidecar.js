@@ -11,7 +11,7 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const traceId = query.get("trace");
-const measuredExample = Object.fromEntries(["trace", "call", "replay", "context"]
+const measuredExample = Object.fromEntries(["trace", "call", "replay", "context", "routing_design"]
   .filter((key) => recommendationId && query.has(key)).map((key) => [key, query.get(key)]));
 const positionPair = query.get("pair");
 const positionDesign = positionPair ? Object.fromEntries(["group", "baseline_trials", "edit_trials"]
@@ -273,10 +273,10 @@ function positionReadout(result) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { routing: "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
+  const signals = { routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { routing: "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
+  const step = { routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
@@ -439,6 +439,48 @@ function prefillSummary(counts) {
     " on " + n + " of " + plural(inputs, "distinct input")).join(". ") + ".";
 }
 
+function routingCoverage(card) {
+  const tested = (card.routing_profiles || []).reduce((n, row) => n + row.inputs, 0);
+  const eligible = card.prefill_counts.reduce((n, row) => n + row.inputs, 0);
+  return tested + " of " + plural(eligible, "distinct input") + " tested with this design · " +
+    plural(card.routing_conversations, "identified conversation") + (card.routing_design_count > 1 ? " · " + card.routing_design_count + " designs in scope" : "");
+}
+
+function routingPatterns(card) {
+  const detail = card.evidence.detail, test = detail.routing_test;
+  const edit = detail.ranked.find(row => row.context_id === test.context_id);
+  const toolSets = test.inventories.map(names => names.length ? names.join(" + ") : "no tools");
+  const inventory = i => toolSets[0] === toolSets[1] ? (i ? "alternate" : "original") + " tool definitions" : toolSets[i];
+  const setups = ["Original instruction with " + inventory(0), "Original instruction with " + inventory(1),
+    "Alternate instruction with " + inventory(0), "Alternate instruction with " + inventory(1)];
+  function description(signature) {
+    const common = {"0000":"No setup", "1111":"Every setup", "0101":"With " + inventory(1), "1010":"With " + inventory(0),
+      "0011":"With the alternate instruction", "1100":"With the original instruction", mixed:"Repeat trials disagreed"};
+    if (common[signature]) return common[signature];
+    return Array.from(signature, (ch, i) => ch === "1" ? setups[i] : ch === "?" ? setups[i] + " (missing)" : null)
+      .filter(Boolean).join(" · ");
+  }
+  const rows = card.routing_profiles.map(profile => element("tr", {},
+    element("th", {scope:"row", text:profile.inputs}), element("td", {text:description(profile.signature)}),
+    element("td", {text:description(profile.tool_signature)}), element("td", {}, link("Inspect example",
+      url({factor:factorId || card.evidence.detail.factor, recommendation:card.id, ...profile.example})))));
+  return element("section", {className:"panel routing-comparison"}, element("h2", {text:"Where the source edit mattered"}),
+    element("p", {text:"Tested source · " + (edit.source || edit.context_id) + " · " + edit.before + " → " +
+      (edit.operation === "remove_json" ? "(removed)" : edit.replacement)}),
+    element("p", {text:"Each row counts inputs with the same result. A change in wording or arguments can leave tool selection unchanged."}),
+    element("div", {className:"routing-table", tabindex:"0", role:"region", "aria-label":"Routing results across inputs"},
+      element("table", {}, element("thead", {}, element("tr", {}, ...["Inputs", "Complete proposal changed", "Proposed tool changed", "Evidence"]
+        .map(text => element("th", {scope:"col", text})))), element("tbody", {}, ...rows))), routingInstructions(test));
+}
+
+function repeatedRouting(card) {
+  const profiles = card.routing_profiles;
+  if (!profiles?.length) return false;
+  return profiles.length > 1 || profiles[0].inputs > 1 || profiles[0].signature === "mixed" ||
+    profiles[0].tool_signature === "mixed" || card.routing_design_count > 1 ||
+    card.prefill_counts.reduce((n, row) => n + row.inputs, 0) > profiles[0].inputs;
+}
+
 function prefillFollowup(card) {
   const eligible = card.prefill_counts.filter((row) => row.leader.status === "unique").reduce((n, row) => n + row.inputs, 0);
   if (!eligible) return element("p", { text: "A consistent, uniquely ranked edit is needed to compare follow-up proposals." });
@@ -456,7 +498,7 @@ function findingCard(card) {
   const { kind, evidence: { detail } } = card;
   return element("article", { className: "card" },
     element("div", {}, tag(kind), element("h2", { text: kind === "prefill" ? prefillSummary(card.prefill_counts) : findingTitle(kind, detail) }),
-      kind === "prefill" ? prefillFollowup(card) : element("p", { text: findingDetail(kind, detail) }),
+      repeatedRouting(card) ? element("p", {text:routingCoverage(card)}) : kind === "prefill" ? prefillFollowup(card) : element("p", { text: findingDetail(kind, detail) }),
       element("p", { className: "label", text: plural(card.occurrences, "observation") + " · " + plural(card.traces, "request") }),
       link("Review recommendation", url({ factor: factorId, recommendation: card.id }), "action")),
     element("div", { className: "suggestion" }, element("span", { className: "label", text: "Next experiment" }),
@@ -627,16 +669,20 @@ function review(card, occurrences) {
   if (card.kind === "prefill") {
     const titles = { tools:"Tool definitions changed the edit’s effect", instruction:"The instruction changed the edit’s effect",
       combined:"The edit depended on the routing setup", constant:"The edit’s effect held across setups", incomplete:"Some routing trials are missing" };
-    byId("title").textContent = titles[detail.routing_test?.pattern] || "First-token sensitivity";
-    byId("summary").textContent = prefillSummary(card.prefill_counts);
+    const repeated = repeatedRouting(card);
+    byId("title").textContent = repeated ? "Routing results across requests" : titles[detail.routing_test?.pattern] || "First-token sensitivity";
+    byId("summary").textContent = repeated ? routingCoverage(card) : prefillSummary(card.prefill_counts);
     return element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId || detail.factor })),
-      panel(card.action.title, prefillFollowup(card), element("p", {text:card.action.next})),
-      routingComparison(detail),
+      panel(card.action.title, repeated ? null : prefillFollowup(card), element("p", {text:card.action.next})),
+      (measuredExample.trace || measuredExample.routing_design) && detail.routing_test ? link("All routing results in this scope", url({factor:factorId || detail.factor, recommendation:card.id})) : null,
+      repeated ? routingPatterns(card) : routingComparison(detail),
       element("p", { text: "These calls share the tested edits, model, runtime and request settings. Other user text can differ." }),
-      ...occurrences.rows.map((row, i) => element("details", { className: "panel", ...(i === 0 && { open: "" }) },
+      ...occurrences.rows.map((row, i) => element("details", { className: "panel", ...(!repeated && i === 0 && { open: "" }) },
         element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + findingTitle("prefill", row.detail) }),
         firstTokenPreview(row.detail, true),
-        row.trace === trace_id && row.call === call_id ? null : routingComparison(row.detail),
+        card.routing_design_count > 1 && row.detail.routing_test ? link("Compare inputs tested with this design",
+          url({recommendation:card.id, factor:factorId || detail.factor, routing_design:row.detail.routing_test.design})) : null,
+        !repeated && row.trace === trace_id && row.call === call_id ? null : routingComparison(row.detail),
         link("Open original span", url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))));
   }
   const traceLink = url({ view: "traces", trace: trace_id, call: call_id, finding: card.id });
@@ -702,6 +748,12 @@ function proposalComparisons(probe) {
     }));
 }
 
+function routingInstructions(test) {
+  return element("details", {}, element("summary", {text:"Compare instruction text"}),
+    element("div", {className:"comparison"}, ...test.instructions.map((text, i) =>
+      element("div", {}, element("strong", {text:i ? "Alternate" : "Original"}), element("p", {text})))));
+}
+
 function routingComparison(probe) {
   if (probe.routing_issue) return element("p", {className:"label", text:probe.routing_issue});
   const test = probe.routing_test;
@@ -715,7 +767,7 @@ function routingComparison(probe) {
     element("th", {scope:"row", text:index < 2 ? "Original" : "Alternate"}),
     element("td", {text:(index % 2 ? "Alternate · " : "Original · ") + toolList(test.inventories[index % 2])}),
     ...cell.trials.map(trial => element("td", {}, element("code", {text:trialText(trial)}))),
-    element("td", {text:cell.changed == null ? "Incomplete" : cell.changed ? "Changed" : "Unchanged"})));
+    element("td", {text:cell.changed == null ? "Incomplete" : cell.changed && !cell.tool_changed ? "Changed · same tool selection" : cell.changed ? "Changed" : "Unchanged"})));
   return element("section", {className:"panel routing-comparison"},
     element("h2", {text:"When did the source edit change the proposal?"}),
     element("p", {text:"Each row tests the same edit to " + (source.source || source.context_id) +
@@ -723,9 +775,10 @@ function routingComparison(probe) {
     element("div", {className:"routing-table", role:"region", "aria-label":"Four routing setups", tabindex:"0"},
       element("table", {}, element("thead", {}, element("tr", {}, ...["Instruction", "Tools", "Original proposal", "Edited proposal", "Result"]
         .map(text => element("th", {scope:"col", text})))), element("tbody", {}, ...rows))),
-    element("details", {}, element("summary", {text:"Compare instruction text"}),
-      element("div", {className:"comparison"}, ...test.instructions.map((text, i) =>
-        element("div", {}, element("strong", {text:i ? "Alternate" : "Original"}), element("p", {text}))))),
+    routingInstructions(test),
+    test.other_user_text?.length ? element("details", {}, element("summary", {text:"Other user messages"}),
+      ...test.other_user_text.map(text => element("p", {text})),
+      element("small", {text:"Up to three preceding or following text messages, in request order."})) : null,
     element("p", {className:"label", text:"One proposal per condition · " + test.runner}));
 }
 

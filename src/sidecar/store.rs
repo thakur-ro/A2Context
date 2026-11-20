@@ -148,19 +148,24 @@ impl Store {
     pub fn seed(
         &mut self,
         runs: &[Run],
+        routing_runs: &[Run],
         reports: &[replay::Replay],
         activation: &activation::Report,
         now: i64,
     ) -> Result<()> {
         let tx = self.0.transaction()?;
-        for run in runs {
+        for (run, workflow) in runs
+            .iter()
+            .map(|r| (r, "returns-demo"))
+            .chain(routing_runs.iter().map(|r| (r, "routing-prefill")))
+        {
             nexusweave::validate(run)?;
             save_trace(
                 &tx,
                 &run.id,
                 Some(run),
                 None,
-                &BTreeMap::from([("service.name".into(), "returns-demo".into())]),
+                &BTreeMap::from([("service.name".into(), workflow.into())]),
                 now,
             )?;
         }
@@ -170,7 +175,7 @@ impl Store {
         }
         activation.validate(runs)?;
         save_report(&tx, activation)?;
-        for run in runs {
+        for run in runs.iter().chain(routing_runs) {
             refresh_findings(&tx, run)?;
         }
         tx.commit()?;
@@ -233,10 +238,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 10 {
+        if version == 11 {
             return Ok(());
         }
-        if !(0..10).contains(&version) {
+        if !(0..11).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -245,7 +250,7 @@ impl Store {
                 let mut stmt = self.0.prepare(
                     "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL AND
                       (?2<8 OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
-                       OR (?2=9 AND (instr(raw,'routing_test')>0 OR instr(run,'routing_test')>0)))
+                       OR (?2 IN (9,10) AND (instr(raw,'routing_test')>0 OR instr(run,'routing_test')>0)))
                       ORDER BY id LIMIT 16",
                 )?;
                 let rows = stmt
@@ -279,7 +284,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 10)?;
+        self.0.pragma_update(None, "user_version", 11)?;
         Ok(())
     }
 
@@ -520,6 +525,10 @@ impl Store {
                     "json_extract(o.detail,'$.measurement.context_id')",
                 ),
                 ("factor", "json_extract(o.detail,'$.factor')"),
+                (
+                    "routing_design",
+                    "json_extract(o.detail,'$.routing_test.design')",
+                ),
             ] {
                 if let Some(value) = filters.get(key).filter(|value| !value.is_empty()) {
                     sql.push_str(&format!(" AND {field}=?"));
@@ -580,6 +589,8 @@ impl Store {
                 SELECT factor,org,factor IN (SELECT factor FROM variations) AS varies,json_extract(min(detail),'$.sources') AS sources,
                     count(DISTINCT thread_key) AS conversations,count(DISTINCT trace_id) AS requests,
                     count(DISTINCT CASE WHEN changed=1 THEN trace_id END) AS changed_requests,
+                    count(DISTINCT CASE WHEN kind='prefill' AND json_extract(detail,'$.routing_test.design') IS NOT NULL
+                        THEN json_extract(detail,'$.baseline_request_sha256') END) AS routing_inputs,
                     count(DISTINCT group_id) + (factor IN (SELECT factor FROM pairs)) + (factor IN (SELECT factor FROM variations)) AS recommendations,max(observed) AS latest,
                     CASE WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -3 ELSE
                     min(CASE WHEN kind='replacement' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
@@ -588,7 +599,7 @@ impl Store {
                         WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
-                    'requests',requests,'changed',changed_requests,'recommendations',recommendations,
+                    'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
                     'position_test',CASE WHEN t.pair IS NOT NULL THEN json_object(
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
@@ -628,19 +639,30 @@ impl Store {
                          FROM prefill_replays WHERE group_id=g.group_id GROUP BY runner ORDER BY runner))) END,
                      'prefill_counts',CASE WHEN g.kind='prefill' THEN json((SELECT json_group_array(json_object('leader',json(leader),'inputs',inputs)) FROM
                        (SELECT leader,inputs FROM prefill_counts WHERE group_id=g.group_id ORDER BY inputs DESC,leader))) END,
-                     'evidence',json((SELECT json_object('thread_key',e.thread_key,'thread',e.thread,'trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail))
-                       FROM events e WHERE e.group_id=g.group_id
-                       ORDER BY CASE
-                                  WHEN e.kind='prefill' AND json_extract(e.detail,'$.routing_test') IS NOT NULL THEN -1
-                                  WHEN json_extract(e.detail,'$.joint_only')=1 THEN -1
-                                  WHEN e.kind='candidate' AND json_extract(e.detail,'$.baseline')*json_extract(e.detail,'$.edited')<0 THEN 0
-                                  WHEN e.kind='replay' AND abs(json_extract(e.detail,'$.effect_pp'))>0 THEN 0
-                                  ELSE 1 END,
-                                e.observed DESC,e.trace_id,e.call_id,e.n LIMIT 1)),
+                     'routing_design_count',(SELECT count(*) FROM routing_designs d WHERE d.group_id=g.group_id),
+                     'routing_profiles',CASE WHEN json_extract(e.detail,'$.routing_test.design') IS NOT NULL THEN json((
+                         SELECT json_group_array(json_object('signature',signature,'tool_signature',tool_signature,'inputs',inputs,'example',json(example))) FROM (
+                           SELECT signature,tool_signature,count(*) AS inputs,min(example) AS example FROM routing_inputs
+                           WHERE group_id=g.group_id AND design=json_extract(e.detail,'$.routing_test.design')
+                           GROUP BY signature,tool_signature ORDER BY inputs DESC,signature,tool_signature))) END,
+                     'routing_conversations',CASE WHEN json_extract(e.detail,'$.routing_test.design') IS NOT NULL THEN (
+                         SELECT count(DISTINCT thread_key) FROM routing_events r
+                         WHERE r.group_id=g.group_id AND r.design=json_extract(e.detail,'$.routing_test.design')) END,
+                     'evidence',json_object('thread_key',e.thread_key,'thread',e.thread,'trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail)),
                      'trend',json((SELECT json_group_array(json_object('day',day,'count',hits)) FROM
                        (SELECT date(observed,'unixepoch') AS day,count(*) AS hits FROM events e
                         WHERE e.group_id=g.group_id AND observed IS NOT NULL GROUP BY day ORDER BY day DESC LIMIT 14))))
-                 FROM groups g ORDER BY priority,threads DESC,traces DESC,latest DESC,group_id");
+                 FROM groups g JOIN events e ON (e.trace_id,e.n)=(
+                    SELECT chosen.trace_id,chosen.n FROM events chosen
+                    LEFT JOIN routing_designs d ON d.group_id=chosen.group_id AND d.design=json_extract(chosen.detail,'$.routing_test.design')
+                    WHERE chosen.group_id=g.group_id
+                    ORDER BY CASE
+                       WHEN chosen.kind='prefill' AND json_extract(chosen.detail,'$.routing_test.pattern') != 'incomplete' THEN -2
+                       WHEN json_extract(chosen.detail,'$.routing_test') IS NOT NULL OR json_extract(chosen.detail,'$.joint_only')=1 THEN -1
+                       WHEN chosen.kind='candidate' AND json_extract(chosen.detail,'$.baseline')*json_extract(chosen.detail,'$.edited')<0 THEN 0
+                       WHEN chosen.kind='replay' AND abs(json_extract(chosen.detail,'$.effect_pp'))>0 THEN 0 ELSE 1 END,
+                       d.completed DESC,d.inputs DESC,chosen.observed DESC,chosen.trace_id,chosen.call_id,chosen.n LIMIT 1)
+                 ORDER BY priority,threads DESC,traces DESC,latest DESC,g.group_id");
             }
             "traces" => {
                 sql.push_str(" SELECT json_object('id',id,'start',start,'org',org,'user',user,'thread',thread,

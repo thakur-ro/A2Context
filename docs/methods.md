@@ -161,6 +161,23 @@ Adding the price tool changed the effect of the user edit under both instruction
 
 ![Four routing setups show which inventories led to a different tool proposal](media/routing-comparison.png)
 
+### Does the tool-inventory result repeat on fresh requests?
+
+Before scoring, we fixed four new product IDs, the final user messages and a prediction for all four setups. We kept both instruction texts, both inventories, both named source edits and the greedy runner from the development example. The prediction was that editing the request type changes the complete proposal in both two-tool setups and in neither stock-only setup. The four fresh inputs are the entire evaluation set. [Frozen specification](https://github.com/thakur-ro/NexusWeave/blob/f6c3f24/examples/runtime-comparison/pending-routing/routing-holdout.json)
+
+| Product | Final user request | Where the full proposal changed | Where the proposed tool changed |
+| --- | --- | --- | --- |
+| 28 | Handle the request using the catalog details | Both two-tool setups | Both two-tool setups |
+| 73 | Select the appropriate tool | Both two-tool setups | Two tools with the request-type instruction |
+| 91 | Explicitly ask for stock | None | None |
+| 64 | Explicitly ask for price if offered | None | None |
+
+The fixed prediction held on **2/4** inputs. A secondary comparison of proposed tool names reproduced the original pattern on **1/4**. Under the stock-only instruction with both tools offered, the model returned two different text answers for product 73. Neither proposed a tool. For product 64 the model proposed price when available before and after editing the request type. An unchanged response to that edit can coexist with sensitivity to the available tools.
+
+We ran twelve first-token forward passes and 32 proposal-only generations for each complete pass. A second run reproduced the saved results byte for byte. Each request used the same template and model. Product ID and final message changed together across inputs, so these differences do not establish the effect of an individual phrase. The table reports descriptive counts on synthetic requests. [All requests and trials](../examples/runtime-comparison/pending-routing/routing-holdout-results.json) · [Reproduction script](../examples/runtime-comparison/pending-routing/replicate_routing.py)
+
+![Four requests grouped by where the full proposal and the proposed tool changed](media/routing-replication.png)
+
 ## Reproduction
 
 - Run the saved demo and follow the three [README journeys](../README.md#try-the-demo).

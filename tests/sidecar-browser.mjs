@@ -15,14 +15,14 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
   await page.getByRole("heading", { name: "Conversations with findings" }).waitFor();
-  assert.equal(await page.locator(".impact-number").innerText(), "15");
-  await page.getByText("9 with a measured change").waitFor();
+  assert.equal(await page.locator(".impact-number").innerText(), "19");
+  await page.getByText("13 with a measured change").waitFor();
   assert.equal(await page.locator("#navigation a").count(), 2);
   await factor(page, "Choice flipped").waitFor();
   if (process.env.FINDINGS_SCREENSHOT) await page.screenshot({ path: process.env.FINDINGS_SCREENSHOT });
   const coverage = page.locator(".replay-coverage");
-  await coverage.getByText("Scored replays in 7 of 15 conversations").click();
-  assert.deepEqual(await coverage.locator("dd").allTextContents(), ["0", "0", "7", "8"]);
+  await coverage.getByText("Scored replays in 7 of 19 conversations").click();
+  assert.deepEqual(await coverage.locator("dd").allTextContents(), ["0", "0", "7", "12"]);
   await factor(page, "Results varied with source order").click();
   await page.getByText(/in 2 of 4 matched comparisons/).waitFor();
   assert.equal(await page.getByRole("heading", { name: "Match counts held across orders" }).count(), 2);
@@ -189,6 +189,23 @@ try {
     await device.getByRole("link", {name:"Test instruction text and available tools"}).click();
     await device.getByRole("region", {name:"Four routing setups"}).waitFor();
     assert.equal(await device.locator(".routing-comparison tbody tr").count(), 4);
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  }
+  for (const device of [page, mobile]) {
+    await device.goto(base + "/?org=retail-south");
+    await factor(device, "Routing tests on 4 inputs").click();
+    await device.locator(".card").filter({hasText:"4 of 4 distinct inputs"}).getByRole("link").click();
+    const region = device.getByRole("region", {name:"Routing results across inputs"});
+    await region.waitFor();
+    assert.deepEqual(await region.locator("tbody th").allTextContents(), ["2", "1", "1"]);
+    if (device === page && process.env.REPLICATION_SCREENSHOT) await device.screenshot({path:process.env.REPLICATION_SCREENSHOT});
+    await region.getByRole("row").filter({hasText:"Alternate instruction with stock + price"}).getByRole("link").click();
+    await device.getByText("Changed · same tool selection", {exact:true}).waitFor();
+    await device.getByText("Other user messages", {exact:true}).click();
+    await device.getByText("Please check the request for this item and select the appropriate tool.", {exact:true}).waitFor();
+    await device.getByRole("link", {name:"All routing results in this scope"}).click();
+    await region.waitFor();
+    assert.equal(new URL(device.url()).searchParams.get("org"), "retail-south");
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   }
   if (process.env.PREFILL_COHORT_URL) {

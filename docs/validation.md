@@ -116,3 +116,13 @@ Ten public questions were each run with ten passages in two orders. The scorer c
 The South stock-only fixture carries a four-setup experiment. The local Qwen adapter produced byte-identical output files on two runs of `test-routing`. The sidecar verification suite covers substitution of a request digest, an incomplete trial, an unlisted tool proposal, archive upgrades from versions 8 and 9, JSON and SDK exports, and MCP excerpt permissions. Desktop and mobile browser checks cover both the unscoped demo and the organization-filtered recommendation. [Reproduction](sidecar.md#test-instruction-text-and-tool-definitions) · [Integration checks](../tests/sidecar_prefill.py)
 
 An offline Linux container with one CPU and a 512 MiB limit ran the prebuilt Rust release tests and the JSON routing integration suite. The cgroup peak for the whole run was 397,635,584 bytes with zero OOM events. The release compiler was killed when building under that same limit. Build the binary separately. This run measures test-suite memory and does not estimate serving latency.
+
+## Routing comparisons across requests
+
+The built-in demo and the OTLP exporter display the four inputs fixed in the [replication protocol](../examples/runtime-comparison/pending-routing/routing-holdout.json). A second full run reproduced the four saved reports, including all twelve first-token forward passes and all 32 completed proposals. The integration suite checks that switching the outcome from full proposal to proposed tool changes the count for product 73, and that an exact input seen in two conversations contributes one input. It also checks incomplete and disagreeing trials, runner isolation, evidence links, scope filters and archive recovery.
+
+We measured a warm, organization-filtered findings query on four distinct requests submitted under 256 trace and conversation IDs. In a Linux container limited to 1 CPU and 512 MiB, the previous binary (`33ffae8`) took 4.83 ms at the median and 9.37 ms at the 95th percentile over 20 timed reads. With routing aggregation the same query took 5.03 ms and 5.24 ms. Each run discarded one warm-up read and reported zero queue drops. These timings cover a loopback HTTP query over one comparison design. More designs, distinct inputs or concurrent exports need separate measurements. [Benchmark script](../examples/runtime-comparison/pending-routing/benchmark_routing.py)
+
+```sh
+python3 examples/runtime-comparison/pending-routing/benchmark_routing.py target/release/nexusweave
+```

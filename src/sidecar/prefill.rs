@@ -157,7 +157,24 @@ pub(super) const SCOPED_COUNTS: &str = ", prefill_inputs AS (
                  ), prefill_counts AS (
                     SELECT group_id,leader,count(*) AS inputs FROM prefill_inputs GROUP BY group_id,leader
                  )
-                 , prefill_replays AS (
+                 , routing_events AS (
+                    SELECT e.group_id,e.thread_key,json_extract(e.detail,'$.routing_test.design') AS design,
+                        json_extract(e.detail,'$.baseline_request_sha256') AS input,
+                        json_extract(e.detail,'$.routing_test.signature') AS signature,
+                        json_extract(e.detail,'$.routing_test.tool_signature') AS tool_signature,
+                        json_object('trace',e.trace_id,'call',e.call_id) AS example
+                    FROM events e JOIN groups g ON g.group_id=e.group_id
+                    WHERE g.kind='prefill' AND json_extract(e.detail,'$.routing_test.design') IS NOT NULL
+                 ), routing_inputs AS (
+                    SELECT group_id,design,input,min(example) AS example,
+                        CASE WHEN min(signature)=max(signature) THEN min(signature) ELSE 'mixed' END AS signature,
+                        CASE WHEN min(tool_signature)=max(tool_signature) THEN min(tool_signature) ELSE 'mixed' END AS tool_signature
+                    FROM routing_events GROUP BY group_id,design,input
+                 ), routing_designs AS (
+                    SELECT group_id,design,count(*) AS inputs,
+                        sum(signature!='mixed' AND instr(signature,'?')=0) AS completed
+                    FROM routing_inputs GROUP BY group_id,design
+                 ), prefill_replays AS (
                     SELECT p.group_id,p.input,json_extract(c.value,'$.runner') AS runner,
                         min(json_extract(c.value,'$.changed')) AS low,max(json_extract(c.value,'$.changed')) AS high
                     FROM prefill_inputs p JOIN events e ON e.group_id=p.group_id

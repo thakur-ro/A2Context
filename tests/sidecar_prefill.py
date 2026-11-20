@@ -75,6 +75,64 @@ def check_routing(binary, record, probe, folder):
     assert subprocess.run(command, capture_output=True).returncode != 0
 
 
+def check_recurrence(binary, folder, sdk_python):
+    saved = json.loads((FOLDER / "routing-holdout-results.json").read_text())
+    reports = {r["id"]: r["extra"]["metadata"][ATTRIBUTE] for r in saved}
+    payload = export(saved, reports)
+    archive = folder / "replication"
+    with server(binary, archive, "--capture-content") as base:
+        send_traces(base, payload)
+        if sdk_python:
+            sdk_sender(sdk_python)(base, payload)
+        card, = recommendation(base, org="retail-south")
+        profiles = card["routing_profiles"]
+        assert [(r["signature"],r["tool_signature"],r["inputs"]) for r in profiles] == [
+            ("0000","0000",2), ("0101","0001",1), ("0101","0101",1)]
+        assert card["routing_conversations"] == 4
+        for row in profiles:
+            one, = recommendation(base, group=card["id"], **row["example"])
+            assert one["routing_profiles"] == [{**row,"inputs":1}]
+            assert one["routing_conversations"] == 1
+        assert not recommendation(base, org="other")
+    with sqlite3.connect(archive) as connection:
+        connection.execute("UPDATE observations SET detail=json_remove(detail,'$.routing_test.design') WHERE kind='prefill'")
+        connection.execute("PRAGMA user_version=10")
+    with server(binary, archive, "--capture-content") as base:
+        assert recommendation(base, org="retail-south") == [card]
+        def repeat(probe, attrs):
+            attrs["gen_ai.conversation.id"]["stringValue"] = "another-conversation"
+        send_traces(base, modified(payload, 801, repeat))
+        after, = recommendation(base)
+        assert [r["inputs"] for r in after["routing_profiles"]] == [2,1,1] and after["routing_conversations"] == 5
+        def disagree(probe, attrs):
+            probe["routing_test"]["cells"][1][1]["trial"] = probe["routing_test"]["cells"][1][0]["trial"]
+        send_traces(base, modified(payload, 802, disagree))
+        mixed, = recommendation(base)
+        assert mixed["action"]["title"] == "Check the disagreeing repeat trials"
+        assert any(r["signature"] == "mixed" and r["inputs"] == 1 for r in mixed["routing_profiles"])
+        def another_runner(probe, attrs):
+            probe["routing_test"]["runner_id"] = "different-decoding"
+        send_traces(base, modified(payload, 803, another_runner))
+        other, = recommendation(base, trace=f"otlp:{803:032x}")
+        assert other["evidence"]["detail"]["routing_test"]["design"] != card["evidence"]["detail"]["routing_test"]["design"]
+        assert sum(r["inputs"] for r in other["routing_profiles"]) == 1
+        preferred, = recommendation(base)
+        assert preferred["routing_profiles"] == mixed["routing_profiles"] and preferred["routing_design_count"] == 2
+        alternate, = recommendation(base, routing_design=other["evidence"]["detail"]["routing_test"]["design"])
+        assert alternate["routing_profiles"] == other["routing_profiles"]
+    with server(binary, folder/"partial-routing", "--capture-content") as base:
+        partial = deepcopy(reports)
+        del partial[saved[0]["id"]]["routing_test"]
+        partial[saved[1]["id"]]["routing_test"]["cells"][0][1]["trial"] = {"status": "failed"}
+        send_traces(base, export(saved, partial))
+        result, = recommendation(base)
+        assert result["action"]["title"] == "Complete the missing routing trials"
+        assert sum(r["inputs"] for r in result["routing_profiles"]) == 3 and result["routing_conversations"] == 3
+        assert sum(r["inputs"] for r in result["prefill_counts"]) == 4
+        assert any("?" in r["signature"] for r in result["routing_profiles"])
+
+
+
 def check(binary, folder, sdk_python):
     records = json.loads((FOLDER / "shadow-cohort.json").read_text())
     probes = json.loads((FOLDER / "prefill-cohort.json").read_text())
@@ -171,4 +229,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with TemporaryDirectory() as folder:
         check(args.binary.resolve(), Path(folder), args.sdk_python)
-    print("Verified recorded prefill coverage, ties, controlled routing trials, scope, retries, redaction, and v8/v9 recovery.")
+        check_recurrence(args.binary.resolve(), Path(folder), args.sdk_python)
+    print("Verified recorded prefill coverage, ties, controlled routing trials, scope, retries, redaction, distinct-input routing profiles, and v8/v9/v10 recovery.")

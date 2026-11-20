@@ -1739,6 +1739,7 @@ fn recorded_first_token_measurements_follow_mcp_excerpt_permissions() {
     let test = &measured["measurement"]["routing_test"];
     assert_eq!(test["pattern"], "tools");
     assert!(test.get("instructions").is_none() && test.get("inventories").is_none());
+    assert!(test.get("other_user_text").is_none());
     assert!(test["cells"][0]["trials"][0].get("label").is_none());
     assert!(test["cells"][0]["trials"][0].get("outcome").is_none());
     let mut allowed = Client::start(&["--include-excerpts", path.to_str().unwrap()], true);

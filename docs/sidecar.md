@@ -89,6 +89,23 @@ Load the output in **Before inference**, or attach its `nexusweave.prefill.probe
 
 The sidecar reconstructs all eight requests and checks their digests before comparing complete choices. A failed trial leaves its comparison incomplete. The producer supplies the runner identity and trial outputs. The eight trials belong to one example and add zero conversations to the dashboard totals. MCP returns the pattern and trial statuses by default. Reading instruction excerpts, tool names or returned arguments requires excerpt access.
 
+### Compare a routing test across conversations
+
+Open the **Routing tests on 4 inputs** factor in the built-in demo. The table groups inputs by their four original-versus-edited outcomes. The first column of outcomes compares the complete choice. The second compares the proposed tool name. Two text answers both have no selected tool. When two tools share a name the comparison cannot distinguish them by name alone. Open **Inspect example** to see the exact proposals and expand **Other user messages** to read the surrounding text.
+
+For an instrumented workflow, query `/api/sidecar/findings?kind=prefill` with the usual scope filters. Each `routing_profiles` row counts distinct request digests and links to one trace and call. The four positions in `signature` and `tool_signature` correspond to original settings, alternate tools only, alternate instruction only and both alternates. A `1` denotes a change, `0` an unchanged result and `?` an incomplete pair. Conflicting repeat measurements yield `mixed` for the affected metric. Coverage counts distinct measured inputs and identified conversations separately. A missing routing report adds no vote.
+
+The comparison holds the parent finding’s source edits and model settings fixed. It also matches the selected source edit, instruction slot, alternate instruction text, both full tool inventories and runner ID. The card selects a design with completed trials, preferring more fully measured inputs. For another captured design, follow its occurrence link or filter by `routing_design`. Distinct conversation IDs can refer to identical input bodies. A repeated body contributes one input to its design.
+
+To export the saved holdout to a running sidecar with content capture:
+
+```sh
+python3 examples/runtime-comparison/pending-routing/replicate_routing.py | \
+  curl --fail-with-body -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:8040/v1/traces
+```
+
+To repeat the model measurements, pass `--model "$MODEL_DIR" --output /tmp/routing-holdout-results.json` to the same script with the Qwen adapter environment. [Protocol and results](methods.md#does-the-tool-inventory-result-repeat-on-fresh-requests)
+
 ### Run the position test on a matched comparison
 
 **Download position test** prepares eight conditions. On each of the two captured backgrounds, it keeps the other named fragments in their relative order, puts the selected source at each tested position, and applies the original replacement at each slot. The download contains the full request bodies. Preparation makes zero model calls. **Attach completed trials** binds each returned proposal to its background, replay, source, slot, replacement state and request digest.

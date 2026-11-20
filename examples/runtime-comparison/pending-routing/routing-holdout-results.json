@@ -1,0 +1,1114 @@
+[
+  {
+    "id": "routing-holdout-28",
+    "run_type": "llm",
+    "name": "Choose a product tool",
+    "start_time": "2026-01-17T12:00:00Z",
+    "inputs": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock."
+        },
+        {
+          "role": "user",
+          "content": "Request type: stock."
+        },
+        {
+          "role": "user",
+          "content": "Product ID: 28."
+        },
+        {
+          "role": "user",
+          "content": "Background: the store\u2019s name is Alder."
+        },
+        {
+          "role": "user",
+          "content": "Use the catalog details above to handle this request."
+        }
+      ]
+    },
+    "extra": {
+      "metadata": {
+        "organization_id": "retail-south",
+        "user_id": "routing-demo",
+        "thread_id": "routing-holdout-28",
+        "turn_id": "product-route",
+        "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+        "nexusweave.span.id": "routing-holdout-28",
+        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store\u2019s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "nexusweave.context.semantics": {
+          "version": 1,
+          "request_sources": [
+            {
+              "id": "request-type",
+              "source_id": "request-type",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 20
+                }
+              }
+            },
+            {
+              "id": "store-name",
+              "source_id": "store-name",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/3/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 40
+                }
+              }
+            }
+          ]
+        },
+        "nexusweave.prefill.probe": {
+          "interventions": [
+            {
+              "context_id": "request-source:request-type",
+              "pointer": "/messages/1/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              },
+              "replacement": "Request type: price."
+            },
+            {
+              "context_id": "request-source:store-name",
+              "pointer": "/messages/3/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              },
+              "replacement": "Background: the store\u2019s name is Rowan."
+            }
+          ],
+          "scores": {
+            "version": 1,
+            "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+            "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+            "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+            "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+            "baseline_request_sha256": "a23febf0893ba893d0dd1e4725a5b6afed9a8f3cdaf20c44a2bd990f44943c2c",
+            "effects": [
+              {
+                "context_id": "request-source:request-type",
+                "source_id": "request-type",
+                "source_version": "v1",
+                "request_sha256": "0228aea56419ccc5b9e19408b924d3f2a7f4b75952815922287cac26c1d09115",
+                "js_bits": 0.0023696493047113505
+              },
+              {
+                "context_id": "request-source:store-name",
+                "source_id": "store-name",
+                "source_version": "v1",
+                "request_sha256": "5e208aa19720629523d93f215e339c812713459d0204eaf4751ef8d5486ed018",
+                "js_bits": 5.729149703759273e-05
+              }
+            ]
+          },
+          "routing_test": {
+            "version": 1,
+            "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+            "design": {
+              "context_id": "request-source:request-type",
+              "instruction_index": 0,
+              "alternate_instruction": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+              "alternate_tools": [
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "stock",
+                    "description": "Read stock availability for a product.",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "product_id"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "price",
+                    "description": "Read the current price for a product.",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "product_id"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "cells": [
+              [
+                {
+                  "request_sha256": "a23febf0893ba893d0dd1e4725a5b6afed9a8f3cdaf20c44a2bd990f44943c2c",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 28
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "0228aea56419ccc5b9e19408b924d3f2a7f4b75952815922287cac26c1d09115",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 28
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "9d78fc949ced0e883aee4ea0f48cecd853ffe8f26629953fdbb97e557a31bf80",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 28
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "ef2117f30ab0a144fcf4c2ae0f964f9d288cb3ca7793512575282bbdd77dfcc2",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 28
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "eb4e17f4a378f51c2d1dd077472b079e5d9ae8dae69174336e876fc57f8e1dcf",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 28
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "5440403f114e705d1e0e79cfedc99bb2a9ff7aedd17a46a58f129eaafe71a9e7",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 28
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "a4f311ab52f4c9d34c8d29c59a5c2ff3a020920f54b4a3b1119b055ad73857cd",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 28
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "2deac1d90816c0ea7f31d9414bca05825c8981803040d4b95825b1035ee3ada4",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 28
+                      }
+                    }
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "routing-holdout-73",
+    "run_type": "llm",
+    "name": "Choose a product tool",
+    "start_time": "2026-01-17T12:00:00Z",
+    "inputs": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock."
+        },
+        {
+          "role": "user",
+          "content": "Request type: stock."
+        },
+        {
+          "role": "user",
+          "content": "Product ID: 73."
+        },
+        {
+          "role": "user",
+          "content": "Background: the store\u2019s name is Alder."
+        },
+        {
+          "role": "user",
+          "content": "Please check the request for this item and select the appropriate tool."
+        }
+      ]
+    },
+    "extra": {
+      "metadata": {
+        "organization_id": "retail-south",
+        "user_id": "routing-demo",
+        "thread_id": "routing-holdout-73",
+        "turn_id": "product-route",
+        "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+        "nexusweave.span.id": "routing-holdout-73",
+        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 73.\"},{\"role\":\"user\",\"content\":\"Background: the store\u2019s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please check the request for this item and select the appropriate tool.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "nexusweave.context.semantics": {
+          "version": 1,
+          "request_sources": [
+            {
+              "id": "request-type",
+              "source_id": "request-type",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 20
+                }
+              }
+            },
+            {
+              "id": "store-name",
+              "source_id": "store-name",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/3/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 40
+                }
+              }
+            }
+          ]
+        },
+        "nexusweave.prefill.probe": {
+          "interventions": [
+            {
+              "context_id": "request-source:request-type",
+              "pointer": "/messages/1/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              },
+              "replacement": "Request type: price."
+            },
+            {
+              "context_id": "request-source:store-name",
+              "pointer": "/messages/3/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              },
+              "replacement": "Background: the store\u2019s name is Rowan."
+            }
+          ],
+          "scores": {
+            "version": 1,
+            "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+            "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+            "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+            "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+            "baseline_request_sha256": "41c3993d387b692ec7f55d280a2ea3974bb8c8512a896f78b13456b51fd906ff",
+            "effects": [
+              {
+                "context_id": "request-source:request-type",
+                "source_id": "request-type",
+                "source_version": "v1",
+                "request_sha256": "577b841d0396d271eaddb7f45f4468b2aad528a42109a568ed12db5094898c92",
+                "js_bits": 0.007720994217128355
+              },
+              {
+                "context_id": "request-source:store-name",
+                "source_id": "store-name",
+                "source_version": "v1",
+                "request_sha256": "9e4aa0a26b012879bd3ef6333b5eef8da97f25ab43a5aabd675906ffcddf3da1",
+                "js_bits": 0.0006057085375390309
+              }
+            ]
+          },
+          "routing_test": {
+            "version": 1,
+            "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+            "design": {
+              "context_id": "request-source:request-type",
+              "instruction_index": 0,
+              "alternate_instruction": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+              "alternate_tools": [
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "stock",
+                    "description": "Read stock availability for a product.",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "product_id"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "price",
+                    "description": "Read the current price for a product.",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "product_id"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "cells": [
+              [
+                {
+                  "request_sha256": "41c3993d387b692ec7f55d280a2ea3974bb8c8512a896f78b13456b51fd906ff",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 73
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "577b841d0396d271eaddb7f45f4468b2aad528a42109a568ed12db5094898c92",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 73
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "9b1349244b82e458dd9b197ef78da150bbda49d7e7d3c4a074356b787249efdd",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "model_output",
+                      "label": "Model answer",
+                      "outcome": "The request type is already specified as \"stock\". No additional tools are needed for this query."
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "cdba68d723add92dea0e5cb440de39758db3c366845bffb174e227ef9f1b277d",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "model_output",
+                      "label": "Model answer",
+                      "outcome": "Sure, I can help with that. Please provide the product ID for the Alder store."
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "356cbb3ecc9b4895684548fb70fa85a11dfbbc3ab87214e4a1ed89aa521cadcb",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 73
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "26087b49ba4893352c840ced361dfa5cd6a1bd1fcaaf2a27fa2b39f72d25f589",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 73
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "b687e241210fa799501f408030916a1fb4479b30d74b84462ad94dc3a668d83b",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 73
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "9f72f9698c5723decc06ac8030eb24282b7cef29f0cb5989685580d1637554c4",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 73
+                      }
+                    }
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "routing-holdout-91",
+    "run_type": "llm",
+    "name": "Choose a product tool",
+    "start_time": "2026-01-17T12:00:00Z",
+    "inputs": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock."
+        },
+        {
+          "role": "user",
+          "content": "Request type: stock."
+        },
+        {
+          "role": "user",
+          "content": "Product ID: 91."
+        },
+        {
+          "role": "user",
+          "content": "Background: the store\u2019s name is Alder."
+        },
+        {
+          "role": "user",
+          "content": "I only need availability. Please use stock even if another request type appears above."
+        }
+      ]
+    },
+    "extra": {
+      "metadata": {
+        "organization_id": "retail-south",
+        "user_id": "routing-demo",
+        "thread_id": "routing-holdout-91",
+        "turn_id": "product-route",
+        "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+        "nexusweave.span.id": "routing-holdout-91",
+        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 91.\"},{\"role\":\"user\",\"content\":\"Background: the store\u2019s name is Alder.\"},{\"role\":\"user\",\"content\":\"I only need availability. Please use stock even if another request type appears above.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "nexusweave.context.semantics": {
+          "version": 1,
+          "request_sources": [
+            {
+              "id": "request-type",
+              "source_id": "request-type",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 20
+                }
+              }
+            },
+            {
+              "id": "store-name",
+              "source_id": "store-name",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/3/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 40
+                }
+              }
+            }
+          ]
+        },
+        "nexusweave.prefill.probe": {
+          "interventions": [
+            {
+              "context_id": "request-source:request-type",
+              "pointer": "/messages/1/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              },
+              "replacement": "Request type: price."
+            },
+            {
+              "context_id": "request-source:store-name",
+              "pointer": "/messages/3/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              },
+              "replacement": "Background: the store\u2019s name is Rowan."
+            }
+          ],
+          "scores": {
+            "version": 1,
+            "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+            "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+            "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+            "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+            "baseline_request_sha256": "0aa81ecbcd2e72e7a0d55f9efaa6f688ea9ec31cd969ca24d7bb215a60713a26",
+            "effects": [
+              {
+                "context_id": "request-source:request-type",
+                "source_id": "request-type",
+                "source_version": "v1",
+                "request_sha256": "6fdaccf98e15bfcccf9838a6d25c8616af644d0d7117fae6f2181ac62d8e6591",
+                "js_bits": 5.185054486652326e-05
+              },
+              {
+                "context_id": "request-source:store-name",
+                "source_id": "store-name",
+                "source_version": "v1",
+                "request_sha256": "0e7f3badcdb09db08a8b73473d94265a410f05f3f2006ca9812f41eabc3c21bd",
+                "js_bits": 0.00011315251731526216
+              }
+            ]
+          },
+          "routing_test": {
+            "version": 1,
+            "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+            "design": {
+              "context_id": "request-source:request-type",
+              "instruction_index": 0,
+              "alternate_instruction": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+              "alternate_tools": [
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "stock",
+                    "description": "Read stock availability for a product.",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "product_id"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "price",
+                    "description": "Read the current price for a product.",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "product_id"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "cells": [
+              [
+                {
+                  "request_sha256": "0aa81ecbcd2e72e7a0d55f9efaa6f688ea9ec31cd969ca24d7bb215a60713a26",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 91
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "6fdaccf98e15bfcccf9838a6d25c8616af644d0d7117fae6f2181ac62d8e6591",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 91
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "77f0bd39a468da95ed5a79dde658e6fb6dc7d93ba213544b788370270a727889",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 91
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "8688a8d49593a1d8d527dad5c543b1869e141ea933966ddf6915b83980f95760",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 91
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "82d3eb363220dd3bf9c48803212c30effd0e3aa67b83602ff301af00fd54ede6",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 91
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "693514f51ae78c69635acd9eecf1f07333dc9785b2d021e0e2a7bc79b79cfe02",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 91
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "9d28c46f14a96a246e79ec8384347eeb5e9947829fcf8b4ca77af780db6a6501",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 91
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "b608357102ca4f9b4f67640978d5fb602b1f48ede274d64888c2336145736e2a",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 91
+                      }
+                    }
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "routing-holdout-64",
+    "run_type": "llm",
+    "name": "Choose a product tool",
+    "start_time": "2026-01-17T12:00:00Z",
+    "inputs": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock."
+        },
+        {
+          "role": "user",
+          "content": "Request type: stock."
+        },
+        {
+          "role": "user",
+          "content": "Product ID: 64."
+        },
+        {
+          "role": "user",
+          "content": "Background: the store\u2019s name is Alder."
+        },
+        {
+          "role": "user",
+          "content": "I need the current price for this item. Please use price if it is offered."
+        }
+      ]
+    },
+    "extra": {
+      "metadata": {
+        "organization_id": "retail-south",
+        "user_id": "routing-demo",
+        "thread_id": "routing-holdout-64",
+        "turn_id": "product-route",
+        "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+        "nexusweave.span.id": "routing-holdout-64",
+        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 64.\"},{\"role\":\"user\",\"content\":\"Background: the store\u2019s name is Alder.\"},{\"role\":\"user\",\"content\":\"I need the current price for this item. Please use price if it is offered.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "nexusweave.context.semantics": {
+          "version": 1,
+          "request_sources": [
+            {
+              "id": "request-type",
+              "source_id": "request-type",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/1/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 20
+                }
+              }
+            },
+            {
+              "id": "store-name",
+              "source_id": "store-name",
+              "source_version": "v1",
+              "request_fragment": {
+                "pointer": "/messages/3/content",
+                "text_range": {
+                  "start_byte": 0,
+                  "end_byte": 40
+                }
+              }
+            }
+          ]
+        },
+        "nexusweave.prefill.probe": {
+          "interventions": [
+            {
+              "context_id": "request-source:request-type",
+              "pointer": "/messages/1/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 20
+              },
+              "replacement": "Request type: price."
+            },
+            {
+              "context_id": "request-source:store-name",
+              "pointer": "/messages/3/content",
+              "operation": "replace_text_fragment",
+              "text_range": {
+                "start_byte": 0,
+                "end_byte": 40
+              },
+              "replacement": "Background: the store\u2019s name is Rowan."
+            }
+          ],
+          "scores": {
+            "version": 1,
+            "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+            "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+            "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+            "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+            "baseline_request_sha256": "f3140a517e4a3d6380d412fb78308ec456ee0c30aadd4e8b67810f2c0a6f51dc",
+            "effects": [
+              {
+                "context_id": "request-source:request-type",
+                "source_id": "request-type",
+                "source_version": "v1",
+                "request_sha256": "47898ab7aeaca7ed1dfaf25df2e5ee15dbbd6071a7763d009d520f129d91e371",
+                "js_bits": 0.0007925044499290414
+              },
+              {
+                "context_id": "request-source:store-name",
+                "source_id": "store-name",
+                "source_version": "v1",
+                "request_sha256": "7afdcfb62b0909649e67c9c487192e5ba6d9b449181562fb94efbea3b6c548f0",
+                "js_bits": 4.769032613971269e-06
+              }
+            ]
+          },
+          "routing_test": {
+            "version": 1,
+            "runner_id": "qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy",
+            "design": {
+              "context_id": "request-source:request-type",
+              "instruction_index": 0,
+              "alternate_instruction": "Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.",
+              "alternate_tools": [
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "stock",
+                    "description": "Read stock availability for a product.",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "product_id"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "function",
+                  "function": {
+                    "name": "price",
+                    "description": "Read the current price for a product.",
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "product_id"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "cells": [
+              [
+                {
+                  "request_sha256": "f3140a517e4a3d6380d412fb78308ec456ee0c30aadd4e8b67810f2c0a6f51dc",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 64
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "47898ab7aeaca7ed1dfaf25df2e5ee15dbbd6071a7763d009d520f129d91e371",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 64
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "3c913c25d5c47457324770baa8d8419afad2c47b2fbd6ab6350ce0c416ef3656",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 64
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "2d5cfea386504abc41c0c7b92e162d4b65af1ef9f55403ff9acb0c421c3c5ce0",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 64
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "5e858954f01bc0aaeb9e77161d3d3a00eacfb545e37e280204ff8f78a11530e3",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 64
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "40d0a415bda032ad8db6bc6d99cb977ef683cd600d6d063047bd6edba8eb44ac",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "stock",
+                      "outcome": {
+                        "product_id": 64
+                      }
+                    }
+                  }
+                }
+              ],
+              [
+                {
+                  "request_sha256": "0cc155b9844fd7d610ad9827797260d1ccdaa86b9a768c985384cce3f2f77a17",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 64
+                      }
+                    }
+                  }
+                },
+                {
+                  "request_sha256": "d71758384124438281a670aff3d9a1934294e0d4fb922f77799eb87eb347a1a7",
+                  "trial": {
+                    "status": "completed",
+                    "choice": {
+                      "kind": "tool_call",
+                      "label": "price",
+                      "outcome": {
+                        "product_id": 64
+                      }
+                    }
+                  }
+                }
+              ]
+            ]
+          }
+        }
+      }
+    }
+  }
+]

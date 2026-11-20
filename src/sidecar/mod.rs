@@ -636,6 +636,10 @@ fn seed(store: &mut Store) -> Result<()> {
     runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
         pending_shadow,
     )?)?);
+    let routing_study = include_str!(
+        "../../examples/runtime-comparison/pending-routing/routing-holdout-results.json"
+    );
+    let routing_runs = nexusweave::langsmith::import(&serde_json::from_str(routing_study)?)?;
     let activation: activation::Report = serde_json::from_str(include_str!(
         "../../examples/runtime-comparison/generation-branches-transformers.json"
     ))?;
@@ -647,5 +651,5 @@ fn seed(store: &mut Store) -> Result<()> {
             .into_iter()
             .filter(|run| run.id == activation.location().run_id),
     );
-    store.seed(&runs, &reports, &activation, now())
+    store.seed(&runs, &routing_runs, &reports, &activation, now())
 }

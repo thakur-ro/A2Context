@@ -24,9 +24,10 @@ def export(records, probes):
     for record in records:
         metadata = record["extra"]["metadata"]
         attrs = {**inputs(record), ATTRIBUTE: probes[record["id"]],
-                 "nexusweave.shadow_probes": metadata["nexusweave.shadow_probes"],
                  "nexusweave.organization.id": metadata["organization_id"], "nexusweave.user.id": metadata["user_id"],
                  "gen_ai.conversation.id": metadata["thread_id"]}
+        if "nexusweave.shadow_probes" in metadata:
+            attrs["nexusweave.shadow_probes"] = metadata["nexusweave.shadow_probes"]
         attributes = [{"key": k, "value": {"stringValue": v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)}}
                       for k, v in attrs.items()]
         trace = sha256(("nexusweave-prefill/" + record["id"]).encode()).hexdigest()[:32]
