@@ -9,7 +9,7 @@ const catalogSize = 1200;
 const large = Array.from({length:catalogSize}, (_,i) => ({name:"lookup_"+i}));
 const browser = await chromium.launch({executablePath:process.env.CHROME_BINARY});
 try {
-  for (const width of [390,1152]) {
+  for (const width of [360,390,1152]) {
     const page = await browser.newPage({viewport:{width,height:900}});
     const errors = [];
     page.on("pageerror",e=>errors.push(e.message));
@@ -28,6 +28,7 @@ try {
     await provenance.click();
     await catalog.getByText("/messages/1/content",{exact:true}).waitFor();
     await provenance.click();
+    assert.ok(await catalog.evaluate(el => el.scrollWidth <= el.clientWidth));
     if (process.env.CATALOG_CAPTURE && width === 1152) await catalog.screenshot({path:process.env.CATALOG_CAPTURE});
     await catalog.getByRole("button",{name:/^Permitted/}).click();
     await row.filter({hasText:"stock"}).getByText("Original 1/1 · Edited 0/1",{exact:true}).waitFor();
@@ -42,6 +43,7 @@ try {
     await load({request:{version:1,attributes:{"nexusweave.request.body":body}},allowed_tools:["lookup_14"]});
     await catalog.getByRole("button",{name:/Outside scope\s*1199/}).waitFor();
     assert.equal(await row.count(),8);
+    assert.ok(await catalog.evaluate(el => el.scrollWidth <= el.clientWidth));
     await catalog.getByRole("button",{name:"Next",exact:true}).click();
     await catalog.getByText("9–16 of 1199").waitFor();
     await catalog.getByRole("searchbox").fill("lookup_1199");
