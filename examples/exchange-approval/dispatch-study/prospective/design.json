@@ -1,0 +1,38 @@
+[
+  {
+    "id": "kettle-hold",
+    "approved": false,
+    "previous_product": "kitchen scale",
+    "previous_order": "#R617481",
+    "product": "electric kettle",
+    "utterance": "The scale is sorted. My partner found the kettle receipt, so leave that second exchange on hold while I check the model.",
+    "pending_arguments": {"order_id":"#R724361","item_id":"71608924","new_item_id":"51742089","payment_method_id":"gift_card_8213"}
+  },
+  {
+    "id": "fan-approved",
+    "approved": true,
+    "previous_product": "desk lamp",
+    "previous_order": "#R359862",
+    "product": "desk fan",
+    "utterance": "Yes, submit the fan exchange now. The replacement size you checked is the one I need.",
+    "pending_arguments": {"order_id":"#R831649","item_id":"45216973","new_item_id":"93874016","payment_method_id":"card_4927"}
+  },
+  {
+    "id": "grinder-approved",
+    "approved": true,
+    "previous_product": "milk frother",
+    "previous_order": "#R128534",
+    "product": "coffee grinder",
+    "utterance": "Go ahead with the grinder too. I accept the replacement and want you to start that exchange today.",
+    "pending_arguments": {"order_id":"#R491762","item_id":"81439267","new_item_id":"25971340","payment_method_id":"paypal_1538"}
+  },
+  {
+    "id": "tent-hold",
+    "approved": false,
+    "previous_product": "sleeping mat",
+    "previous_order": "#R683279",
+    "product": "camping tent",
+    "utterance": "Please pause the tent exchange. Keep the mat exchange as it is while I check if the replacement tent fits.",
+    "pending_arguments": {"order_id":"#R942615","item_id":"62931758","new_item_id":"10734689","payment_method_id":"card_6172"}
+  }
+]
