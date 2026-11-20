@@ -55,6 +55,8 @@ Yeats et al. trained linear probes on model hidden states to detect incorrect to
 
 The calendar experiment uses source order as a control and compares its pre-generation forecast with a direct rule that chooses the source named by the user. The two rules tied across the four matched question pairs. [Experiment and saved evidence](methods.md#does-the-suggested-edit-follow-the-question-when-source-order-changes)
 
+McCoy, Pavlick and Linzen tested whether natural-language inference models could succeed through heuristics such as lexical overlap. We used their comparison as motivation for including a word-overlap baseline alongside a task-specific semantic lookup. The activity study examines whether an edit changes the generated duration. The lookup identified the intended activity in 16/16 cases, while editing that record changed only seven resolved durations. [McCoy et al., ACL 2019](https://aclanthology.org/P19-1334/) · [Activity study](../examples/context-screening/replay/prefix-indirect/README.md)
+
 ## Repeatability and outcome choice
 
 A follow-up search on 20 November 2026 used `LLM evaluation prompt sensitivity decoding randomness repeated sampling`. Hua et al. found that the apparent sensitivity of performance to prompt templates depended on how answers were scored. This bears on our choice to report a change in the complete proposal and a change in the selected tool separately. Both outcomes describe captured behavior. Correctness and downstream task success require their own criteria. [Hua et al., EMNLP 2025](https://aclanthology.org/2025.emnlp-main.1006/)

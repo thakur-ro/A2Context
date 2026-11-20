@@ -1,6 +1,9 @@
 //! Compare a pair of continuations after a supplied assistant prefix with free generations.
 use super::{margin, Candidate, Measurement, RecordedProbe, Verification};
-use crate::replay::{shadow, Trial};
+use crate::{
+    preflight,
+    replay::{shadow, Choice, MatchRule, Trial},
+};
 use serde_json::{json, Value};
 
 /// Summarize verified, nonempty-prefix candidate reports. A source is selected only
@@ -32,7 +35,7 @@ pub fn prefix_reviews(
             let edit = index.checked_sub(1).map(|i| &measurement.effects[i]);
             let name = edit.map_or("Original", |e| e.source_id.unwrap_or(e.context_id));
             let margin = margin(row);
-            if (margin > 0.0 && baseline_margin < 0.0) || (margin < 0.0 && baseline_margin > 0.0) {
+            if reverses(baseline_margin, margin) {
                 reversals.push(index);
             }
             conditions.push(json!({
@@ -54,7 +57,7 @@ pub fn prefix_reviews(
                 else {
                     return None;
                 };
-                trial_run(measurement, trials)
+                trial_run(measurement, trials, &shadow.evidence.field)
             })
             .collect();
         let verdict = verdict(&conditions, &reversals, &runs);
@@ -66,6 +69,70 @@ pub fn prefix_reviews(
             "reversals":reversals, "runs":runs}));
     }
     reviews
+}
+
+fn reverses(original: f64, edited: f64) -> bool {
+    (original > 0.0 && edited < 0.0) || (original < 0.0 && edited > 0.0)
+}
+
+/// Prepare one free generation per arm for the only edit that reversed preference.
+/// Verifies the supplied scores and all source bindings before choosing the edit.
+/// The shadow criterion records the original predicted literal. Directional
+/// agreement is checked separately by `prefix_reviews` using both generated texts.
+pub fn prefix_trial_case(
+    request: &preflight::Request,
+    candidate: &super::Report,
+    runner_id: &str,
+) -> Result<shadow::Case, String> {
+    if runner_id.trim().is_empty() || candidate.assistant_prefix.is_empty() {
+        return Err(
+            "A prefix trial requires a named runner and a supplied assistant prefix.".into(),
+        );
+    }
+    let (call, body, _) = preflight::pending_call(request.clone())?;
+    let body = body.ok_or("A prefix trial requires the captured request body.")?;
+    let original = call
+        .recorded_request
+        .as_ref()
+        .ok_or("Missing recorded request.")?;
+    let hash = super::sha256(original.body.as_bytes());
+    let checked = super::recorded::verify(&call, &body, &hash, candidate)?;
+    if call.model.as_deref() != Some(checked.model_id) {
+        return Err(
+            "The pending model ID must match the candidate scorer model for a prefix trial.".into(),
+        );
+    }
+    let mut switches = checked
+        .effects
+        .iter()
+        .zip(&candidate.effects)
+        .filter(|(bound, _)| reverses(checked.baseline_log_odds, bound.log_odds));
+    let (bound, raw) = switches
+        .next()
+        .filter(|_| switches.next().is_none())
+        .ok_or("The scores must identify exactly one edit that reverses preference.")?;
+    let mut intervention = raw.intervention.clone();
+    intervention.context_id = bound.context_id.to_owned();
+    let predicted = &checked.candidates[usize::from(checked.baseline_log_odds < 0.0)].continuation;
+    let beginning = format!("{}{}", checked.assistant_prefix, predicted);
+    Ok(shadow::Case {
+        version: 1,
+        id: format!("prefix-trial-{}", candidate.id),
+        runner_id: runner_id.into(),
+        expected: Choice {
+            kind: "model_output".into(),
+            label: "Model answer".into(),
+            outcome: json!(beginning),
+        },
+        match_rule: MatchRule::TextCapture {
+            pattern: format!(r"\A({})", regex::escape(&beginning)),
+        },
+        samples: 1,
+        sampling_design: Default::default(),
+        interventions: vec![intervention],
+        test_pair: false,
+        negative_control_context_id: None,
+    })
 }
 
 // A direction is resolved only if every attempted trial in the arm began with
@@ -121,7 +188,7 @@ fn verdict(conditions: &[Value], reversals: &[usize], runs: &[Value]) -> &'stati
     result.unwrap_or("untested")
 }
 
-fn trial_run(candidate: &Measurement, trials: &shadow::Measurement) -> Option<Value> {
+fn trial_run(candidate: &Measurement, trials: &shadow::Measurement, origin: &str) -> Option<Value> {
     let report = trials.report;
     if trials.model != Some(candidate.model_id)
         || candidate.report.captured_request_sha256 != report.captured_request_sha256
@@ -131,19 +198,28 @@ fn trial_run(candidate: &Measurement, trials: &shadow::Measurement) -> Option<Va
     let summarize =
         |rows: &[Trial]| count_starts(rows, candidate.assistant_prefix, candidate.candidates);
     let mut rows = vec![Some(summarize(&report.baseline))];
-    for edit in &candidate.report.effects {
-        let matched = report.effects.iter().find(|e| {
-            e.request_sha256 == edit.request_sha256
-                && e.source_id == edit.source_id
-                && e.source_version == edit.source_version
-                && e.result.intervention == edit.intervention
-        });
-        rows.push(matched.map(|e| summarize(&e.result.trials)));
+    for (edit, source) in candidate.report.effects.iter().zip(&candidate.effects) {
+        let matched = report
+            .effects
+            .iter()
+            .zip(&trials.effects)
+            .find(|(e, bound)| {
+                let actual = &e.result.intervention;
+                e.request_sha256 == edit.request_sha256
+                    && e.source_id == edit.source_id
+                    && e.source_version == edit.source_version
+                    && bound.context_id == source.context_id
+                    && actual.pointer == edit.intervention.pointer
+                    && actual.text_range == edit.intervention.text_range
+                    && actual.operation == edit.intervention.operation
+                    && actual.replacement == edit.intervention.replacement
+            });
+        rows.push(matched.map(|(e, _)| summarize(&e.result.trials)));
     }
     rows[1..]
         .iter()
         .any(Option::is_some)
-        .then(|| json!({"report":report.id,"runner":report.runner_id,"sampling":report.sampling_design,"rows":rows}))
+        .then(|| json!({"origin":origin,"report":report.id,"runner":report.runner_id,"sampling":report.sampling_design,"rows":rows}))
 }
 
 fn excerpt(text: &str) -> String {

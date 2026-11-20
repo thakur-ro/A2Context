@@ -13,6 +13,8 @@
 - Shayne Longpre and colleagues studied answer substitution in QA contexts. Their method is related to the numerical edits in the journal experiment. [Entity-Based Knowledge Conflicts in Question Answering](https://aclanthology.org/2021.emnlp-main.565/)
 - Wassily Hoeffding’s inequality supplies the bound used for reported replay intervals under independent sampling. The paired-edit test uses the four conditions of a two-factor design. [Hoeffding, 1963](https://doi.org/10.1080/01621459.1963.10500830), [NIST factorial experiment definition](https://www.itl.nist.gov/div898/handbook/glossary.htm)
 
+R. Thomas McCoy, Ellie Pavlick and Tal Linzen studied lexical heuristics in natural-language inference. The indirect activity study includes lexical overlap as a comparison rule. [Right for the Wrong Reasons](https://aclanthology.org/P19-1334/)
+
 The [scoping review](docs/research-review.md) compares the sidecar workflow with TRACE, REFLECT, LangSmith Insights, SentinelRCA, and Langfuse. The README structure uses [Transformers](https://github.com/huggingface/transformers) as a reference for showing a runnable result near the top.
 
 - The routing comparison draws on research into tool-set changes by Ella Rabinovich and Ateret Anaby-Tavor. BFCL and the hidden-state study by Eric Yeats and colleagues provide benchmark and probe comparisons. [Function-calling robustness](https://arxiv.org/abs/2504.00914v1) · [BFCL](https://proceedings.mlr.press/v267/patil25a.html) · [Tool-error probes](https://arxiv.org/abs/2608.27750v1)

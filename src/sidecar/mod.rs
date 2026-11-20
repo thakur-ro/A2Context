@@ -177,6 +177,7 @@ pub fn serve(args: &[&str]) -> Result<()> {
             && matches!(
                 request.url(),
                 "/v1/traces"
+                    | "/api/prefix-results"
                     | "/api/position-results"
                     | "/api/replay-reports"
                     | "/api/activation-reports"
@@ -273,7 +274,20 @@ fn work(
                 body.to_string().into_bytes(),
             );
         } else {
-            let reply = if request.url() == "/api/position-results" {
+            let reply = if request.url() == "/api/prefix-results" {
+                #[derive(serde::Deserialize)]
+                #[serde(deny_unknown_fields)]
+                struct Submission {
+                    scope: BTreeMap<String, String>,
+                    shadow: replay::shadow::Report,
+                }
+                if content {
+                    replay_http::read_json::<Submission>(&mut request, LIMIT)
+                        .and_then(|s| store.attach_prefix(s.scope, s.shadow))
+                } else {
+                    Err((403, "Prefix trials require content capture.".into()))
+                }
+            } else if request.url() == "/api/position-results" {
                 replay_http::read_json::<position_plan::Submission>(&mut request, LIMIT)
                     .and_then(|submitted| store.attach_position(submitted))
             } else if request.url() == "/api/replay-reports" {
@@ -366,10 +380,17 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 "/api/sidecar/token-path" if options.content || options.demo => {
                     store.token_path(&fields)?
                 }
-                "/api/sidecar/prefix-check" => {
-                    let Some(check) = store.prefix_check(&fields)? else {
+                "/api/sidecar/prefix-input" if options.content => {
+                    let Some(input) = store.prefix_input(&fields)? else {
                         return Ok(None);
                     };
+                    input
+                }
+                "/api/sidecar/prefix-check" => {
+                    let Some(mut check) = store.prefix_check(&fields)? else {
+                        return Ok(None);
+                    };
+                    check["capture_enabled"] = options.content.into();
                     check
                 }
                 "/api/sidecar/target-check" => {

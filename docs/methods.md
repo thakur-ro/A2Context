@@ -276,6 +276,12 @@ python3 "$study/study.py" --model "$qwen_dir" --cases /tmp/new-calendar-cases.js
 cmp "$study/cases.json" /tmp/new-calendar-cases.json
 ```
 
+### What if the user never names the source?
+
+In the activity follow-up, the user described tropical plants or practicing for a concert. Atlas and Birch listed a greenhouse tour and an orchestra rehearsal. Across 16 questions we crossed the paraphrase, the activity assigned to each name, the durations and the source order. The simple name-matching and word-overlap rules both abstained throughout. A task-specific lookup identified the intended activity in every question. Its source edit changed the generated number on seven, preserved it on four and produced an outside-set answer on five. [Frozen protocol](https://github.com/thakur-ro/NexusWeave/blob/c390e759470b95a6c5589465e493fede82b5b764/examples/context-screening/replay/prefix-indirect/protocol.json)
+
+The model's supplied-prefix preference identified a single edit on 11/16 questions. All 11 changed the number. Four corrected a wrong original answer by blanking the other activity’s duration. Seven removed the original correct value. Only one of eight matched question pairs switched which edit was uniquely selected and confirmed. These counts describe the two paraphrases and checkpoint tested. A result with no single selection needs separate investigation even when an individual edit reverses a score. [All baselines, unmatched outcomes and reproducible results](../examples/context-screening/replay/prefix-indirect/README.md) · [Try a forecast and attach a measured result](sidecar.md#test-a-suggested-source-before-seeing-the-answer)
+
 ### What do model scores add before generation?
 
 We gave the local Qwen scorer the pending dispatch request, two source edits and two continuations taken from the task: the specified bay code and `UNKNOWN`. At the empty assistant prefix it summed the conditional log probabilities of the tokens in each continuation. Subtracting the second sum from the first gives the preference margin. The sidecar checks the request and edit bindings. Within one probe, it lists edits that reverse the preference first, then orders by absolute change in margin. A tied margin supplies no reversal.

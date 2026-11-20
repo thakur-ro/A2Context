@@ -4,7 +4,7 @@ use nexusweave::{
     replay::{candidates, shadow},
     Call, Run,
 };
-use rusqlite::{params, Transaction};
+use rusqlite::{params, Connection, Transaction};
 use serde_json::{json, Value};
 
 pub(super) const SCHEMA: &str = "CREATE TABLE IF NOT EXISTS prefix_checks (
@@ -12,6 +12,10 @@ pub(super) const SCHEMA: &str = "CREATE TABLE IF NOT EXISTS prefix_checks (
     prefix TEXT NOT NULL, source TEXT, verdict TEXT NOT NULL, input TEXT NOT NULL, setup TEXT, question_hash TEXT, choices TEXT NOT NULL,
     PRIMARY KEY(trace_id,call_id,report),
     FOREIGN KEY(trace_id,call_id) REFERENCES captured_calls ON DELETE CASCADE
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS prefix_trials (
+    trace_id TEXT NOT NULL REFERENCES traces(id) ON DELETE CASCADE, call_id TEXT NOT NULL, runner TEXT NOT NULL,
+    report TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(trace_id,call_id,runner,report)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS prefix_checks_design ON prefix_checks(design,verdict,source);";
 
@@ -27,7 +31,9 @@ pub(super) fn index(tx: &Transaction, run: &Run, call: &Call) -> rusqlite::Resul
         return Ok(());
     }
     let candidates = candidates::recorded(&run.id, call);
-    let trials = shadow::recorded(&run.id, call);
+    let uploads = uploads(tx, &run.id, &call.id)?;
+    let evidence = upload_origin(call);
+    let trials = trials(&run.id, call, &uploads, &evidence);
     let mut insert =
         tx.prepare_cached("INSERT INTO prefix_checks VALUES (?,?,?,?,?,?,?,?,?,?,?)")?;
     for (record, raw) in candidates.iter().zip(reports) {
@@ -58,7 +64,21 @@ pub(super) fn index(tx: &Transaction, run: &Run, call: &Call) -> rusqlite::Resul
                     .as_u64()
                     .and_then(|i| r["alternatives"][i as usize].as_str())
             };
-            let choices = json!({"alternatives":r["alternatives"],"model":r["model"],"revision":r["revision"],"runtime":r["runtime"],"scorer":r["scorer"],
+            let trial_key = selection.map(|s| {
+                digest(
+                    json!([
+                        raw.captured_request_sha256,
+                        s["source"],
+                        s["version"],
+                        s["original_sha256"],
+                        s["edit"],
+                        preferred(&r["conditions"][0]),
+                        preferred(s)
+                    ])
+                    .to_string(),
+                )
+            });
+            let choices = json!({"trial_key":trial_key,"alternatives":r["alternatives"],"model":r["model"],"revision":r["revision"],"runtime":r["runtime"],"scorer":r["scorer"],
                 "original":preferred(&r["conditions"][0]),"edited":selection.and_then(preferred)});
             insert.execute(params![
                 run.id,
@@ -78,6 +98,66 @@ pub(super) fn index(tx: &Transaction, run: &Run, call: &Call) -> rusqlite::Resul
         }
     }
     Ok(())
+}
+
+pub(super) fn uploads(
+    db: &Connection,
+    trace: &str,
+    call: &str,
+) -> rusqlite::Result<Vec<shadow::Report>> {
+    let mut stmt = db.prepare_cached(
+        "SELECT body FROM prefix_trials WHERE trace_id=? AND call_id=? ORDER BY runner,report",
+    )?;
+    let results = stmt
+        .query_map(params![trace, call], |r| {
+            let body: String = r.get(0)?;
+            serde_json::from_str(&body).map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    0,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })
+        })?
+        .collect();
+    results
+}
+
+pub(super) fn upload_origin(call: &Call) -> nexusweave::Evidence {
+    nexusweave::Evidence {
+        field: "sidecar.prefix_trials".into(),
+        span_id: call.span_id.clone(),
+        message_index: None,
+        part_index: None,
+    }
+}
+
+pub(super) fn captured_report<'a>(call: &'a Call, id: &str) -> Option<&'a shadow::Report> {
+    let mut reports = call
+        .shadow_probes
+        .as_ref()?
+        .reports
+        .as_ref()?
+        .iter()
+        .filter(|r| r.id == id);
+    let first = reports.next()?;
+    reports.next().is_none().then_some(first)
+}
+
+pub(super) fn trials<'a>(
+    id: &'a str,
+    call: &'a Call,
+    uploads: &'a [shadow::Report],
+    evidence: &'a nexusweave::Evidence,
+) -> Vec<shadow::RecordedProbe<'a>> {
+    let mut trials = shadow::recorded(id, call);
+    trials.extend(
+        uploads
+            .iter()
+            .filter(|r| captured_report(call, &r.id) != Some(*r))
+            .filter_map(|r| shadow::attached(id, call, r, evidence).ok()),
+    );
+    trials
 }
 
 // Require one complete source-edit design with a single identified runner.
@@ -114,18 +194,29 @@ fn matched_setup(call: &Call, review: &Value) -> Option<String> {
     ))
 }
 
-pub(super) const SCOPED: &str = ", checks AS (
+pub(super) const SCOPED: &str = ", scoped_checks AS (
     SELECT p.*,t.thread_key,t.thread,c.started FROM prefix_checks p JOIN selected t ON t.id=p.trace_id
     JOIN captured_calls c USING(trace_id,call_id) WHERE t.thread_key IS NOT NULL";
+
+// Scope before looking for an existing test, then filter to individual witnesses.
+pub(super) const TRIAL_COVERAGE: &str = ", coverage AS (
+    SELECT *,verdict='untested' AND choices->>'trial_key' IS NOT NULL AND
+        max(verdict IN ('confirmed','disagreed','unresolved','mixed')) OVER
+        (PARTITION BY design,choices->>'trial_key')=0 AS needs_trial FROM scoped_checks
+)";
 
 pub(super) const GROUPS: &str = " SELECT json_object('design',design,'prefix',prefix,
     'model',choices->>'model','revision',choices->>'revision','runtime',choices->>'runtime','scorer',choices->>'scorer','alternatives',choices->'alternatives',
     'conversations',count(DISTINCT thread_key),'inputs',count(DISTINCT input),
     'exceptions',count(DISTINCT thread_key) FILTER (WHERE verdict IN ('disagreed','unselected_change','mixed')),
     'confirmed',count(DISTINCT thread_key) FILTER (WHERE verdict='confirmed'),
-    'untested',count(DISTINCT thread_key) FILTER (WHERE verdict='untested'))
+    'untested',count(DISTINCT thread_key) FILTER (WHERE verdict='untested'),
+    'needs_trial',count(DISTINCT thread_key) FILTER (WHERE needs_trial),
+    'experiments',count(DISTINCT choices->>'trial_key') FILTER (WHERE needs_trial))
     FROM checks GROUP BY design,prefix ORDER BY
     count(DISTINCT thread_key) FILTER (WHERE verdict IN ('disagreed','unselected_change','mixed')) DESC,
+    count(DISTINCT thread_key) FILTER (WHERE needs_trial) DESC,
+    count(DISTINCT thread_key) FILTER (WHERE verdict='confirmed') DESC,
     count(DISTINCT thread_key) DESC,max(started) DESC,design LIMIT ? OFFSET ?";
 
 pub(super) const BREAKDOWN: &str = " SELECT json_object('source',source,'verdict',verdict,
@@ -135,7 +226,7 @@ pub(super) const BREAKDOWN: &str = " SELECT json_object('source',source,'verdict
 pub(super) const CASES: &str = ", witnesses AS (
     SELECT *,row_number() OVER(PARTITION BY thread_key ORDER BY started DESC,trace_id,call_id,report) AS sample
     FROM checks) SELECT json_object('thread',w.thread,'thread_key',w.thread_key,'trace',w.trace_id,'call',w.call_id,
-    'report',w.report,'source',w.source,'verdict',w.verdict,'question',c.preview->>'$.user.text')
+    'report',w.report,'source',w.source,'verdict',w.verdict,'trial_key',w.choices->>'trial_key','question',c.preview->>'$.user.text')
     FROM witnesses w JOIN conversation_calls c USING(trace_id,call_id) WHERE sample=1
     ORDER BY w.started DESC,w.thread_key LIMIT ? OFFSET ?";
 

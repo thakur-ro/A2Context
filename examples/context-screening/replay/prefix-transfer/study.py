@@ -26,19 +26,26 @@ def design(protocol):
 
 
 def request_case(protocol, cell):
-    system = protocol["system"]
-    declarations, edits = [], []
+    entries = []
     for source in cell["order"]:
         name, minutes = protocol["sources"][source], cell["minutes"][source]
-        entry = protocol["entry"].format(name=name, minutes=minutes)
+        entries.append((source, f"{minutes}m", protocol["entry"].format(name=name, minutes=minutes),
+                        protocol["replacement"].format(name=name)))
+    question = protocol["user"].format(name=protocol["sources"][cell["requested"]])
+    return request_from_entries(protocol, entries, question)
+
+
+def request_from_entries(protocol, entries, question):
+    system = protocol["system"]
+    declarations, edits = [], []
+    for source, version, entry, replacement in entries:
         system += "\n"
         start = len(system.encode())
         system += entry
         location = {"pointer": "/messages/0/content", "text_range": {"start_byte": start, "end_byte": len(system.encode())}}
-        declarations.append({"id": source, "source_id": source, "source_version": f"{minutes}m", "request_fragment": location})
+        declarations.append({"id": source, "source_id": source, "source_version": version, "request_fragment": location})
         edits.append({"context_id": "request-source:" + source, **location, "operation": "replace_text_fragment",
-                      "replacement": protocol["replacement"].format(name=name)})
-    question = protocol["user"].format(name=protocol["sources"][cell["requested"]])
+                      "replacement": replacement})
     body = {"model": protocol["checkpoint"], "messages": [{"role": "system", "content": system},
             {"role": "user", "content": question}], "temperature": protocol["temperature"], "max_tokens": protocol["max_tokens"]}
     return {"version": 1, "attributes": {"gen_ai.request.model": body["model"], "nexusweave.request.body": compact(body),
@@ -51,15 +58,15 @@ def log_probs(report):
     return {"baseline": by_id["baseline"], **{e["source_id"]: by_id[e["condition_id"]] for e in report["effects"]}}
 
 
-def measure(protocol, model, binary):
+def measure(protocol, model, binary, cells, prepare, protocol_path):
     verify_model(model)
     if sha256((model / "tokenizer.json").read_bytes()).hexdigest() != protocol["tokenizer_sha256"]:
         raise ValueError("Tokenizer digest differs from the frozen protocol.")
     score = [ROOT / "scripts/score_qwen_candidates.py", model, "--model-id", protocol["checkpoint"], "--revision", protocol["revision"]]
     proposal = [ROOT / "scripts/propose_qwen.py", model, "--model-id", protocol["checkpoint"]]
     records = []
-    for cell in design(protocol):
-        request, edits = request_case(protocol, cell)
+    for cell in cells:
+        request, edits = prepare(protocol, cell)
         probe = {"version": 1, "id": "room-duration", "scorer_id": "qwen2-transformers-continuation-v1",
                  "candidates": [{"id": value, "continuation": value} for value in protocol["candidates"]], "interventions": edits}
         empty = run_probe(binary, "probe-candidates", request, probe, score)
@@ -72,7 +79,7 @@ def measure(protocol, model, binary):
                 "expected": {"kind": "model_output", "label": "Model answer", "outcome": expected}, "samples": 1, "interventions": edits}
         shadow = run_probe(binary, "shadow", request, spec, proposal)
         envelope = {"request": request, "candidate": supplied, "shadow": shadow}
-        records.append({**cell, "protocol_sha256": sha256(PROTOCOL.read_bytes()).hexdigest(), "empty_log_probs": log_probs(empty),
+        records.append({**cell, "protocol_sha256": sha256(protocol_path.read_bytes()).hexdigest(), "empty_log_probs": log_probs(empty),
                         "envelope": envelope})
         print("Completed", cell["id"], file=sys.stderr, flush=True)
     return records
@@ -87,6 +94,30 @@ def outcomes(report):
     return answers
 
 
+def verified_review(protocol, cell, record, binary, prepare, protocol_path):
+    if any(cell[k] != record[k] for k in cell) or record["protocol_sha256"] != sha256(protocol_path.read_bytes()).hexdigest():
+        raise ValueError("Saved records do not match the frozen conditions.")
+    envelope = record["envelope"]
+    request, edits = prepare(protocol, cell)
+    if envelope["request"] != request:
+        raise ValueError("Saved request differs from the declared condition.")
+    candidate = envelope["candidate"]
+    if ([effect["intervention"] for effect in candidate["effects"]] != edits
+            or candidate["assistant_prefix"] != protocol["prefix"]
+            or [c["continuation"] for c in candidate["candidates"]] != protocol["candidates"]):
+        raise ValueError("Candidate conditions differ from the frozen intervention or readout.")
+    for name, pinned in [("model_id","checkpoint"), ("model_revision","revision"),
+                         ("runtime","runtime"), ("tokenizer_sha256","tokenizer_sha256")]:
+        if candidate["scores"][name] != protocol[pinned]:
+            raise ValueError(f"Saved {name} differs from the scoring protocol.")
+    verified = json.loads(subprocess.check_output([binary, "inspect-pending", "-"], input=json.dumps(envelope), text=True))
+    review, = verified["prefix_reviews"]
+    run, = review["runs"]
+    if any(row is None for row in run["rows"]) or len(run["rows"]) != 3:
+        raise ValueError("A source edit is missing a matching trial condition.")
+    return review
+
+
 def summarize(protocol, records, binary):
     selectors = ["empty", "supplied", *protocol["sources"], "first", "last", "requested"]
     counts = {s: dict(selected=0, resolved=0, unresolved=0, switches=0) for s in selectors}
@@ -98,26 +129,8 @@ def summarize(protocol, records, binary):
     if len(records) != len(cells):
         raise ValueError("Saved records must cover every frozen condition once.")
     for cell, record in zip(cells, records):
-        if any(cell[k] != record[k] for k in cell) or record["protocol_sha256"] != sha256(PROTOCOL.read_bytes()).hexdigest():
-            raise ValueError("Saved records do not match the frozen conditions.")
+        review = verified_review(protocol, cell, record, binary, request_case, PROTOCOL)
         envelope = record["envelope"]
-        request, edits = request_case(protocol, cell)
-        if envelope["request"] != request:
-            raise ValueError("Saved request differs from the declared condition.")
-        candidate = envelope["candidate"]
-        if ([effect["intervention"] for effect in candidate["effects"]] != edits
-                or candidate["assistant_prefix"] != protocol["prefix"]
-                or [c["continuation"] for c in candidate["candidates"]] != protocol["candidates"]):
-            raise ValueError("Candidate conditions differ from the frozen intervention or readout.")
-        for name, pinned in [("model_id","checkpoint"), ("model_revision","revision"),
-                             ("runtime","runtime"), ("tokenizer_sha256","tokenizer_sha256")]:
-            if candidate["scores"][name] != protocol[pinned]:
-                raise ValueError(f"Saved {name} differs from the scoring protocol.")
-        verified = json.loads(subprocess.check_output([binary, "inspect-pending", "-"], input=json.dumps(envelope), text=True))
-        review, = verified["prefix_reviews"]
-        run, = review["runs"]
-        if any(row is None for row in run["rows"]) or len(run["rows"]) != 3:
-            raise ValueError("A source edit is missing a matching trial condition.")
         answers = outcomes(envelope["shadow"])
         fields = {k: field(answer) for k, answer in answers.items()}
         changes = {s: fields[s] != fields["baseline"] if fields[s] and fields["baseline"] else None for s in cell["order"]}
@@ -168,7 +181,7 @@ if __name__ == "__main__":
     if args.model:
         if args.cases.exists():
             parser.error("Choose a new path for measured cases.")
-        cases = measure(protocol, args.model.resolve(), binary)
+        cases = measure(protocol, args.model.resolve(), binary, design(protocol), request_case, PROTOCOL)
         result = summarize(protocol, cases, binary)
         with args.cases.open("x") as handle:
             json.dump(cases, handle, indent=2, ensure_ascii=False, allow_nan=False)

@@ -133,6 +133,28 @@ pub fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Vec<RecordedProbe<'a>> {
         .collect()
 }
 
+/// Verify a separately supplied report against the same captured request and
+/// source bindings used for telemetry. The evidence identifies its origin.
+pub fn attached<'a>(
+    run_id: &'a str,
+    call: &'a Call,
+    report: &'a Report,
+    evidence: &'a Evidence,
+) -> Result<RecordedProbe<'a>, String> {
+    let raw = call
+        .recorded_request
+        .as_ref()
+        .ok_or("Missing original request for the proposal trials.")?;
+    let measurement = verify(call, &raw.parse()?, &sha256(raw.body.as_bytes()), report)?;
+    Ok(RecordedProbe {
+        run_id,
+        call_id: &call.id,
+        evidence,
+        report_id: Some(&report.id),
+        verification: Verification::Matched { measurement },
+    })
+}
+
 fn verify<'a>(
     call: &'a Call,
     request: &Value,

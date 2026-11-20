@@ -135,6 +135,39 @@ impl StoredTrace {
         })
     }
 
+    /// Export the captured inference inputs understood by preflight for one span.
+    /// The original serialized request is preserved for digest verification.
+    pub fn pending_request(&self, id: &str) -> Option<crate::preflight::Request> {
+        let (_, span) = self.0.get(id)?;
+        let attrs = span.attrs.as_object()?;
+        attrs.get(crate::span_metadata::REQUEST)?;
+        let mut attributes: Map<String, Value> = [
+            crate::span_metadata::REQUEST,
+            "gen_ai.request.model",
+            "gen_ai.input.messages",
+            "gen_ai.system_instructions",
+            "gen_ai.tool.definitions",
+        ]
+        .into_iter()
+        .filter_map(|key| Some((key.to_owned(), attrs.get(key)?.clone())))
+        .collect();
+        if let Some(raw) = attrs.get("nexusweave.context.semantics") {
+            let mut declarations: Value = match raw.as_str() {
+                Some(encoded) => serde_json::from_str(encoded).ok()?,
+                None => raw.clone(),
+            };
+            declarations
+                .as_object_mut()?
+                .retain(|key, _| matches!(key.as_str(), "version" | "context" | "request_sources"));
+            attributes.insert("nexusweave.context.semantics".into(), declarations);
+        }
+        Some(crate::preflight::Request {
+            version: 1,
+            scope: None,
+            attributes,
+        })
+    }
+
     pub fn metadata(&self) -> BTreeMap<String, String> {
         let mut visible = BTreeMap::new();
         let mut ambiguous = BTreeSet::new();

@@ -127,7 +127,7 @@ pub fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Vec<RecordedProbe<'a>> {
         .collect()
 }
 
-fn verify<'a>(
+pub(super) fn verify<'a>(
     call: &'a Call,
     request: &Value,
     hash: &str,

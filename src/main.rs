@@ -32,6 +32,7 @@ const USAGE: &str = "Usage:
   nexusweave probe-prefill <request.json> <edits.json> <preview.json> -- <scorer> [args...]
   nexusweave test-routing <scored-request.json> <design.json> <runner-id> <preview.json> -- <runner> [args...]
   nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
+  nexusweave test-prefix <scored-input.json> <runner-id> <checked-input.json> -- <runner> [args...]
   nexusweave shadow <request.json> <case.json> <report.json> -- <runner> [args...]
   nexusweave query-conflicts <view.json> <evidence.json> [...]
   nexusweave query-candidate-patterns <view.json> <evidence.json> [...]
@@ -274,20 +275,33 @@ fn run(args: Vec<String>) -> Result<()> {
                 report.effects.len()
             );
         }
+        ["test-prefix", input, runner_id, output, "--", program, runner_args @ ..] => {
+            if Path::new(output).exists() {
+                return Err(format!("output already exists: {output}").into());
+            }
+            let mut input: nexusweave::pending::Request =
+                serde_json::from_reader(fs::File::open(input)?)?;
+            let candidate = input
+                .candidate
+                .as_ref()
+                .ok_or("Supply the scored candidate report.")?;
+            let case = replay::candidates::prefix_trial_case(&input.request, candidate, runner_id)?;
+            input.shadow = Some(replay::shadow::execute(
+                input.request.clone(),
+                &case,
+                |body| proposal(program, runner_args, body),
+            )?);
+            write_new(output, &serde_json::to_vec_pretty(&input)?)?;
+            println!("Saved the scored request and its two proposal trials to {output}.");
+        }
         ["shadow", request, specification, output, "--", program, runner_args @ ..] => {
             if Path::new(output).exists() {
                 return Err(format!("shadow report already exists: {output}").into());
             }
             let request = serde_json::from_reader(fs::File::open(request)?)?;
             let case = serde_json::from_reader(fs::File::open(specification)?)?;
-            let report = replay::shadow::execute(request, &case, |request| {
-                match run_json(program, runner_args, request, Stdio::inherit()) {
-                    Ok(choice) => Some(choice),
-                    Err(error) => {
-                        eprintln!("Shadow trial failed. {error}");
-                        None
-                    }
-                }
+            let report = replay::shadow::execute(request, &case, |body| {
+                proposal(program, runner_args, body)
             })?;
             write_new(output, &serde_json::to_vec_pretty(&report)?)?;
             println!(
@@ -388,6 +402,16 @@ impl<'a> ContextScreen<'a> {
 
 fn sample(program: &str, arguments: &[&str], request: &Value) -> Option<replay::Choice> {
     run_json(program, arguments, request, Stdio::null()).ok()
+}
+
+fn proposal(program: &str, args: &[&str], body: &Value) -> Option<replay::Choice> {
+    match run_json(program, args, body, Stdio::inherit()) {
+        Ok(choice) => Some(choice),
+        Err(error) => {
+            eprintln!("Shadow trial failed. {error}");
+            None
+        }
+    }
 }
 
 fn run_json<T: DeserializeOwned>(

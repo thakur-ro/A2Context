@@ -6,7 +6,7 @@
 pub mod patterns;
 mod recorded;
 
-pub use recorded::recorded;
+pub use recorded::{attached, recorded};
 pub use recorded::{
     CapturedReports, Measurement, RecordedEffect, RecordedPair, RecordedProbe, Verification,
 };

@@ -21,7 +21,7 @@ function prefixReview(review, question, action) {
     comparisonTable(["Request","Generated answer"], run.rows.map((row,i) =>
       element("tr", {}, element("th", {scope:"row",text:conditions[i].label}),
         element("td", {}, row?.example != null && element("code", {text:row.example}), prefixTrialResult(row, alternatives))))),
-    element("small", {text:"Runner · " + run.runner + " · " + run.report})));
+    element("small", {text:(run.origin === "sidecar.prefix_trials" ? "Attached trial · " : "Runner · ") + run.runner + " · " + run.report})));
   return element("section", {className:"panel target-check prefix-review", "aria-label":"Source edits at a supplied prefix"},
     element("p", {className:"label",text:"Scores at a supplied prefix"}), element("h2", {text:headline}),
     question && element("blockquote", {text:question}),
@@ -67,12 +67,75 @@ function prefixGroupRow(group) {
 }
 
 function prefixInvestigation(group) {
+  const pending = !group.exceptions && group.needs_trial > 0;
   const headline = group.exceptions ? "Review " + plural(group.exceptions,"conversation") + " where scores and trials need a closer look" :
+    pending ? "Test source suggestions from " + plural(group.needs_trial,"conversation") :
     "Inspect " + plural(group.confirmed,"conversation") + " with verified source edits";
+  const detail = pending ? plural(group.experiments,"distinct edit test") + " across " + plural(group.conversations,"scored conversation") + ". Check whether the score change predicts a change in the generated answer." :
+    "Compare the suggested edit with what the runner generated after " + JSON.stringify(group.prefix) + ".";
   return element("section",{className:"investigation"},element("h2",{text:"Recommended investigation"}),
-    element("a",{className:"featured",href:url({prefixes:1,design:group.design})},element("div",{},
-      element("h3",{text:headline}),element("p",{text:"Compare the suggested edit with what the runner generated after " +
-        JSON.stringify(group.prefix) + "."}))));
+    element("a",{className:"featured",href:url({prefixes:1,design:group.design,...(pending && {verdict:"untested",needs_trial:1})})},element("div",{},
+      element("h3",{text:headline}),element("p",{text:detail}))));
+}
+
+function prefixExperiment(params) {
+  const status = element("p",{"aria-live":"polite"});
+  const download = element("button",{type:"button",text:"Download scored input"});
+  download.addEventListener("click", async () => {
+    download.disabled = true;
+    try {
+      const input = await api("prefix-input",params,true);
+      if (!input) throw new Error("The captured input is unavailable in this scope.");
+      downloadJson("scored-input.json",input);
+      status.textContent = "Saved the captured request and its source scores.";
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      download.disabled = false;
+    }
+  });
+  const upload = element("input",{type:"file",accept:".json,application/json"});
+  upload.addEventListener("change",async () => {
+    const file = upload.files[0];
+    if (!file) return;
+    upload.disabled = true;
+    try {
+      const checked = JSON.parse(await file.text());
+      if (!checked.shadow) throw new Error("Choose the checked input written by test-prefix.");
+      const response = await fetch("/api/prefix-results",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({scope:params,shadow:checked.shadow})});
+      if (!response.ok) throw new Error((await response.json()).message);
+      location.assign(url({prefixes:1,design:params.design,trace:params.trace,call:params.call,report:params.report}));
+    } catch (error) {
+      status.textContent = error.message;
+      upload.disabled = false;
+      upload.value = "";
+    }
+  });
+  return element("details",{className:"prefix-experiment"},element("summary",{text:"Prepare a two-request test"}),
+    element("p",{text:"Give the original request and the suggested edit to your proposal runner. Let it generate both answers from the beginning."}),
+    download,status,element("pre",{},element("code",{text:"nexusweave test-prefix scored-input.json RUNNER_ID checked-input.json -- RUNNER"})),
+    element("p",{text:"Replace RUNNER_ID and RUNNER with your runner’s identity and command. Attach checked-input.json here to update this recommendation."}),
+    element("label",{},"Attach trial results ",upload));
+}
+
+function prefixForecast(review, question, params, captureEnabled, matchingTrial) {
+  const edited = review.conditions[review.reversals[0]];
+  const predicted = row => JSON.stringify(review.alternatives[row.preferred]);
+  return element("section",{className:"panel prefix-forecast","aria-label":"Suggested source test"},
+    element("p",{className:"label",text:"Forecast from model scores"}),
+    element("h2",{text:"Test the edit to " + edited.label}),
+    question && element("blockquote",{text:question}),
+    element("p",{},"After ",element("code",{text:JSON.stringify(review.prefix)}),", the model favored these continuations."),
+    element("div",{className:"comparison forecast-values"},
+      ...[[review.conditions[0],"Original request"],[edited,"After the source edit"]].map(([row,label]) =>
+        element("div",{},element("small",{text:label}),element("strong",{text:predicted(row)})))),
+    edited.original && element("p",{},element("b",{text:"Captured source "}),edited.original),
+    element("p",{},element("b",{text:"Test edit "}),edited.edit.operation === "remove_json" ? "Remove the field." : edited.edit.replacement),
+    matchingTrial ? link("See the matching trial in " + matchingTrial.thread,url({prefixes:1,design:params.design,
+      trace:matchingTrial.trace,call:matchingTrial.call,report:matchingTrial.report}),"action") :
+    captureEnabled ? prefixExperiment(params) : link("Check a scored input in Before inference",url({view:"preview"})),
+    element("details",{},element("summary",{text:"Inspect the model scores"}),prefixReview(review,null)));
 }
 
 function questionContrasts(page, selection, offset) {
@@ -113,29 +176,32 @@ async function prefixCohort() {
     pagination(groups.next_offset,selection);
     return panel("Scored across conversations",back,listing(groups.rows,prefixGroupRow));
   }
-  const filter = Object.fromEntries(["source","verdict","unnamed"].filter(k => query.has(k)).map(k => [k,query.get(k)]));
+  const filter = Object.fromEntries(["source","verdict","unnamed","needs_trial"].filter(k => query.has(k)).map(k => [k,query.get(k)]));
   const params = {...scope,design,...filter};
   if (traceId) {
-    const data = await api("prefix-check",{...params,trace:traceId,call:query.get("call"),report:query.get("report")},true);
+    const locator = {...params,trace:traceId,call:query.get("call"),report:query.get("report")};
+    const data = await api("prefix-check",locator,true);
     const previous = link("Back to source results",url({...selection,...filter,matched:query.get("matched"),offset:query.get("from_offset")}));
     if (!data) return panel("Comparison unavailable in this scope",previous);
     byId("title").textContent = data.example.thread;
-    byId("summary").textContent = prefixVerdicts[data.review.verdict];
-    return element("div",{className:"feed"},previous,prefixReview(data.review,data.example.question),
+    byId("summary").textContent = data.matching_trial ? "An identical input and edit have trial results in this scope." : prefixVerdicts[data.review.verdict];
+    return element("div",{className:"feed"},previous,
+      data.review.verdict === "untested" ? prefixForecast(data.review,data.example.question,locator,data.capture_enabled,data.matching_trial) :
+        prefixReview(data.review,data.example.question),
       link("Read this conversation",url({view:"threads",thread:data.example.thread_key,focus_trace:traceId,focus_call:data.example.call})));
   }
   const [overview, breakdown, contrasts, examples] = await Promise.all([api("prefix-groups",{...scope,design}),
-    api("prefix-sources",{...scope,design,offset:sourceOffset}),
+    api("prefix-sources",{...scope,design,...(filter.needs_trial && {needs_trial:1}),offset:sourceOffset}),
     filter.verdict ? {rows:[]} : api("prefix-contrasts",{...scope,design,offset:pairOffset}),
     api("prefix-cases",{...params,offset:pageOffset})]);
   const group = overview.rows[0];
   if (!group) return panel("No prefix comparisons in this scope",back);
-  byId("title").textContent = "Which source suggestions held up?";
+  byId("title").textContent = filter.verdict === "untested" ? "Which source edit should I test?" : "Which source suggestions held up?";
   byId("summary").textContent = plural(group.conversations,"conversation") + " · " + plural(group.inputs,"distinct input") +
     " · Scores after " + JSON.stringify(group.prefix);
   pagination(examples.next_offset,{...selection,...filter});
   const rows = breakdown.rows.map(row => {
-    const target = {...selection,verdict:row.verdict,...(row.source ? {source:row.source} : {unnamed:1})};
+    const target = {...selection,...(filter.needs_trial && {needs_trial:1}),verdict:row.verdict,...(row.source ? {source:row.source} : {unnamed:1})};
     return element("tr",{},element("th",{scope:"row",text:row.source || (["no_selection","unselected_change"].includes(row.verdict) ? "No single edit" : "Unnamed source")}),
       element("td",{},link(prefixVerdicts[row.verdict],url(target),null,filter.verdict === row.verdict && (filter.source || null) === row.source)),
       element("td",{text:row.conversations}));

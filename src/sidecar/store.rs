@@ -1,3 +1,5 @@
+mod prefix;
+
 use super::{findings, recommendations};
 use crate::{report_store::Report, Result};
 use nexusweave::{activation, otlp, replay, Run};
@@ -245,10 +247,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 27 {
+        if version == 28 {
             return Ok(());
         }
-        if !(0..27).contains(&version) {
+        if !(0..28).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -306,7 +308,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 27)?;
+        self.0.pragma_update(None, "user_version", 28)?;
         Ok(())
     }
 
@@ -641,38 +643,6 @@ impl Store {
             })))
     }
 
-    pub fn prefix_check(&self, fields: &BTreeMap<String, String>) -> Result<Option<Value>> {
-        let trace = super::required(fields, "trace")?;
-        let call = super::required(fields, "call")?;
-        let report = super::required(fields, "report")?;
-        let _snapshot = self.0.unchecked_transaction()?;
-        let page = self.list("prefix-cases", fields)?;
-        let Some(example) = page["rows"].get(0) else {
-            return Ok(None);
-        };
-        Ok(self
-            .prefix_review(trace, call, report)?
-            .map(|review| json!({"example":example,"review":review})))
-    }
-
-    fn prefix_review(&self, id: &str, call_id: &str, report_id: &str) -> Result<Option<Value>> {
-        let Some(run) = self.trace(id)? else {
-            return Ok(None);
-        };
-        let Some(call) = run.calls.iter().find(|c| c.id == call_id) else {
-            return Ok(None);
-        };
-        let candidates = replay::candidates::recorded(id, call);
-        let reports: Vec<_> = candidates
-            .into_iter()
-            .filter(|p| p.report_id == Some(report_id))
-            .collect();
-        if reports.len() != 1 {
-            return Ok(None);
-        }
-        Ok(replay::candidates::prefix_reviews(&reports, &replay::shadow::recorded(id, call)).pop())
-    }
-
     pub fn list(&self, view: &str, filters: &BTreeMap<String, String>) -> Result<Value> {
         // A selected conflict reads its observation, source fields and trial examples across
         // statements. A late span or attached report must appear in all of them together.
@@ -842,9 +812,22 @@ impl Store {
                 sql.push_str(" AND p.design=?");
                 args.push(super::required(filters, "design")?.to_owned());
             }
+            append_window(&mut sql, &mut args, "c.started", filters)?;
+            sql.push(')');
+            let only_pending = filters.get("needs_trial").is_some_and(|v| v == "1");
+            if view == "prefix-groups" || only_pending {
+                sql.push_str(super::prefix_patterns::TRIAL_COVERAGE);
+                sql.push_str(", checks AS (SELECT * FROM coverage p WHERE 1");
+                if only_pending {
+                    sql.push_str(" AND needs_trial");
+                }
+            } else {
+                sql.push_str(", checks AS (SELECT * FROM scoped_checks p WHERE 1");
+            }
             if view == "prefix-cases" {
                 for (key, column) in [
                     ("verdict", "p.verdict"),
+                    ("trial_key", "p.choices->>'trial_key'"),
                     ("source", "p.source"),
                     ("trace", "p.trace_id"),
                     ("call", "p.call_id"),
@@ -855,11 +838,15 @@ impl Store {
                         args.push(value.clone());
                     }
                 }
+                if filters.get("tested").is_some_and(|v| v == "1") {
+                    sql.push_str(
+                        " AND p.verdict IN ('confirmed','disagreed','mixed','unresolved')",
+                    );
+                }
                 if filters.get("unnamed").is_some_and(|v| v == "1") {
                     sql.push_str(" AND p.source IS NULL");
                 }
             }
-            append_window(&mut sql, &mut args, "c.started", filters)?;
             sql.push(')');
         }
         if matches!(view, "target-patterns" | "target-examples") {

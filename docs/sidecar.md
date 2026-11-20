@@ -258,7 +258,32 @@ The group counts distinct conversations and original request digests for a given
 
 The paired view further matches the request except for its final plain-text user question, both edits including their original source digests and versions, and the declared runner, sampling design and trial counts. It shows two representative questions with different verified source edits per setup. For comparison across users or workflows, apply the dashboard filters. The read endpoints are `prefix-groups`, `prefix-sources`, `prefix-contrasts`, `prefix-cases` and `prefix-check` under `/api/sidecar/`. They read captured measurements and make zero model calls.
 
-On 128 synthetic conversations repeating the eight inputs, warm loopback reads had p95 latencies of 0.33 ms for the group, 0.30 ms for the source breakdown, 0.93 ms for the matched pairs and 0.42 ms for a source-filtered conversation page (30 requests each). The Linux release-build test used one CPU and peaked at 50.8 MiB for the container including the Python driver, with a 512 MiB limit. These measurements cover indexing saved reports and serving the dashboard. Online scorer cost and inference latency require separate measurements. [Benchmark driver](../tests/sidecar_prefix_cohort.py)
+On 128 synthetic conversations repeating the eight inputs, warm loopback reads had p95 latencies of 0.73 ms for the group, 0.29 ms for the source breakdown, 0.99 ms for the matched pairs and 0.49 ms for a source-filtered conversation page (30 requests each). The Linux release-build test used one CPU and peaked at 48.8 MiB for the container including the Python driver, with a 512 MiB limit. These measurements cover indexing saved reports and serving the dashboard. Online scorer cost and inference latency require separate measurements. [Benchmark driver](../tests/sidecar_prefix_cohort.py)
+
+### Test a suggested source before seeing the answer
+
+Load the activity study into the running sidecar. The sender withholds every generated answer and replay. Each question describes a greenhouse tour or an orchestra rehearsal without naming either calendar.
+
+```sh
+python3 examples/view_calendar_prefixes.py --indirect --scores-only
+```
+
+Open **Test source suggestions from 11 conversations**, pick a calendar, then a question. The card shows the text the model received, the edit the scorer tested, and the preferred continuation on each input. In five of the sixteen conversations the scores identified no single edit. The full source breakdown includes those abstentions. [Open the loaded forecasts](http://127.0.0.1:8040/?org=activity-prefix-study-scored)
+
+![A forecast for a booking question shows the original and edited continuations, the captured source and a two-request test.](media/activity-source-test.png)
+
+Choose **Prepare a two-request test**, then **Download scored input**. The scorer can operate on an assembled request before generation. The sidecar verifies that the reported probabilities and trials refer to the captured inputs. The producer supplies when the scorer ran and which runner produced the proposals. The export contains the selected candidate report, the captured request and its input source declarations. Run the command shown on the card using a proposal-only adapter that accepts a request body on stdin and returns a choice on stdout. With a local Qwen checkpoint run this command.
+
+```sh
+nexusweave test-prefix scored-input.json qwen-cpu-greedy checked-input.json -- \
+  python3 scripts/propose_qwen.py "$qwen_dir" --model-id Qwen/Qwen2.5-0.5B-Instruct
+```
+
+**Attach trial results** accepts the checked input. Both generations start at the answer boundary. The runner receives the original body and the single selected edit. The sidecar checks both bodies, the source and its version, the trial summaries, and the literal continuations. It shows where the prediction held, disagreed, or remained unresolved. A changed number can improve an answer or make it worse. To interpret that change, compare it with a reference for the task. [Activity study and reference grades](../examples/context-screening/replay/prefix-indirect/README.md)
+
+Within the current filters, a previously tested prediction on an identical request, source version, intervention and scoring setup drops out of the test queue. A conversation without its own trial links to the existing result on that identical input and edit. Attached reports stay with their call through retries and restarts and expire with the trace. The dashboard records them separately from telemetry. On repeat upload the same runner, report ID and content resolve to the same evidence. A different payload using that identity is rejected.
+
+For integration, `GET /api/sidecar/prefix-input` takes the same design, trace, call and report locator as `prefix-check`. Submit `{"scope":{...},"shadow":{...}}` to `POST /api/prefix-results` with that locator and the report from `checked-input.json`. Only a content-capturing sidecar accepts these reports. In the built-in read-only demo, use **Before inference** to inspect a checked input. [End-to-end test](../tests/sidecar_prefix_experiment.py)
 
 ### Find answers that changed after the same opening
 

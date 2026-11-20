@@ -2,6 +2,8 @@
 // CHROME_BINARY set to a Chrome or Chromium executable.
 import assert from "node:assert/strict";
 import process from "node:process";
+import {execFileSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 import {readFile} from "node:fs/promises";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
@@ -792,6 +794,38 @@ try {
       await device.getByRole("link",{name:"Read this conversation"}).click();
       await device.locator("#selected-call:focus").waitFor();
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+    }
+  }
+  if (process.env.ACTIVITY_EXPERIMENT_URL) {
+    const origin = process.env.ACTIVITY_EXPERIMENT_URL;
+    const org = "activity-browser-" + Date.now();
+    const sender = fileURLToPath(new URL("../examples/view_calendar_prefixes.py",import.meta.url));
+    execFileSync("python3",[sender,"--indirect","--scores-only","--url",origin,"--org",org]);
+    const fixtures = JSON.parse(await readFile(new URL("../examples/context-screening/replay/prefix-indirect/cases.json",import.meta.url)));
+    for (const device of [page,mobile]) {
+      const expected = device === page ? 11 : 10;
+      await device.goto(origin + "/?org=" + org);
+      await device.getByRole("link",{name:new RegExp("Test source suggestions from " + expected + " conversations")}).click();
+      await device.getByRole("heading",{name:"Which source edit should I test?"}).waitFor();
+      await device.getByRole("link",{name:/Booking [0-9]+ · (birch|atlas)-calendar/}).first().click();
+      const forecast = device.getByRole("region",{name:"Suggested source test"});
+      await forecast.getByRole("heading",{name:/Test the edit to/}).waitFor();
+      if (device === page && process.env.PREFIX_TRIAL_SCREENSHOT) await forecast.screenshot({path:process.env.PREFIX_TRIAL_SCREENSHOT});
+      await forecast.getByText("Prepare a two-request test",{exact:true}).click();
+      const download = device.waitForEvent("download");
+      await forecast.getByRole("button",{name:"Download scored input"}).click();
+      const input = JSON.parse(await readFile(await (await download).path(),"utf8"));
+      assert.ok(!input.shadow && !input.request.attributes["gen_ai.output.messages"]);
+      const fixture = fixtures.find(c => c.envelope.candidate.captured_request_sha256 === input.candidate.captured_request_sha256);
+      assert.ok(fixture);
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      await forecast.getByLabel("Attach trial results").setInputFiles({name:"checked-input.json",mimeType:"application/json",
+        buffer:Buffer.from(JSON.stringify(fixture.envelope))});
+      await device.getByText(/Attached trial ·/).waitFor();
+      await device.getByRole("heading",{name:"What did the runner generate?"}).waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      const groups = await (await device.request.get(origin + "/api/sidecar/prefix-groups?org=" + org)).json();
+      assert.equal(groups.rows[0].needs_trial,expected-1);
     }
   }
   assert.deepEqual(errors, []);
