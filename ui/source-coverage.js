@@ -12,3 +12,6 @@ function sourceAlternativeText(coverage, group) {
   }
   return parts.join(" · ");
 }
+
+// The embedded MCP App bundles the same formatter used by the two plain-script dashboards.
+if (typeof module !== "undefined") module.exports = {sourceAlternativeText};

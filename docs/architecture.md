@@ -11,6 +11,7 @@ flowchart TD
         P[Preflight and context screening]
         S[Candidate and shadow probes]
     end
+    U[Upstream source text] -->|Optional expected digest| P
     A --> P
     A --> S
     M --> T[Recorded inference span]
@@ -44,6 +45,7 @@ The browser builds the map from findings in the selected scope. It reads the rep
 
 | Available evidence | What an engineer can inspect |
 | --- | --- |
+| Workflow requirement and expected text digest | Whether at least one named alternative reached the pending request with the expected text. A later verified receipt lets the sidecar group a recurring discrepancy across conversations. |
 | Captured source and declared rule | A source’s location and which values were declared together. A recurring source can connect several findings. |
 | Full next-token distributions for each tested source edit | The Jensen–Shannon divergence from the original request before generation, alongside measured changes to completed proposals where a runner supplied them. |
 | Candidate scores for an original request and a source edit | Which of two continuations the runner favored at a fixed prefix and how far its log odds moved. An untested continuation could still win. |

@@ -1,3 +1,4 @@
+import { sourceAlternativeText } from "../source-coverage.js";
 import { App } from "@modelcontextprotocol/ext-apps";
 import { button, countLabel, element, scopeColumns } from "./dom.js";
 import { renderSourceHistory, sourceHistoryBackLabel, sourceHistoryTitle } from "./source-history.js";
@@ -316,9 +317,16 @@ function renderRequestEvidence(page, tool) {
   const pending = tool === "inspect_pending";
   const { rows, preflight, context_screening: screening, candidate_probes = [], shadow_probes = [] } = page.data;
   if (preflight) {
-    const summary = pending ? countLabel(preflight.finding_count, "finding") :
-      preflight.status === "matched" ? countLabel(preflight.finding_count, "finding") + " from the workflow's preflight check" : preflight.issue;
+    const summary = pending ? countLabel(preflight.finding_count, "rule finding") :
+      preflight.status === "matched" ? countLabel(preflight.finding_count, "rule finding") + " from the workflow's preflight check" : preflight.issue;
     result.append(element("p", "Preflight · " + summary, "muted"));
+    const coverage = preflight.source_coverage;
+    if (coverage) {
+      const section = element("section", undefined, "row");
+      section.append(element("h2", (coverage.matched ? "Sources captured for " : "Check sources for ") + coverage.name));
+      for (const group of coverage.alternatives) section.append(element("p", sourceAlternativeText(coverage, group)));
+      result.append(section);
+    }
   }
   if (screening) {
     const summary = screening.status === "matched" ?
