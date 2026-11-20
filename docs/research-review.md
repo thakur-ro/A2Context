@@ -10,6 +10,7 @@ We searched the web for primary sources in arXiv, NeurIPS, ICLR, ACL Anthology, 
 - `REFLECT replay agent trajectory error attribution patch`
 - `LangSmith Insights trace patterns failure modes` and `SentinelRCA deterministic detectors traces`
 - `context attribution source ablation LLM ContextCite AttriBoT`
+- `language model context attribution Jensen Shannon divergence passage ablation ARC-JSD` and `Lost in the Middle Natural Questions gold at 4`
 - `IHEval conflicting instruction hierarchy` and `activation patching Heimersheim Nanda interpret interventions`
 - `language model sensitivity prompt format Sclar performance spread`
 - `counterfactual interventions multiple independently sufficient causes language models` and `does causal localization inform model editing`
@@ -38,6 +39,7 @@ Liu et al. varied where relevant information appeared in multi-document question
 
 | Source | Method in the primary source | Relationship to NexusWeave |
 | --- | --- | --- |
+| **ARC-JSD** | Ranks context spans by changes in model token distributions over a generated response after ablating each span. The paper also examines internal components. | Adapted in a public QA study. We compare the full next-token distributions at the empty assistant prefix, rank passages before generation, then check the ranking against freely decoded answers. The divergence approach predates NexusWeave. [Li et al., ICLR 2026](https://arxiv.org/abs/2505.16415) · [Pinned implementation](https://github.com/ruizheliUOA/ARC_JSD/tree/6572d3be974c6eca69d9754d360756a5e6397dae) · [Study design and results](../examples/public-qa/README.md) |
 | **ContextCite** | Perturbs context to attribute generated statements to source passages. | Related. A NexusWeave replay tests a selected edit and selected answer or tool outcome. It does not fit ContextCite’s attribution model. [NeurIPS 2024](https://proceedings.neurips.cc/paper_files/paper/2024/hash/adbea136219b64db96a9941e4249a857-Abstract-Conference.html) |
 | **AttriBoT** | Approximates leave-one-out influence on a generated response with efficient scoring. | Related. A candidate for a separate evaluator with an explicit cost budget. [ICLR 2025](https://proceedings.iclr.cc/paper_files/paper/2025/hash/2aab664e0d1656e8b56c74f868e1ea69-Abstract-Conference.html) |
 | **IHEval** | Evaluates instruction following when requests at different levels agree or conflict. | Related benchmark for model behavior. Its labels do not establish source-level causal effects for production traces. [NAACL 2025](https://aclanthology.org/2025.naacl-long.425/) |

@@ -125,6 +125,10 @@ python3 examples/redundant-routing/check_prior_edits.py --url http://127.0.0.1:8
   --candidate-checks examples/redundant-routing/candidate-checks
 ```
 
+### Which source would you test without candidate answers?
+
+An optional Qwen experiment ranks named passages before generating the first answer token. It measures the change in the full next-token distribution under each individual passage edit. A second pass decodes every condition so an engineer can check whether the suggested edit changed the answer. Each verified replay can be opened in the sidecar. [Public QA experiment, baselines and limits](../examples/public-qa/README.md)
+
 ## Reproduction
 
 - Run the saved demo and follow the three [README journeys](../README.md#try-the-demo).

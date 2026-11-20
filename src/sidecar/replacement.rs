@@ -20,16 +20,19 @@ fn excerpt(text: &str) -> String {
     result
 }
 
-pub(super) fn arm(summary: &replay::Summary, trials: &[replay::Trial]) -> Value {
-    let answer = match trials.first() {
+pub(super) fn consistent_answer(trials: &[replay::Trial]) -> Option<String> {
+    match trials.first() {
         Some(first @ replay::Trial::Completed { choice })
             if choice.kind == "model_output" && trials.iter().all(|trial| trial == first) =>
         {
             choice.outcome.as_str().map(excerpt)
         }
         _ => None,
-    };
-    json!({"matched":summary.matched,"attempted":summary.attempted,"answer":answer})
+    }
+}
+
+pub(super) fn arm(summary: &replay::Summary, trials: &[replay::Trial]) -> Value {
+    json!({"matched":summary.matched,"attempted":summary.attempted,"answer":consistent_answer(trials)})
 }
 
 impl<'a> Condition<'a> {

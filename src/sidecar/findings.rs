@@ -228,11 +228,21 @@ pub fn derive(
                     detail["order_test"] = trial;
                 }
             }
-            if edit == "individual" && run.organization_id.is_some() {
-                let layout = layouts
-                    .entry(call.id.as_str())
-                    .or_insert_with(|| super::history::Layout::new(call));
-                if let replay_effects::OccurrenceTarget::Single { context_id } = &item.target {
+            if let replay_effects::OccurrenceTarget::Single { context_id } = &item.target {
+                if let Some(variant) = report
+                    .variants
+                    .iter()
+                    .find(|v| v.intervention.context_id == *context_id)
+                {
+                    detail["baseline_answer"] =
+                        json!(super::replacement::consistent_answer(&report.baseline));
+                    detail["edited_answer"] =
+                        json!(super::replacement::consistent_answer(&variant.trials));
+                }
+                if run.organization_id.is_some() {
+                    let layout = layouts
+                        .entry(call.id.as_str())
+                        .or_insert_with(|| super::history::Layout::new(call));
                     if let Some(prior) = layout
                         .as_ref()
                         .and_then(|l| l.observation(run, report, context_id))

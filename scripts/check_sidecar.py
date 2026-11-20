@@ -195,6 +195,12 @@ def check_replay(base, send_trace=send_traces):
     assert details["replay_reports"] == 2
     measured = [item for item in details["findings"] if item["detail"]["measurement"]["replay_id"] == report["id"]]
     assert sorted(item["detail"]["effect_pp"] for item in measured) == [-100.0, -100.0, 0.0]
+    for item in measured:
+        detail = item["detail"]
+        if detail["edit"] == "individual":
+            arm = next(v for v in report["variants"] if v["intervention"]["context_id"] == detail["sources"][0]["id"])
+            assert detail["baseline_answer"] == report["baseline"][0]["choice"]["outcome"]
+            assert detail["edited_answer"] == arm["trials"][0]["choice"]["outcome"]
     assert all(item["call_id"] == location["call_id"] for item in measured)
     assert all(len(item["detail"]["measurement"]["location"]) >= 3 for item in measured)
     assert not any(item["detail"]["measurement"]["replay_id"] == incomplete["id"] and item["detail"]["effect_pp"] == 0

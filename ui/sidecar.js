@@ -67,10 +67,12 @@ function trend(rows) {
 function replayTrials(detail) {
   const m = detail.measurement;
   const singles = (detail.single_edits || []).map((arm) => ["Edit " + arm.id, arm.summary]);
-  const arms = [["Baseline", m.baseline], ...singles, [detail.edit === "joint" ? "Joint edit" : "Source edit", m.variant], ["Control edit", m.control]];
-  return element("div", { className: "comparison" }, ...arms.filter(([, data]) => data).map(([label, data]) =>
+  const arms = [["Baseline", m.baseline, detail.baseline_answer], ...singles,
+    [detail.edit === "joint" ? "Joint edit" : "Source edit", m.variant, detail.edited_answer], ["Control edit", m.control]];
+  return element("div", { className: "comparison" }, ...arms.filter(([, data]) => data).map(([label, data, answer]) =>
     element("div", {}, element("strong", { text: label }),
       element("span", { text: data.matched + " / " + data.attempted + " matched" }),
+      answer == null ? null : element("code", { className: "arm-answer", text: JSON.stringify(answer) }),
       element("meter", { min: 0, max: Math.max(1, data.attempted), value: data.matched, "aria-label": label + " matched trials out of attempted trials" }),
       data.unscored || data.completed < data.attempted ? element("div", { className: "label", text: plural(data.unscored || 0, "unscored trial") + " · " + data.completed + " completed" }) : null)));
 }
@@ -185,6 +187,10 @@ function findingTitle(kind, detail) {
     return "Editing " + id + " shifted candidate scores";
   }
   if (kind === "token") return "Editing " + sourceName(detail.sources[0]) + " changed a token score";
+  if (kind === "replay" && detail.baseline_answer != null && detail.edited_answer != null &&
+      detail.baseline_answer !== detail.edited_answer) {
+    return "Editing “" + sourceName(detail.sources[0]) + "” changed the replayed answer";
+  }
   if (detail.joint_only) return "Only the joint edit changed the match rate";
   const amount = Math.abs(detail.effect_pp);
   const points = amount < 0.01 ? "less than 0.01 percentage points" :
