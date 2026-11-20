@@ -44,6 +44,9 @@ def check(binary, folder):
         loss, = get(base, "ranking-examples", org="public-qa", quality="ranked_lost")["rows"]
         assert loss["reference"] == {"status":"scored","original":True,"ranked":False,"first":False}
         assert not get(base, "ranking-examples", org="public-qa", quality="ranked_gained")["rows"]
+        assert get(base, "ranking-review", org="public-qa")["rows"] == [
+            {"review":"all_held","calls":1},{"review":"top_changed","calls":1}]
+        assert not get(base, "ranking-examples", review="lower_changed")["rows"]
         assert not get(base, "ranking-examples", org="another-workspace")["rows"]
         row, = get(base, "replay-variations", org="public-qa")["rows"]
         selection = {"factor": row["factor"], "group": row["group"], "pair": row["position_pair"],
@@ -108,6 +111,11 @@ def check(binary, folder):
         assert earlier["present"] == {"changed": 2, "compared": 2}
         saved = get(base, "position-results", **selection, id=latest["id"])
         assert len(saved["trials"]) == 8
+    with sqlite3.connect(database) as db:
+        db.execute("UPDATE observations SET detail=json_remove(detail,'$.selector_check.rank_review') WHERE kind='prefill'")
+        db.execute("PRAGMA user_version=21")
+    with server(binary, database, "--capture-content") as base:
+        assert get(base, "ranking-review")["rows"] == [{"review":"all_held","calls":1},{"review":"top_changed","calls":1}]
     # Even two correct trace IDs cannot identify a test if its compared sources have changed.
     with sqlite3.connect(database) as db:
         db.execute("UPDATE position_results SET pair=?", ("0"*64,))

@@ -31,6 +31,35 @@ Open **Only the first listed edit changed it**. For the question about the Unive
 
 ![On 17 paired calls, only the ranked edit changed four answers, only the first edit changed one, both changed ten, and neither changed two. Three calls lacked a pair.](../../docs/media/public-qa-ranking.png)
 
+## When did a lower-ranked edit change the answer?
+
+Across the 20 holdout questions, the highest-ranked edit changed the answer on 14. On two others it preserved the answer while a lower-ranked edit changed it. All ten answers held on one question. Three questions lacked enough completed generations to classify. The dashboard counts each call once and opens the two source edits on the same request. [Explore the measured calls](http://127.0.0.1:8040/?org=public-qa&workflow=public-qa-holdout-order-0-tokens&ranking=all&review=lower_changed)
+
+We reran all three conditions for each of the two misses on the pinned checkpoint. We selected these cases after seeing the outcomes. The reruns reproduced all six answer texts and the first-token shifts for both edits on both questions.
+
+| Question | Where the paths first differed | What changed |
+| --- | --- | --- |
+| Who were the Americas named after? | First token | Removing *North America*, the top edit, increased the probability of `V` from 32.5% to 68.5%. The answer stayed `Vespucci`. Removing *Amerigo Vespucci*, ranked fifth, put `North` at 19.0%, just ahead of `V` at 17.8%. The answer became `North America`. |
+| University of Michigan public health ranking | Third token, after `17` | The original favored `th` at 67.1%. The top edit increased that to 93.1%. Removing *UC Berkeley School of Public Health*, ranked fifth, put the end-of-answer token at 94.6%. The answer stopped at `17`. All three answers missed the reference `#4`. |
+
+![The dashboard shows the shared prefix 17 and how the probability of ending the answer changes under the two passage edits](../../docs/media/public-qa-token-contrast.png)
+
+The first-token ranking was available before any generation. Finding the first differing token required an instrumented rerun of the three requests. At their shared generated prefix, we read the full-vocabulary probabilities of the two actual next tokens and checked the greedy choice against each generated token ID, including the end of sequence. The result measures how this edit changed decoding on this request. [Saved probabilities, token IDs and request digests](lower-edit-tokens.json) · [Pinned weights](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2/model.safetensors)
+
+Load the saved measurements with no model calls. This workflow contains the same questions as the other holdout imports. Keep the workflow filter when comparing counts.
+
+```sh
+python3 examples/public-qa/view_rankings.py /tmp/nexus-qa.jsonl.gz --tokens
+python3 examples/public-qa/check_holdout.py --tokens --sidecar http://127.0.0.1:8040
+```
+
+To rerun the model, use the [study environment](README.md#repeat-the-model-measurements). The script reselects both cases from the holdout, verifies the dataset and weights, and writes a new file.
+
+```sh
+python3 examples/public-qa/inspect_rank_misses.py /tmp/nexus-qa.jsonl.gz /path/to/qwen/snapshot \
+  --output /tmp/lower-edit-tokens.json
+```
+
 ## Which edits lost a reference answer?
 
 Of the 17 questions with completed comparisons, three original answers contained an accepted word sequence. Removing the passage with the largest first-token shift lost the match on all three. Removing the first listed passage kept all three. Among the 14 original misses, the ranked edit gained one match and the first edit gained zero. Three further questions had an incomplete comparison.

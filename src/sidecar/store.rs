@@ -243,10 +243,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 21 {
+        if version == 22 {
             return Ok(());
         }
-        if !(0..21).contains(&version) {
+        if !(0..22).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -283,7 +283,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 21)?;
+        self.0.pragma_update(None, "user_version", 22)?;
         Ok(())
     }
 
@@ -762,13 +762,14 @@ impl Store {
         }
         if matches!(
             view,
-            "ranking-results" | "ranking-examples" | "ranking-reference"
+            "ranking-results" | "ranking-examples" | "ranking-reference" | "ranking-review"
         ) {
             sql.push_str(
                 ", rankings AS (SELECT o.trace_id,o.call_id,o.group_id,o.observed,t.thread,
                 json_extract(o.detail,'$.selector_check.result') AS result,
                 json_extract(o.detail,'$.selector_check.same_edit') AS same_edit,
                 json_extract(o.detail,'$.selector_check.reference') AS reference,
+                json_extract(o.detail,'$.selector_check.rank_review.status') AS review,
                 json_extract(o.detail,'$.ranked[0].source') AS source
                 FROM observations o JOIN selected t ON t.id=o.trace_id
                 WHERE o.kind='prefill' AND json_type(o.detail,'$.selector_check')='object'",
@@ -802,11 +803,20 @@ impl Store {
         match view {
             "ranking-results" => sql.push_str(" SELECT json_object('result',result,'calls',count(*),
                 'same_edit',sum(same_edit)) FROM rankings GROUP BY result ORDER BY result LIMIT ? OFFSET ?"),
+            "ranking-review" => sql.push_str(" SELECT json_object('review',review,'calls',count(*)) FROM rankings
+                GROUP BY review ORDER BY review LIMIT ? OFFSET ?"),
             "ranking-reference" => sql.push_str(" SELECT json_object('reference',json(reference),'calls',count(*))
                 FROM rankings WHERE reference IS NOT NULL GROUP BY reference ORDER BY reference LIMIT ? OFFSET ?"),
             "ranking-examples" => {
                 sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'group',group_id,'thread',thread,
-                    'source',source,'result',result,'same_edit',same_edit,'reference',json(reference)) FROM rankings WHERE 1");
+                    'source',source,'result',result,'same_edit',same_edit,'reference',json(reference),'review',review) FROM rankings WHERE 1");
+                if let Some(review) = filters.get("review") {
+                    if !matches!(review.as_str(), "lower_changed" | "top_changed" | "all_held" | "mixed" | "incomplete" | "tied") {
+                        return Err("unknown edit ranking review".into());
+                    }
+                    sql.push_str(" AND review=?");
+                    args.push(review.clone());
+                }
                 if let Some(filter) = filters.get("quality") {
                     let (selector,baseline) = match filter.as_str() {
                         "ranked_lost" => ("ranked",1), "ranked_gained" => ("ranked",0),
@@ -896,6 +906,8 @@ impl Store {
             "impact" => {
                 sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
                     'ranked_calls',count(*) FILTER (WHERE kind='prefill' AND json_type(detail,'$.selector_check')='object'),
+                    'lower_edit_changes',count(*) FILTER (WHERE kind='prefill' AND json_extract(detail,'$.selector_check.rank_review.status')='lower_changed'),
+                    'lower_edit_conversations',count(DISTINCT thread_key) FILTER (WHERE kind='prefill' AND json_extract(detail,'$.selector_check.rank_review.status')='lower_changed'),
                     'ranked_reference_losses',count(*) FILTER (WHERE kind='prefill'
                         AND json_extract(detail,'$.selector_check.reference.original')=1 AND json_extract(detail,'$.selector_check.reference.ranked')=0),
                     'captured_conversations',(SELECT count(*) FROM captured_threads),

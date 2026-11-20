@@ -41,9 +41,23 @@ def paired_result(case):
     return "ranked_only" if ranked != baseline else "first_only"
 
 
-def verify_sidecar(study, base, references=False):
+def rank_review(case):
+    edits = sorted(case["edits"], key=lambda e: -e["js_bits"])
+    original = case["baseline"]
+    if edits[0]["js_bits"] == edits[1]["js_bits"]:
+        return "tied"
+    if original is None or edits[0]["answer"] is None:
+        return "incomplete"
+    if edits[0]["answer"] != original:
+        return "top_changed"
+    if any(e["answer"] is not None and e["answer"] != original for e in edits[1:]):
+        return "lower_changed"
+    return "all_held" if all(e["answer"] is not None for e in edits) else "incomplete"
+
+
+def verify_sidecar(study, base, references=False, token_contrasts=False):
     from view_passage_edits import workflow_name
-    scope = {"org":"public-qa", "workflow":workflow_name(study, references)}
+    scope = {"org":"public-qa", "workflow":workflow_name(study, references, token_contrasts)}
     expected = {c["question_sha256"]: paired_result(c) for c in study["cases"]}
     def get(route, **params):
         query = urlencode({**scope, **params})
@@ -52,6 +66,12 @@ def verify_sidecar(study, base, references=False):
     summary = get("ranking-results")["rows"]
     if {r["result"]:r["calls"] for r in summary} != dict(Counter(expected.values())):
         raise ValueError("Dashboard counts differ from the held-out trials.")
+    reviews = {c["question_sha256"]:rank_review(c) for c in study["cases"]}
+    counts = {r["review"]:r["calls"] for r in get("ranking-review")["rows"]}
+    if counts != Counter(reviews.values()):
+        raise ValueError("The edit review differs from the independently scored trials.")
+    if get("impact")["lower_edit_changes"] != counts.get("lower_changed", 0):
+        raise ValueError("The recommendation count differs from the lower-ranked changes.")
     grades = {}
     for case in study["cases"]:
         original = case["baseline_alias_match"]
@@ -70,6 +90,8 @@ def verify_sidecar(study, base, references=False):
                 raise ValueError("Missing or repeated held-out question in the dashboard.")
             if row["reference"] != (grades[key] if references else None):
                 raise ValueError("Reference results differ from the saved answers for " + question)
+            if row["review"] != reviews[key]:
+                raise ValueError("Incorrect edit ranking review for " + question)
             seen[key] = row["result"]
         offset = page["next_offset"]
     if seen != expected:
@@ -132,11 +154,12 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=Path, help="Also verify passage identity, order and alias matching.")
     parser.add_argument("--sidecar", help="Verify the live ranking counts and each question across result pages.")
     parser.add_argument("--references", action="store_true", help="Verify the workflow imported with answer references.")
+    parser.add_argument("--tokens", action="store_true", help="Verify the token-instrumented workflow.")
     args = parser.parse_args()
     held = json.loads(args.results.read_text())
     result = compare(held, json.loads((folder / "results.json").read_text()))
     if args.dataset:
         verify_dataset(held, args.dataset)
     if args.sidecar:
-        verify_sidecar(held, args.sidecar, args.references)
+        verify_sidecar(held, args.sidecar, args.references, args.tokens)
     print(json.dumps(result, indent=2))

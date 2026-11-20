@@ -42,6 +42,9 @@ pub struct Probe {
     /// Optional evaluation metadata. It is never sent to the scoring adapter.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub answer_reference: Option<Value>,
+    /// Optional token readout from an instrumented greedy rerun.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_contrast: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     routing_test: Option<Value>,
 }
@@ -188,6 +191,7 @@ pub fn measure(
         interventions,
         scores,
         answer_reference: None,
+        token_contrast: None,
         routing_test: None,
     };
     probe.checked(&call, &body, false)?;

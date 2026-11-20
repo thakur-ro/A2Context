@@ -2,7 +2,9 @@
 use super::findings;
 use nexusweave::{replay, Call, Run};
 use serde_json::{json, Value};
+mod rank_review;
 mod reference;
+mod token_contrast;
 use reference::Reference;
 
 pub(super) fn observation(
@@ -77,7 +79,13 @@ pub(super) fn observation(
         json!({"status":"unique","source":top["source"].as_str().or(top["context_id"].as_str()),
                "version":top["version"],"pointer":top["pointer"],"text_range":top["text_range"]})
     };
-    let mut checks = proposal_checks(shadow, call, ranked, reference.as_ref());
+    let mut checks = proposal_checks(
+        shadow,
+        call,
+        ranked,
+        reference.as_ref(),
+        probe.token_contrast.is_some(),
+    );
     for report in replays.iter().filter(|r| {
         r.location.run_id == run.id
             && r.location.call_id == call.id
@@ -96,7 +104,13 @@ pub(super) fn observation(
                 let mut check = json!({"context_id":variant.intervention.context_id,"report":report.id,
                     "runner":report.runner_id,"decision":report.location.decision_id,"changed":original!=edited,
                     "original":super::outcomes::preview(original),"edited":super::outcomes::preview(edited)});
-                score_reference(&mut check, reference.as_ref(), original, edited);
+                score_text_outputs(
+                    &mut check,
+                    reference.as_ref(),
+                    probe.token_contrast.is_some(),
+                    original,
+                    edited,
+                );
                 checks.push(check);
             }
         }
@@ -106,6 +120,13 @@ pub(super) fn observation(
         let top_id = top["context_id"].as_str()?;
         let (behavior, grades) = paired_result(&checks, first, top_id);
         let mut comparison = json!({"first":first, "same_edit":first==top_id,"result":behavior});
+        comparison["rank_review"] = rank_review::review(ranked, &checks);
+        if let Some(raw) = &probe.token_contrast {
+            match token_contrast::checked(raw, &measured, &comparison["rank_review"], &checks) {
+                Ok(readout) => comparison["token_contrast"] = readout,
+                Err(issue) => comparison["token_contrast_issue"] = json!(issue),
+            }
+        }
         if reference.is_some() {
             comparison["reference"] = grades;
             measured["answer_reference"] = json!(probe.answer_reference);
@@ -119,12 +140,18 @@ pub(super) fn observation(
     Some(findings::occurrence("prefill", key, call, measured))
 }
 
-fn score_reference(
+fn score_text_outputs(
     check: &mut Value,
     reference: Option<&Reference>,
+    with_digests: bool,
     original: &replay::Choice,
     edited: &replay::Choice,
 ) {
+    if with_digests && original.kind == "model_output" && edited.kind == "model_output" {
+        if let Some((a, b)) = original.outcome.as_str().zip(edited.outcome.as_str()) {
+            check["answer_digests"] = json!([findings::digest(a), findings::digest(b)]);
+        }
+    }
     if let Some(r) = reference {
         if let Some(pair) = r.score(original).zip(r.score(edited)) {
             check["reference_match"] = json!(pair);
@@ -214,6 +241,7 @@ fn proposal_checks(
     call: &Call,
     ranked: &[Value],
     reference: Option<&Reference>,
+    with_digests: bool,
 ) -> Vec<Value> {
     let mut checks = Vec::new();
     let Some(reports) = call.shadow_probes.as_ref().and_then(|c| c.reports.as_ref()) else {
@@ -237,7 +265,7 @@ fn proposal_checks(
             }) {
                 let mut check = json!({"context_id":resolved.context_id,"report":report.id,"runner":report.runner_id,
                     "changed":original!=edited,"original":super::outcomes::preview(original), "edited":super::outcomes::preview(edited)});
-                score_reference(&mut check, reference, original, edited);
+                score_text_outputs(&mut check, reference, with_digests, original, edited);
                 checks.push(check);
             }
         }

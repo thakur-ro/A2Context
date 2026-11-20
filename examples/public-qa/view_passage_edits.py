@@ -16,11 +16,25 @@ def body_digest(body):
     return sha256(json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
 
 
-def workflow_name(study, references=False):
-    return f"public-qa-{study.get('cohort', 'pilot')}-order-{study['rotation']}" + ("-references" if references else "")
+def workflow_name(study, references=False, token_contrasts=False):
+    return f"public-qa-{study.get('cohort', 'pilot')}-order-{study['rotation']}" + ("-references" if references else "") + ("-tokens" if token_contrasts else "")
 
 
-def prepare(record, case, study, *, rankings=False, references=False):
+def token_contrast(study, case):
+    rows = case["conditions"]
+    if [r["condition"] for r in rows] != ["original", "top", "lower"]:
+        raise ValueError("Expected the original, top and lower conditions in order.")
+    return {"version":1,"model_id":study["model"],"model_revision":study["revision"],
+            "runtime":study["runtime"],"tokenizer_sha256":study["tokenizer_sha256"],
+            "prefix":case["prefix"],"prefix_ids":case["prefix_ids"],"stop_ids":study["stop_ids"],
+            "tokens":[{"id":rows[0]["chosen_token_id"],"text":case["original_token"]},
+                      {"id":rows[2]["chosen_token_id"],"text":case["lower_token"]}],
+            "conditions":[{"request_sha256":r["request_sha256"],"answer_sha256":sha256(r["answer"].encode()).hexdigest(),
+                           "output_ids":r["answer_token_ids"],"chosen":r["chosen_token_id"],
+                           "probabilities":[r["probability_original_token"],r["probability_lower_token"]]} for r in rows]}
+
+
+def prepare(record, case, study, *, rankings=False, references=False, token_study=None):
     documents = ordered_documents(case["row"], record, study["rotation"])
     question = record["question"]
     passages = [doc["title"] + "\n" + doc["text"] for doc in documents]
@@ -58,6 +72,8 @@ def prepare(record, case, study, *, rankings=False, references=False):
                 study["model"], study["revision"], study["runtime"], study["tokenizer_sha256"]]
     if rankings:
         identity.append("prefill-ranking-references-v1" if references else "prefill-ranking-v1")
+    if token_study is not None:
+        identity.append("greedy-token-contrast-v1")
     trace_id = uuid5(NAMESPACE_URL, "/".join(identity)).hex
     span_id = trace_id[:16]
     attributes = {
@@ -83,6 +99,11 @@ def prepare(record, case, study, *, rankings=False, references=False):
                                      "request_sha256": body_digest(outcomes[(key,)][0]),
                                      "js_bits": measured["js_bits"]})
         probe = {"interventions": edits, "scores": scores}
+        if token_study is not None:
+            for row in token_study["cases"]:
+                if row["question_sha256"] == case["question_sha256"]:
+                    probe["token_contrast"] = token_contrast(token_study, row)
+                    break
         if references:
             probe["answer_reference"] = {"kind":"word_sequence_v1", "aliases":record["answers"]}
         attributes["nexusweave.prefill.probe"] = json.dumps(probe)
@@ -92,7 +113,7 @@ def prepare(record, case, study, *, rankings=False, references=False):
             "attributes": [{"key": key, "value": {"stringValue": value}} for key, value in attributes.items()]}
     resource_spans = {"scopeSpans": [{"spans": [span]}]}
     if rankings:
-        resource_spans["resource"] = {"attributes": [{"key": "service.name", "value": {"stringValue": workflow_name(study, references)}}]}
+        resource_spans["resource"] = {"attributes": [{"key": "service.name", "value": {"stringValue": workflow_name(study, references, token_study is not None)}}]}
     trace = {"resourceSpans": [resource_spans]}
     replay = {"version": 1, "id": "public-qa-" + trace_id, "samples": 1,
               "runner_id": " / ".join(study[key] for key in ("model", "revision", "runtime", "tokenizer_sha256")),

@@ -507,10 +507,27 @@ try {
   }
   if (process.env.PUBLIC_QA_URL) {
     for (const device of [page,mobile]) {
+      await device.goto(process.env.PUBLIC_QA_URL + "/?org=public-qa&workflow=public-qa-holdout-order-0");
+      await device.getByRole("link",{name:/Inspect 2 calls where a lower-ranked edit changed the proposal/}).click();
+      const missed = device.getByRole("link",{name:/QA (1100|1200)/});
+      await missed.first().waitFor();
+      assert.equal(await missed.count(), 2);
+      await device.getByRole("link",{name:/QA 1100/}).click();
+      const witness = device.getByRole("region",{name:"Measured source contrast"});
+      await witness.getByRole("heading",{name:"Two edits on the same request"}).waitFor();
+      const rows = witness.locator("tbody tr");
+      assert.match(await rows.first().innerText(), /North America[\s\S]*Rank 1 of 10[\s\S]*Vespucci[\s\S]*Held/);
+      assert.match(await rows.last().innerText(), /Amerigo Vespucci[\s\S]*Rank 5 of 10[\s\S]*North America[\s\S]*Changed/);
+      if (device === page && process.env.LOWER_EDIT_SCREENSHOT) await witness.screenshot({path:process.env.LOWER_EDIT_SCREENSHOT});
+      await rows.last().getByText("Source edit").click();
+      await rows.last().getByText("[passage omitted]",{exact:true}).waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await device.getByRole("link",{name:"Back to edit rankings"}).click();
+      assert.equal(new URL(device.url()).searchParams.get("review"), "lower_changed");
       await device.goto(process.env.PUBLIC_QA_URL + "/?org=public-qa&workflow=public-qa-holdout-order-0&ranking=all");
       await device.getByRole("heading",{name:"17 of 20 calls had a scored pair"}).waitFor();
       await device.getByText("The ranked edit changed the proposal in 14 of 17 scored calls. The first listed edit changed it in 11.").waitFor();
-      if (device === page && process.env.RANKING_SCREENSHOT) await device.locator("#content .panel").first().screenshot({path:process.env.RANKING_SCREENSHOT});
+      if (device === page && process.env.RANKING_SCREENSHOT) await device.locator(".panel").filter({has:device.getByRole("heading",{name:"17 of 20 calls had a scored pair"})}).screenshot({path:process.env.RANKING_SCREENSHOT});
       await device.getByRole("link",{name:/Only the first listed edit changed it.*1 call/}).click();
       await device.getByRole("link",{name:/QA 1200/}).click();
       await device.getByText("The completed proposal stayed the same after the top edit.").waitFor();
@@ -525,6 +542,27 @@ try {
       await device.getByRole("link",{name:/QA 1000/}).click();
       await device.getByText("The effect of the top edit on the completed proposal is unmeasured.").waitFor();
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+  }
+  if (process.env.TOKEN_QA_URL) {
+    for (const device of [page,mobile]) {
+      await device.goto(process.env.TOKEN_QA_URL + "/?org=public-qa&workflow=public-qa-holdout-order-0-tokens");
+      await device.getByRole("link",{name:/Inspect 2 calls where a lower-ranked edit changed the proposal/}).click();
+      for (const [question, position] of [["QA 1100",1],["QA 1200",3]]) {
+        await device.getByRole("link",{name:new RegExp(question)}).click();
+        const readout = device.getByRole("region",{name:"Token probabilities"});
+        await readout.getByRole("heading",{name:"The choice changed at token "+position}).waitFor();
+        if (position === 3) {
+          await readout.getByText(/All three answers started with "17"/).waitFor();
+          assert.equal(await readout.getByRole("columnheader",{name:"End of answer"}).count(),1);
+          assert.match(await readout.getByRole("row").last().innerText(),/94.6% · chosen/);
+          if (device === page && process.env.TOKEN_CONTRAST_SCREENSHOT) await device.getByRole("region",{name:"Measured source contrast"}).screenshot({path:process.env.TOKEN_CONTRAST_SCREENSHOT});
+        } else {
+          assert.match(await readout.getByRole("row").last().innerText(),/19% · chosen/);
+        }
+        assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        await device.getByRole("link",{name:"Back to edit rankings"}).click();
+      }
     }
   }
   if (process.env.REFERENCE_QA_URL) {

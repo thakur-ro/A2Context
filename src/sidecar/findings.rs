@@ -14,7 +14,7 @@ pub struct Observation {
     pub action: super::recommendations::Action,
 }
 
-fn digest(value: impl AsRef<[u8]>) -> String {
+pub(super) fn digest(value: impl AsRef<[u8]>) -> String {
     format!("{:x}", Sha256::digest(value))
 }
 
