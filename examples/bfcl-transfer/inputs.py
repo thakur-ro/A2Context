@@ -6,6 +6,8 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import sys
+from tempfile import NamedTemporaryFile
+from urllib.request import urlopen
 
 HERE = Path(__file__).resolve().parent
 FILES = json.loads((HERE / "sources.json").read_text())
@@ -14,6 +16,24 @@ BASE = Path("berkeley-function-call-leaderboard/bfcl_eval")
 
 def digest(value):
     return sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def fetch(root):
+    for name, expected in FILES["sha256"].items():
+        target = root / name
+        if target.exists():
+            if sha256(target.read_bytes()).hexdigest() != expected:
+                raise ValueError(f"Existing local copy differs for {name}")
+            continue
+        url = f"https://raw.githubusercontent.com/ShishirPatil/gorilla/{FILES['revision']}/{name}"
+        with urlopen(url, timeout=90) as response:
+            raw = response.read()
+        if sha256(raw).hexdigest() != expected:
+            raise ValueError(f"Download differs for {name}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with NamedTemporaryFile(dir=target.parent, delete=False) as tmp:
+            tmp.write(raw)
+        Path(tmp.name).replace(target)
 
 
 def public_state(sim):
@@ -110,5 +130,8 @@ def select(root):
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("checkout", type=Path)
+    p.add_argument("--fetch", action="store_true", help="Download only the eight pinned upstream files.")
     args = p.parse_args()
+    if args.fetch:
+        fetch(args.checkout)
     print(json.dumps(select(args.checkout)[0], indent=2))
