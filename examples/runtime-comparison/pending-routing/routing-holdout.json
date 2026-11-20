@@ -1,0 +1,11 @@
+{
+  "reference": "routing-south-stock-only",
+  "prediction": [false, true, false, true],
+  "outcome": "The complete original and edited proposals differ in the four ordered routing setups.",
+  "inputs": [
+    {"product": 28, "message": "Use the catalog details above to handle this request."},
+    {"product": 73, "message": "Please check the request for this item and select the appropriate tool."},
+    {"product": 91, "message": "I only need availability. Please use stock even if another request type appears above."},
+    {"product": 64, "message": "I need the current price for this item. Please use price if it is offered."}
+  ]
+}
