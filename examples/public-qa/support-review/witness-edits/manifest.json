@@ -1,0 +1,172 @@
+{
+  "dataset_sha256": "f8425253dafc19cd9de31c06ab6c8b57d4da2bf48b8ea2d0790b805fb3aa1968",
+  "labels_sha256": "f6dbc7134808f79966a131780e8bb4988dd991663e23829d2b059de410aeb1a4",
+  "scored_inventories_sha256": "bf15081c3e7bf0f9667cad3a6335f45fe5f8383c853ffd7f011a1df71caf24ce",
+  "protocol_sha256": "1aa7e3dc539af5e8bd7a69df218329f32511929bfa9fd40a4193369da5feda91",
+  "cases": [
+    {
+      "row": 2500,
+      "target": [
+        1,
+        8
+      ],
+      "control": [
+        3,
+        7
+      ],
+      "sum_absolute_word_gap": 54,
+      "sum_absolute_slot_gap": 3,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2525,
+      "target": [
+        2,
+        6
+      ],
+      "control": [
+        5,
+        7
+      ],
+      "sum_absolute_word_gap": 25,
+      "sum_absolute_slot_gap": 4,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2550,
+      "target": [
+        3,
+        5
+      ],
+      "control": [
+        7,
+        8
+      ],
+      "sum_absolute_word_gap": 54,
+      "sum_absolute_slot_gap": 7,
+      "tied_assignments": 2
+    },
+    {
+      "row": 2575,
+      "target": [
+        4
+      ],
+      "control": [
+        5
+      ],
+      "sum_absolute_word_gap": 28,
+      "sum_absolute_slot_gap": 1,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2600,
+      "target": [
+        1,
+        5
+      ],
+      "control": [
+        2,
+        3
+      ],
+      "sum_absolute_word_gap": 0,
+      "sum_absolute_slot_gap": 3,
+      "tied_assignments": 2
+    },
+    {
+      "row": 2625,
+      "target": [
+        1,
+        4,
+        6,
+        7
+      ],
+      "control": [
+        3,
+        2,
+        8,
+        5
+      ],
+      "sum_absolute_word_gap": 14,
+      "sum_absolute_slot_gap": 8,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2650,
+      "target": [
+        1,
+        7,
+        9
+      ],
+      "control": [
+        3,
+        2,
+        5
+      ],
+      "sum_absolute_word_gap": 9,
+      "sum_absolute_slot_gap": 11,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2512,
+      "target": [
+        2,
+        8
+      ],
+      "control": [
+        6,
+        9
+      ],
+      "sum_absolute_word_gap": 48,
+      "sum_absolute_slot_gap": 5,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2537,
+      "target": [
+        9
+      ],
+      "control": [
+        6
+      ],
+      "sum_absolute_word_gap": 48,
+      "sum_absolute_slot_gap": 3,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2562,
+      "target": [
+        1
+      ],
+      "control": [
+        2
+      ],
+      "sum_absolute_word_gap": 0,
+      "sum_absolute_slot_gap": 1,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2587,
+      "target": [
+        2
+      ],
+      "control": [
+        1
+      ],
+      "sum_absolute_word_gap": 1,
+      "sum_absolute_slot_gap": 1,
+      "tied_assignments": 1
+    },
+    {
+      "row": 2612,
+      "target": [
+        3
+      ],
+      "control": [
+        8
+      ],
+      "sum_absolute_word_gap": 47,
+      "sum_absolute_slot_gap": 5,
+      "tied_assignments": 1
+    }
+  ]
+}
