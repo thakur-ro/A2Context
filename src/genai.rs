@@ -3,6 +3,13 @@
 use crate::{Availability, Call, ContextItem, Decision, Evidence, ToolResult};
 use serde_json::Value;
 
+pub(crate) fn tool_name(tool: &Value) -> Option<&str> {
+    tool.pointer("/function/name")
+        .or_else(|| tool.get("name"))
+        .and_then(Value::as_str)
+        .filter(|name| !name.trim().is_empty())
+}
+
 pub(crate) fn empty_call(
     span_id: &str,
     trace_id: Option<String>,

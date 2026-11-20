@@ -7,11 +7,17 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
+mod tool_scope;
+pub use tool_scope::ToolScope;
+
 /// A pending request with optional reports from independent local adapters.
 #[derive(Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Request {
     pub request: preflight::Request,
+    /// Function names permitted by this workflow. An explicit empty list permits none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowed_tools: Option<Vec<String>>,
     pub screening: Option<screen::Report>,
     pub candidate: Option<replay::candidates::Report>,
     pub shadow: Option<replay::shadow::Report>,
@@ -47,6 +53,7 @@ fn default_limit() -> usize {
 /// )))?;
 /// let view = pending::inspect(pending::Request {
 ///     request,
+///     allowed_tools: None,
 ///     screening: None,
 ///     candidate: None,
 ///     shadow: None,
@@ -61,6 +68,7 @@ pub fn inspect(input: Request) -> Result<Value, String> {
         scope,
         preflight,
         prefill,
+        tool_scope,
     } = prepare(input, true)?;
     let fields = request
         .as_ref()
@@ -69,7 +77,7 @@ pub fn inspect(input: Request) -> Result<Value, String> {
     let candidates = replay::candidates::recorded("pending", &call);
     let shadows = replay::shadow::recorded("pending", &call);
     Ok(json!({
-        "version": 1, "prefill":prefill,
+        "version": 1, "prefill":prefill, "tool_scope":tool_scope,
         "prefix_reviews":replay::candidates::prefix_reviews(&candidates, &shadows),
         "model": call.model,
         "context": call.context,
@@ -97,8 +105,17 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
         scope,
         preflight,
         prefill,
+        tool_scope,
     } = prepare(query.input, query.include_excerpts)?;
     let excerpts = query.include_excerpts;
+    let tool_scope = tool_scope.map(|check| {
+        if excerpts {
+            json!(check)
+        } else {
+            json!({"captured":check.captured, "outside_count":check.outside.len(),
+                   "unclassified_count":check.unclassified.len()})
+        }
+    });
     let fields: BTreeMap<_, _> = match request.as_ref() {
         Some(body) => replay::request_field_matches(&call, body)?
             .into_iter()
@@ -141,7 +158,7 @@ pub fn evidence(query: EvidenceRequest, allow_excerpts: bool) -> Result<Value, S
     let next = (rows.len() > query.limit).then(|| query.offset.saturating_add(query.limit));
     rows.truncate(query.limit);
     Ok(json!({
-        "kind": "pending_evidence", "version": 1, "prefill":prefill, "model": call.model,
+        "kind": "pending_evidence", "version": 1, "tool_scope":tool_scope, "prefill":prefill, "model": call.model,
         "captured_inputs": call.context.len(), "original_request_captured": request.is_some(),
         "captured_excerpts_enabled": allow_excerpts,
         "preflight": {"scope": scope, "finding_count": preflight.findings.len(),
@@ -172,6 +189,7 @@ pub fn recommendation_measurements(
 
 /// Normalized request, scope and verified measurements used by the sidecar preview.
 pub struct Inspected {
+    pub tool_scope: Option<ToolScope>,
     pub prefill: Option<Value>,
     pub call: Call,
     request: Option<Value>,
@@ -217,7 +235,13 @@ fn prepare(mut input: Request, excerpts: bool) -> Result<Inspected, String> {
         });
     }
     let prefill = replay::prefill::read(raw, &call, request.as_ref(), excerpts)?;
+    let tool_scope = input
+        .allowed_tools
+        .as_deref()
+        .map(|allowed| tool_scope::check(request.as_ref(), allowed))
+        .transpose()?;
     Ok(Inspected {
+        tool_scope,
         prefill,
         call,
         request,

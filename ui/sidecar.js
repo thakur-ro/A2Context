@@ -1995,6 +1995,20 @@ async function targetPatternView() {
       url({...targetSelection,trace:row.trace,call:row.call,report:row.report})))));
 }
 
+function pendingToolScope(check, issue) {
+  if (!check) return null;
+  const count = check.captured;
+  return element("section", {className:"panel", "aria-label":"Tool catalog scope"},
+    element("h2", {text:issue?.action.title || "Tool catalog matches the workflow scope"}),
+    element("p", {text:count == null ? "The assembled tools array is unavailable." :
+      plural(count, "tool definition") + " · " + check.outside.length + " outside scope · " + check.unclassified.length + " unclassified"}),
+    check.outside.length > 0 && element("ul", {}, ...check.outside.map(tool =>
+      element("li", {}, element("code", {text:tool.name}), " at /tools/" + tool.index))),
+    check.unclassified.length > 0 && element("p", {text:"Unclassified entries: " +
+      check.unclassified.map(index => "/tools/" + index).join(", ")}),
+    issue && element("p", {text:issue.action.next}));
+}
+
 function pendingTokenScores(paths) {
   const heading = element("h2");
   const chart = element("div");
@@ -2039,7 +2053,7 @@ function pendingPreview() {
       const dispatchHistory = priorDispatch(report.history, dispatchCards.length > 0);
       const sourceGap = report.recommendations.find(row => row.kind === "source_gap");
       for (const { kind, detail, action } of report.recommendations) {
-        if (kind === "source_gap") continue;
+        if (kind === "source_gap" || kind === "tool_scope") continue;
         if (kind === "shadow" && experiment?.status === "ready" && experiment.edited_request_sha256 === detail.edited_request_sha256 &&
             experiment.interventions[0].context_id === detail.sources[0].id &&
             experiment.proposal_tests.some(test => test.report === detail.report_id && test.runner === detail.runner)) continue;
@@ -2071,6 +2085,7 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "finding") + (report.prefill ? " · First-token test attached" : "") }),
+        pendingToolScope(report.tool_scope, report.recommendations.find(r => r.kind === "tool_scope")),
         overlappingAnchors(report.anchor_overlap),
         sources && element("section",{className:"panel","aria-label":"Required source coverage"},
           element("h2",{text:(sources.matched ? "Sources captured for " : "Check sources for ") + sources.name}),

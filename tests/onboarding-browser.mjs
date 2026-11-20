@@ -15,6 +15,12 @@ try {
   await setup.getByRole("link",{name:"Check a request before connecting"}).click();
   await page.locator('input[type="file"]').setInputFiles("examples/exchange-approval/pending.json");
   await page.getByText(/captured inputs · 1 finding$/).waitFor();
+  await page.locator('input[type="file"]').setInputFiles("examples/bfcl-transfer/mlx/tool-scope/preview.json");
+  const catalog = page.getByRole("region",{name:"Tool catalog scope"});
+  await catalog.getByRole("heading",{name:"Review tools outside the workflow scope"}).waitFor();
+  await catalog.getByText("3 tool definitions · 2 outside scope · 0 unclassified").waitFor();
+  assert.deepEqual(await catalog.getByRole("listitem").allTextContents(),
+    ["authenticate_travel at /tools/1","book_flight at /tools/2"]);
   await page.goto(base);
   await setup.waitFor();
   const sample = await readFile(new URL("../examples/exchange-approval/exchange.otlp.json",import.meta.url),"utf8");

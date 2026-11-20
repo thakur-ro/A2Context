@@ -1,0 +1,13 @@
+{
+  "request": {
+    "version": 1,
+    "attributes": {
+      "nexusweave.request.body": "{\"messages\":[{\"role\":\"user\",\"content\":\"Estimate the fare for this route.\"}],\"tools\":[{\"name\":\"get_flight_cost\",\"parameters\":{\"type\":\"object\",\"properties\":{}}},{\"name\":\"authenticate_travel\",\"parameters\":{\"type\":\"object\",\"properties\":{}}},{\"name\":\"book_flight\",\"parameters\":{\"type\":\"object\",\"properties\":{}}}]}"
+    }
+  },
+  "allowed_tools": [
+    "get_flight_cost",
+    "list_all_airports",
+    "get_nearest_airport_by_city"
+  ]
+}

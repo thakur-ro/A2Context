@@ -39,13 +39,7 @@ fn tool_names(tools: &Value) -> Result<Vec<&str>, String> {
         .as_array()
         .ok_or("Expected an array of tool definitions.")?
         .iter()
-        .map(|t| {
-            t.pointer("/function/name")
-                .or_else(|| t.get("name"))
-                .and_then(Value::as_str)
-                .filter(|s| !s.trim().is_empty())
-                .ok_or_else(|| "Each tool needs a name.".into())
-        })
+        .map(|t| crate::genai::tool_name(t).ok_or_else(|| "Each tool needs a name.".into()))
         .collect()
 }
 

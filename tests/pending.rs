@@ -223,3 +223,43 @@ fn prefill_validates_all_edits_before_calling_the_adapter() {
         );
     }
 }
+
+#[test]
+fn compares_the_named_catalog_and_keeps_unknown_tools_and_missing_capture_visible() {
+    let envelope = |body: Value| {
+        json!({
+            "request":{"version":1,"attributes":{"nexusweave.request.body":body.to_string()}},
+            "allowed_tools":["fare"]
+        })
+    };
+    let input = envelope(json!({"tools":[{"name":"fare"},
+        {"type":"function","function":{"name":"book"}},
+        {"type":"web_search","name":"builtin"}, {"name":" "}]}));
+    assert_eq!(
+        inspection(input.clone())["tool_scope"],
+        json!({
+            "captured":4,"outside":[{"name":"book","index":1}],"unclassified":[2,3]
+        })
+    );
+    let query = serde_json::from_value(json!({"input":input})).unwrap();
+    assert_eq!(
+        pending::evidence(query, false).unwrap()["tool_scope"],
+        json!({"captured":4,"outside_count":1,"unclassified_count":2})
+    );
+    assert_eq!(
+        inspection(envelope(json!({})))["tool_scope"]["captured"],
+        Value::Null
+    );
+    assert_eq!(
+        inspection(envelope(json!({"tools":[]})))["tool_scope"]["captured"],
+        0
+    );
+    let mut input = envelope(json!({"tools":[{"name":"fare"}]}));
+    input["allowed_tools"] = json!([]);
+    assert_eq!(
+        inspection(input.clone())["tool_scope"]["outside"][0]["name"],
+        "fare"
+    );
+    input["allowed_tools"] = json!([" "]);
+    assert!(pending::inspect(serde_json::from_value(input).unwrap()).is_err());
+}

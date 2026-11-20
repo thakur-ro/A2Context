@@ -38,6 +38,16 @@ jq -n --slurpfile request examples/preflight-returns.json '{request: $request[0]
 
 To see the same evidence on a recorded turn, download the preflight receipt or context screen and attach it to the inference span. Candidate and shadow reports can be attached to the same call. [Record preflight evidence](#show-preflight-alongside-the-recorded-answer) · [Record shadow proposals](#show-shadow-proposals-on-the-recorded-turn)
 
+### Check the advertised tools before inference
+
+A quote workflow may expose a booking function through a shared tool registry. To check the actual model input, set `allowed_tools` beside `request` in the pending inspection envelope. Supply the assembled body with its `tools` array. The workflow supplies the permitted names for this operation.
+
+```sh
+cargo run --locked -- inspect-pending examples/bfcl-transfer/mlx/tool-scope/preview.json
+```
+
+Load the same file under **Before inference**. The sample quote permits a fare lookup. The card identifies authentication at `/tools/1` and booking at `/tools/2`. Replace the sample body and list with your own. The comparison reads flat and wrapped function definitions. Missing catalogs and unclassified entries stay visible as capture gaps. An empty permission list means the operation permits no named functions. This check reads the catalog without calling a model or enforcing dispatch. Check the proposed tool and its arguments in your application before executing it. [Runnable input](../examples/bfcl-transfer/mlx/tool-scope/preview.json)
+
 ### Prepare a shadow probe from captured sources
 
 Select **Prepare shadow probe** beside the request evidence. You can also start from an editable input, flagged pair, or rule conflict. Choose the outcome to measure and the exact locations to edit. If you start from an editable two-source finding, the planner selects both sources and includes a joint condition.
