@@ -1,0 +1,12 @@
+{
+  "results_sha256": "25d07c46cf1aeea1d3b037fa5024097c2854c509ce80385ccc81841f73b4f5ce",
+  "matched_baselines": [
+    "kettle-hold",
+    "fan-approved",
+    "grinder-approved",
+    "tent-hold"
+  ],
+  "input_tokens": 1803,
+  "output_tokens": 84,
+  "decode_seconds": 3.7439539590850472
+}
