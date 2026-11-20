@@ -7,7 +7,7 @@ import sys
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 from run import (PINNED, abstention_score, digest, file_hash, lexical_score, load_runtime,
-                 no_probability, request, support_score)
+                 probability_matches, request, support_score)
 
 DATA_SHA = "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8"
 CALIBRATION_SHA = "bf15081c3e7bf0f9667cad3a6335f45fe5f8383c853ffd7f011a1df71caf24ce"
@@ -115,7 +115,7 @@ def main():
             raise ValueError("Saved counts or provenance differ from the frozen design.")
         for c in cases:
             support = c["support_no"]
-            if support["score"] != no_probability(support["logp_yes"], support["logp_no"]):
+            if not probability_matches(support):
                 raise ValueError("Stored probabilities disagree with forced-choice scores.")
         if args.dataset:
             manifest = [c for c, question, paragraph in select(args.dataset)]

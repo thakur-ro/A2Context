@@ -45,6 +45,12 @@ def no_probability(log_yes, log_no):
     return no / (yes + no)
 
 
+def probability_matches(item):
+    expected = no_probability(item["logp_yes"], item["logp_no"])
+    # Platform exp() implementations can differ in the last few binary digits.
+    return 0 <= item["score"] <= 1 and abs(expected - item["score"]) <= 4 * math.ulp(expected)
+
+
 def support_score(runtime, messages, choices):
     start = perf_counter()
     _, ids, _, _ = runtime.prompt_input([{"role": "system", "content": SYSTEM}, messages[1]], None)
@@ -167,7 +173,7 @@ def check(data):
         for n, case in enumerate(data[split]):
             for arm in (("present",) if split == "calibration" else ("present", "missing")):
                 item = case[arm]["support_no"]
-                if no_probability(item["logp_yes"], item["logp_no"]) != item["score"]:
+                if not probability_matches(item):
                     raise ValueError("Forced-choice probability differs from token probabilities.")
             if split == "evaluation":
                 p, m = (case[arm]["passage_sha256"] for arm in ("present", "missing"))
