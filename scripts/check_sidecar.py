@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
 from hashlib import sha256
+from math import ceil
 import json
 from pathlib import Path
 import re
@@ -114,9 +115,10 @@ def server(binary, db, *flags):
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
     base = f"http://127.0.0.1:{port}"
+    storage = ["--demo"] if db is None else ["--db", str(db)]
     with tempfile.TemporaryFile() as logs:
         process = subprocess.Popen(
-            [str(binary), "sidecar", "--db", str(db), "--listen", f"127.0.0.1:{port}", *flags],
+            [str(binary), "sidecar", *storage, "--listen", f"127.0.0.1:{port}", *flags],
             stdout=logs, stderr=logs,
         )
         try:
@@ -489,6 +491,20 @@ def check_activation(base, producer_python):
     assert get(base, "trace", id=trace)["activation_reports"] == 1
     token = get(base, "findings", kind="token")["rows"][0]
     assert token["evidence"]["trace_id"] == trace and len(token["evidence"]["detail"]["landmark"]["positions"]) > 1
+    finding = token["evidence"]["detail"]
+    location = finding["location"]
+    query = dict(trace=trace, call=location["call_id"], decision=location["decision_id"], report=finding["report_id"],
+                 group=token["id"], factor=finding["factor"], block=0, org="qwen-demo-org")
+    page = get(base, "token-path", **query)
+    assert page["total_output_tokens"] == len(page["tokens"]) == 16
+    assert len(page["edits"]) == 3 and page["captured_sources"] >= 5
+    assert {"format-instruction", "question"} <= {c["source"] for c in page["untested_examples"]}
+    edits = {e["source"]["source"]: e for e in page["edits"]}
+    assert edits["returns-policy"]["peak"]["token"] == 5 and edits["refund-policy"]["peak"]["token"] == 13
+    assert not edits["store-name"]["output_changed"] and edits["returns-policy"]["output_changed"]
+    assert get(base, "token-path", **query, offset=15)["tokens"] == page["tokens"][-1:]
+    for mismatch in ({"org":"absent"}, {"decision":"absent"}, {"factor":"absent"}, {"group":"absent"}, {"before":"2000-01-01"}):
+        send(base, "/api/sidecar/token-path?" + urlencode({**query, **mismatch}), expected=400)
     details = send(base, "/api/inspection?" + urlencode({"run": trace}))[1]
     assert details["activation_reports"][0]["location"]["run_id"] == trace
 
@@ -640,16 +656,44 @@ def load(base, clients, batches, batch_size, payload_bytes):
             "overview_read_pairs": len(reads), "median_sequential_overview_ms": round(median(reads), 2)}
 
 
+def measure_token_pages(binary):
+    """Time warm loopback reads, including client-side JSON decoding."""
+    with server(binary, None) as base:
+        pages = []
+        for card in get(base, "findings", kind="token")["rows"]:
+            detail = card["evidence"]["detail"]
+            location = detail["location"]
+            for offset in range(0, detail["landmark"]["total_tokens"], 16):
+                pages.append(dict(trace=location["run_id"], call=location["call_id"],
+                                  decision=location["decision_id"], report=detail["report_id"],
+                                  group=card["id"], block=detail["landmark"]["block"], offset=offset))
+        assert len(pages) == 3, "Expected one Qwen page and two MLX pages"
+        for page in pages:
+            assert get(base, "token-path", **page)["tokens"]
+        timings = []
+        for _ in range(25):
+            for page in pages:
+                start = time.perf_counter()
+                get(base, "token-path", **page)
+                timings.append((time.perf_counter() - start) * 1000)
+    return {"warm_reads": len(timings), "distinct_pages": len(pages),
+            "median_ms": round(median(timings), 3), "p95_ms": round(sorted(timings)[ceil(0.95 * len(timings)) - 1], 3)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/nexusweave")
     parser.add_argument("--sdk-python", help="Interpreter with OpenTelemetry SDK and OTLP/HTTP exporter installed")
     parser.add_argument("--overload-url", help="Run load only against an isolated persistent sidecar")
+    parser.add_argument("--token-page-cost", action="store_true", help="Measure warm reads of the two instrumented demo answers")
     parser.add_argument("--clients", type=int, default=24)
     parser.add_argument("--batches", type=int, default=192)
     parser.add_argument("--batch-size", type=int, default=12)
     parser.add_argument("--payload-bytes", type=int, default=4096)
     args = parser.parse_args()
+    if args.token_page_cost:
+        print(json.dumps(measure_token_pages(args.binary), indent=2))
+        return
     if args.overload_url:
         print(json.dumps(load(args.overload_url, args.clients, args.batches, args.batch_size, args.payload_bytes), indent=2))
         return
@@ -677,6 +721,14 @@ def main():
             assert get(base, "factors", org="dialogue")["rows"][0]["signal"] == "dialogue"
             if args.sdk_python:
                 check_activation(base, args.sdk_python)
+                changed = get(base, "conversation-outcomes", org="qwen-demo-org", level=1)
+                assert changed["rows"]
+        if args.sdk_python:
+            with sqlite3.connect(captured) as sql:
+                sql.execute("PRAGMA user_version = 12")
+                sql.execute("UPDATE observations SET detail=json_remove(detail,'$.landmark.generated_choice_changed') WHERE kind='token'")
+            with server(args.binary, captured, "--capture-content") as base:
+                assert get(base, "conversation-outcomes", org="qwen-demo-org", level=1) == changed
         with sqlite3.connect(captured) as sql:
             sql.execute("PRAGMA user_version = 0")
             sql.execute("DELETE FROM observations WHERE kind IN ('candidate','token')")

@@ -105,6 +105,8 @@ pub struct Request {
     limit: usize,
     #[serde(default)]
     include_excerpts: bool,
+    #[serde(default)]
+    include_edits: bool,
 }
 
 fn default_limit() -> usize {
@@ -117,6 +119,9 @@ pub fn query(request: &Request, reports: &[Report], allow_excerpts: bool) -> Res
     }
     if request.include_excerpts && !allow_excerpts {
         return Err("This MCP process has not enabled excerpts.".into());
+    }
+    if request.include_edits && !request.include_excerpts {
+        return Err("Source edits require an explicit excerpt request.".into());
     }
     let (report, scores) = reports
         .iter()
@@ -136,13 +141,23 @@ pub fn query(request: &Request, reports: &[Report], allow_excerpts: bool) -> Res
     let block = request.block;
     let rows: Vec<_> = (request.offset..total).take(request.limit).map(|index| {
         let baseline = scores.baseline_log_probs[index];
+        // A page holds at most 24 positions. Look outside it only when comparing edits.
+        let repeated = if request.include_edits {
+            let ids = &report.output_token_ids;
+            (index + 1..total).find(|&other| ids[other] == ids[index])
+                .or_else(|| (0..index).rev().find(|&other| ids[other] == ids[index]))
+        } else { None };
         let sources: Vec<_> = scores.sources.iter().map(|(id, source)| {
             let patched = source.block_log_probs[block][index];
-            json!({
+            let mut result = json!({
                 "context_id": id, "patched_log_probability": patched,
                 "edited_prompt_log_probability": source.edited_log_probs[index],
                 "change_in_log_probability": patched - baseline,
-            })
+            });
+            if let Some(other) = repeated {
+                result["other_edited_delta"] = json!(source.edited_log_probs[other] - scores.baseline_log_probs[other]);
+            }
+            result
         }).collect();
         let mut row = json!({
             "output_token": index, "baseline_log_probability": baseline, "sources": sources,
@@ -152,15 +167,53 @@ pub fn query(request: &Request, reports: &[Report], allow_excerpts: bool) -> Res
             row["fragment"] = turn_evidence::excerpt(&scores.fragments[index]);
             row["token_id"] = json!(report.output_token_ids[index]);
         }
+        if request.include_edits {
+            row["other_occurrence"] = json!(repeated);
+        }
         row
     }).collect();
     let next = request.offset.saturating_add(rows.len());
-    Ok(json!({
+    let mut page = json!({
         "version": 1, "location": report.location, "report_id": report.id,
         "readout": scores.readout, "block": block, "total_output_tokens": total,
         "captured_excerpts_enabled": allow_excerpts,
         "tokens": rows, "next_offset": (next < total).then_some(next),
-    }))
+    });
+    if request.include_edits {
+        page["baseline_output"] = turn_evidence::excerpt(&report.baseline_answer);
+        let edits: Vec<_> = report
+            .sources
+            .iter()
+            .map(|source| {
+                let edited = &scores.sources[&source.context_id].edited_log_probs;
+                let peak = edited
+                    .iter()
+                    .zip(&scores.baseline_log_probs)
+                    .enumerate()
+                    .map(|(token, (edited, baseline))| (token, edited - baseline))
+                    .filter(|(_, delta)| *delta != 0.0)
+                    .max_by(|a, b| a.1.abs().total_cmp(&b.1.abs()).then_with(|| b.0.cmp(&a.0)));
+                let tool_selection_changed = report.tool_calls.as_ref().map(|calls| {
+                    calls.edited[&source.context_id]
+                        .as_ref()
+                        .map(|call| &call.name)
+                        != Some(&calls.baseline.name)
+                });
+                json!({
+                    "context_id": source.context_id,
+                    "peak": peak.map(|(token, delta)| json!({"token": token, "delta": delta})),
+                    "before": turn_evidence::excerpt(&source.before),
+                    "after": turn_evidence::excerpt(&source.after),
+                    "output": turn_evidence::excerpt(&source.edited_outcome),
+                    "output_changed": source.edited_outcome != report.baseline_answer,
+                    "generated_choice_changed": generated_choice_changed(report, source),
+                    "tool_selection_changed": tool_selection_changed,
+                })
+            })
+            .collect();
+        page["edits"] = json!(edits);
+    }
+    Ok(page)
 }
 
 pub fn available(reports: &[Report]) -> bool {
@@ -186,6 +239,14 @@ pub fn for_decision(
     }).collect()
 }
 
+// A tool proposal includes its arguments. Extra prose around an identical call can change independently.
+fn generated_choice_changed(report: &TimelineReport, source: &super::Source<String>) -> bool {
+    match &report.tool_calls {
+        Some(calls) => calls.edited[&source.context_id].as_ref() != Some(&calls.baseline),
+        None => source.edited_outcome != report.baseline_answer,
+    }
+}
+
 /// The strongest measured source-edit effect on a token in the fixed output path.
 #[derive(Serialize)]
 pub struct Landmark<'a> {
@@ -195,6 +256,7 @@ pub struct Landmark<'a> {
     pub runtime: &'a str,
     pub token: usize,
     pub total_tokens: usize,
+    pub generated_choice_changed: bool,
     pub block: usize,
     pub block_delta: f64,
     pub positions: Vec<LandmarkPosition<'a>>,
@@ -260,6 +322,13 @@ pub fn landmark(entry: &Report) -> Option<Landmark<'_>> {
         runtime: &report.runtime,
         token,
         total_tokens: total,
+        generated_choice_changed: generated_choice_changed(
+            report,
+            report
+                .sources
+                .iter()
+                .find(|s| s.context_id == *context_id)?,
+        ),
         block,
         block_delta,
         positions,

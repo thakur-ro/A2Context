@@ -150,7 +150,7 @@ impl Store {
         runs: &[Run],
         routing_runs: &[Run],
         reports: &[replay::Replay],
-        activation: &activation::Report,
+        activations: &[activation::Report],
         now: i64,
     ) -> Result<()> {
         let tx = self.0.transaction()?;
@@ -173,8 +173,10 @@ impl Store {
             replay::validate_report(report, runs)?;
             save_report(&tx, report)?;
         }
-        activation.validate(runs)?;
-        save_report(&tx, activation)?;
+        for activation in activations {
+            activation.validate(runs)?;
+            save_report(&tx, activation)?;
+        }
         for run in runs.iter().chain(routing_runs) {
             refresh_findings(&tx, run)?;
         }
@@ -238,10 +240,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 12 {
+        if version == 13 {
             return Ok(());
         }
-        if !(0..12).contains(&version) {
+        if !(0..13).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -249,7 +251,8 @@ impl Store {
             let ids = {
                 let mut stmt = self.0.prepare(
                     "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL AND
-                      (?2<8 OR instr(run,'shadow_probes')>0 OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='replay-reports') OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
+                      (?2<8 OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='activation-reports')
+                       OR (?2<12 AND (instr(run,'shadow_probes')>0 OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='replay-reports'))) OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
                        OR (?2 IN (9,10) AND (instr(raw,'routing_test')>0 OR instr(run,'routing_test')>0)))
                       ORDER BY id LIMIT 16",
                 )?;
@@ -284,7 +287,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 12)?;
+        self.0.pragma_update(None, "user_version", 13)?;
         Ok(())
     }
 
@@ -420,6 +423,69 @@ impl Store {
         };
         tx.commit()?;
         Ok(data)
+    }
+
+    pub fn token_path(&self, filters: &BTreeMap<String, String>) -> Result<Value> {
+        let mut sql = "SELECT p.body,t.run FROM reports p JOIN traces t ON t.id=p.trace_id
+            JOIN observations o ON o.trace_id=p.trace_id AND o.call_id=p.call_id
+            WHERE p.kind='activation-reports' AND o.kind='token' AND p.trace_id=? AND p.call_id=? AND p.decision_id=? AND p.id=?
+            AND o.group_id=? AND json_extract(o.detail,'$.report_id')=p.id
+            AND json_extract(o.detail,'$.location.decision_id')=p.decision_id".to_owned();
+        let mut args = Vec::new();
+        for key in ["trace", "call", "decision", "report", "group"] {
+            args.push(super::required(filters, key)?.to_owned());
+        }
+        if let Some(factor) = filters.get("factor") {
+            sql.push_str(" AND json_extract(o.detail,'$.factor')=?");
+            args.push(factor.clone());
+        }
+        append_scope(&mut sql, &mut args, filters)?;
+        append_window(&mut sql, &mut args, "o.observed", filters)?;
+        let (body, run): (String, String) = self
+            .0
+            .query_row(&sql, params_from_iter(args), |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })
+            .optional()?
+            .ok_or("Token measurements are unavailable in this scope.")?;
+        let report: activation::Report = serde_json::from_str(&body)?;
+        let run: Run = serde_json::from_str(&run)?;
+        let call = run
+            .calls
+            .iter()
+            .find(|c| c.id == report.location().call_id)
+            .ok_or("Missing measured call.")?;
+        let offset = filters
+            .get("offset")
+            .map(|s| s.parse::<usize>())
+            .transpose()?
+            .unwrap_or(0);
+        let block = super::required(filters, "block")?.parse::<usize>()?;
+        let request = serde_json::from_value(
+            json!({"version":1,"report_id":report.id(),"location":report.location(),
+            "block":block,"offset":offset,"limit":16,"include_excerpts":true,"include_edits":true}),
+        )?;
+        let mut page = activation::output_scores::query(&request, &[report], true)?;
+        let edits = page["edits"]
+            .as_array_mut()
+            .ok_or("Missing source edits.")?;
+        let contexts: BTreeMap<_, _> = call.context.iter().map(|c| (c.id.as_str(), c)).collect();
+        let mut tested = BTreeSet::new();
+        for edit in edits {
+            let item = contexts
+                .get(edit["context_id"].as_str().unwrap_or_default())
+                .ok_or("Missing tested source.")?;
+            edit["source"] = findings::source(item);
+            tested.insert(item.id.as_str());
+        }
+        page["captured_sources"] = json!(contexts.len());
+        page["untested_examples"] = json!(contexts
+            .values()
+            .filter(|c| !tested.contains(c.id.as_str()))
+            .take(12)
+            .map(|c| findings::source(c))
+            .collect::<Vec<_>>());
+        Ok(page)
     }
 
     pub fn activations(&self, id: &str) -> Result<Vec<activation::Report>> {

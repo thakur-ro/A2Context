@@ -38,7 +38,7 @@ pub(super) fn compare(baseline: &[replay::Trial], variant: &[replay::Trial]) -> 
 // Keep the sort keys small. Load the selected finding's detail after pagination.
 pub(super) const CLASSIFIED: &str = ", classified AS (
     SELECT thread_key,trace_id,call_id,n,observed,
-      CASE WHEN json_extract(detail,'$.response_pair.changed')=1 THEN 1
+      CASE WHEN json_extract(detail,'$.response_pair.changed')=1 OR (kind='token' AND json_extract(detail,'$.landmark.generated_choice_changed')=1) THEN 1
            WHEN kind='prefill' AND (EXISTS (SELECT 1 FROM json_each(e.detail,'$.proposal_checks') c WHERE json_extract(c.value,'$.changed')=1)
                  OR EXISTS (SELECT 1 FROM json_each(e.detail,'$.routing_test.cells') c WHERE json_extract(c.value,'$.changed')=1)) THEN 1
            WHEN kind='replacement' OR (kind IN ('replay','shadow') AND json_extract(detail,'$.effect_pp')!=0) THEN 2

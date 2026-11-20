@@ -603,6 +603,7 @@ fn output_token_effects_page_through_a_scoped_report_and_gate_token_text() {
     let token = &payload["tokens"][0];
     assert_eq!(payload["readout"], "output_token_log_probability");
     assert_eq!(payload["total_output_tokens"], 22);
+    assert!(payload.get("edits").is_none() && payload.get("baseline_output").is_none());
     assert_eq!(payload["next_offset"], 8);
     assert_eq!(token["output_token"], 7);
     assert!(token.get("fragment").is_none() && token.get("token_id").is_none());
@@ -619,7 +620,20 @@ fn output_token_effects_page_through_a_scoped_report_and_gate_token_text() {
     assert!(product["change_in_log_probability"].as_f64().unwrap() < -20.0);
     request["include_excerpts"] = true.into();
     request["offset"] = 20.into();
+    let fragments = client.call(output, request.clone());
+    let page = &fragments["structuredContent"];
+    assert_eq!(page["tokens"][0]["fragment"]["text"], "42");
+    assert!(page.get("edits").is_none() && page.get("baseline_output").is_none());
+    request["include_edits"] = true.into();
+    request["include_excerpts"] = false.into();
+    assert_eq!(client.call(output, request.clone())["isError"], true);
+    request["include_excerpts"] = true.into();
     let with_text = client.call(output, request.clone());
+    assert!(with_text["structuredContent"]["edits"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["context_id"] == "product-id" && e["peak"].is_object()));
     assert_eq!(
         with_text["structuredContent"]["tokens"][0]["fragment"]["text"],
         "42"

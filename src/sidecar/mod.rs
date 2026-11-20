@@ -333,6 +333,9 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/occurrences" => {
                     store.list(path.rsplit('/').next().expect("view path"), &fields)?
                 }
+                "/api/sidecar/token-path" if options.content || options.demo => {
+                    store.token_path(&fields)?
+                }
                 "/api/sidecar/position-results" => store.position_results(&fields)?,
                 "/api/sidecar/position-plan" => {
                     return Ok(Some(serde_json::to_vec(&store.position_plan(&fields)?)?))
@@ -461,6 +464,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
     }
     if request.method() == &Method::Get {
         let asset: Option<(&str, &[u8])> = match path {
+            "/sidecar-token-path.js" => Some((
+                "text/javascript; charset=utf-8",
+                include_bytes!("../../ui/sidecar-token-path.js"),
+            )),
             "/sidecar.js" => Some((
                 "text/javascript; charset=utf-8",
                 include_bytes!("../../ui/sidecar.js"),
@@ -658,5 +665,17 @@ fn seed(store: &mut Store) -> Result<()> {
             .into_iter()
             .filter(|run| run.id == activation.location().run_id),
     );
-    store.seed(&runs, &routing_runs, &reports, &activation, now())
+    let tool_report = serde_json::from_str(include_str!(
+        "../../examples/local-mlx-routing/output-token-report.json"
+    ))?;
+    runs.extend(serde_json::from_str::<Vec<Run>>(include_str!(
+        "../../examples/local-mlx-routing/evidence.json"
+    ))?);
+    store.seed(
+        &runs,
+        &routing_runs,
+        &reports,
+        &[activation, tool_report],
+        now(),
+    )
 }

@@ -14,9 +14,17 @@
 
 **Before inference** accepts assembled requests with optional candidate-score and proposal reports. It compares captured declarations, checks for repeated text, and verifies a supplied probe against the exact request and tested source edits. The sidecar returns a recommendation and one follow-up for each supported result. The submitted request is processed in memory.
 
-Fixed-candidate scores compare two declared continuations from the same prefix. They can establish that an edit shifted or reversed the preference between those alternatives under the tested conditions. A proposal test measures whether a particular answer or tool proposal appeared under each edit. For an instrumented output path, the card selects the source and token with the largest absolute change in log probability after a source edit. It shows the neighboring tokens and the largest tested block swap at the selected position. These comparisons are conditional on the chosen request, model, prefix, alternatives, or intervention. [Activation patching guide](https://arxiv.org/abs/2404.15255)
+Fixed-candidate scores compare two declared continuations from the same prefix. They can establish that an edit shifted or reversed the preference between those alternatives under the tested conditions. A proposal test measures whether a particular answer or tool proposal appeared under each edit. For an instrumented output path, the card selects the source and token with the largest absolute change in log probability after a source edit. Selecting a token ranks the tested source edits at that position. The decoder-block measurements open separately. These comparisons are conditional on the chosen request, model, prefix, alternatives, or intervention. [Activation patching guide](https://arxiv.org/abs/2404.15255)
 
 Generated reasoning text can omit factors that determine a prediction. Circuit tracing studies model mechanisms using instrumented activations and follow-up perturbations. NexusWeave summarizes measured effects of specific interventions. The report producer supplies the measurements and timing. [Turpin et al., NeurIPS 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/ed3fea9033a80fea1376299fa7863f4a-Abstract-Conference.html) · [Lindsey et al., 2025](https://transformer-circuits.pub/2025/attribution-graphs/biology.html)
+
+### What does an output-token shift measure?
+
+For the original token at position *t*, the runner scores it twice with the same preceding output tokens. It subtracts the original log probability from the log probability under a single source edit. A negative difference means the edit lowered the probability of that original token. The dashboard orders edits by the absolute difference and shows the sign and probability alongside each edit. A zero is a measured result. Captured sources without an edit have no score.
+
+The freely generated output shows what the runner produced once it could choose a different continuation. In the MLX example, replacing product ID `42` with `73` lowered the log probability of `42` by 20.063 at the tool argument and by 0.059 at its second occurrence in the explanation. At the second position the fixed prefix already contains the original argument. In free generation both occurrences became `73` and the tool remained `stock`. These results measure the response to this replacement. They leave open which model mechanism explains the difference between positions. [MLX measurement](../examples/local-mlx-routing/output-token-report.json)
+
+The optional block view uses a different intervention. It swaps recorded activations at a specified decoder block and reports the change from the original token score. Both measurements require an instrumented runner. Ordinary OTLP sends the observed request and response. [Instrumentation and controls](inference-attribution-plan.md)
 
 ## What changed in a conversation?
 
@@ -24,7 +32,7 @@ The overview assigns each conversation to the first category supported by a find
 
 | Category | Required evidence |
 | --- | --- |
-| Generated proposal changed | In a verified edit comparison, all original trials completed with the same proposal, all edited trials completed with the same proposal, and the two proposals differ. The comparison checks kind, label and full outcome before shortening the displayed text. A completed pair in a first-token or routing experiment also qualifies. |
+| Generated proposal changed | In a verified edit comparison, all original trials completed with the same proposal, all edited trials completed with the same proposal, and the two proposals differ. The comparison checks kind, label and full outcome before shortening the displayed text. A changed pair in a first-token or routing experiment also qualifies. For a token finding, the sidecar compares the free generations for the edit with the largest measured token shift. For tool proposals it compares the parsed name and arguments. |
 | Replay match rate changed | Two tested conditions produced different fractions of answers or proposals meeting the scoring rule. Individual trials may vary within a condition. |
 | Model score shifted | A first-token distribution, candidate preference or output-token score shifted under a source edit. Open the example to check whether the runner also generated paired proposals. |
 | Tested without a measured shift | A scored comparison returned equal match rates or equal measured first-token distributions. Two different answers can meet the same scoring rule. |

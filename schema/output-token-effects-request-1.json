@@ -24,6 +24,13 @@
       "type": "boolean",
       "default": false,
       "description": "Include bounded token fragments and token IDs when the process has enabled excerpts."
+    },
+    "include_edits": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include bounded original and edited source and generation excerpts, per-source peaks, and a repeated token comparison."
     }
-  }
+  },
+  "if": {"properties": {"include_edits": {"const": true}}, "required": ["include_edits"]},
+  "then": {"properties": {"include_excerpts": {"const": true}}, "required": ["include_excerpts"]}
 }

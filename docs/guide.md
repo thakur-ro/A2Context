@@ -1222,7 +1222,7 @@ cargo run --locked -- serve \
 
 Add `--all-output-tokens` to either Python timeline runner to include the optional `output_scores` object. One sweep records the effect of swapping a source at each decoder block across the output sequence. The original earlier output tokens remain fixed in every run. Negative changes reduce the probability of the particular recorded token. To measure only output tokens, leave `checkpoints` empty in the case and keep the source edits. If you supply contrasts, the report includes their separate, two-candidate log-odds measurements.
 
-An MCP client can page through the same scores with [`get_output_token_effects`](../schema/output-token-effects-request-1.json). Use the report ID from `get_turn_evidence` or an occurrence in `query_activation_effects`. Pass the captured decision's `location`, and select a zero-based `block` and token `offset`. Each row includes a deep link. Token strings and IDs require the host's `--include-excerpts` flag and the request's `include_excerpts: true`.
+An MCP client can page through the same scores with [`get_output_token_effects`](../schema/output-token-effects-request-1.json). Use the report ID from `get_turn_evidence` or an occurrence in `query_activation_effects`. Pass the captured decision's `location`, and select a zero-based `block` and token `offset`. Each row includes a deep link. Token strings and IDs require the host's `--include-excerpts` flag and the request's `include_excerpts: true`. Also set `include_edits: true` to request the original and edited source and generation excerpts, each edit’s peak, and a comparison when the same token ID occurs elsewhere in the answer.
 
 ### Continue decoding after a source swap
 

@@ -24,10 +24,19 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 | `replay-variations?factor=…` | Compare single-source edits across distinct captured inputs. Each row gives counts, one changed and one equal example, their exact replay locations and whether only fragment order differs between those two requests. |
 | `findings?factor=…` | Get the recommendations for that factor. Each includes an action, comparison details and an example occurrence. Use `group` to select a recommendation by ID. |
 | `occurrences?factor=…&group=…` | Page through the individual observations behind the recommendation. Each row carries its own measurement, request and call IDs, and conversation key when available. |
+| `token-path` | Read up to 16 measured output positions for a token finding. Pass its `group`, `trace`, `call`, `decision`, `report`, and zero-based decoder `block`. Use `next_offset` to read the next page of `tokens`. Source and generated excerpts require demo mode or content capture. |
 
 The dashboard counts each identified conversation once after applying the current filters. A conversation can move to another category when new findings arrive or a filter excludes a measurement. Within a category, the most recent eligible finding supplies the evidence link. Requests without a conversation ID contribute to a separate count. [Category definitions](methods.md#what-changed-in-a-conversation)
 
 Expand **Scored replays** on the overview or a source factor to see how many conversations had changed match rates, equal rates, both results across comparisons, or no scored replay. The four counts in `impact.replay_outcomes` add up to the identified conversations with findings in that scope. Probe scores contribute to the broader measured-change count. Only replay comparisons contribute to this breakdown. Two equal match rates can come from as little as one trial per arm. Open the recommendation to check the trial counts and scoring rule.
+
+### Follow a source edit through an answer
+
+Open a token recommendation. It selects the output position and source edit with the largest measured shift. Choose another token to see which tested edits affected its probability. Expand a source to see the replacement and the answer the model generated with it. The coverage count lists captured inputs that still need a test. [Open the refund example](http://127.0.0.1:8040/?recommendation=6158b8bd5e64d129e9be699f6c78c0965402edc0b7367df671e02ff744171bb1#output-token-14)
+
+![The refund-policy edit changes the probability of the original four-day window and the separately generated answer says seven days.](media/token-path.png)
+
+In the tool example, the model wrote `42` in a stock lookup and repeated it in the explanation. Choose **Compare the same token at position 21** to see how the effect of editing the product ID differs across the two positions. The edited generation shows which argument the model actually proposed. [Open the tool example](http://127.0.0.1:8040/?recommendation=a40da3144994322a6a46f98bd239219307918b750e9626c0f2247b19c8597a95#output-token-8)
 
 ### Find an edit whose effect varies across inputs
 

@@ -757,7 +757,9 @@ function review(card, occurrences) {
     card.kind === "replay" ? link("Open trial comparison", advancedHref({ id: trace_id }, { id: call_id }, { detail })) : null);
   return element("div", { className: "feed" },
     link("Back to source factor", url({ factor: factorId || detail.factor })),
-    recommendationDetail(card.kind, detail, card.action, card.trend),
+    card.kind === "token" ? tokenPath(card) : null,
+    card.kind === "token" ? element("details", {className:"panel"}, element("summary", {text:"Peak score change and block swap"}),
+      recommendationDetail(card.kind, detail, card.action, card.trend)) : recommendationDetail(card.kind, detail, card.action, card.trend),
     measuredExample.trace ? link("See this recommendation across requests", url({ recommendation: card.id, factor: factorId })) : null,
     card.threads > 1 ? compareForm(card.id) : null, evidence,
     panel("Where this appeared", ...occurrences.rows.map((row) => element("details", { className: "occurrence" },
