@@ -312,7 +312,7 @@ pub fn preview(
     });
     let scope_issue = tool_scope.as_ref().and_then(|check| {
         if !check.outside.is_empty() {
-            Some(("Review tools outside the workflow scope", "Limit the advertised catalog and test the result on this workflow. Check permission again before dispatch."))
+            Some(("Review tools outside the workflow scope", "Test the full and scoped catalogs on the same requests before changing what the model sees. Check permission again before dispatch."))
         } else if check.captured.is_none() || !check.unclassified.is_empty() {
             Some(("Check tool catalog capture", "Supply the assembled tools array and identify opaque entries before counting catalog coverage."))
         } else {

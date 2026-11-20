@@ -1,0 +1,2283 @@
+{
+  "protocol_sha256": "ddf5b16b537d85cc29236aa1cf5498d2977b14cf829d9307c0ffae0f6e5bba44",
+  "model_files_sha256": "2e4941a75a2fa5513c80e92177aafbca95a71ebfe9c7063934631cac86d689b7",
+  "cases": [
+    {
+      "id": "multi_turn_base_167",
+      "group": "held_out",
+      "reference": {
+        "id": "multi_turn_base_167",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_flight_cost",
+            "native_arguments_sha256": "e9394ef719c263a2c3b2d52d8d3acdfac029c1d63e65e56aec0d0b6db2e78b14",
+            "status": "executed",
+            "arguments_sha256": "e9394ef719c263a2c3b2d52d8d3acdfac029c1d63e65e56aec0d0b6db2e78b14",
+            "response_sha256": "f7a86ebd7dcd40f3119fe4e80bcc4f7200f02b283f479aae8c44d141abba0bd6",
+            "in_scope": true,
+            "before": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+            "after": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+            "feedback_sha256": "f7a86ebd7dcd40f3119fe4e80bcc4f7200f02b283f479aae8c44d141abba0bd6"
+          }
+        ],
+        "state_sha256": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "catalogs": {
+        "full": {
+          "catalog_sha256": "55d16f0ac6e3c1b4014b236520ca1453abdc6c4cc45bacd5edeff36b107261b4",
+          "captured": 18,
+          "outside": [
+            {
+              "name": "authenticate_travel",
+              "index": 0
+            },
+            {
+              "name": "book_flight",
+              "index": 1
+            },
+            {
+              "name": "cancel_booking",
+              "index": 2
+            },
+            {
+              "name": "compute_exchange_rate",
+              "index": 3
+            },
+            {
+              "name": "contact_customer_support",
+              "index": 4
+            },
+            {
+              "name": "get_all_credit_cards",
+              "index": 5
+            },
+            {
+              "name": "get_booking_history",
+              "index": 6
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "index": 7
+            },
+            {
+              "name": "get_credit_card_balance",
+              "index": 8
+            },
+            {
+              "name": "purchase_insurance",
+              "index": 12
+            },
+            {
+              "name": "register_credit_card",
+              "index": 13
+            },
+            {
+              "name": "retrieve_invoice",
+              "index": 14
+            },
+            {
+              "name": "set_budget_limit",
+              "index": 15
+            },
+            {
+              "name": "travel_get_login_status",
+              "index": 16
+            },
+            {
+              "name": "verify_traveler_information",
+              "index": 17
+            }
+          ],
+          "unclassified": []
+        },
+        "scoped": {
+          "catalog_sha256": "0b876000dc210313f00f948d8b415ce3f36c2622b4413340b34f18428c48ebe9",
+          "captured": 3,
+          "outside": [],
+          "unclassified": []
+        }
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_167",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "37aa891d2613c37f95e6a994adc6ddd174a3e2ed5bb57ae30ec60f5ef15607d0",
+              "status": "simulator_exception",
+              "arguments_sha256": "37aa891d2613c37f95e6a994adc6ddd174a3e2ed5bb57ae30ec60f5ef15607d0",
+              "in_scope": true,
+              "before": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+              "after": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+              "feedback_sha256": "e975bd81ca6d24f0acb892f316b94c94e139d5afe4291794b67f107027427e72"
+            }
+          ],
+          "state_sha256": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "38091ea63d5e6b1fefad3ad4a4f27619d811b41059a696733df4253f66a676e2",
+              "history_sha256": "f3eb9bb1942e291a0a4d560985d7e58a8684946dda7a6ef006852f96f53ab693",
+              "raw_sha256": "4584759da9cf9cbabb1579a3b3c191de6a96e205a3bb92011cf540deb225d995",
+              "input_tokens": 4468,
+              "generated_tokens": 73,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "65b67be895f97180d51554566806a5dfcf1e912099f18687b30df9deb43a7432",
+              "history_sha256": "f9d22f41f2ae0784a0cd5452c96bbb3ad71ec986b7516ab935ff15a336722ccf",
+              "raw_sha256": "ad551fe5d31ad15415796adcff0b5340c820db2762bdc38785eeb557d6161cb8",
+              "input_tokens": 4560,
+              "generated_tokens": 70,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "gate": {
+          "id": "multi_turn_base_167",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "37aa891d2613c37f95e6a994adc6ddd174a3e2ed5bb57ae30ec60f5ef15607d0",
+              "status": "simulator_exception",
+              "arguments_sha256": "37aa891d2613c37f95e6a994adc6ddd174a3e2ed5bb57ae30ec60f5ef15607d0",
+              "in_scope": true,
+              "before": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+              "after": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+              "feedback_sha256": "e975bd81ca6d24f0acb892f316b94c94e139d5afe4291794b67f107027427e72"
+            }
+          ],
+          "state_sha256": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "38091ea63d5e6b1fefad3ad4a4f27619d811b41059a696733df4253f66a676e2",
+              "history_sha256": "f3eb9bb1942e291a0a4d560985d7e58a8684946dda7a6ef006852f96f53ab693",
+              "raw_sha256": "4584759da9cf9cbabb1579a3b3c191de6a96e205a3bb92011cf540deb225d995",
+              "input_tokens": 4468,
+              "generated_tokens": 73,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "65b67be895f97180d51554566806a5dfcf1e912099f18687b30df9deb43a7432",
+              "history_sha256": "f9d22f41f2ae0784a0cd5452c96bbb3ad71ec986b7516ab935ff15a336722ccf",
+              "raw_sha256": "ad551fe5d31ad15415796adcff0b5340c820db2762bdc38785eeb557d6161cb8",
+              "input_tokens": 4560,
+              "generated_tokens": 70,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "scoped": {
+          "id": "multi_turn_base_167",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "status": "executed",
+              "arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "response_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26",
+              "in_scope": true,
+              "before": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+              "after": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+              "feedback_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26"
+            },
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "e9394ef719c263a2c3b2d52d8d3acdfac029c1d63e65e56aec0d0b6db2e78b14",
+              "status": "executed",
+              "arguments_sha256": "e9394ef719c263a2c3b2d52d8d3acdfac029c1d63e65e56aec0d0b6db2e78b14",
+              "response_sha256": "f7a86ebd7dcd40f3119fe4e80bcc4f7200f02b283f479aae8c44d141abba0bd6",
+              "in_scope": true,
+              "before": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+              "after": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+              "feedback_sha256": "f7a86ebd7dcd40f3119fe4e80bcc4f7200f02b283f479aae8c44d141abba0bd6"
+            }
+          ],
+          "state_sha256": "732a78f9bc4acb3b1201a9c544872dd6655dcf5b6e30e454eb3d26e1be3d6ce9",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "6ef6d72b47fb0ce4da5fd7d7ab38744fc76e10cef7349143e4739195c035b184",
+              "history_sha256": "f3eb9bb1942e291a0a4d560985d7e58a8684946dda7a6ef006852f96f53ab693",
+              "raw_sha256": "cee3e5fd94330f1756478bf9be4e6eca9e3b3a6fc37a9789d685c6f74083c950",
+              "input_tokens": 670,
+              "generated_tokens": 74,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "5fef4260631f88ce08dac8f253fd69e474681b80a6dfc557d208132dd53feb4f",
+              "history_sha256": "eeedb8728cf9518a4ce88547954512d944a6a4c4ec12f9ba325213396bf8d492",
+              "raw_sha256": "bddab19726d40cae7171ea858d5024a66ff5c4af7eb44a827e9727cff2811c94",
+              "input_tokens": 766,
+              "generated_tokens": 39,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "0e1e7abb1767383423258050ce2087bb92a6bc141a787a9bbc8ca39acfbe44b3",
+              "history_sha256": "dfa6edc528014209bafbb26b559b420fa3a5e99e19717245adf38cf8a95042b8",
+              "raw_sha256": "3f927e5198b760bb15fe4f4fe1239845f6d3c87e8a977516b136501c0cdab1df",
+              "input_tokens": 828,
+              "generated_tokens": 75,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_182",
+      "group": "held_out",
+      "reference": {
+        "id": "multi_turn_base_182",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_flight_cost",
+            "native_arguments_sha256": "bb526c7684d904c07efedef169476565cd457ce42520093e9c0a7ed77a6022cd",
+            "status": "executed",
+            "arguments_sha256": "bb526c7684d904c07efedef169476565cd457ce42520093e9c0a7ed77a6022cd",
+            "response_sha256": "39fc1ecf517d00fb1f0b4466ecc8d2317caecd9b43fc4083b04795584a8dd110",
+            "in_scope": true,
+            "before": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+            "after": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+            "feedback_sha256": "39fc1ecf517d00fb1f0b4466ecc8d2317caecd9b43fc4083b04795584a8dd110"
+          }
+        ],
+        "state_sha256": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "catalogs": {
+        "full": {
+          "catalog_sha256": "55d16f0ac6e3c1b4014b236520ca1453abdc6c4cc45bacd5edeff36b107261b4",
+          "captured": 18,
+          "outside": [
+            {
+              "name": "authenticate_travel",
+              "index": 0
+            },
+            {
+              "name": "book_flight",
+              "index": 1
+            },
+            {
+              "name": "cancel_booking",
+              "index": 2
+            },
+            {
+              "name": "compute_exchange_rate",
+              "index": 3
+            },
+            {
+              "name": "contact_customer_support",
+              "index": 4
+            },
+            {
+              "name": "get_all_credit_cards",
+              "index": 5
+            },
+            {
+              "name": "get_booking_history",
+              "index": 6
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "index": 7
+            },
+            {
+              "name": "get_credit_card_balance",
+              "index": 8
+            },
+            {
+              "name": "purchase_insurance",
+              "index": 12
+            },
+            {
+              "name": "register_credit_card",
+              "index": 13
+            },
+            {
+              "name": "retrieve_invoice",
+              "index": 14
+            },
+            {
+              "name": "set_budget_limit",
+              "index": 15
+            },
+            {
+              "name": "travel_get_login_status",
+              "index": 16
+            },
+            {
+              "name": "verify_traveler_information",
+              "index": 17
+            }
+          ],
+          "unclassified": []
+        },
+        "scoped": {
+          "catalog_sha256": "0b876000dc210313f00f948d8b415ce3f36c2622b4413340b34f18428c48ebe9",
+          "captured": 3,
+          "outside": [],
+          "unclassified": []
+        }
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_182",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "bb526c7684d904c07efedef169476565cd457ce42520093e9c0a7ed77a6022cd",
+              "status": "executed",
+              "arguments_sha256": "bb526c7684d904c07efedef169476565cd457ce42520093e9c0a7ed77a6022cd",
+              "response_sha256": "39fc1ecf517d00fb1f0b4466ecc8d2317caecd9b43fc4083b04795584a8dd110",
+              "in_scope": true,
+              "before": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "after": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "feedback_sha256": "39fc1ecf517d00fb1f0b4466ecc8d2317caecd9b43fc4083b04795584a8dd110"
+            }
+          ],
+          "state_sha256": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "6167fc48164b20ed8cd269e975a6981ddbca295eaa262f2010170ae92f1fe1dd",
+              "history_sha256": "987bae2c8e1ca901efcb493b4d12b8e923622cc4d3dac665846004e98997ca03",
+              "raw_sha256": "fb338e24982f61c3a67ae784f85886a6e7c7f1781efe4a56d866ac92c46534b4",
+              "input_tokens": 4487,
+              "generated_tokens": 74,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "45bd25269c87d509e6e487d05dd1d6b3c68e4515674c7a86151f175393a69664",
+              "history_sha256": "6821f379f0783b5c2101591250a5e97247e5dec54502fa9ffbdd42d6c8395e3f",
+              "raw_sha256": "5e0fac6ebe5f3057411282aa28204393d5b38e70ffea9971c8f15c59f6982ca1",
+              "input_tokens": 4585,
+              "generated_tokens": 51,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "gate": {
+          "id": "multi_turn_base_182",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "bb526c7684d904c07efedef169476565cd457ce42520093e9c0a7ed77a6022cd",
+              "status": "executed",
+              "arguments_sha256": "bb526c7684d904c07efedef169476565cd457ce42520093e9c0a7ed77a6022cd",
+              "response_sha256": "39fc1ecf517d00fb1f0b4466ecc8d2317caecd9b43fc4083b04795584a8dd110",
+              "in_scope": true,
+              "before": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "after": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "feedback_sha256": "39fc1ecf517d00fb1f0b4466ecc8d2317caecd9b43fc4083b04795584a8dd110"
+            }
+          ],
+          "state_sha256": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "6167fc48164b20ed8cd269e975a6981ddbca295eaa262f2010170ae92f1fe1dd",
+              "history_sha256": "987bae2c8e1ca901efcb493b4d12b8e923622cc4d3dac665846004e98997ca03",
+              "raw_sha256": "fb338e24982f61c3a67ae784f85886a6e7c7f1781efe4a56d866ac92c46534b4",
+              "input_tokens": 4487,
+              "generated_tokens": 74,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "45bd25269c87d509e6e487d05dd1d6b3c68e4515674c7a86151f175393a69664",
+              "history_sha256": "6821f379f0783b5c2101591250a5e97247e5dec54502fa9ffbdd42d6c8395e3f",
+              "raw_sha256": "5e0fac6ebe5f3057411282aa28204393d5b38e70ffea9971c8f15c59f6982ca1",
+              "input_tokens": 4585,
+              "generated_tokens": 51,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "scoped": {
+          "id": "multi_turn_base_182",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "list_all_airports",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "0c440a3a622628cefe0bddd24424d79096a17412124bf5363c39cf2c2521a84a",
+              "in_scope": true,
+              "before": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "after": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "feedback_sha256": "0c440a3a622628cefe0bddd24424d79096a17412124bf5363c39cf2c2521a84a"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "3aa5ddc3b6c1638142b25addc98487e8bea96144acbc88a56f25778380e2e68b",
+              "status": "executed",
+              "arguments_sha256": "3aa5ddc3b6c1638142b25addc98487e8bea96144acbc88a56f25778380e2e68b",
+              "response_sha256": "b74be7d4ce6d94190a0b2a0a2e3c8d07265c3d08dc3a96a81bbe948742decb14",
+              "in_scope": true,
+              "before": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "after": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "feedback_sha256": "b74be7d4ce6d94190a0b2a0a2e3c8d07265c3d08dc3a96a81bbe948742decb14"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "b65e41b2e7f6a92e6382680c159e1568034daf56870aabbdef28b23746d16e54",
+              "status": "executed",
+              "arguments_sha256": "b65e41b2e7f6a92e6382680c159e1568034daf56870aabbdef28b23746d16e54",
+              "response_sha256": "b74be7d4ce6d94190a0b2a0a2e3c8d07265c3d08dc3a96a81bbe948742decb14",
+              "in_scope": true,
+              "before": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "after": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+              "feedback_sha256": "b74be7d4ce6d94190a0b2a0a2e3c8d07265c3d08dc3a96a81bbe948742decb14"
+            }
+          ],
+          "state_sha256": "8dc1541ad7d3c6edbcc19e5ed46016f4f2289d448c43fc2ad23f529f989897dd",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "3886dba599b3f636d57da30d0de6e2d4b095b50d473d36b78bf22f0048276df4",
+              "history_sha256": "987bae2c8e1ca901efcb493b4d12b8e923622cc4d3dac665846004e98997ca03",
+              "raw_sha256": "09787222b587c991c90e21f5f53c74ef14547bc4f24e75707a820391b15dd6fa",
+              "input_tokens": 689,
+              "generated_tokens": 11,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "d2eb925e292568a5f5d22a54d5c4b73e4ce4d4b02befa8727b4caed1944c1aa6",
+              "history_sha256": "a50c4243b1d470fce4351ba937c4c0d9d7c01e7620ee9a64fa0b3ee9499f95e6",
+              "raw_sha256": "86a2e1666febd483f16c554b551ef5479c9830953aa37687c8c4e79873a5a7a3",
+              "input_tokens": 804,
+              "generated_tokens": 20,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "95dedb92f057b0e000b6fb1a9b588ba1f6e66dc549e04122fac920899ad2f8a6",
+              "history_sha256": "3db5aed8407acbb55c435f1bd4ae0b4717d535ef7031eeb4d50392b4433a24d0",
+              "raw_sha256": "7692227735d02938d59f949a9a84ce5db3c0d4ba033e2e1da5d95502b9895c4e",
+              "input_tokens": 845,
+              "generated_tokens": 21,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_192",
+      "group": "held_out",
+      "reference": {
+        "id": "multi_turn_base_192",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_nearest_airport_by_city",
+            "native_arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+            "status": "executed",
+            "arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+            "response_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26",
+            "in_scope": true,
+            "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+            "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+            "feedback_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26"
+          },
+          {
+            "name": "get_nearest_airport_by_city",
+            "native_arguments_sha256": "7e93900fa0142c3c7246bff79a7b561f2d54ab4fa6033784285ec1734b6417e2",
+            "status": "executed",
+            "arguments_sha256": "7e93900fa0142c3c7246bff79a7b561f2d54ab4fa6033784285ec1734b6417e2",
+            "response_sha256": "cebace89e5e92f1efee712c6ccadf278fd7ccb96f83ab74ef5c02741f65d5f2e",
+            "in_scope": true,
+            "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+            "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+            "feedback_sha256": "cebace89e5e92f1efee712c6ccadf278fd7ccb96f83ab74ef5c02741f65d5f2e"
+          }
+        ],
+        "state_sha256": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "catalogs": {
+        "full": {
+          "catalog_sha256": "55d16f0ac6e3c1b4014b236520ca1453abdc6c4cc45bacd5edeff36b107261b4",
+          "captured": 18,
+          "outside": [
+            {
+              "name": "authenticate_travel",
+              "index": 0
+            },
+            {
+              "name": "book_flight",
+              "index": 1
+            },
+            {
+              "name": "cancel_booking",
+              "index": 2
+            },
+            {
+              "name": "compute_exchange_rate",
+              "index": 3
+            },
+            {
+              "name": "contact_customer_support",
+              "index": 4
+            },
+            {
+              "name": "get_all_credit_cards",
+              "index": 5
+            },
+            {
+              "name": "get_booking_history",
+              "index": 6
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "index": 7
+            },
+            {
+              "name": "get_credit_card_balance",
+              "index": 8
+            },
+            {
+              "name": "purchase_insurance",
+              "index": 12
+            },
+            {
+              "name": "register_credit_card",
+              "index": 13
+            },
+            {
+              "name": "retrieve_invoice",
+              "index": 14
+            },
+            {
+              "name": "set_budget_limit",
+              "index": 15
+            },
+            {
+              "name": "travel_get_login_status",
+              "index": 16
+            },
+            {
+              "name": "verify_traveler_information",
+              "index": 17
+            }
+          ],
+          "unclassified": []
+        },
+        "scoped": {
+          "catalog_sha256": "0b876000dc210313f00f948d8b415ce3f36c2622b4413340b34f18428c48ebe9",
+          "captured": 3,
+          "outside": [],
+          "unclassified": []
+        }
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_192",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "status": "executed",
+              "arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "response_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26",
+              "in_scope": true,
+              "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "feedback_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "7e93900fa0142c3c7246bff79a7b561f2d54ab4fa6033784285ec1734b6417e2",
+              "status": "executed",
+              "arguments_sha256": "7e93900fa0142c3c7246bff79a7b561f2d54ab4fa6033784285ec1734b6417e2",
+              "response_sha256": "cebace89e5e92f1efee712c6ccadf278fd7ccb96f83ab74ef5c02741f65d5f2e",
+              "in_scope": true,
+              "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "feedback_sha256": "cebace89e5e92f1efee712c6ccadf278fd7ccb96f83ab74ef5c02741f65d5f2e"
+            }
+          ],
+          "state_sha256": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "dd8e9ce346bea01fd0c6f203d577f1c399e6112ea51ffc7f9e1a0df87e96b853",
+              "history_sha256": "ea44d9426d39bb17ad418949d2baa52a1dcf0fd12913d37b2e45037c48675cb0",
+              "raw_sha256": "d6e310fcdcef2f199d9e4d94e3ab45637b720ccbccabe96bbcdc372824946f1b",
+              "input_tokens": 4452,
+              "generated_tokens": 69,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "51f51a1aba1e8fd79fc027dfc8e9cd88c814a3a0e8c372a57d91325eba0f5f53",
+              "history_sha256": "e7a7bd1d52339a271c7e9f37253f15426750a8dff30795acd13f4b9ec5454f8e",
+              "raw_sha256": "1be835f90167ff2f757e72415f29270ebfec6ccd1339bdd439c41baa12b9f253",
+              "input_tokens": 4555,
+              "generated_tokens": 34,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "gate": {
+          "id": "multi_turn_base_192",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "status": "executed",
+              "arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "response_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26",
+              "in_scope": true,
+              "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "feedback_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "7e93900fa0142c3c7246bff79a7b561f2d54ab4fa6033784285ec1734b6417e2",
+              "status": "executed",
+              "arguments_sha256": "7e93900fa0142c3c7246bff79a7b561f2d54ab4fa6033784285ec1734b6417e2",
+              "response_sha256": "cebace89e5e92f1efee712c6ccadf278fd7ccb96f83ab74ef5c02741f65d5f2e",
+              "in_scope": true,
+              "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "feedback_sha256": "cebace89e5e92f1efee712c6ccadf278fd7ccb96f83ab74ef5c02741f65d5f2e"
+            }
+          ],
+          "state_sha256": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "dd8e9ce346bea01fd0c6f203d577f1c399e6112ea51ffc7f9e1a0df87e96b853",
+              "history_sha256": "ea44d9426d39bb17ad418949d2baa52a1dcf0fd12913d37b2e45037c48675cb0",
+              "raw_sha256": "d6e310fcdcef2f199d9e4d94e3ab45637b720ccbccabe96bbcdc372824946f1b",
+              "input_tokens": 4452,
+              "generated_tokens": 69,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "51f51a1aba1e8fd79fc027dfc8e9cd88c814a3a0e8c372a57d91325eba0f5f53",
+              "history_sha256": "e7a7bd1d52339a271c7e9f37253f15426750a8dff30795acd13f4b9ec5454f8e",
+              "raw_sha256": "1be835f90167ff2f757e72415f29270ebfec6ccd1339bdd439c41baa12b9f253",
+              "input_tokens": 4555,
+              "generated_tokens": 34,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "scoped": {
+          "id": "multi_turn_base_192",
+          "stop": "truncated",
+          "calls": [
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "status": "executed",
+              "arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "response_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26",
+              "in_scope": true,
+              "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "feedback_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "7e93900fa0142c3c7246bff79a7b561f2d54ab4fa6033784285ec1734b6417e2",
+              "status": "executed",
+              "arguments_sha256": "7e93900fa0142c3c7246bff79a7b561f2d54ab4fa6033784285ec1734b6417e2",
+              "response_sha256": "cebace89e5e92f1efee712c6ccadf278fd7ccb96f83ab74ef5c02741f65d5f2e",
+              "in_scope": true,
+              "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "feedback_sha256": "cebace89e5e92f1efee712c6ccadf278fd7ccb96f83ab74ef5c02741f65d5f2e"
+            },
+            {
+              "name": "list_all_airports",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "0c440a3a622628cefe0bddd24424d79096a17412124bf5363c39cf2c2521a84a",
+              "in_scope": true,
+              "before": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "after": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+              "feedback_sha256": "0c440a3a622628cefe0bddd24424d79096a17412124bf5363c39cf2c2521a84a"
+            }
+          ],
+          "state_sha256": "a1df1c6d5710bbe19a506972e36f66a54df2dd8e54b950ec2fe8408f81de63bd",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "ae0077501a91b28b0d1777c5531491b391d2960ffe833ed12a1d2c033bb63a18",
+              "history_sha256": "ea44d9426d39bb17ad418949d2baa52a1dcf0fd12913d37b2e45037c48675cb0",
+              "raw_sha256": "c26860f4d92a940b492be01ffbfaffc152ec4deda9acb4f88bf106986d372747",
+              "input_tokens": 654,
+              "generated_tokens": 40,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "f704e84e9b1159e2d3f47c2c4994415794a9d49755c0ee78e97fde7fa7da8ed8",
+              "history_sha256": "2c9b594d6564b665d29888f78cf1a083177dcc45162a4018df20e3c7d15091e6",
+              "raw_sha256": "09787222b587c991c90e21f5f53c74ef14547bc4f24e75707a820391b15dd6fa",
+              "input_tokens": 728,
+              "generated_tokens": 11,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "39dea949cb7fd419763810302db4b473d59d3513d734adafe019681e8102c1ff",
+              "history_sha256": "5209b7065d2d4aaa39d7e1a675a3767840a8fc743fc1bf3a8a93eec1f1175a0b",
+              "raw_sha256": "fe255b261460bdcfc549caec5390ebea5b3261eecc4809fa089c723c3806d500",
+              "input_tokens": 843,
+              "generated_tokens": 128,
+              "stop": "length"
+            }
+          ],
+          "domain_errors": 0
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_194",
+      "group": "held_out",
+      "reference": {
+        "id": "multi_turn_base_194",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "list_all_airports",
+            "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "status": "executed",
+            "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "response_sha256": "0c440a3a622628cefe0bddd24424d79096a17412124bf5363c39cf2c2521a84a",
+            "in_scope": true,
+            "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+            "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+            "feedback_sha256": "0c440a3a622628cefe0bddd24424d79096a17412124bf5363c39cf2c2521a84a"
+          },
+          {
+            "name": "get_flight_cost",
+            "native_arguments_sha256": "31b2d5a359bf6fad9c10d8d0afab8a2e95dd4a996dabf28d4c54af1dec7e1ea9",
+            "status": "executed",
+            "arguments_sha256": "31b2d5a359bf6fad9c10d8d0afab8a2e95dd4a996dabf28d4c54af1dec7e1ea9",
+            "response_sha256": "c56fc90ab10b55641005192967f97b7772fadae1ac6e8fffd18e9d6d6e729454",
+            "in_scope": true,
+            "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+            "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+            "feedback_sha256": "c56fc90ab10b55641005192967f97b7772fadae1ac6e8fffd18e9d6d6e729454"
+          }
+        ],
+        "state_sha256": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "catalogs": {
+        "full": {
+          "catalog_sha256": "55d16f0ac6e3c1b4014b236520ca1453abdc6c4cc45bacd5edeff36b107261b4",
+          "captured": 18,
+          "outside": [
+            {
+              "name": "authenticate_travel",
+              "index": 0
+            },
+            {
+              "name": "book_flight",
+              "index": 1
+            },
+            {
+              "name": "cancel_booking",
+              "index": 2
+            },
+            {
+              "name": "compute_exchange_rate",
+              "index": 3
+            },
+            {
+              "name": "contact_customer_support",
+              "index": 4
+            },
+            {
+              "name": "get_all_credit_cards",
+              "index": 5
+            },
+            {
+              "name": "get_booking_history",
+              "index": 6
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "index": 7
+            },
+            {
+              "name": "get_credit_card_balance",
+              "index": 8
+            },
+            {
+              "name": "purchase_insurance",
+              "index": 12
+            },
+            {
+              "name": "register_credit_card",
+              "index": 13
+            },
+            {
+              "name": "retrieve_invoice",
+              "index": 14
+            },
+            {
+              "name": "set_budget_limit",
+              "index": 15
+            },
+            {
+              "name": "travel_get_login_status",
+              "index": 16
+            },
+            {
+              "name": "verify_traveler_information",
+              "index": 17
+            }
+          ],
+          "unclassified": []
+        },
+        "scoped": {
+          "catalog_sha256": "0b876000dc210313f00f948d8b415ce3f36c2622b4413340b34f18428c48ebe9",
+          "captured": 3,
+          "outside": [],
+          "unclassified": []
+        }
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_194",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "status": "executed",
+              "arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "response_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "080d9342808d9b0aa841b2820b0447e35a53c923263edcc94a61274546651db0",
+              "status": "executed",
+              "arguments_sha256": "080d9342808d9b0aa841b2820b0447e35a53c923263edcc94a61274546651db0",
+              "response_sha256": "2228f235b84c51beb4e9565cf675bafa6934b8b37996b679ad9b9ff41f38cfa3",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "2228f235b84c51beb4e9565cf675bafa6934b8b37996b679ad9b9ff41f38cfa3"
+            },
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "71bb48769b3530cb5d0fbd2fcb04fdaf02d5d4d47a8ade936f1c44fdba0cab62",
+              "status": "simulator_exception",
+              "arguments_sha256": "71bb48769b3530cb5d0fbd2fcb04fdaf02d5d4d47a8ade936f1c44fdba0cab62",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "e975bd81ca6d24f0acb892f316b94c94e139d5afe4291794b67f107027427e72"
+            }
+          ],
+          "state_sha256": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "7668d5566e4e03b7548f78a48591c0245edae44b97e4ab9d01378366a04fc135",
+              "history_sha256": "8e8426b7b3a8f82a6ce73485129e697012ece6affa0abe60c9edf9ee36016977",
+              "raw_sha256": "173ca708d9da0706b16b75a5dbc7d41bd04c7c1236bb2004ad6b77e1860e328e",
+              "input_tokens": 4483,
+              "generated_tokens": 74,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "7d9923a09b425fea98d9eb17e8f0a64b46466448317b8d09018c2e70fda05a16",
+              "history_sha256": "ed35eb244a712cb6e703f69070326471c2b47ad92ba0def631f68ce91c01ac81",
+              "raw_sha256": "f08e83724b0a7c6b83e3c901734ff2f1f339dff8eb319cf28f319e1b14dcb513",
+              "input_tokens": 4591,
+              "generated_tokens": 76,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "9ec63b139b9608978383a4e99a88fa4507d47d5f0c80678e34f2318aec57a3e6",
+              "history_sha256": "833139c49b21a4bc34337344ff3d2db091fc0ca197b395ebdee698543c11eb51",
+              "raw_sha256": "dcf7a71103c0b4db8de419bfb538b821ba03df8fc060242d677ded9aebfaa366",
+              "input_tokens": 4686,
+              "generated_tokens": 49,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "gate": {
+          "id": "multi_turn_base_194",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "status": "executed",
+              "arguments_sha256": "c91c604f2e474c1c94db7963132906cd2be0da9dadaa88cc58c537fcd7ce7ea4",
+              "response_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "0324b81460459f1a97249c4468856677956d19b02aba2b7784322892dbf84d26"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "080d9342808d9b0aa841b2820b0447e35a53c923263edcc94a61274546651db0",
+              "status": "executed",
+              "arguments_sha256": "080d9342808d9b0aa841b2820b0447e35a53c923263edcc94a61274546651db0",
+              "response_sha256": "2228f235b84c51beb4e9565cf675bafa6934b8b37996b679ad9b9ff41f38cfa3",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "2228f235b84c51beb4e9565cf675bafa6934b8b37996b679ad9b9ff41f38cfa3"
+            },
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "71bb48769b3530cb5d0fbd2fcb04fdaf02d5d4d47a8ade936f1c44fdba0cab62",
+              "status": "simulator_exception",
+              "arguments_sha256": "71bb48769b3530cb5d0fbd2fcb04fdaf02d5d4d47a8ade936f1c44fdba0cab62",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "e975bd81ca6d24f0acb892f316b94c94e139d5afe4291794b67f107027427e72"
+            }
+          ],
+          "state_sha256": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "7668d5566e4e03b7548f78a48591c0245edae44b97e4ab9d01378366a04fc135",
+              "history_sha256": "8e8426b7b3a8f82a6ce73485129e697012ece6affa0abe60c9edf9ee36016977",
+              "raw_sha256": "173ca708d9da0706b16b75a5dbc7d41bd04c7c1236bb2004ad6b77e1860e328e",
+              "input_tokens": 4483,
+              "generated_tokens": 74,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "7d9923a09b425fea98d9eb17e8f0a64b46466448317b8d09018c2e70fda05a16",
+              "history_sha256": "ed35eb244a712cb6e703f69070326471c2b47ad92ba0def631f68ce91c01ac81",
+              "raw_sha256": "f08e83724b0a7c6b83e3c901734ff2f1f339dff8eb319cf28f319e1b14dcb513",
+              "input_tokens": 4591,
+              "generated_tokens": 76,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "9ec63b139b9608978383a4e99a88fa4507d47d5f0c80678e34f2318aec57a3e6",
+              "history_sha256": "833139c49b21a4bc34337344ff3d2db091fc0ca197b395ebdee698543c11eb51",
+              "raw_sha256": "dcf7a71103c0b4db8de419bfb538b821ba03df8fc060242d677ded9aebfaa366",
+              "input_tokens": 4686,
+              "generated_tokens": 49,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "scoped": {
+          "id": "multi_turn_base_194",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "list_all_airports",
+              "native_arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "status": "executed",
+              "arguments_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+              "response_sha256": "0c440a3a622628cefe0bddd24424d79096a17412124bf5363c39cf2c2521a84a",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "0c440a3a622628cefe0bddd24424d79096a17412124bf5363c39cf2c2521a84a"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "bd30c6ce9be83c9fc585a1d68b9f05c65dc185c725d8c381282f5d0c4a8add25",
+              "status": "executed",
+              "arguments_sha256": "bd30c6ce9be83c9fc585a1d68b9f05c65dc185c725d8c381282f5d0c4a8add25",
+              "response_sha256": "b74be7d4ce6d94190a0b2a0a2e3c8d07265c3d08dc3a96a81bbe948742decb14",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "b74be7d4ce6d94190a0b2a0a2e3c8d07265c3d08dc3a96a81bbe948742decb14"
+            },
+            {
+              "name": "get_nearest_airport_by_city",
+              "native_arguments_sha256": "7195f39c0ecd9b6eb317fcd8bfce0aeed39e0161cecbc281320d09d3db769545",
+              "status": "executed",
+              "arguments_sha256": "7195f39c0ecd9b6eb317fcd8bfce0aeed39e0161cecbc281320d09d3db769545",
+              "response_sha256": "b74be7d4ce6d94190a0b2a0a2e3c8d07265c3d08dc3a96a81bbe948742decb14",
+              "in_scope": true,
+              "before": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "after": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+              "feedback_sha256": "b74be7d4ce6d94190a0b2a0a2e3c8d07265c3d08dc3a96a81bbe948742decb14"
+            }
+          ],
+          "state_sha256": "4c50732a94a0782bd7a7020c2fe37761caa37ade3184b7629168de36dee421a6",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "9289ebc5827731a0ed1863ccb04eb5d5c80dfa000ab24577790dd5b4683894cc",
+              "history_sha256": "8e8426b7b3a8f82a6ce73485129e697012ece6affa0abe60c9edf9ee36016977",
+              "raw_sha256": "09787222b587c991c90e21f5f53c74ef14547bc4f24e75707a820391b15dd6fa",
+              "input_tokens": 685,
+              "generated_tokens": 11,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "5e2e8eb6f1134411e050c770dae0857fe8436ee0a650666859054d095d8910f4",
+              "history_sha256": "6456678db2a978da8e81dbf805791aebc29d22f938309b42be13aafb1f78a6ce",
+              "raw_sha256": "5434b76d3672e91cb476874d5e70bde2b1c92264467c80337f05b7a3812906a8",
+              "input_tokens": 800,
+              "generated_tokens": 21,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "3abcccb171d618fe03329b6f931351deb12c94e281052ce8ba679462eab266be",
+              "history_sha256": "4ae7638072953c4093945fe448a3f4b88572dd1684bd3e8cef92dadf73dd656c",
+              "raw_sha256": "6930177e24ebc52aceca0317ffa2899cdb8289f942f49870f364b50b4b96b3f1",
+              "input_tokens": 842,
+              "generated_tokens": 21,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_150",
+      "group": "development",
+      "reference": {
+        "id": "multi_turn_base_150",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_flight_cost",
+            "native_arguments_sha256": "31b5b160c95808bde2dd6592f1419569cbd729840f3660b883a368aac65a8bef",
+            "status": "executed",
+            "arguments_sha256": "31b5b160c95808bde2dd6592f1419569cbd729840f3660b883a368aac65a8bef",
+            "response_sha256": "3ea3f143fde368cc1612b4792d1cdfa10fe9914f3e93cbd463cefa3be5b30879",
+            "in_scope": true,
+            "before": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+            "after": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+            "feedback_sha256": "3ea3f143fde368cc1612b4792d1cdfa10fe9914f3e93cbd463cefa3be5b30879"
+          }
+        ],
+        "state_sha256": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "catalogs": {
+        "full": {
+          "catalog_sha256": "55d16f0ac6e3c1b4014b236520ca1453abdc6c4cc45bacd5edeff36b107261b4",
+          "captured": 18,
+          "outside": [
+            {
+              "name": "authenticate_travel",
+              "index": 0
+            },
+            {
+              "name": "book_flight",
+              "index": 1
+            },
+            {
+              "name": "cancel_booking",
+              "index": 2
+            },
+            {
+              "name": "compute_exchange_rate",
+              "index": 3
+            },
+            {
+              "name": "contact_customer_support",
+              "index": 4
+            },
+            {
+              "name": "get_all_credit_cards",
+              "index": 5
+            },
+            {
+              "name": "get_booking_history",
+              "index": 6
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "index": 7
+            },
+            {
+              "name": "get_credit_card_balance",
+              "index": 8
+            },
+            {
+              "name": "purchase_insurance",
+              "index": 12
+            },
+            {
+              "name": "register_credit_card",
+              "index": 13
+            },
+            {
+              "name": "retrieve_invoice",
+              "index": 14
+            },
+            {
+              "name": "set_budget_limit",
+              "index": 15
+            },
+            {
+              "name": "travel_get_login_status",
+              "index": 16
+            },
+            {
+              "name": "verify_traveler_information",
+              "index": 17
+            }
+          ],
+          "unclassified": []
+        },
+        "scoped": {
+          "catalog_sha256": "0b876000dc210313f00f948d8b415ce3f36c2622b4413340b34f18428c48ebe9",
+          "captured": 3,
+          "outside": [],
+          "unclassified": []
+        }
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_150",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "42a1dcf4dd9e9ecaaad55da36f4a54314d941864af7921180e47a377873fe393",
+              "status": "simulator_exception",
+              "arguments_sha256": "42a1dcf4dd9e9ecaaad55da36f4a54314d941864af7921180e47a377873fe393",
+              "in_scope": true,
+              "before": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "after": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "feedback_sha256": "e975bd81ca6d24f0acb892f316b94c94e139d5afe4291794b67f107027427e72"
+            },
+            {
+              "name": "authenticate_travel",
+              "native_arguments_sha256": "d5270cc3329acfeb7eb6d5410b7a4d058b88459b4e764cc88564f754029822e1",
+              "status": "executed",
+              "arguments_sha256": "d5270cc3329acfeb7eb6d5410b7a4d058b88459b4e764cc88564f754029822e1",
+              "response_sha256": "faccd8032ee4d7b1bf489b32fb370c6a10b8b260d279caf9e3b812e5523b31ef",
+              "in_scope": false,
+              "before": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "after": "53bfe6795ac5013f27b3a2b1978eb9d89870dd1e55b837c8b14f339bbb6fc558",
+              "feedback_sha256": "faccd8032ee4d7b1bf489b32fb370c6a10b8b260d279caf9e3b812e5523b31ef"
+            },
+            {
+              "name": "compute_exchange_rate",
+              "native_arguments_sha256": "6eaa91d5b70716d43be16645a902b8463caaab926b9a4a598ff76480604c9891",
+              "status": "executed",
+              "arguments_sha256": "6eaa91d5b70716d43be16645a902b8463caaab926b9a4a598ff76480604c9891",
+              "response_sha256": "ac54843e804c14d622163ff5b5e8a1903685f89b6a3c193c3b686400ed8e8d63",
+              "in_scope": false,
+              "before": "53bfe6795ac5013f27b3a2b1978eb9d89870dd1e55b837c8b14f339bbb6fc558",
+              "after": "53bfe6795ac5013f27b3a2b1978eb9d89870dd1e55b837c8b14f339bbb6fc558",
+              "feedback_sha256": "ac54843e804c14d622163ff5b5e8a1903685f89b6a3c193c3b686400ed8e8d63"
+            }
+          ],
+          "state_sha256": "53bfe6795ac5013f27b3a2b1978eb9d89870dd1e55b837c8b14f339bbb6fc558",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "3e86d145c2efaaef1df101f2b21792086d7b026355e5f234c988d77b30249943",
+              "history_sha256": "2eca623dbf8a3e8156dbb4569a68278e948cb153234476305887836ea331baec",
+              "raw_sha256": "639fa48d9412dacdc003d4fa6d90889763957afe2459e368e3f7e7d34a60acd0",
+              "input_tokens": 4482,
+              "generated_tokens": 78,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "81dbeb9db924295c221c1c87589cb268b3d2589e8d1d8f4fadea9c73ecf43ae7",
+              "history_sha256": "9218351e616963198e25d778423e3ca5c2c41aec24a1ac4b7babd2e03fad1834",
+              "raw_sha256": "aa66f24d706c436466cf5c29c8fbfa5f7b4c1865ba3ae3ed5e17cca670aaab98",
+              "input_tokens": 4579,
+              "generated_tokens": 106,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "aaf3754397e7c0d5dceddb22b30502b605b0f1a3f73a78434ca9a267069187aa",
+              "history_sha256": "2b550ba138b92ead17131d92fd5c6d43984e0d9d6f665477dbde3e5ac640b050",
+              "raw_sha256": "de293971a59684c0723005cc8a071397605afb409044002da024e3aa6b62e326",
+              "input_tokens": 4728,
+              "generated_tokens": 54,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "gate": {
+          "id": "multi_turn_base_150",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "42a1dcf4dd9e9ecaaad55da36f4a54314d941864af7921180e47a377873fe393",
+              "status": "simulator_exception",
+              "arguments_sha256": "42a1dcf4dd9e9ecaaad55da36f4a54314d941864af7921180e47a377873fe393",
+              "in_scope": true,
+              "before": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "after": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "feedback_sha256": "e975bd81ca6d24f0acb892f316b94c94e139d5afe4291794b67f107027427e72"
+            },
+            {
+              "name": "authenticate_travel",
+              "native_arguments_sha256": "d5270cc3329acfeb7eb6d5410b7a4d058b88459b4e764cc88564f754029822e1",
+              "status": "outside_workflow_scope",
+              "in_scope": false,
+              "before": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "after": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "feedback_sha256": "e4e680ecffdb273096070a0090fdc0185bf58d18c20f034a39ed0c88d0a9c332"
+            }
+          ],
+          "state_sha256": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "3e86d145c2efaaef1df101f2b21792086d7b026355e5f234c988d77b30249943",
+              "history_sha256": "2eca623dbf8a3e8156dbb4569a68278e948cb153234476305887836ea331baec",
+              "raw_sha256": "639fa48d9412dacdc003d4fa6d90889763957afe2459e368e3f7e7d34a60acd0",
+              "input_tokens": 4482,
+              "generated_tokens": 78,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "81dbeb9db924295c221c1c87589cb268b3d2589e8d1d8f4fadea9c73ecf43ae7",
+              "history_sha256": "9218351e616963198e25d778423e3ca5c2c41aec24a1ac4b7babd2e03fad1834",
+              "raw_sha256": "aa66f24d706c436466cf5c29c8fbfa5f7b4c1865ba3ae3ed5e17cca670aaab98",
+              "input_tokens": 4579,
+              "generated_tokens": 106,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "88113cfb5de7db44aab8346f478e9731d530b07b711f59d4321f1a12932a949e",
+              "history_sha256": "6dabd24e0ab698d88348bca3d50e94058459d3a9e1392ffa8d383e6388b52782",
+              "raw_sha256": "e7609dca43511d8ea3fa776d58e2149b3e181c364d4d0c83f58aa4e068ff088f",
+              "input_tokens": 4705,
+              "generated_tokens": 63,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "scoped": {
+          "id": "multi_turn_base_150",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "42a1dcf4dd9e9ecaaad55da36f4a54314d941864af7921180e47a377873fe393",
+              "status": "simulator_exception",
+              "arguments_sha256": "42a1dcf4dd9e9ecaaad55da36f4a54314d941864af7921180e47a377873fe393",
+              "in_scope": true,
+              "before": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "after": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+              "feedback_sha256": "e975bd81ca6d24f0acb892f316b94c94e139d5afe4291794b67f107027427e72"
+            }
+          ],
+          "state_sha256": "4157667690a75d5417001deb5553e5dac454041d51d699d760f4c99502de1f7e",
+          "state_match": true,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "442afa438bbc97ac484d68e1bcb50304167cc8d8373738ae418bbe3aec537946",
+              "history_sha256": "2eca623dbf8a3e8156dbb4569a68278e948cb153234476305887836ea331baec",
+              "raw_sha256": "970d202f838d3a66e94fd93c1083196ffcffc74e67634242c2a8eea954305d34",
+              "input_tokens": 684,
+              "generated_tokens": 40,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "c901e98e1a54b62ba06c8e45139eedd561096dc6ab7a848ffe1d34eea7b3cc9c",
+              "history_sha256": "29ac5e62a1c4accd4872286e1210a88b8582a8aef6f9547af83ff4fa7b852423",
+              "raw_sha256": "fb926e98756d890a7856aa87550f4689aac3355d8d8ee43ffde59485879b04a2",
+              "input_tokens": 743,
+              "generated_tokens": 74,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_155",
+      "group": "booking_control",
+      "reference": {
+        "id": "multi_turn_base_155",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_flight_cost",
+            "native_arguments_sha256": "163c5d2101c1c1937b0ad28942096a71af957c57bf57b7847f07a08d6f4815d1",
+            "status": "executed",
+            "arguments_sha256": "163c5d2101c1c1937b0ad28942096a71af957c57bf57b7847f07a08d6f4815d1",
+            "response_sha256": "6cf6c59b6a83497863198fdb4177aa8010a8fad94043323636a77cc84e90d7c3",
+            "in_scope": true,
+            "before": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+            "after": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+            "feedback_sha256": "6cf6c59b6a83497863198fdb4177aa8010a8fad94043323636a77cc84e90d7c3"
+          },
+          {
+            "name": "book_flight",
+            "native_arguments_sha256": "51d6c82173aff93c73aec37b60d429c57a215d0bc4916b542e15e803484089f7",
+            "status": "executed",
+            "arguments_sha256": "51d6c82173aff93c73aec37b60d429c57a215d0bc4916b542e15e803484089f7",
+            "response_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d",
+            "in_scope": true,
+            "before": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+            "after": "7624d8180462b5522a7ddfc1cc2c398ee638492aaf09cf1f82a41ae856d4f3b1",
+            "feedback_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d"
+          }
+        ],
+        "state_sha256": "7624d8180462b5522a7ddfc1cc2c398ee638492aaf09cf1f82a41ae856d4f3b1",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "quote_on_booking": {
+        "id": "multi_turn_base_155",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_flight_cost",
+            "native_arguments_sha256": "163c5d2101c1c1937b0ad28942096a71af957c57bf57b7847f07a08d6f4815d1",
+            "status": "executed",
+            "arguments_sha256": "163c5d2101c1c1937b0ad28942096a71af957c57bf57b7847f07a08d6f4815d1",
+            "response_sha256": "6cf6c59b6a83497863198fdb4177aa8010a8fad94043323636a77cc84e90d7c3",
+            "in_scope": true,
+            "before": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+            "after": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+            "feedback_sha256": "6cf6c59b6a83497863198fdb4177aa8010a8fad94043323636a77cc84e90d7c3"
+          },
+          {
+            "name": "book_flight",
+            "native_arguments_sha256": "51d6c82173aff93c73aec37b60d429c57a215d0bc4916b542e15e803484089f7",
+            "status": "outside_workflow_scope",
+            "in_scope": false,
+            "before": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+            "after": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+            "feedback_sha256": "e4e680ecffdb273096070a0090fdc0185bf58d18c20f034a39ed0c88d0a9c332"
+          }
+        ],
+        "state_sha256": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+        "state_match": false,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "catalogs": {
+        "full": {
+          "catalog_sha256": "55d16f0ac6e3c1b4014b236520ca1453abdc6c4cc45bacd5edeff36b107261b4",
+          "captured": 18,
+          "outside": [
+            {
+              "name": "authenticate_travel",
+              "index": 0
+            },
+            {
+              "name": "cancel_booking",
+              "index": 2
+            },
+            {
+              "name": "compute_exchange_rate",
+              "index": 3
+            },
+            {
+              "name": "contact_customer_support",
+              "index": 4
+            },
+            {
+              "name": "get_all_credit_cards",
+              "index": 5
+            },
+            {
+              "name": "get_booking_history",
+              "index": 6
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "index": 7
+            },
+            {
+              "name": "get_credit_card_balance",
+              "index": 8
+            },
+            {
+              "name": "purchase_insurance",
+              "index": 12
+            },
+            {
+              "name": "register_credit_card",
+              "index": 13
+            },
+            {
+              "name": "retrieve_invoice",
+              "index": 14
+            },
+            {
+              "name": "set_budget_limit",
+              "index": 15
+            },
+            {
+              "name": "travel_get_login_status",
+              "index": 16
+            },
+            {
+              "name": "verify_traveler_information",
+              "index": 17
+            }
+          ],
+          "unclassified": []
+        },
+        "scoped": {
+          "catalog_sha256": "eddef5687388ef13b4cd89c5c028e37db93bc2fb64324644588dd5f8ae5a795c",
+          "captured": 4,
+          "outside": [],
+          "unclassified": []
+        }
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_155",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "2b23577ae21e860e3b26250be5c72addd6ede44153ba9b3f15bac3c83ac108b4",
+              "status": "schema_rejection",
+              "in_scope": true,
+              "before": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+              "after": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+              "feedback_sha256": "dbb90c6ad9ad583ea5ab8593cb8edbfa43e5086620ead2add012b22eaa8afc69"
+            }
+          ],
+          "state_sha256": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "7f61d25808c41b7f56b6cbbf75c0bad69e2b2bb7de721c981c1aa17fa21268ef",
+              "history_sha256": "0162bba22202d0e7be1cef476c780abca689934a1b2649a682b51da4896023ad",
+              "raw_sha256": "305a1b0258353c7c1ca73c6bb443c3b88bace894b53340e83e9d384b181b4a0d",
+              "input_tokens": 4486,
+              "generated_tokens": 44,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "8b7c2d7c7494b042934dd06fdd347efe4c358216a6401e566de44db1c070e7ce",
+              "history_sha256": "cb145af72005ff668030050fa41fff2c006811c2385f6a1000db1e6c1aafa371",
+              "raw_sha256": "b8ae466dea22dfd8da07734290ab6be33ac67ea41b4f3ca00dab783f393f831a",
+              "input_tokens": 4548,
+              "generated_tokens": 56,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "gate": {
+          "id": "multi_turn_base_155",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "2b23577ae21e860e3b26250be5c72addd6ede44153ba9b3f15bac3c83ac108b4",
+              "status": "schema_rejection",
+              "in_scope": true,
+              "before": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+              "after": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+              "feedback_sha256": "dbb90c6ad9ad583ea5ab8593cb8edbfa43e5086620ead2add012b22eaa8afc69"
+            }
+          ],
+          "state_sha256": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "7f61d25808c41b7f56b6cbbf75c0bad69e2b2bb7de721c981c1aa17fa21268ef",
+              "history_sha256": "0162bba22202d0e7be1cef476c780abca689934a1b2649a682b51da4896023ad",
+              "raw_sha256": "305a1b0258353c7c1ca73c6bb443c3b88bace894b53340e83e9d384b181b4a0d",
+              "input_tokens": 4486,
+              "generated_tokens": 44,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "8b7c2d7c7494b042934dd06fdd347efe4c358216a6401e566de44db1c070e7ce",
+              "history_sha256": "cb145af72005ff668030050fa41fff2c006811c2385f6a1000db1e6c1aafa371",
+              "raw_sha256": "b8ae466dea22dfd8da07734290ab6be33ac67ea41b4f3ca00dab783f393f831a",
+              "input_tokens": 4548,
+              "generated_tokens": 56,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "scoped": {
+          "id": "multi_turn_base_155",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "163c5d2101c1c1937b0ad28942096a71af957c57bf57b7847f07a08d6f4815d1",
+              "status": "executed",
+              "arguments_sha256": "163c5d2101c1c1937b0ad28942096a71af957c57bf57b7847f07a08d6f4815d1",
+              "response_sha256": "6cf6c59b6a83497863198fdb4177aa8010a8fad94043323636a77cc84e90d7c3",
+              "in_scope": true,
+              "before": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+              "after": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+              "feedback_sha256": "6cf6c59b6a83497863198fdb4177aa8010a8fad94043323636a77cc84e90d7c3"
+            },
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "51d6c82173aff93c73aec37b60d429c57a215d0bc4916b542e15e803484089f7",
+              "status": "executed",
+              "arguments_sha256": "51d6c82173aff93c73aec37b60d429c57a215d0bc4916b542e15e803484089f7",
+              "response_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d",
+              "in_scope": true,
+              "before": "8fb6c8b26a72b4e446cff34a3b4ede653ba13464cb3c07975c8940f4b036be86",
+              "after": "7624d8180462b5522a7ddfc1cc2c398ee638492aaf09cf1f82a41ae856d4f3b1",
+              "feedback_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d"
+            }
+          ],
+          "state_sha256": "7624d8180462b5522a7ddfc1cc2c398ee638492aaf09cf1f82a41ae856d4f3b1",
+          "state_match": true,
+          "required_actions": true,
+          "required_responses": true,
+          "usable": true,
+          "generations": [
+            {
+              "prompt_sha256": "4a95d9dfc5bcb68c3102db2b15693e876456fbf7939c9d4ec4e4d43d36b0b190",
+              "history_sha256": "0162bba22202d0e7be1cef476c780abca689934a1b2649a682b51da4896023ad",
+              "raw_sha256": "ce63433dfdb4f6e49b9d30a276a0ddcb853b603476659699f8cdc2fc99158bc4",
+              "input_tokens": 1230,
+              "generated_tokens": 39,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "aa7302c97035ef61e0e9b2484df1d2dbff2a6b727dc40ff42e3ac433acf9e972",
+              "history_sha256": "82c5168af2b074a68a8e6fa7b164722e3c0bdf0e1b870750a5a0f5ecb0b60137",
+              "raw_sha256": "995a731dcf188cdf02bc7712e29bb19c68a9cace42ac4f67bd5b19d89417b66a",
+              "input_tokens": 1293,
+              "generated_tokens": 52,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "03ab699cb5d1f06bed120f3d28f2715d0b0815fdf09af3f87a7de9c00cd32964",
+              "history_sha256": "340f74fad3245a3cadade58f8264a2fbe9f3ab510c6e1ff47dbbfb640b023738",
+              "raw_sha256": "cf159d7a937eeb9896801854eb96c468043eaf08158e294653112be41bda9f69",
+              "input_tokens": 1391,
+              "generated_tokens": 59,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_163",
+      "group": "booking_control",
+      "reference": {
+        "id": "multi_turn_base_163",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_flight_cost",
+            "native_arguments_sha256": "ab569c854457b5d933e020b866ece6ca4335f21e8b3414b023ed0dd9a2e528d5",
+            "status": "executed",
+            "arguments_sha256": "ab569c854457b5d933e020b866ece6ca4335f21e8b3414b023ed0dd9a2e528d5",
+            "response_sha256": "c56fc90ab10b55641005192967f97b7772fadae1ac6e8fffd18e9d6d6e729454",
+            "in_scope": true,
+            "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+            "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+            "feedback_sha256": "c56fc90ab10b55641005192967f97b7772fadae1ac6e8fffd18e9d6d6e729454"
+          },
+          {
+            "name": "book_flight",
+            "native_arguments_sha256": "5ef09106d5b3c9804e9979612e6ddea4641d6d9149a6c673df0ec23e84f7ebec",
+            "status": "executed",
+            "arguments_sha256": "5ef09106d5b3c9804e9979612e6ddea4641d6d9149a6c673df0ec23e84f7ebec",
+            "response_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d",
+            "in_scope": true,
+            "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+            "after": "7297e34d4443d45380db5412af1da707493a4982201bf3348ddc44b00beebaf1",
+            "feedback_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d"
+          }
+        ],
+        "state_sha256": "7297e34d4443d45380db5412af1da707493a4982201bf3348ddc44b00beebaf1",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "quote_on_booking": {
+        "id": "multi_turn_base_163",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "get_flight_cost",
+            "native_arguments_sha256": "ab569c854457b5d933e020b866ece6ca4335f21e8b3414b023ed0dd9a2e528d5",
+            "status": "executed",
+            "arguments_sha256": "ab569c854457b5d933e020b866ece6ca4335f21e8b3414b023ed0dd9a2e528d5",
+            "response_sha256": "c56fc90ab10b55641005192967f97b7772fadae1ac6e8fffd18e9d6d6e729454",
+            "in_scope": true,
+            "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+            "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+            "feedback_sha256": "c56fc90ab10b55641005192967f97b7772fadae1ac6e8fffd18e9d6d6e729454"
+          },
+          {
+            "name": "book_flight",
+            "native_arguments_sha256": "5ef09106d5b3c9804e9979612e6ddea4641d6d9149a6c673df0ec23e84f7ebec",
+            "status": "outside_workflow_scope",
+            "in_scope": false,
+            "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+            "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+            "feedback_sha256": "e4e680ecffdb273096070a0090fdc0185bf58d18c20f034a39ed0c88d0a9c332"
+          }
+        ],
+        "state_sha256": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+        "state_match": false,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "catalogs": {
+        "full": {
+          "catalog_sha256": "55d16f0ac6e3c1b4014b236520ca1453abdc6c4cc45bacd5edeff36b107261b4",
+          "captured": 18,
+          "outside": [
+            {
+              "name": "authenticate_travel",
+              "index": 0
+            },
+            {
+              "name": "cancel_booking",
+              "index": 2
+            },
+            {
+              "name": "compute_exchange_rate",
+              "index": 3
+            },
+            {
+              "name": "contact_customer_support",
+              "index": 4
+            },
+            {
+              "name": "get_all_credit_cards",
+              "index": 5
+            },
+            {
+              "name": "get_booking_history",
+              "index": 6
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "index": 7
+            },
+            {
+              "name": "get_credit_card_balance",
+              "index": 8
+            },
+            {
+              "name": "purchase_insurance",
+              "index": 12
+            },
+            {
+              "name": "register_credit_card",
+              "index": 13
+            },
+            {
+              "name": "retrieve_invoice",
+              "index": 14
+            },
+            {
+              "name": "set_budget_limit",
+              "index": 15
+            },
+            {
+              "name": "travel_get_login_status",
+              "index": 16
+            },
+            {
+              "name": "verify_traveler_information",
+              "index": 17
+            }
+          ],
+          "unclassified": []
+        },
+        "scoped": {
+          "catalog_sha256": "eddef5687388ef13b4cd89c5c028e37db93bc2fb64324644588dd5f8ae5a795c",
+          "captured": 4,
+          "outside": [],
+          "unclassified": []
+        }
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_163",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "baaa44a0923fd39392fdfdc29e0c428d306cff7064f3b34c69de755bdd047eec",
+              "status": "executed",
+              "arguments_sha256": "baaa44a0923fd39392fdfdc29e0c428d306cff7064f3b34c69de755bdd047eec",
+              "response_sha256": "945e3b66c180e1f50e736de892090c98e25823d17956bb6d71fa598f55ff5c81",
+              "in_scope": true,
+              "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "feedback_sha256": "945e3b66c180e1f50e736de892090c98e25823d17956bb6d71fa598f55ff5c81"
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "native_arguments_sha256": "8b752fb6142746b76a809f46fc2aa78f7a92766f7e6aad6e6b3f247db54b7ff7",
+              "status": "executed",
+              "arguments_sha256": "8b752fb6142746b76a809f46fc2aa78f7a92766f7e6aad6e6b3f247db54b7ff7",
+              "response_sha256": "afcb33cd9dc61ac1e5791730c29c7ec6a99584720964c89fc881708947b054e8",
+              "in_scope": false,
+              "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "feedback_sha256": "afcb33cd9dc61ac1e5791730c29c7ec6a99584720964c89fc881708947b054e8"
+            },
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "b110fd32b352e53421a5250aa091d5ab34d17b8942a03a09fb828bd9a36f1e45",
+              "status": "schema_rejection",
+              "in_scope": true,
+              "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "feedback_sha256": "dbb90c6ad9ad583ea5ab8593cb8edbfa43e5086620ead2add012b22eaa8afc69"
+            }
+          ],
+          "state_sha256": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "a1ed620492dc5441ebee74da513d3ef992abfc52452b5aae5432f11bf01f9e58",
+              "history_sha256": "ef6e3b377cfe113228035edd951dd936a879ad08db36f9cd3212888649f368ca",
+              "raw_sha256": "c73e57b398e97fdb803175150ad2f6e52b2b9fb42903f4be9b7a811821496f11",
+              "input_tokens": 4524,
+              "generated_tokens": 39,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "3970e9c4f4604900bf6d14cc3713b2dc38bc8de6b4c252c7a2300c83d7633642",
+              "history_sha256": "6bead96fd2a132197c704ddbc4a382e4e963fe860919537d7441f8355ccf3d47",
+              "raw_sha256": "4a5df0020675788b85c40fd09f9b973f3eeb93e63ff1ce8e7a32b33d88399c14",
+              "input_tokens": 4586,
+              "generated_tokens": 26,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "32a487691e673d1059b562c60c917e380596084b251f4e5202b06af2c36662e4",
+              "history_sha256": "9566c1665a3e46953254a66ccc9ad0a70ffab0c6a415f35bf4013f84b5d896f6",
+              "raw_sha256": "95e4e68379038dc6cb4e468a3cff68c36571908f5416baf2a591ff86c2102814",
+              "input_tokens": 4635,
+              "generated_tokens": 46,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "gate": {
+          "id": "multi_turn_base_163",
+          "stop": "completion_bound",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "baaa44a0923fd39392fdfdc29e0c428d306cff7064f3b34c69de755bdd047eec",
+              "status": "executed",
+              "arguments_sha256": "baaa44a0923fd39392fdfdc29e0c428d306cff7064f3b34c69de755bdd047eec",
+              "response_sha256": "945e3b66c180e1f50e736de892090c98e25823d17956bb6d71fa598f55ff5c81",
+              "in_scope": true,
+              "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "feedback_sha256": "945e3b66c180e1f50e736de892090c98e25823d17956bb6d71fa598f55ff5c81"
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "native_arguments_sha256": "8b752fb6142746b76a809f46fc2aa78f7a92766f7e6aad6e6b3f247db54b7ff7",
+              "status": "outside_workflow_scope",
+              "in_scope": false,
+              "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "feedback_sha256": "e4e680ecffdb273096070a0090fdc0185bf58d18c20f034a39ed0c88d0a9c332"
+            },
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "b110fd32b352e53421a5250aa091d5ab34d17b8942a03a09fb828bd9a36f1e45",
+              "status": "schema_rejection",
+              "in_scope": true,
+              "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "feedback_sha256": "dbb90c6ad9ad583ea5ab8593cb8edbfa43e5086620ead2add012b22eaa8afc69"
+            }
+          ],
+          "state_sha256": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "a1ed620492dc5441ebee74da513d3ef992abfc52452b5aae5432f11bf01f9e58",
+              "history_sha256": "ef6e3b377cfe113228035edd951dd936a879ad08db36f9cd3212888649f368ca",
+              "raw_sha256": "c73e57b398e97fdb803175150ad2f6e52b2b9fb42903f4be9b7a811821496f11",
+              "input_tokens": 4524,
+              "generated_tokens": 39,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "3970e9c4f4604900bf6d14cc3713b2dc38bc8de6b4c252c7a2300c83d7633642",
+              "history_sha256": "6bead96fd2a132197c704ddbc4a382e4e963fe860919537d7441f8355ccf3d47",
+              "raw_sha256": "4a5df0020675788b85c40fd09f9b973f3eeb93e63ff1ce8e7a32b33d88399c14",
+              "input_tokens": 4586,
+              "generated_tokens": 26,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "da710d4318e2dc0e6f541555da2fbc294af0cbec1adf8913e21edb0b3f29ecde",
+              "history_sha256": "63fe7bb7673f31f852ee332eed3d068819cfffac0296febcf5aab1443f320438",
+              "raw_sha256": "95e4e68379038dc6cb4e468a3cff68c36571908f5416baf2a591ff86c2102814",
+              "input_tokens": 4632,
+              "generated_tokens": 46,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "scoped": {
+          "id": "multi_turn_base_163",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "baaa44a0923fd39392fdfdc29e0c428d306cff7064f3b34c69de755bdd047eec",
+              "status": "executed",
+              "arguments_sha256": "baaa44a0923fd39392fdfdc29e0c428d306cff7064f3b34c69de755bdd047eec",
+              "response_sha256": "945e3b66c180e1f50e736de892090c98e25823d17956bb6d71fa598f55ff5c81",
+              "in_scope": true,
+              "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "after": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "feedback_sha256": "945e3b66c180e1f50e736de892090c98e25823d17956bb6d71fa598f55ff5c81"
+            },
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "cf4fbcb92968fe5ec7fdc9f61e30e7b25f2e8b0c22a80f613445f9e1eef689da",
+              "status": "executed",
+              "arguments_sha256": "cf4fbcb92968fe5ec7fdc9f61e30e7b25f2e8b0c22a80f613445f9e1eef689da",
+              "response_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d",
+              "in_scope": true,
+              "before": "da683cef3a1f4794984c2e3be4545ca7c8ae2062c224bda5865067992cdf376f",
+              "after": "1fbcaa0e1bd6b5246b6fdbdbbbc2da0f7ee47434a2676689245a21d7adfed2e9",
+              "feedback_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d"
+            }
+          ],
+          "state_sha256": "1fbcaa0e1bd6b5246b6fdbdbbbc2da0f7ee47434a2676689245a21d7adfed2e9",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "2fd70e4fb69342e15edab133bff20fb59a429613405ab3be94d383a53106864c",
+              "history_sha256": "ef6e3b377cfe113228035edd951dd936a879ad08db36f9cd3212888649f368ca",
+              "raw_sha256": "c73e57b398e97fdb803175150ad2f6e52b2b9fb42903f4be9b7a811821496f11",
+              "input_tokens": 1268,
+              "generated_tokens": 39,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "78b5b662034832a3982a14843863282e61b145b7cb3c92ad52ed5464e702b6bb",
+              "history_sha256": "6bead96fd2a132197c704ddbc4a382e4e963fe860919537d7441f8355ccf3d47",
+              "raw_sha256": "9b3a2d07375bdcf09401fb88714a0502d50e93872cd950374a73097819c05006",
+              "input_tokens": 1330,
+              "generated_tokens": 54,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "366d21ede299abfa1052f723fae61bb01420116a56c7696b2d890e118733248c",
+              "history_sha256": "040d9a258b0db1750bbc845a68087f42cb0f1529cbb76a99aa242635acf6b60d",
+              "raw_sha256": "ba990527410a12dee029a3498210df4ed3d9140f123a8f7bcfec50dc200466b8",
+              "input_tokens": 1430,
+              "generated_tokens": 84,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        }
+      }
+    },
+    {
+      "id": "multi_turn_base_179",
+      "group": "booking_control",
+      "reference": {
+        "id": "multi_turn_base_179",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "book_flight",
+            "native_arguments_sha256": "f933be98b2c0b60034512f061e5dc3e8a92f7c8afd98d3e5e62001d1061d2c73",
+            "status": "executed",
+            "arguments_sha256": "f933be98b2c0b60034512f061e5dc3e8a92f7c8afd98d3e5e62001d1061d2c73",
+            "response_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d",
+            "in_scope": true,
+            "before": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+            "after": "ed8e0b29f07a1c4bbac2e88ac04fd9fee9b38865ecf97f041dc4ab98d353f908",
+            "feedback_sha256": "899c0ad06d89d3dc777257370776929a4b9ea1b77e5e2627935874039f7cc05d"
+          }
+        ],
+        "state_sha256": "ed8e0b29f07a1c4bbac2e88ac04fd9fee9b38865ecf97f041dc4ab98d353f908",
+        "state_match": true,
+        "required_actions": true,
+        "required_responses": true,
+        "usable": true,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "quote_on_booking": {
+        "id": "multi_turn_base_179",
+        "stop": "normal",
+        "calls": [
+          {
+            "name": "book_flight",
+            "native_arguments_sha256": "f933be98b2c0b60034512f061e5dc3e8a92f7c8afd98d3e5e62001d1061d2c73",
+            "status": "outside_workflow_scope",
+            "in_scope": false,
+            "before": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+            "after": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+            "feedback_sha256": "e4e680ecffdb273096070a0090fdc0185bf58d18c20f034a39ed0c88d0a9c332"
+          }
+        ],
+        "state_sha256": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+        "state_match": false,
+        "required_actions": false,
+        "required_responses": false,
+        "usable": false,
+        "generations": [],
+        "domain_errors": 0
+      },
+      "catalogs": {
+        "full": {
+          "catalog_sha256": "55d16f0ac6e3c1b4014b236520ca1453abdc6c4cc45bacd5edeff36b107261b4",
+          "captured": 18,
+          "outside": [
+            {
+              "name": "authenticate_travel",
+              "index": 0
+            },
+            {
+              "name": "cancel_booking",
+              "index": 2
+            },
+            {
+              "name": "compute_exchange_rate",
+              "index": 3
+            },
+            {
+              "name": "contact_customer_support",
+              "index": 4
+            },
+            {
+              "name": "get_all_credit_cards",
+              "index": 5
+            },
+            {
+              "name": "get_booking_history",
+              "index": 6
+            },
+            {
+              "name": "get_budget_fiscal_year",
+              "index": 7
+            },
+            {
+              "name": "get_credit_card_balance",
+              "index": 8
+            },
+            {
+              "name": "purchase_insurance",
+              "index": 12
+            },
+            {
+              "name": "register_credit_card",
+              "index": 13
+            },
+            {
+              "name": "retrieve_invoice",
+              "index": 14
+            },
+            {
+              "name": "set_budget_limit",
+              "index": 15
+            },
+            {
+              "name": "travel_get_login_status",
+              "index": 16
+            },
+            {
+              "name": "verify_traveler_information",
+              "index": 17
+            }
+          ],
+          "unclassified": []
+        },
+        "scoped": {
+          "catalog_sha256": "eddef5687388ef13b4cd89c5c028e37db93bc2fb64324644588dd5f8ae5a795c",
+          "captured": 4,
+          "outside": [],
+          "unclassified": []
+        }
+      },
+      "arms": {
+        "full": {
+          "id": "multi_turn_base_179",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "d6c65067bb650e9e16b0b82421aed3d907ec4bce1f26411d00e431ddf3de2d1b",
+              "status": "schema_rejection",
+              "in_scope": true,
+              "before": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+              "after": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+              "feedback_sha256": "dbb90c6ad9ad583ea5ab8593cb8edbfa43e5086620ead2add012b22eaa8afc69"
+            }
+          ],
+          "state_sha256": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "e32d478b3d567fdfd44e61d038fac550e679cc4cede8de026ba6f054c89d26f7",
+              "history_sha256": "3b7aecdc7c9e69826b60fb437c8700f313a047815b0f51132f9c00df342fcaae",
+              "raw_sha256": "f2ea8460d64d0f50d4b7bbcbf7e7bef405f1a737b7b6210e1bfa26ad94dda974",
+              "input_tokens": 4495,
+              "generated_tokens": 48,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "5ca5285bff3388b07de88114a94bf961a1225a76cc007f421c28b61119b5d9ff",
+              "history_sha256": "994eaff7151db3eda4ff2ad1f9e2a64c8b448375a8c7ec709e251ab7db6d824d",
+              "raw_sha256": "440e9ea8633a5adcfd38fcb2cce6a326606ce2fe772a4a557789a228442d4f08",
+              "input_tokens": 4561,
+              "generated_tokens": 52,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "gate": {
+          "id": "multi_turn_base_179",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "d6c65067bb650e9e16b0b82421aed3d907ec4bce1f26411d00e431ddf3de2d1b",
+              "status": "schema_rejection",
+              "in_scope": true,
+              "before": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+              "after": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+              "feedback_sha256": "dbb90c6ad9ad583ea5ab8593cb8edbfa43e5086620ead2add012b22eaa8afc69"
+            }
+          ],
+          "state_sha256": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "e32d478b3d567fdfd44e61d038fac550e679cc4cede8de026ba6f054c89d26f7",
+              "history_sha256": "3b7aecdc7c9e69826b60fb437c8700f313a047815b0f51132f9c00df342fcaae",
+              "raw_sha256": "f2ea8460d64d0f50d4b7bbcbf7e7bef405f1a737b7b6210e1bfa26ad94dda974",
+              "input_tokens": 4495,
+              "generated_tokens": 48,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "5ca5285bff3388b07de88114a94bf961a1225a76cc007f421c28b61119b5d9ff",
+              "history_sha256": "994eaff7151db3eda4ff2ad1f9e2a64c8b448375a8c7ec709e251ab7db6d824d",
+              "raw_sha256": "440e9ea8633a5adcfd38fcb2cce6a326606ce2fe772a4a557789a228442d4f08",
+              "input_tokens": 4561,
+              "generated_tokens": 52,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 0
+        },
+        "scoped": {
+          "id": "multi_turn_base_179",
+          "stop": "normal",
+          "calls": [
+            {
+              "name": "get_flight_cost",
+              "native_arguments_sha256": "1bccf9395155c6f19d07b882f1d87609f928e0db0ff73108d6d81833bc421af0",
+              "status": "simulator_exception",
+              "arguments_sha256": "1bccf9395155c6f19d07b882f1d87609f928e0db0ff73108d6d81833bc421af0",
+              "in_scope": true,
+              "before": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+              "after": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+              "feedback_sha256": "e975bd81ca6d24f0acb892f316b94c94e139d5afe4291794b67f107027427e72"
+            },
+            {
+              "name": "book_flight",
+              "native_arguments_sha256": "a9dbc0e6c45e88f2bdc8e9aa7424a4b2c117de709588365b66660f4462be311e",
+              "status": "executed",
+              "arguments_sha256": "a9dbc0e6c45e88f2bdc8e9aa7424a4b2c117de709588365b66660f4462be311e",
+              "response_sha256": "d628adadc34316b112e757e36cf929487ae2b7d59af86f3617a8780082d6bbeb",
+              "in_scope": true,
+              "before": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+              "after": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+              "feedback_sha256": "d628adadc34316b112e757e36cf929487ae2b7d59af86f3617a8780082d6bbeb"
+            }
+          ],
+          "state_sha256": "58e7ff2dbe503c153e4b5c6b98e8684f62737055e562404cec4cf880cd52074f",
+          "state_match": false,
+          "required_actions": false,
+          "required_responses": false,
+          "usable": false,
+          "generations": [
+            {
+              "prompt_sha256": "afc718665409b39a832193f1f4e2e8f801764ae425bb15b8bf6f15f7c10d2bce",
+              "history_sha256": "3b7aecdc7c9e69826b60fb437c8700f313a047815b0f51132f9c00df342fcaae",
+              "raw_sha256": "e7cb357879971ac9a5eaeee334f5195058b49ecf96b67c2730adb401dd41fba6",
+              "input_tokens": 1239,
+              "generated_tokens": 42,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "8c2f9657df572615cf9fe8113a2e4def003b50667420b16c25796de667b53440",
+              "history_sha256": "eabd9bd6a5431c43a51fa78a934397a31ad146485327c5cdfee69e11d718facb",
+              "raw_sha256": "ee81504cd4b64abaa5634ec87bce0c2975419ead6af25e5ed7ab7a9887b4b8f3",
+              "input_tokens": 1300,
+              "generated_tokens": 56,
+              "stop": "stop"
+            },
+            {
+              "prompt_sha256": "8abafc84b0eb51f432756dd39c2b7f049e5528023fe15c2e133b10562e433e4f",
+              "history_sha256": "d321b04727c38490e9a500034ad0fe0bd7c688226d770fc282be650b03470046",
+              "raw_sha256": "b24bd75ea1b65202dc2e47823c65680859860973b6dfee64e6f2868fdf4a0ce8",
+              "input_tokens": 1387,
+              "generated_tokens": 71,
+              "stop": "stop"
+            }
+          ],
+          "domain_errors": 1
+        }
+      }
+    }
+  ]
+}

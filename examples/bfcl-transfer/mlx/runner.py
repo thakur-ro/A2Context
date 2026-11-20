@@ -48,7 +48,8 @@ def proposals(tokenizer, raw, schemas):
     return parsed if isinstance(parsed, list) else [parsed]
 
 
-def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None, audit=None, first_feedback=None, before_second=None):
+def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None, audit=None, first_feedback=None, before_second=None,
+          dispatch_allowed=None):
     from mlx_lm import stream_generate
     from mlx_lm.sample_utils import make_sampler
 
@@ -94,7 +95,11 @@ def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None, audi
             events.append(event)
             if audit is not None:
                 before = digest(public_state(sim))
-            result = registry[name].call(json.dumps(args)) if name in registry else "Unknown travel tool."
+            if dispatch_allowed is not None and name not in dispatch_allowed:
+                event["status"] = "outside_workflow_scope"
+                result = "This tool is outside the current workflow scope."
+            else:
+                result = registry[name].call(json.dumps(args)) if name in registry else "Unknown travel tool."
             if audit is not None:
                 audit[-1]["callbacks"].append({"name":name,"arguments":args,"returned":result,
                                               "before":before,"after":digest(public_state(sim))})
@@ -105,11 +110,15 @@ def trial(model, tokenizer, pkt, schemas, cls, *, edit=None, scripted=None, audi
             "domain_errors":sum(bool(d.get("returned_domain_error")) for d in dispositions)}
 
 
-def controls(tokenizer, pkt, schemas, cls):
+def reference_replies(tokenizer, pkt):
     def syntax(name, args):
         return name + "(" + ", ".join(f"{k}={v!r}" for k,v in args.items()) + ")"
     raw = tokenizer.tool_call_start + "[" + ", ".join(syntax(n,a) for n,a in pkt["ref"]) + "]" + tokenizer.tool_call_end
-    positive = trial(None, tokenizer, pkt, schemas, cls, scripted=[raw, "Done."])
+    return [raw, "Done."]
+
+
+def controls(tokenizer, pkt, schemas, cls):
+    positive = trial(None, tokenizer, pkt, schemas, cls, scripted=reference_replies(tokenizer, pkt))
     negative = trial(None, tokenizer, pkt, schemas, cls, scripted=["No call."])
     if not positive["usable"] or negative["required_actions"] or negative["required_responses"]:
         raise ValueError("Reference or no-call control failed on " + pkt["id"])

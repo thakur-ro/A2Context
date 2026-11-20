@@ -56,6 +56,7 @@ check-dispatch-study:
 	$(PYTHON) examples/bfcl-transfer/airport-context/check.py
 	$(PYTHON) examples/bfcl-transfer/mlx/check.py
 	$(PYTHON) examples/bfcl-transfer/mlx/feedback/check.py
+	$(PYTHON) examples/bfcl-transfer/mlx/tool-scope/check.py
 	$(PYTHON) examples/context-screening/replay/prefix-study/study.py
 	$(PYTHON) examples/context-screening/replay/prefix-transfer/study.py
 	$(PYTHON) examples/context-screening/replay/prefix-indirect/study.py
