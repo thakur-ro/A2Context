@@ -14,7 +14,7 @@ sys.path.insert(0, str(SCRIPTS))
 from check_sidecar import get, send_traces, server
 
 
-def benchmark(binary, folder, sampled=False, edited_sources=False):
+def benchmark(binary, folder, sampled=False, edited_sources=False, proposal_coverage=False):
     records = json.loads((RESULTS.with_name("sampled-results.json") if sampled else RESULTS).read_text())
     org = records[0]["extra"]["metadata"]["organization_id"]
     distinct = len({r["extra"]["metadata"]["nexusweave.request.body"] for r in records})
@@ -31,6 +31,7 @@ def benchmark(binary, folder, sampled=False, edited_sources=False):
         timings = []
         factor_timings = []
         edit_timings = []
+        coverage_timings = []
         for i in range(21):
             start = perf_counter()
             card, = get(base, "findings", org=org, kind="prefill")["rows"]
@@ -52,6 +53,15 @@ def benchmark(binary, folder, sampled=False, edited_sources=False):
                 assert edit["conversations"] == edit["cohort_size"] and len(members["rows"]) == 15
                 if i:
                     edit_timings.append(pair_ms)
+            if proposal_coverage:
+                start = perf_counter()
+                counts = get(base, "impact", org=org)["proposal_outcomes"]
+                page = get(base, "proposal-conversations", org=org, result="both")
+                coverage_ms = (perf_counter() - start) * 1000
+                assert sum(counts.values()) == 256 and counts["both"] >= 15
+                assert len(page["rows"]) == 15 and all(set(r["examples"]) == {"changed", "held"} for r in page["rows"])
+                if i:
+                    coverage_timings.append(coverage_ms)
             if i:
                 factor_timings.append(factor_elapsed)
                 timings.append(elapsed)
@@ -62,6 +72,9 @@ def benchmark(binary, folder, sampled=False, edited_sources=False):
         if edited_sources:
             result.update(edited_conversations=edit["conversations"], edit_pair_median_ms=round(median(edit_timings), 2),
                           edit_pair_p95_ms=round(sorted(edit_timings)[18], 2))
+        if proposal_coverage:
+            result.update(proposal_outcomes=counts, coverage_pair_median_ms=round(median(coverage_timings), 2),
+                          coverage_pair_p95_ms=round(sorted(coverage_timings)[18], 2))
         return result
 
 
@@ -70,6 +83,7 @@ if __name__ == "__main__":
     parser.add_argument("binary", type=Path)
     parser.add_argument("--sampled", action="store_true", help="Use four sampled repeats of one input.")
     parser.add_argument("--edited-sources", action="store_true", help="Also time the changed-edit group and its first page of conversations.")
+    parser.add_argument("--proposal-coverage", action="store_true", help="Time scoped counts and the first page of changed and matching proposal examples.")
     args = parser.parse_args()
     with TemporaryDirectory() as folder:
-        print(json.dumps(benchmark(args.binary.resolve(), Path(folder), args.sampled, args.edited_sources)))
+        print(json.dumps(benchmark(args.binary.resolve(), Path(folder), args.sampled, args.edited_sources, args.proposal_coverage)))

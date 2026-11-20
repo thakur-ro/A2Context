@@ -335,6 +335,10 @@ def check_cohort_paging(base):
     first = get(base, "outcome-factors", **scope)
     second = get(base, "outcome-factors", **scope, offset=first["next_offset"])
     assert len(first["rows"]) == 15 and len(second["rows"]) == 1 and second["next_offset"] is None
+    unseen = get(base, "proposal-conversations", result="no_pair", org=scope["org"])
+    last = get(base, "proposal-conversations", result="no_pair", org=scope["org"], offset=unseen["next_offset"])
+    assert len(unseen["rows"]) == 15 and len(last["rows"]) == 1 and last["next_offset"] is None
+    assert len({r["thread"] for r in unseen["rows"] + last["rows"]}) == 16
     rows = first["rows"] + second["rows"]
     assert len({r["factor"] for r in rows}) == 16
     assert {r["cohort_size"] for r in rows} == {16}
@@ -651,6 +655,61 @@ def check_current_history_test(binary):
         assert stale["unverified_probes"] and not stale["history"]["experiment"]["proposal_tests"]
 
 
+def check_proposal_coverage(binary, db):
+    folder = ROOT / "examples/redundant-routing"
+    saved = json.loads((folder / "ash-history-check.json").read_text())["shadow"]
+    request = json.loads((folder / "candidate-checks/ash-routing-note.json").read_text())["request"]
+    org = "proposal-coverage"
+    def observed(name, thread, report):
+        span = case_span(name, "undeclared", org=org)
+        fields = {**request["attributes"], "gen_ai.operation.name": "chat", "gen_ai.conversation.id": thread,
+                  "nexusweave.organization.id": org, "nexusweave.shadow_probes": [report]}
+        span["attributes"] = attrs({key: value if isinstance(value, str) else json.dumps(value) for key, value in fields.items()})
+        return span
+    different = deepcopy(saved)
+    different["effects"][0]["trials"][0]["choice"]["outcome"] = "another answer"
+    varying = deepcopy(different)
+    varying["baseline"] *= 2
+    varying["effects"][0]["trials"] += deepcopy(saved["baseline"])
+    for summary in [varying["baseline_summary"], varying["effects"][0]["summary"]]:
+        summary.update(attempted=2, completed=2)
+
+    mixed = observed("mixed-changed", "mixed", different)
+    held = observed("held", "held", saved)
+    cases = [held, mixed, observed("mixed-held", "mixed", saved), observed("no-pair", "varied", varying)]
+    with server(binary, db, "--capture-content") as base:
+        send_traces(base, export(*cases))
+        send_traces(base, export(held))
+        impact = get(base, "impact", org=org)
+        assert impact["proposal_outcomes"] == {"both": 1, "held_only": 1, "changed_only": 0, "no_pair": 1}, impact
+        assert impact["changed"] == 1 and impact["evidence_counts"]["tested"] == 2
+        changed, = get(base, "proposal-conversations", result="both", org=org)["rows"]
+        assert changed["thread"] == "mixed" and set(changed["examples"]) == {"changed", "held"}
+        for outcome, example in changed["examples"].items():
+            card, = get(base, "findings", trace=example["trace"], call=example["call"], group=example["group"],
+                        report=example["report"], factor=example["factor"])["rows"]
+            assert example["witness"]["pair"] and card["evidence"]["detail"]["response_pair"]["changed"] == (outcome == "changed")
+        changed_span = {"trace": "otlp:" + mixed["traceId"], "kind": "shadow"}
+        assert get(base, "impact", **changed_span)["proposal_outcomes"]["changed_only"] == 1
+        subset, = get(base, "proposal-conversations", result="changed_only", **changed_span)["rows"]
+        assert subset["examples"] == {"changed": changed["examples"]["changed"]}
+        row, = get(base, "proposal-conversations", result="no_pair", org=org)["rows"]
+        assert row["thread"] == "varied" and row["examples"]["no_pair"]["witness"] is None
+        assert not get(base, "proposal-conversations", result="held_only", org="unrelated")["rows"]
+        send(base, "/api/sidecar/proposal-conversations?result=unknown", expected=400)
+        factor, = get(base, "factors", kind="shadow", trace="otlp:" + held["traceId"])["rows"]
+        assert factor["signal"] == "equal" and factor["changed"] == 0
+        only, = get(base, "findings", kind="shadow", trace="otlp:" + held["traceId"])["rows"]
+        assert only["action"]["title"] == "Test another source on this request"
+    # Version 15 retained the raw shadow report but never emitted a finding for matching proposals.
+    with sqlite3.connect(db) as conn:
+        conn.execute("DELETE FROM observations WHERE kind='shadow'")
+        conn.execute("PRAGMA user_version=15")
+    with server(binary, db, "--capture-content") as base:
+        assert get(base, "impact", org=org) == impact
+        assert get(base, "proposal-conversations", result="both", org=org)["rows"] == [changed]
+
+
 def check_predecision_recommendations(base):
     fixture = ROOT / "examples/runtime-comparison/pending-routing"
     read = lambda name: json.loads((fixture / name).read_text())
@@ -696,6 +755,10 @@ def check_predecision_recommendations(base):
     published = get(base, "findings", kind="candidate", org="candidate-validation")["rows"]
     impact = get(base, "impact", org="candidate-validation")
     assert impact["conversations"] == 0 and impact["unlinked_requests"] == 1, impact
+    sibling = deepcopy(observed)
+    sibling["spanId"] = "3333333333333333"
+    send_traces(base, export(sibling))
+    assert get(base, "impact", org="candidate-validation")["unlinked_requests"] == 2
     assert published[0]["action"]["basis"] == "Measured preference at a fixed prefix"
     assert published[0]["evidence"]["detail"]["baseline"] > 0 > published[0]["evidence"]["detail"]["edited"]
     assert not get(base, "findings", kind="duplicate", org="candidate-validation")["rows"]
@@ -872,6 +935,7 @@ def load(base, clients, batches, batch_size, payload_bytes):
         reads.append(1000 * (time.monotonic() - start))
         assert impact == {"conversations": batch_size, "changed": 0, "unlinked_requests": 0, "factors": batches,
                           "evidence_counts": {"proposal": 0, "rate": 0, "score": 0, "tested": 0, "inputs": batch_size},
+                          "proposal_outcomes": {"both": 0, "held_only": 0, "changed_only": 0, "no_pair": batch_size},
                           "replay_outcomes": {"mixed": 0, "changed_only": 0, "equal_only": 0, "unmeasured": batch_size}}
         assert len(factors["rows"]) == min(batches, 15)
         start = time.monotonic()
@@ -963,6 +1027,7 @@ def main():
         check_capture(args.binary, folder, args.sdk_python)
         check_external_batch(args.binary, folder)
         check_current_history_test(args.binary)
+        check_proposal_coverage(args.binary, folder / "proposal-coverage.sqlite")
         with server(args.binary, folder / "prior-proposals", "--capture-content") as base:
             check_history_proposals(base)
         captured = folder / "scoped.sqlite"

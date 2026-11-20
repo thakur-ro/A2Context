@@ -261,6 +261,18 @@ pub fn changed_output_sources(entry: &Report) -> Vec<&str> {
         .collect()
 }
 
+/// One edit that preserved the freely generated answer or parsed tool call.
+pub fn unchanged_output_source(entry: &Report) -> Option<&str> {
+    let Report::Timeline(report) = entry else {
+        return None;
+    };
+    report
+        .sources
+        .iter()
+        .find(|s| !generated_choice_changed(report, s))
+        .map(|s| s.context_id.as_str())
+}
+
 /// The strongest measured source-edit effect on a token in the fixed output path.
 #[derive(Serialize)]
 pub struct Landmark<'a> {

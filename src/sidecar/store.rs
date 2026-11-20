@@ -240,10 +240,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 15 {
+        if version == 16 {
             return Ok(());
         }
-        if !(0..15).contains(&version) {
+        if !(0..16).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -253,7 +253,7 @@ impl Store {
                     "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL AND
                       (?2<8 OR EXISTS (SELECT 1 FROM observations o WHERE o.trace_id=traces.id AND o.kind IN ('token','shadow','prefill'))
                        OR (?2<13 AND EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='activation-reports'))
-                       OR (?2<12 AND instr(run,'shadow_probes')>0) OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='replay-reports') OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
+                       OR instr(run,'shadow_probes')>0 OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='replay-reports') OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
                        OR (?2 IN (9,10) AND (instr(raw,'routing_test')>0 OR instr(run,'routing_test')>0)))
                       ORDER BY id LIMIT 16",
                 )?;
@@ -288,7 +288,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 15)?;
+        self.0.pragma_update(None, "user_version", 16)?;
         Ok(())
     }
 
@@ -568,13 +568,14 @@ impl Store {
                 | "impact"
                 | "outcome-factors"
                 | "conversation-outcomes"
+                | "proposal-conversations"
                 | "occurrences"
                 | "order-tests"
                 | "replay-variations"
         ) {
             sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,t.user,json_extract(o.detail,'$.factor') AS factor,
-                CASE WHEN o.kind IN ('candidate','token','shadow') OR (o.kind='prefill' AND json_extract(o.detail,'$.shifted')=1) OR
-                    (o.kind='replay' AND json_extract(o.detail,'$.effect_pp') != 0) THEN 1 ELSE 0 END AS changed,
+                CASE WHEN o.kind IN ('candidate','token') OR (o.kind='prefill' AND json_extract(o.detail,'$.shifted')=1) OR
+                    (o.kind IN ('replay','shadow') AND json_extract(o.detail,'$.effect_pp') != 0) THEN 1 ELSE 0 END AS changed,
                 CASE WHEN json_array_length(o.detail,'$.changed_edits')>0
                      THEN 1 ELSE 0 END AS proposal_changed
                 FROM observations o JOIN selected t ON t.id=o.trace_id WHERE 1");
@@ -641,6 +642,9 @@ impl Store {
         if matches!(view, "impact" | "outcome-factors" | "conversation-outcomes") {
             sql.push_str(super::outcomes::CLASSIFIED);
         }
+        if matches!(view, "impact" | "proposal-conversations") {
+            sql.push_str(super::outcomes::THREAD_OUTCOMES);
+        }
         let cohort = view == "outcome-factors"
             || (view == "conversation-outcomes" && filters.contains_key("level"));
         let edited = filters.get("by").is_some_and(|s| s == "edit");
@@ -665,6 +669,14 @@ impl Store {
             }
         }
         match view {
+            "proposal-conversations" => {
+                let result = super::required(filters, "result")?;
+                if !matches!(result, "changed_only" | "held_only" | "both" | "no_pair") {
+                    return Err("unknown proposal comparison result".into());
+                }
+                args.push(result.to_owned());
+                sql.push_str(super::outcomes::PROPOSAL_CONVERSATIONS);
+            }
             "outcome-factors" => sql.push_str(super::outcomes::FACTORS),
             "conversation-outcomes" => {
                 sql.push_str(", ranked AS (SELECT *,row_number() OVER (
@@ -692,10 +704,7 @@ impl Store {
                         'factor',json_extract(detail,'$.factor'),'group',o.group_id,'trace',p.trace_id,'call',p.call_id,
                         'replay',json_extract(detail,'$.measurement.replay_id'),'report',json_extract(detail,'$.report_id'),
                         'context',json_extract(detail,'$.measurement.context_id'),'decision',json_extract(detail,'$.measurement.location.decision_id'),
-                        'unchanged_pair',json(CASE WHEN json_type(detail,'$.response_pair.changed')='false'
-                            OR EXISTS (SELECT 1 FROM json_each(detail,'$.proposal_checks') c WHERE json_type(c.value,'$.changed')='false')
-                            OR EXISTS (SELECT 1 FROM json_each(detail,'$.routing_test.cells') c WHERE json_type(c.value,'$.changed')='false')
-                            THEN 'true' ELSE 'false' END))
+                        'unchanged_pair',json(CASE WHEN json_type(detail,'$.held_witness')='object' THEN 'true' ELSE 'false' END))
                     FROM page p JOIN observations o ON o.trace_id=p.trace_id AND o.n=p.n
                     JOIN traces t ON t.id=p.trace_id ORDER BY p.level,p.observed DESC,p.thread_key");
             }
@@ -705,11 +714,7 @@ impl Store {
                 'forward',json(forward),'reverse',json(reverse)) FROM pairs
                 ORDER BY differs DESC,factor,design LIMIT ? OFFSET ?"),
             "impact" => {
-                sql.push_str(", replay_by_thread AS (
-                    SELECT thread_key, max(kind='replay' AND changed=1) AS shifted,
-                        max(kind='replay' AND json_extract(detail,'$.effect_pp')=0) AS held
-                    FROM events WHERE thread_key IS NOT NULL GROUP BY thread_key
-                ) SELECT json_object('conversations',count(DISTINCT thread_key),
+                sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
                     'changed',count(DISTINCT CASE WHEN changed=1 OR proposal_changed=1 THEN thread_key END),
                     'evidence_counts',(SELECT json_object('proposal',count(*) FILTER (WHERE level=1),'rate',count(*) FILTER (WHERE level=2),
                         'score',count(*) FILTER (WHERE level=3),'tested',count(*) FILTER (WHERE level=4),'inputs',count(*) FILTER (WHERE level=5))
@@ -719,8 +724,14 @@ impl Store {
                         'equal_only',count(*) FILTER (WHERE held AND NOT shifted),
                         'mixed',count(*) FILTER (WHERE shifted AND held),
                         'unmeasured',count(*) FILTER (WHERE NOT shifted AND NOT held))
-                        FROM replay_by_thread),
-                    'unlinked_requests',count(DISTINCT CASE WHEN thread_key IS NULL THEN trace_id END),
+                        FROM by_thread),
+                    'proposal_outcomes',(SELECT json_object(
+                        'changed_only',count(*) FILTER (WHERE result='changed_only'),
+                        'held_only',count(*) FILTER (WHERE result='held_only'),
+                        'both',count(*) FILTER (WHERE result='both'),
+                        'no_pair',count(*) FILTER (WHERE result='no_pair'))
+                        FROM thread_results),
+                    'unlinked_requests',count(DISTINCT CASE WHEN thread_key IS NULL THEN json_array(trace_id,call_id) END),
                     'factors',count(DISTINCT factor)) FROM events");
                 let row: String = self.0.query_row(&sql, params_from_iter(args), |row| row.get(0))?;
                 return Ok(serde_json::from_str(&row)?);
@@ -748,7 +759,7 @@ impl Store {
                     count(DISTINCT group_id) + (factor IN (SELECT factor FROM pairs)) + (factor IN (SELECT factor FROM variations)) AS recommendations,max(observed) AS latest,
                     CASE WHEN factor IN (SELECT factor FROM disputed) THEN -6 WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -4 ELSE
                     min(CASE WHEN kind='replacement' THEN -3 WHEN json_extract(detail,'$.joint_pattern')='joint_only' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
-                        WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' OR (kind='replay' AND proposal_changed=1) THEN 2 WHEN kind='token' THEN 3
+                        WHEN kind='replay' AND changed=1 THEN 1 WHEN kind IN ('shadow','replay') AND (changed OR proposal_changed) THEN 2 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
                         WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
@@ -775,7 +786,7 @@ impl Store {
                              WHEN kind='replacement' THEN -4
                              WHEN max(json_extract(detail,'$.joint_pattern')='joint_only') THEN -2
                              WHEN kind='candidate' AND min(json_extract(detail,'$.baseline')*json_extract(detail,'$.edited'))<0 THEN -3
-                             WHEN kind IN ('shadow','token') THEN -2
+                             WHEN kind='token' OR (kind='shadow' AND max(changed OR proposal_changed)) THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
                              WHEN kind='conflict' AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
@@ -829,7 +840,7 @@ impl Store {
                        WHEN json_extract(chosen.detail,'$.joint_pattern')='joint_only' THEN -2
                        WHEN json_extract(chosen.detail,'$.routing_test') IS NOT NULL OR json_extract(chosen.detail,'$.joint_only')=1 THEN -1
                        WHEN chosen.kind='candidate' AND json_extract(chosen.detail,'$.baseline')*json_extract(chosen.detail,'$.edited')<0 THEN 0
-                       WHEN chosen.kind='replay' AND abs(json_extract(chosen.detail,'$.effect_pp'))>0 THEN 0 ELSE 1 END,
+                       WHEN chosen.kind IN ('shadow','replay') AND (chosen.changed OR chosen.proposal_changed) THEN 0 ELSE 1 END,
                        d.completed DESC,d.inputs DESC,chosen.observed DESC,chosen.trace_id,chosen.call_id,chosen.n LIMIT 1)
                  ORDER BY priority,threads DESC,traces DESC,latest DESC,g.group_id");
             }
@@ -1067,6 +1078,9 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
         let edits = super::outcomes::changed_edits(run, &observation);
         if !edits.is_empty() {
             observation.detail["changed_edits"] = edits.into();
+        }
+        if let Some(witness) = super::outcomes::held_witness(&observation.detail) {
+            observation.detail["held_witness"] = witness;
         }
         insert.execute(params![
             run.id,

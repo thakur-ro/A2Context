@@ -24,6 +24,10 @@ try {
   await page.locator(".featured h3").filter({hasText:"The proposed tool changed in 2 of 4 completed runs"}).waitFor();
   assert.match(await page.locator(".featured p").innerText(), /edit to request-type/);
   if (process.env.FINDINGS_SCREENSHOT) await page.screenshot({ path: process.env.FINDINGS_SCREENSHOT });
+  const proposals = page.locator(".proposal-coverage");
+  await proposals.locator(":scope > summary").click();
+  assert.deepEqual(await proposals.locator(":scope > dl dd").allTextContents(), ["13", "0", "2", "6"]);
+  if (process.env.PROPOSAL_COVERAGE_SCREENSHOT) await page.locator(".impact").screenshot({path:process.env.PROPOSAL_COVERAGE_SCREENSHOT});
   const coverage = page.locator(".replay-coverage");
   await coverage.getByText("Scored replays in 7 of 21 conversations").click();
   assert.deepEqual(await coverage.locator("dd").allTextContents(), ["0", "0", "7", "14"]);
@@ -44,6 +48,7 @@ try {
   await page.goto(base);
 
   await factor(page, "Results varied across wordings").click();
+  await proposals.locator(":scope > summary").click();
   await coverage.getByText("Scored replays in 1 of 1 conversation").click();
   assert.deepEqual(await coverage.locator("dd").allTextContents(), ["1", "0", "0", "0"]);
   const variation = page.locator(".card").filter({ hasText: "Replacement comparison" });
@@ -199,6 +204,14 @@ try {
   await page.getByRole("button", { name: "Try a policy conflict" }).click();
   await page.getByRole("heading", { name: "Resolve the competing rules" }).waitFor();
   assert.equal(new URL(page.url()).searchParams.get("view"), "preview");
+  const demoFixture = name => readFile(new URL("../examples/redundant-routing/" + name, import.meta.url), "utf8").then(JSON.parse);
+  const {request} = await demoFixture("candidate-checks/ash-routing-note.json");
+  const {shadow} = await demoFixture("ash-history-check.json");
+  delete request.attributes["nexusweave.organization.id"];
+  await page.locator('input[type="file"]').setInputFiles({name:"proposal.json", mimeType:"application/json", buffer:Buffer.from(JSON.stringify({request,shadow}))});
+  await page.getByRole("heading", {name:"Test another source on this request"}).waitFor();
+  await page.getByText("Compare the matching proposals", {exact:true}).click();
+  assert.deepEqual(await page.locator(".response-pair code").allTextContents(), ["UNKNOWN","UNKNOWN"]);
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
   mobile.on("pageerror", (error) => errors.push(error.message));
@@ -210,6 +223,18 @@ try {
     assert.match(await result.innerText(), /0\.252 bits/);
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     if (device === page && process.env.HISTORY_CHECK_SCREENSHOT) await result.screenshot({path:process.env.HISTORY_CHECK_SCREENSHOT});
+    await device.goto(base + "/?org=routing-sampling#proposal-coverage");
+    await device.getByRole("link", {name:"Changed and unchanged proposals", exact:true}).click();
+    await device.getByRole("heading", {name:"sampled-routing-28", exact:true}).waitFor();
+    for (const [label, setup] of [["See a changed proposal", 1], ["See a matching proposal", 0]]) {
+      await device.getByRole("link", {name:label}).click();
+      await device.locator('[data-routing-setup="' + setup + '"]:focus').waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await device.getByRole("link", {name:"Back to compared conversations"}).click();
+    }
+    await device.getByRole("link", {name:"Back to coverage"}).click();
+    await device.locator(".proposal-coverage[open] > summary:focus").waitFor();
+    assert.equal(new URL(device.url()).searchParams.get("org"), "routing-sampling");
   }
   await mobile.goto(base + "/?recommendation=602208c5e9c068fab608137a9c92699923591b1f349ab8504b57e65084f85808");
   await mobile.locator(".joint-recurrence a").click();

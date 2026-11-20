@@ -328,6 +328,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/impact"
                 | "/api/sidecar/outcome-factors"
                 | "/api/sidecar/conversation-outcomes"
+                | "/api/sidecar/proposal-conversations"
                 | "/api/sidecar/factors"
                 | "/api/sidecar/order-tests"
                 | "/api/sidecar/replay-variations"

@@ -10,6 +10,8 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
+const comparisonResult = query.get("proposal_result");
+const comparisonScope = query.get("coverage_factor");
 const traceId = query.get("trace");
 const measuredExample = Object.fromEntries(["trace", "call", "decision", "replay", "context", "routing_design", "routing_input", "report"]
   .filter((key) => recommendationId && query.has(key)).map((key) => [key, query.get(key)]));
@@ -87,7 +89,7 @@ function replayTrials(detail) {
   const arms = [["Baseline", m.baseline, pair ? proposalText(pair.original) : detail.baseline_answer], ...singles,
     [detail.edit === "joint" ? "Joint edit" : "Source edit", m.variant, pair ? proposalText(pair.edited) : detail.edited_answer], ["Control edit", m.control]];
   return element("div", { className: "comparison" }, ...arms.filter(([, data]) => data).map(([label, data, answer, id]) =>
-    element("div", id ? {"data-replay-arm":id} : {}, element("strong", { text: label }),
+    element("div", id ? {"data-replay-arm":id} : label === "Joint edit" ? {"data-joint-edit":""} : {}, element("strong", { text: label }),
       element("span", { text: data.matched + " / " + data.attempted + " matched" }),
       answer == null ? null : element("code", { className: "arm-answer", text: JSON.stringify(answer) }),
       element("meter", { min: 0, max: Math.max(1, data.attempted), value: data.matched, "aria-label": label + " matched trials out of attempted trials" }),
@@ -224,6 +226,7 @@ function findingTitle(kind, detail) {
   }
   if (detail.joint_pattern && detail.joint_pattern !== "unresolved") return jointPatterns[detail.joint_pattern];
   if (detail.effect_pp === 0 && detail.response_pair?.changed) return "The proposal changed with an equal match rate";
+  if (kind === "shadow" && detail.response_pair?.changed === false) return "The proposal stayed the same after editing " + sourceName(detail.sources[0]);
   if (detail.joint_only) return "Only the joint edit changed the match rate";
   const amount = Math.abs(detail.effect_pp);
   const points = amount < 0.01 ? "less than 0.01 percentage points" :
@@ -270,6 +273,25 @@ function replayCoverage(impact) {
     ].map(([label, count]) => element("div", {}, element("dt", { text: label }), element("dd", { text: count })))));
 }
 
+const comparisonLabels = {
+  both: "Changed and unchanged proposals",
+  changed_only: "Changed proposals only",
+  held_only: "Unchanged proposals only",
+  no_pair: "No comparable proposal pair",
+};
+
+function proposalCoverage(impact, factor) {
+  const counts = impact.proposal_outcomes;
+  const tested = impact.conversations - counts.no_pair;
+  return element("details", { className:"proposal-coverage" },
+    element("summary", {text:"Answers or tool calls compared in " + tested + " of " + plural(impact.conversations, "conversation")}),
+    element("p", {text:"Each conversation counts once. Its comparisons can use different inputs, edits or runner settings."}),
+    element("dl", {}, ...Object.entries(comparisonLabels).map(([result, label]) => element("div", {},
+      element("dt", {}, counts[result] ? link(label, url({proposal_result:result, coverage_factor:factor})) : label),
+      element("dd", {text:counts[result]})))),
+    replayCoverage(impact));
+}
+
 const outcomeLevels = [
   {key:"proposal", title:"Generated proposal changed", description:"Every listed conversation has a source edit that changed a complete replayed answer or tool proposal."},
   {key:"rate", title:"Replay match rate changed", description:"A change in the fraction of proposals meeting a scoring rule is the strongest recorded result here."},
@@ -295,7 +317,7 @@ function impactPanel(impact) {
         element("a", {className:"impact-outcome", href:url({level:index + 1, by:index === 0 ? "edit" : "source"})},
           element("strong", {text:impact.evidence_counts[key]}), element("span", {text:title}),
           element("span", {"aria-hidden":"true",text:"→"}))] : []),
-      replayCoverage(impact)));
+      proposalCoverage(impact)));
 }
 
 function positionLink(factor, test) {
@@ -368,10 +390,11 @@ function cohortRow(row) {
 }
 
 function witnessAnchor(witness) {
+  if (witness?.pair) return "#proposal-pair";
   if (witness?.arm) return "#" + new URLSearchParams({arm:witness.arm});
   if (witness?.generation) return "#" + new URLSearchParams({generation:witness.generation});
   if (witness?.setup != null) return "#routing-setup-" + witness.setup;
-  if (witness?.check) return "#proposal-check=" + new URLSearchParams({report:witness.check, context:witness.sources[0].id});
+  if (witness?.check) return "#proposal-check=" + new URLSearchParams({report:witness.check, context:witness.context || witness.sources[0].id});
   return "";
 }
 
@@ -997,7 +1020,11 @@ function pendingPreview() {
       const report = await load();
       if (currentLoad !== sequence) return;
       const current = [], findings = [], probes = new Map();
+      const experiment = report.history?.experiment;
       for (const { kind, detail, action } of report.recommendations) {
+        if (kind === "shadow" && experiment?.status === "ready" && experiment.edited_request_sha256 === detail.edited_request_sha256 &&
+            experiment.interventions[0].context_id === detail.sources[0].id &&
+            experiment.proposal_tests.some(test => test.report === detail.report_id && test.runner === detail.runner)) continue;
         const card = recommendationDetail(kind, detail, action);
         if (kind === "candidate") {
           if (!probes.has(detail.report_id)) {
@@ -1011,7 +1038,6 @@ function pendingPreview() {
         } else if (kind === "shadow") current.push(card);
         else findings.push(card);
       }
-      const experiment = report.history?.experiment;
       const checked = experiment?.total_proposal_tests > 0;
       const testedTop = checked && report.prefill?.ranked[0]?.context_id === experiment.interventions[0].context_id &&
         report.prefill.ranked[0].request_sha256 === experiment.edited_request_sha256;
@@ -1160,9 +1186,28 @@ async function render(refresh = false) {
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) {
         body = review(cards.rows[0], occurrences);
+        if (comparisonResult) body.prepend(link("Back to compared conversations", url({proposal_result:comparisonResult,coverage_factor:comparisonScope})));
         if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel, ...cohortMode, cohort_factor:cohortFactor})));
       }
-      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, ...cohortMode, cohort_factor:cohortFactor, ...measuredExample });
+      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, ...cohortMode, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, ...measuredExample });
+    } else if (Object.hasOwn(comparisonLabels, comparisonResult)) {
+      const selection = {proposal_result:comparisonResult, coverage_factor:comparisonScope};
+      const filters = {...scope, result:comparisonResult, offset:pageOffset};
+      if (comparisonScope) filters.factor = comparisonScope;
+      const data = await api("proposal-conversations", filters);
+      byId("title").textContent = comparisonLabels[comparisonResult];
+      byId("summary").textContent = comparisonResult === "no_pair" ?
+        "These findings have no comparable pair of completed proposals. Open a finding to see what was captured." :
+        comparisonResult === "both" ? "Each conversation has an edit that changed a proposal and a comparison that preserved one. The inputs, edits or test conditions can differ." :
+        "Open a comparison to see what the model produced with the original and edited inputs.";
+      body = element("div", {className:"feed"}, link("Back to coverage", url({factor:comparisonScope}) + "#proposal-coverage"),
+        ...data.rows.map(row => panel(row.thread, element("p", {className:"label", text:[row.org,row.user,fullDate(row.latest)].filter(Boolean).join(" · ")}),
+          element("div", {className:"actions"}, ...Object.entries(row.examples).map(([outcome,e]) =>
+            link(({changed:"See a changed proposal",held:"See a matching proposal",no_pair:"Inspect the finding"})[outcome],
+              url({...selection, factor:e.factor, recommendation:e.group, trace:e.trace, call:e.call, decision:e.decision,
+                replay:e.replay, report:e.report, context:e.context}) + witnessAnchor(e.witness)))))),
+        data.rows.length ? null : element("p", {className:"empty", text:"No conversations in this scope."}));
+      pagination(data.next_offset, selection);
     } else if (outcomeCategory) {
       byId("title").textContent = outcomeCategory.title;
       byId("summary").textContent = outcomeCategory.description;
@@ -1226,7 +1271,7 @@ async function render(refresh = false) {
       byId("title").textContent = data.rows.length ? factorName(data.rows[0].evidence.detail.sources) : "Source factor";
       byId("summary").textContent = "Each recommendation below uses its own comparison and outcome.";
       body = element("div", { className: "feed" }, link("All source factors", url({})),
-        data.rows.length ? replayCoverage(impact) : null,
+        data.rows.length ? proposalCoverage(impact, factorId) : null,
         test ? link("Review the source-position test", positionLink(factorId, test), "action") : null,
         variations.rows.length ? link("Compare where the edit mattered", url({ factor: factorId, variation: 1 }), "action") : null,
         orders.rows.length ? link("Compare the two source orders", url({ factor: factorId, order: 1 }), "action") : null,
@@ -1309,7 +1354,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, ...measuredExample }, values);
+      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
@@ -1317,11 +1362,18 @@ async function main() {
   if (scope.meta_key && !health.metadata_keys.includes(scope.meta_key)) meta.add(element("option", { value: scope.meta_key, text: scope.meta_key }));
   for (const [key, value] of Object.entries(scope)) form.elements.namedItem(key).value = value;
   await render();
-  if (location.hash === "#proposal-pair" && measuredExample.replay && measuredExample.trace) {
+  if (location.hash === "#proposal-coverage") {
+    const coverage = byId("content").querySelector(".proposal-coverage");
+    if (coverage) { coverage.open = true; coverage.querySelector("summary").focus(); }
+  }
+  if (location.hash === "#proposal-pair" && (measuredExample.replay || measuredExample.report) && measuredExample.trace) {
     const pair = byId("content").querySelector(".response-pair");
     if (pair) {
       pair.open = true;
       pair.querySelector("summary").focus();
+    } else {
+      const joint = byId("content").querySelector("[data-joint-edit]");
+      if (joint) { joint.tabIndex = -1; joint.focus(); }
     }
   }
   if (hash.has("arm") && measuredExample.replay) {
@@ -1349,7 +1401,7 @@ async function main() {
       row.focus();
     }
   }
-  if (view === "findings" && !factorId && !recommendationId && !outcomeCategory && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
     }

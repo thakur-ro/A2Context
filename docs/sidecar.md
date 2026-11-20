@@ -18,6 +18,7 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 | GET route under `/api/sidecar/` | Use |
 | --- | --- |
 | `impact` | Get distinct identified conversations, counts by evidence category (`evidence_counts`), requests without conversation IDs and source factors. |
+| `proposal-conversations?result=both` | List conversations with changed and matching complete proposals. Other values are `changed_only`, `held_only` and `no_pair`. Each row returns one recent evidence link per represented outcome, or one finding for a conversation without a pair. Accepts the same scope, factor and date filters as `impact`. |
 | `outcome-factors?level=1&by=edit` | Group changed proposals by the versioned sources actually edited. Use the returned `factor` as `cohort_factor` with the same `level` and `by` on the conversation endpoint. The selected row’s `witness` identifies the comparison and its parent `factor` opens the original finding. |
 | `outcome-factors?level=1` | Rank the source groups with findings at the strongest evidence level for these conversations. Each row returns its `factor`, distinct conversation count, distinct model call count (`requests`) and the number of conversations at that level in scope (`cohort_size`). A trace can contain multiple calls. |
 | `conversation-outcomes?level=1` | Page through conversations in one category. Levels 1 to 5 correspond to `proposal`, `rate`, `score`, `tested` and `inputs`. Omit the level for all categories. With a level selected, pass `cohort_factor` to choose conversations with supporting evidence from that source group. Each row identifies the finding, trace, call and measured comparison. |
@@ -30,7 +31,11 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 
 The dashboard counts each identified conversation once after applying the current filters. A conversation can move to another category when new findings arrive or a filter excludes a measurement. Within a category, the most recent eligible finding supplies the evidence link. Requests without a conversation ID contribute to a separate count. [Category definitions](methods.md#what-changed-in-a-conversation)
 
-Expand **Scored replays** on the overview or a source factor to see how many conversations had changed match rates, equal rates, both results across comparisons, or no scored replay. The four counts in `impact.replay_outcomes` add up to the identified conversations with findings in that scope. Probe scores contribute to the broader measured-change count. Only replay comparisons contribute to this breakdown. Two equal match rates can come from as little as one trial per arm. Open the recommendation to check the trial counts and scoring rule.
+Expand **Answers or tool calls compared** on the overview or a source factor. Select a row to see conversations where proposals changed, held, or did both across the available comparisons. **No comparable proposal pair** includes input-only findings and tests that failed to establish a consistent answer in each condition. Each conversation contributes once to `impact.proposal_outcomes`. On the sampled routing example, open both links to compare the same request-type edit with different tools available. [Open the sampled conversation](http://127.0.0.1:8040/?org=routing-sampling&proposal_result=both)
+
+Within that panel, **Scored replays** gives the separate match-rate counts in `impact.replay_outcomes`. Two different answers can pass the same scoring rule. A single trial per arm can also give equal rates. Open the recommendation for the complete proposal comparison and trial counts.
+
+![Fifteen of the 21 demo conversations have comparable proposals. The expanded panel links to changed, unchanged and missing evidence.](media/proposal-coverage.png)
 
 ### Find recurring sources within an outcome
 

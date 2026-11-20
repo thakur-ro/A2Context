@@ -58,6 +58,21 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Replay the original and edited requests on the same runner. Check whether the measured first-token shift carries through to a completed proposal.",
             "Measured first-token distributions under named edits",
         ),
+        "shadow" if detail["response_pair"]["changed"] == false && detail["measurement"]["baseline"]["matched"] == 0 => (
+            "Test another source on this request",
+            "The original and edited proposals were identical and both missed the expected outcome. Try a different source while keeping the request and scoring rule fixed.",
+            "Matching complete proposals that missed the expected outcome",
+        ),
+        "shadow" if detail["response_pair"]["changed"] == false => (
+            "Try the edit on another request",
+            "Both conditions produced the same proposal here. Check a different input before drawing a conclusion about this source across the workflow.",
+            "Matching complete proposals under the tested edit",
+        ),
+        "shadow" if detail["effect_pp"] == 0.0 && detail["response_pair"].is_null() => (
+            "Inspect the individual trials",
+            "The match rates were equal. The trials did not establish one consistent proposal in each condition.",
+            "Equal match rates without a consistent proposal pair",
+        ),
         "shadow" => (
             "Verify the edited proposal",
             "Check the complete proposed answer or tool arguments on more representative inputs before adopting the edit.",
@@ -207,6 +222,12 @@ pub fn preview(
             })
     });
     observations.sort_by_key(|item| match item.kind {
+        "shadow"
+            if item.detail["effect_pp"] == 0.0
+                && item.detail["response_pair"]["changed"] != true =>
+        {
+            3
+        }
         "candidate" | "shadow" => 0,
         "conflict" => 1,
         _ => 2,
@@ -319,9 +340,6 @@ pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
             let Some(change) = effect.difference_pp else {
                 continue;
             };
-            if change == 0.0 && !pair.as_ref().is_some_and(|p| p["changed"] == true) {
-                continue;
-            };
             let Some(item) = call
                 .context
                 .iter()
@@ -342,7 +360,8 @@ pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
             ]);
             findings.push(findings::occurrence("shadow", key, call, json!({
                 "report_id": probe.report_id, "sources": [findings::source(item)], "outcome": measurement.expected,
-                "effect_pp": change, "response_pair": pair, "model": call.model, "runner": measurement.runner_id,
+                "effect_pp": change, "response_pair": pair, "edited_request_sha256": arm.request_sha256,
+                "model": call.model, "runner": measurement.runner_id,
                 "measurement": {"baseline": measurement.baseline, "variant": effect.summary, "interval": effect.difference_95_interval_pp},
                 "replacement": effect.intervention.replacement, "operation": effect.intervention.operation,
             })));
@@ -373,7 +392,10 @@ pub fn token_measurements(
         else {
             continue;
         };
-        let changed: Vec<_> = activation::output_scores::changed_output_sources(report).into_iter()
+        let changed_sources = activation::output_scores::changed_output_sources(report);
+        let held = activation::output_scores::unchanged_output_source(report)
+            .map(|id| json!({"generation":id}));
+        let changed: Vec<_> = changed_sources.into_iter()
             .filter_map(|id| call.context.iter().find(|item| item.id == id))
             .map(|item| {
                 let sources = [findings::source(item)];
@@ -381,7 +403,7 @@ pub fn token_measurements(
             }).collect();
         findings.push(findings::occurrence("token", json!(["token", run.id, call.id, report.id()]), call, json!({
             "report_id": report.id(), "sources": [findings::source(item)], "location": report.location(),
-            "landmark": landmark, "changed_edits":changed,
+            "landmark": landmark, "changed_edits":changed, "held_witness":held,
         })));
     }
 }

@@ -16,7 +16,7 @@ From the checkout, run with a stable Rust toolchain and open [Recommendations](h
 cargo run --locked -- sidecar --demo
 ```
 
-**Check whether an edit held up.** The first recommendation shows what happened when the runner repeated the same source edit on one input. The proposed tool changed in two of four completed runs. Open **Compare runs** to see the changed and unchanged proposals. [Open the sampled example](http://127.0.0.1:8040/?org=routing-sampling)
+**Check whether an edit held up.** With the original instruction and both tools available, the proposed tool changed in two of four runs on the same input. Open **Compare runs** for the repeats, or expand **Answers or tool calls compared** to find changed and matching proposals across conversations. [Compare two setups](http://127.0.0.1:8040/?org=routing-sampling&proposal_result=both)
 
 **Find which edit changed the answer across conversations.** Select **Generated proposal changed**, then **journal-faq**. Two of the 13 conversations in that category have a changed proposal from a test of the FAQ alone. Open either conversation to compare the original and edited answers. [Explore the edited sources](http://127.0.0.1:8040/?level=1&by=edit)
 

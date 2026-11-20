@@ -58,10 +58,10 @@ pub(super) fn changed_edits(run: &Run, observation: &Observation) -> Vec<Value> 
     let detail = &observation.detail;
     let sources = detail["sources"].as_array().expect("finding sources");
     if detail["response_pair"]["changed"] == true {
-        return vec![json!({"id":detail["factor"],"sources":sources})];
+        return vec![json!({"id":detail["factor"],"sources":sources,"pair":true})];
     }
     // The joint comparison can qualify through a changed single arm while the joint edit held.
-    if detail["joint_pattern"] == "single_only" {
+    if detail["edit"] == "joint" {
         return detail["single_edits"]
             .as_array()
             .into_iter()
@@ -104,6 +104,58 @@ pub(super) fn changed_edits(run: &Run, observation: &Observation) -> Vec<Value> 
     }
     edits
 }
+
+/// Link to one complete matching pair in the finding.
+pub(super) fn held_witness(detail: &Value) -> Option<Value> {
+    if detail["response_pair"]["changed"] == false {
+        return Some(json!({"pair":true}));
+    }
+    let held = |row: &&Value| row["changed"] == false;
+    if let Some(arm) = detail["single_edits"]
+        .as_array()
+        .and_then(|a| a.iter().find(held))
+    {
+        return Some(json!({"arm":arm["id"]}));
+    }
+    if let Some(cells) = detail["routing_test"]["cells"].as_array() {
+        if let Some(index) = cells.iter().position(|row| row["changed"] == false) {
+            return Some(json!({"setup":index}));
+        }
+    }
+    let check = detail["proposal_checks"].as_array()?.iter().find(held)?;
+    Some(json!({"check":check["report"],"context":check["context_id"]}))
+}
+
+pub(super) const THREAD_OUTCOMES: &str = ", by_thread AS (
+    SELECT thread_key,max(thread) AS thread,max(observed) AS latest,
+        max(kind='replay' AND changed=1) AS shifted,
+        max(kind='replay' AND json_extract(detail,'$.effect_pp')=0) AS held,
+        max(proposal_changed) AS proposal_shifted,
+        max(json_type(detail,'$.held_witness')='object') AS proposal_held
+    FROM events WHERE thread_key IS NOT NULL GROUP BY thread_key
+), thread_results AS (
+    SELECT *,CASE WHEN proposal_shifted AND proposal_held THEN 'both' WHEN proposal_shifted THEN 'changed_only'
+      WHEN proposal_held THEN 'held_only' ELSE 'no_pair' END AS result FROM by_thread
+)";
+
+// Page conversations before choosing the most recent example for each applicable outcome.
+pub(super) const PROPOSAL_CONVERSATIONS: &str = ", page AS (
+    SELECT * FROM thread_results WHERE result=? ORDER BY latest DESC,thread_key LIMIT ? OFFSET ?
+), candidates AS (
+    SELECT e.thread_key,e.trace_id,e.n,k.value AS outcome,row_number() OVER (PARTITION BY e.thread_key,k.value
+        ORDER BY e.observed DESC,e.trace_id,e.call_id,e.n) AS rank
+    FROM page p JOIN events e ON e.thread_key=p.thread_key
+    JOIN json_each('[\"changed\",\"held\",\"no_pair\"]') k ON (k.value='changed' AND e.proposal_changed)
+        OR (k.value='held' AND json_type(e.detail,'$.held_witness')='object') OR (k.value='no_pair' AND p.result='no_pair')
+) SELECT json_object('thread',p.thread,'user',max(t.user),'org',max(t.org),'latest',p.latest,
+    'examples',json_group_object(c.outcome,json_object('trace',o.trace_id,'call',o.call_id,'group',o.group_id,
+        'factor',json_extract(o.detail,'$.factor'),'report',json_extract(o.detail,'$.report_id'),'decision',json_extract(o.detail,'$.measurement.location.decision_id'),
+        'replay',json_extract(o.detail,'$.measurement.replay_id'),'context',json_extract(o.detail,'$.measurement.context_id'),
+        'witness',CASE c.outcome WHEN 'held' THEN json_extract(o.detail,'$.held_witness')
+            WHEN 'changed' THEN json_extract(o.detail,'$.changed_edits[0]') END)))
+    FROM page p JOIN candidates c ON c.thread_key=p.thread_key AND c.rank=1
+    JOIN observations o ON (o.trace_id,o.n)=(c.trace_id,c.n) JOIN traces t ON t.id=c.trace_id
+    GROUP BY p.thread_key ORDER BY p.latest DESC,p.thread_key";
 
 // Keep the sort keys small. Load the selected finding's detail after pagination.
 pub(super) const CLASSIFIED: &str = ", classified AS (
