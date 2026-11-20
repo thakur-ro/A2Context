@@ -902,18 +902,60 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
 }
 
 fn browser_asset(path: &str) -> Option<(u16, &'static str, &'static [u8])> {
+    // A single deferred script keeps cold navigation to an evidence link within one asset request.
+    macro_rules! scripts {
+        ($($name:literal),+ $(,)?) => {
+            &[$((concat!("/", $name), include_bytes!(concat!("../ui/", $name)).as_slice())),+]
+        };
+    }
+    const SCRIPTS: &[(&str, &[u8])] = scripts!(
+        "retrievals.js",
+        "app.js",
+        "replay-planner.js",
+        "context-matrix.js",
+        "source-profiles.js",
+        "execution-tree.js",
+        "compare.js",
+        "rule-findings.js",
+        "replay-outcomes.js",
+        "capture-profiles.js",
+        "inspection-links.js",
+        "context-changes.js",
+        "decision-changes.js",
+        "decision-investigation.js",
+        "context-replay-coverage.js",
+        "source-coverage.js",
+        "conversation.js",
+        "context-screening.js",
+        "source-masks.js",
+        "activation.js",
+        "activation-output.js",
+        "activation-branches.js",
+        "activation-patterns.js",
+        "conflict-breakdown.js",
+        "visibility-patterns.js",
+        "assessment-patterns.js",
+        "pending.js",
+    );
+    const JS: &str = "text/javascript; charset=utf-8";
+    if path == "/inspection.js" {
+        static BUNDLE: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+        let bundle = BUNDLE.get_or_init(|| {
+            let mut bytes =
+                Vec::with_capacity(SCRIPTS.iter().map(|(_, file)| file.len() + 3).sum());
+            for (_, file) in SCRIPTS {
+                bytes.extend_from_slice(file);
+                bytes.extend_from_slice(b"\n;\n");
+            }
+            bytes
+        });
+        return Some((200, JS, bundle));
+    }
+    if let Some((_, file)) = SCRIPTS.iter().find(|(url, _)| *url == path) {
+        return Some((200, JS, file));
+    }
     Some(match path {
         "/nexusweave.svg" => (200, "image/svg+xml", include_bytes!("../ui/nexusweave.svg")),
-        "/app.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/app.js").as_slice(),
-        ),
-        "/pending.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/pending.js").as_slice(),
-        ),
         "/examples/pending-returns.json" => (
             200,
             "application/json",
@@ -924,131 +966,6 @@ fn browser_asset(path: &str) -> Option<(u16, &'static str, &'static [u8])> {
             "application/json",
             include_bytes!("../examples/runtime-comparison/pending-routing/request.json")
                 .as_slice(),
-        ),
-        "/replay-planner.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/replay-planner.js").as_slice(),
-        ),
-        "/context-matrix.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/context-matrix.js").as_slice(),
-        ),
-        "/source-profiles.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/source-profiles.js").as_slice(),
-        ),
-        "/execution-tree.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/execution-tree.js").as_slice(),
-        ),
-        "/retrievals.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/retrievals.js").as_slice(),
-        ),
-        "/compare.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/compare.js").as_slice(),
-        ),
-        "/rule-findings.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/rule-findings.js").as_slice(),
-        ),
-        "/replay-outcomes.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/replay-outcomes.js").as_slice(),
-        ),
-        "/capture-profiles.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/capture-profiles.js").as_slice(),
-        ),
-        "/inspection-links.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/inspection-links.js").as_slice(),
-        ),
-        "/context-changes.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/context-changes.js").as_slice(),
-        ),
-        "/decision-changes.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/decision-changes.js").as_slice(),
-        ),
-        "/decision-investigation.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/decision-investigation.js").as_slice(),
-        ),
-        "/context-replay-coverage.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/context-replay-coverage.js").as_slice(),
-        ),
-        "/source-coverage.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/source-coverage.js").as_slice(),
-        ),
-        "/conversation.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/conversation.js").as_slice(),
-        ),
-        "/context-screening.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/context-screening.js").as_slice(),
-        ),
-        "/activation.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/activation.js").as_slice(),
-        ),
-        "/source-masks.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/source-masks.js").as_slice(),
-        ),
-        "/activation-output.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/activation-output.js").as_slice(),
-        ),
-        "/activation-branches.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/activation-branches.js").as_slice(),
-        ),
-        "/activation-patterns.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/activation-patterns.js").as_slice(),
-        ),
-        "/conflict-breakdown.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/conflict-breakdown.js").as_slice(),
-        ),
-        "/visibility-patterns.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/visibility-patterns.js").as_slice(),
-        ),
-        "/assessment-patterns.js" => (
-            200,
-            "text/javascript; charset=utf-8",
-            include_bytes!("../ui/assessment-patterns.js").as_slice(),
         ),
         "/styles.css" => (
             200,
