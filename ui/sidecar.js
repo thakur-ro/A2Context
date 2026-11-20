@@ -943,7 +943,7 @@ function responsePair(pair) {
       " edited trials. All trials completed and agreed within each setup."}));
 }
 
-function recommendationDetail(kind, detail, action, rows = []) {
+function recommendationDetail(kind, detail, action, rows = [], hasConflictTrial = false) {
   const interval = detail.measurement?.interval || detail.measurement?.difference_95_interval_pp;
   const uncertainty = interval ? "95% interval for the difference: " + interval.lower + " to " + interval.upper + " percentage points." :
     ({ replacement: "These counts come from one request. Sampling variation can also change the observed counts.",
@@ -951,7 +951,7 @@ function recommendationDetail(kind, detail, action, rows = []) {
        shadow: "The supplied proposal trials have no estimated interval for this comparison.",
        candidate: "These scores compare two continuations. Free generation can choose a third answer.",
        token: "This comparison holds the output prefix fixed at each position.",
-       conflict: "The disagreement is visible in the inputs. Its effect on the answer still needs a test.",
+       conflict: hasConflictTrial ? "The declarations establish the disagreement. Each replay below measures one edit on this call." : "The disagreement is visible in the inputs. Its effect on the answer still needs a test.",
        duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
   return panel(findingTitle(kind, detail), tag(kind),
     kind === "replacement" ? element("p", { className: "label", text: detail.model + " · " + plural(detail.conditions[0].baseline.attempted, "trial") + " per condition" }) : element("p", { className: "label", text: action.basis }), visual(kind, detail, rows),
@@ -995,6 +995,45 @@ function jointRecurrence(card) {
   }
   return panel("Where did this pattern recur?", result,
     element("p", {text:"These reports used the same source edits, runner and scoring rule, with " + plural(samples, "trial") + " per condition. A conversation can appear in more than one row."}));
+}
+
+function conflictTest(card) {
+  const test = card.conflict_test;
+  if (!test) return null;
+  const {trace_id:trace, call_id:call, detail} = card.evidence;
+  const hasTrials = test.sources.some(s => s.comparisons.length);
+  const chooseOutcome = element("select", {}, ...test.decisions.map(d => element("option", {value:d.id, text:d.label})));
+  const sources = test.sources.map(result => {
+    const source = detail.sources.find(s => s.id === result.id);
+    const name = sourceName(source);
+    const trials = result.comparisons.map(t => element("div", {}, link(plural(t.reports, "replay report") + (t.changed ? " with a changed proposal" : " with a matching proposal"),
+      url({recommendation:t.group,trace,call,decision:t.decision,replay:t.replay,context:result.id}) + "#proposal-pair"),
+      element("p",{className:"row-extra",text:"Example · " + proposalLabel(t.pair.original,t.pair) + " → " + proposalLabel(t.pair.edited,t.pair)})));
+    const canPrepare = test.decisions.length && result.captured && result.matching_fields !== 0;
+    let action;
+    if (canPrepare) {
+      const label = test.recorded_request ? "Prepare edit to " + name : "Supply request to test " + name;
+      action = link(label,"#");
+      const setTarget = () => {
+        const hash = new URLSearchParams({v:1,view:"decisions",run:trace,call,decision:chooseOutcome.value,context:result.id,plan:"edit"});
+        action.href = "/details?" + new URLSearchParams({run:trace}) + "#" + hash;
+      };
+      setTarget();
+      chooseOutcome.addEventListener("change",setTarget);
+    }
+    return element("div", {}, element("strong", {text:name + version(source.version)}),
+      ...trials,
+      !trials.length && element("p",{text:"No comparable single-source replay."}),
+      action || element("p",{className:"label",text:!result.captured ? "Source text unavailable." :
+        !test.decisions.length ? "No recorded answer or tool proposal in this rule scope." : "No matching field in the recorded request."}),
+      result.matching_fields > 1 && element("p",{className:"label",text:"Choose the intended request field in the planner."}));
+  });
+  return panel(hasTrials ? "What changed when each source was edited?" : "Test one source at a time",
+    element("p",{text:hasTrials ? "Each link opens one complete original and edited proposal comparison on this call." :
+      "Keep the other declaration in place and compare the original and edited proposals."}),
+    !test.recorded_request && element("p",{className:"uncertainty",text:"The original request body was not captured. Supply it to locate the editable field."}),
+    test.decisions.length > 1 && element("label",{}, "Outcome to test ",chooseOutcome),
+    element("div",{className:"comparison"},...sources));
 }
 
 function findingReview(card, occurrences) {
@@ -1047,7 +1086,8 @@ function findingReview(card, occurrences) {
     link("Back to source factor", url({ factor: factorId || detail.factor })),
     card.kind === "token" ? tokenPath(card) : null,
     card.kind === "token" ? element("details", {className:"panel"}, element("summary", {text:"Peak score change and block swap"}),
-      recommendationDetail(card.kind, detail, card.action, card.trend)) : recommendationDetail(card.kind, detail, card.action, card.trend),
+      recommendationDetail(card.kind, detail, card.action, card.trend)) : recommendationDetail(card.kind, detail, card.action, card.trend, card.conflict_test?.sources.some(s => s.comparisons.length)),
+    conflictTest(card),
     jointRecurrence(card),
     measuredExample.trace ? link("See this recommendation across requests", url({ recommendation: card.id, factor: factorId })) : null,
     card.threads > 1 ? compareForm(card.id) : null, evidence,

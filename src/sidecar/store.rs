@@ -621,6 +621,12 @@ impl Store {
     }
 
     pub fn list(&self, view: &str, filters: &BTreeMap<String, String>) -> Result<Value> {
+        // A selected conflict reads its observation, source fields and trial examples across
+        // statements. A late span or attached report must appear in all of them together.
+        let _snapshot = (view == "findings"
+            && filters.get("group").is_some_and(|id| !id.is_empty()))
+        .then(|| self.0.unchecked_transaction())
+        .transpose()?;
         let mut sql = "WITH selected AS (SELECT t.id,t.start,t.org,t.user,t.thread,t.thread_key,t.workflow,t.source,t.calls,t.with_inputs,t.metadata FROM traces t WHERE t.run IS NOT NULL".to_owned();
         let mut args = Vec::new();
         append_scope(&mut sql, &mut args, filters)?;
@@ -1092,6 +1098,13 @@ impl Store {
         rows.truncate(PAGE);
         if view == "findings" {
             for row in &mut rows {
+                if row["kind"] == "conflict"
+                    && filters
+                        .get("group")
+                        .is_some_and(|group| row["id"] == group.as_str())
+                {
+                    row["conflict_test"] = super::conflict::followup(&self.0, &row["evidence"])?;
+                }
                 let kind = row["kind"].as_str().ok_or("finding kind missing")?;
                 row["action"] = serde_json::to_value(
                     if row["joint_patterns"]
@@ -1099,6 +1112,8 @@ impl Store {
                         .is_some_and(|rows| rows.len() > 1)
                     {
                         recommendations::joint_followup()
+                    } else if let Some(test) = row.get("conflict_test") {
+                        recommendations::conflict_action(test)
                     } else if kind == "prefill" {
                         recommendations::prefill_action(row)
                     } else {

@@ -31,6 +31,24 @@ python3 scripts/view_retail_conversations.py data/exgentic-retail.jsonl --url ht
 
 The script prints eight conversation links and checks all 99 call IDs and their displayed user text, answers and tool proposals against the archive in time order. It preserves the original span IDs, derives a stable OTLP trace ID per session, and reads the archive’s timezone-free timestamps as UTC. These sessions contain recorded inputs and outputs. They supply no source-edit experiments.
 
+### Which side of the disagreement changed the answer?
+
+Open a declared conflict to see the single-source replay evidence for that call. A comparison counts when the original and edited trials each produced a consistent, complete proposal. The card keeps changed and matching results separate for each source. Follow either count to the exact report, outcome and edit. If a recorded decision declares a rule scope, it must match the conflict.
+
+The saved journal example has a 30-day policy and a 60-day FAQ. Qwen answered `60`. Changing only the FAQ’s day count to 45 produced `45`. Changing only the policy’s day count to 45 produced `60`. Each condition has one greedy generation. The second report used a different replacement. The page counts reports and shows one example for each observed result. [Saved requests, edits and trials](../examples/context-screening/replay)
+
+![Changed and matching replay evidence for each side of the journal rule conflict](media/declared-conflict-trials.png)
+
+With content capture enabled on a separate sidecar, send the saved experiment. The example adds human annotations of the two rule values to the telemetry. The model requests and saved proposals are the originals.
+
+```sh
+cargo run --locked -- sidecar --db ./journals.sqlite --capture-content --listen 127.0.0.1:8042
+# In another terminal
+python3 examples/send_otlp_replay.py --url http://127.0.0.1:8042 --declare-windows --compare-values
+```
+
+Open the link printed by the sender. **Prepare edit to journal-faq** opens the planner with that source selected. Choose **Use captured request**, set the replacement and runner, then download the validated case. When capture omitted the original body, the planner needs the engineer’s copy of the request. Request provenance remains unverified in that case. Preparing a case makes no model calls.
+
 ### Read recommendations from another dashboard
 
 The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC dates (`after` inclusive, `before` exclusive) and allowlisted metadata pair (`meta_key`, `meta_value`) through each step. Omit dates to include undated observations. A paged response contains `rows` and `next_offset`. Supply that offset on the same query to continue.
@@ -49,7 +67,7 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 | `factors` | List versioned source sets, the strongest signal associated with each set (including differing results across comparable replacement texts), and the counts in scope. Select the opaque `id` of a factor. |
 | `order-tests?factor=…` | Compare single-edit match counts across paired source orders for a factor. Both requests must pass the current filters. Each row links to both original reports and includes the total number of matched comparisons and how many differed. |
 | `replay-variations?factor=…` | Compare single-source edits across distinct captured inputs. Each row gives counts, one changed and one equal example, their exact replay locations and whether only fragment order differs between those two requests. |
-| `findings?factor=…` | Get the recommendations for that factor. Each includes an action, comparison details and an example occurrence. Use `group` to select a recommendation by ID. |
+| `findings?factor=…` | Get the recommendations for that factor. Each includes an action, comparison details and an example occurrence. Use `group` to select a recommendation by ID. For a selected conflict, `conflict_test` reports editable field counts, eligible decisions and measured single-source comparisons on its example call. A null field count means the body is unavailable. |
 | `occurrences?factor=…&group=…` | Page through the individual observations behind the recommendation. Each row carries its own measurement, request and call IDs, and conversation key when available. |
 | `token-path` | Read up to 16 measured output positions for a token finding. Pass its `group`, `trace`, `call`, `decision`, `report`, and zero-based decoder `block`. Use `next_offset` to read the next page of `tokens`. Source and generated excerpts require demo mode or content capture. |
 

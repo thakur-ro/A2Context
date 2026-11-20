@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 from uuid import uuid4
 
 
-def prepare(conversation_id, *, followup=False):
+def prepare(conversation_id, *, followup=False, declare_windows=False):
     fixtures = Path(__file__).parent / "context-screening" / "replay"
     report_file = "report-followup.json" if followup else "report.json"
     report = json.loads((fixtures / report_file).read_text(encoding="utf-8"))
@@ -33,6 +33,10 @@ def prepare(conversation_id, *, followup=False):
                 "source_id": item["source_id"],
                 "source_version": item["source_version"],
             })
+            if declare_windows:
+                # Human annotations of the two saved messages. They do not modify the replayed request.
+                values = {"journal-policy": 30, "journal-faq": 60}
+                declarations[-1]["rule"] = {"key": "return_window_days", "scope": "journal", "value": values[item["source_id"]]}
     # OTLP message parts have their own context IDs. Preserve the source versions, digests and scores.
     screen = call["context_screening"]["report"]
     screen["selection"]["context_ids"] = [context_ids[key] for key in screen["selection"]["context_ids"]]
@@ -94,9 +98,10 @@ def main():
     parser.add_argument("--conversation-id", default="journal-live-replay")
     parser.add_argument("--followup", action="store_true", help="Send the follow-up question and its four saved Qwen conditions.")
     parser.add_argument("--compare-values", action="store_true", help="Also attach the replay that changes only the day count to 45.")
+    parser.add_argument("--declare-windows", action="store_true", help="Annotate the two recorded journal rules with their 30- and 60-day values.")
     args = parser.parse_args()
     base_url = args.url.rstrip("/")
-    trace, report = prepare(args.conversation_id, followup=args.followup)
+    trace, report = prepare(args.conversation_id, followup=args.followup, declare_windows=args.declare_windows)
     posts = [("/v1/traces", trace), ("/api/replay-reports", report)]
     if args.compare_values:
         posts.append(("/api/replay-reports", value_report(report, followup=args.followup)))
@@ -107,6 +112,12 @@ def main():
         with urlopen(request, timeout=10):
             pass
     location = report["location"]
+    if args.declare_windows:
+        params = {"trace": location["run_id"], "call": location["call_id"]}
+        with urlopen(base_url + "/api/sidecar/findings?" + urlencode({**params, "kind": "conflict"}), timeout=10) as response:
+            card, = json.load(response)["rows"]
+        print(base_url + "/?" + urlencode({"recommendation": card["id"], **params}))
+        return
     changed = next(v["intervention"]["context_id"] for v in report["variants"] if v["difference_pp"] != 0)
     query = urlencode({
         "v": 1, "view": "decisions", "run": location["run_id"],

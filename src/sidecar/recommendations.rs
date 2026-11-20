@@ -10,6 +10,31 @@ pub struct Action {
     basis: &'static str,
 }
 
+/// Recommend a follow-up only from the eligible trials on this occurrence.
+pub(super) fn conflict_action(test: &Value) -> Action {
+    let mut outcomes = test["sources"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|source| source["comparisons"].as_array().into_iter().flatten())
+        .filter_map(|comparison| comparison["changed"].as_bool());
+    if outcomes.clone().any(|changed| changed) {
+        Action {
+            title: "Repeat the edit that changed the proposal",
+            next: "Open a changed comparison to check its replacement and outcome. Repeat that edit on a fresh request with the same rule scope before updating the workflow.",
+            basis: "Declared disagreement with a measured change on this call",
+        }
+    } else if outcomes.next().is_some() {
+        Action {
+            title: "Review which edits preserved the proposal",
+            next: "Check the tested replacements and try the other declaration or a different wording. A matching proposal applies to that comparison.",
+            basis: "Declared disagreement with matching replayed proposals",
+        }
+    } else {
+        action("conflict", &Value::Null)
+    }
+}
+
 pub fn action(kind: &str, detail: &Value) -> Action {
     let (title, next, basis) = match kind {
         "replay" if detail["joint_pattern"] == "joint_only" => (

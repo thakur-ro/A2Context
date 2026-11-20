@@ -403,6 +403,50 @@ def check_screen_suggestions(binary, folder):
         assert get(base, "screened-pair-examples", **query) == members
 
 
+def check_declared_conflict_replays(binary, folder):
+    sys.path.insert(0, str(ROOT / "examples"))
+    from send_otlp_replay import prepare, value_report
+    with server(binary, folder / "declared-windows.sqlite", "--capture-content") as base:
+        first, report = prepare("tested-journal", declare_windows=True)
+        other, other_report = prepare("untested-journal", declare_windows=True)
+        send_traces(base, first)
+        send_traces(base, other)
+        card, = get(base, "findings", kind="conflict")["rows"]
+        assert "conflict_test" not in card
+        group = card["id"]
+
+        def read(location):
+            row, = get(base, "findings", group=group, trace=location["run_id"], call=location["call_id"])["rows"]
+            trial = row["conflict_test"]
+            outcomes = {e["changed"] for source in trial["sources"] for e in source["comparisons"]}
+            title = ("Repeat the edit that changed the proposal" if True in outcomes else
+                     "Review which edits preserved the proposal" if outcomes else "Resolve the competing rules")
+            assert row["action"]["title"] == title
+            return trial
+
+        assert all(not s["comparisons"] for s in read(report["location"])["sources"])
+        for trial in (report, value_report(report, followup=False)):
+            send(base, "/api/replay-reports", trial, expected=201)
+        result = read(report["location"])
+        assert result["recorded_request"] and len(result["decisions"]) == 1
+        for source in result["sources"]:
+            assert source["captured"] and source["matching_fields"] == 1
+            example, = source["comparisons"]
+            assert example["reports"] == 2 and example["changed"] == (source["id"] == "input:1:0")
+            target, = get(base, "findings", group=example["group"], trace=report["location"]["run_id"],
+                          call=report["location"]["call_id"], replay=example["replay"],
+                          decision=example["decision"], context=source["id"])["rows"]
+            assert example["pair"] == target["evidence"]["detail"]["response_pair"]
+        assert all(not s["comparisons"] for s in read(other_report["location"])["sources"])
+        # Submit only the measured policy arm for the other request and omit its multi-source test.
+        other_report.pop("pair")
+        other_report["variants"] = [v for v in other_report["variants"] if v["intervention"]["context_id"] == "input:0:0"]
+        send(base, "/api/replay-reports", other_report, expected=201)
+        held = read(other_report["location"])
+        assert [e["changed"] for source in held["sources"] for e in source["comparisons"]] == [False]
+        assert not get(base, "findings", group=group, user="unrelated")["rows"]
+
+
 def check_replay(base, send_trace=send_traces):
     sys.path.insert(0, str(ROOT / "examples"))
     from send_otlp_replay import prepare as prepare_replay
@@ -1427,6 +1471,7 @@ def main():
         check_screen_suggestions(args.binary, folder)
         check_conversation_population(args.binary, folder / "population.sqlite")
         check_thread_calls(args.binary, folder)
+        check_declared_conflict_replays(args.binary, folder)
         check_external_batch(args.binary, folder)
         check_current_history_test(args.binary)
         check_proposal_coverage(args.binary, folder / "proposal-coverage.sqlite")

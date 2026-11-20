@@ -1,4 +1,5 @@
 mod capture;
+mod conflict;
 mod conversation;
 mod findings;
 mod history;

@@ -337,6 +337,15 @@ function restoreInspectionLink() {
       const found = openDecision(position.run, position.call, position.decision, reference || undefined);
       if (reference === null || !found) {
         unavailableLink("The linked evidence is unavailable on this call.");
+      } else if (params.get("plan") === "edit") {
+        const run = data.runs[position.run], call = run.calls[position.call], decision = call.decisions[position.decision];
+        const source = call.context.find(item => item.id === reference?.context_item_id);
+        if (params.has("decision") && ["model_output","tool_call"].includes(decision?.kind) && decision.outcome != null &&
+            source?.availability === "included" && typeof source.text === "string") {
+          openReplayPlanner(run, call, decision, [source.id]);
+        } else {
+          unavailableLink("This source and outcome cannot be used for a replay.");
+        }
       }
       return true;
     }

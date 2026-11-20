@@ -229,6 +229,12 @@ try {
     await turns.last().getByText(/up to 60 days/).waitFor();
     if (device === page && process.env.CONVERSATION_SCREENSHOT) await device.screenshot({path:process.env.CONVERSATION_SCREENSHOT,fullPage:true});
     await device.getByRole("link",{name:/Declared instructions disagree.*Returns policy and Support FAQ/}).click();
+    await device.getByText(/original request body was not captured/).waitFor();
+    await device.getByRole("link",{name:"Supply request to test Support FAQ"}).click();
+    const jacketPlanner = device.getByRole("dialog",{name:"Prepare controlled replay"});
+    await jacketPlanner.getByLabel("Original inference request (JSON)").waitFor();
+    assert.equal(await jacketPlanner.getByRole("button",{name:"Download replay case"}).isDisabled(),true);
+    await device.goBack();
     await device.getByRole("link",{name:"Back to conversation",exact:true}).click();
     await device.locator("#selected-call:focus").getByText(/up to 60 days/).waitFor();
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
@@ -561,6 +567,35 @@ try {
       await device.getByRole("link",{name:/QA 1000/}).click();
       await device.getByText("The effect of the top edit on the completed proposal is unmeasured.").waitFor();
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+  }
+  if (process.env.CONFLICT_TEST_URL) {
+    for (const device of [page, mobile]) {
+      await device.goto(process.env.CONFLICT_TEST_URL);
+      const heading = device.getByRole("heading",{name:"What changed when each source was edited?"});
+      await heading.waitFor();
+      const panel = device.locator(".panel").filter({has:heading});
+      await panel.getByText("Example · 60 → 45",{exact:true}).waitFor();
+      await panel.getByText("Example · 60 → 60",{exact:true}).waitFor();
+      if (device === page && process.env.CONFLICT_TEST_SCREENSHOT) await panel.screenshot({path:process.env.CONFLICT_TEST_SCREENSHOT});
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      await panel.getByRole("link",{name:"2 replay reports with a changed proposal"}).click();
+      await device.locator("details.response-pair[open]").getByText("45",{exact:true}).waitFor();
+      await device.goBack();
+      await panel.getByRole("link",{name:"Prepare edit to journal-faq"}).click();
+      const planner = device.getByRole("dialog",{name:"Prepare controlled replay"});
+      await planner.getByRole("button",{name:"Use captured request"}).click();
+      const selected = planner.locator(".replay-candidate").filter({has:device.locator("input:checked")});
+      await selected.waitFor();
+      assert.equal(await selected.count(),1);
+      assert.match(await selected.innerText(),/journal-faq/);
+      await planner.getByLabel("Runner ID").fill("test-runner");
+      const download = device.waitForEvent("download");
+      await planner.getByRole("button",{name:"Download replay case"}).click();
+      const result = JSON.parse(await readFile(await (await download).path(),"utf8"));
+      assert.equal(result.interventions.length,1);
+      assert.equal(result.interventions[0].pointer,"/messages/1/content");
+      assert.equal(result.location.decision_id,"output:0:0");
     }
   }
   if (process.env.TOKEN_QA_URL) {
