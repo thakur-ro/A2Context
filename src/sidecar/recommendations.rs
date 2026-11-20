@@ -85,11 +85,16 @@ pub(super) fn prefill_action(card: &Value) -> Action {
         let partial = profiles
             .iter()
             .any(|r| r["signature"].as_str().is_some_and(|s| s.contains('?')));
-        if mixed || tested > 1 {
+        let repeated = profiles
+            .iter()
+            .any(|r| r["example_runs"].as_u64().unwrap_or(0) > 1);
+        if mixed || tested > 1 || repeated {
             let (title, next) = if mixed {
                 ("Check the disagreeing repeat trials", "At least one repeated input gave different results under the same declared setup. Check the runner and repeat that input before drawing a conclusion.")
             } else if partial {
                 ("Complete the missing routing trials", "Some tested inputs have incomplete comparisons. Fill the missing setups before applying the observed pattern across requests.")
+            } else if tested == 1 {
+                ("Test this edit on another input", "Completed repeat comparisons agreed for this input. Check the counts for each setup, then repeat the edit on a different request.")
             } else if profiles.len() > 1 {
                 ("Compare the requests where the edit behaved differently", "Open an example from each result below. Check the other user messages and the proposed tool before changing the workflow.")
             } else {

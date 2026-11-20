@@ -142,24 +142,7 @@ pub(super) const SCOPED_COUNTS: &str = ", prefill_inputs AS (
                  ), prefill_counts AS (
                     SELECT group_id,leader,count(*) AS inputs FROM prefill_inputs GROUP BY group_id,leader
                  )
-                 , routing_events AS (
-                    SELECT e.group_id,e.thread_key,json_extract(e.detail,'$.routing_test.design') AS design,
-                        json_extract(e.detail,'$.baseline_request_sha256') AS input,
-                        json_extract(e.detail,'$.routing_test.signature') AS signature,
-                        json_extract(e.detail,'$.routing_test.tool_signature') AS tool_signature,
-                        json_object('trace',e.trace_id,'call',e.call_id) AS example
-                    FROM events e JOIN groups g ON g.group_id=e.group_id
-                    WHERE g.kind='prefill' AND json_extract(e.detail,'$.routing_test.design') IS NOT NULL
-                 ), routing_inputs AS (
-                    SELECT group_id,design,input,min(example) AS example,
-                        CASE WHEN min(signature)=max(signature) THEN min(signature) ELSE 'mixed' END AS signature,
-                        CASE WHEN min(tool_signature)=max(tool_signature) THEN min(tool_signature) ELSE 'mixed' END AS tool_signature
-                    FROM routing_events GROUP BY group_id,design,input
-                 ), routing_designs AS (
-                    SELECT group_id,design,count(*) AS inputs,
-                        sum(signature!='mixed' AND instr(signature,'?')=0) AS completed
-                    FROM routing_inputs GROUP BY group_id,design
-                 ), prefill_replays AS (
+                 , prefill_replays AS (
                     SELECT p.group_id,p.input,json_extract(c.value,'$.runner') AS runner,
                         min(json_extract(c.value,'$.changed')) AS low,max(json_extract(c.value,'$.changed')) AS high
                     FROM prefill_inputs p JOIN events e ON e.group_id=p.group_id
@@ -169,3 +152,58 @@ pub(super) const SCOPED_COUNTS: &str = ", prefill_inputs AS (
                       AND json_extract(c.value,'$.context_id')=json_extract(e.detail,'$.ranked[0].context_id')
                     GROUP BY p.group_id,p.input,runner
                  ) ";
+
+// A missing pair cannot contradict a completed pair. Match opposite results in the same setup.
+pub(super) fn append_routing(sql: &mut String, page_only: bool) {
+    sql.push_str(", routing_events AS (
+                    SELECT e.group_id,e.factor,e.thread_key,json_extract(e.detail,'$.routing_test.design') AS design,
+                        json_extract(e.detail,'$.baseline_request_sha256') AS input,
+                        json_extract(e.detail,'$.routing_test.signature') AS signature,
+                        json_extract(e.detail,'$.routing_test.tool_signature') AS tool_signature,
+                        json_object('trace',e.trace_id,'call',e.call_id) AS example
+                    FROM events e WHERE e.kind='prefill' AND json_extract(e.detail,'$.routing_test.design') IS NOT NULL");
+    if page_only {
+        sql.push_str(" AND e.group_id IN (SELECT group_id FROM groups)");
+    }
+    sql.push_str("), routing_signatures AS (
+                    SELECT group_id,design,input,min(factor) AS factor,signature,tool_signature,min(example) AS example,count(*) AS runs
+                    FROM routing_events GROUP BY group_id,design,input,signature,tool_signature
+                 ), routing_best AS (
+                    SELECT group_id,design,input,min(factor) AS factor,sum(runs) AS report_count,
+                        min(json_array(4-length(replace(signature,'?','')),json(example),signature,tool_signature))
+                            AS sample
+                    FROM routing_signatures GROUP BY group_id,design,input
+                 ), setups(slot) AS (VALUES (0),(1),(2),(3)), metrics(metric) AS (VALUES ('proposal'),('tool')),
+                 routing_slots AS (
+                    SELECT s.group_id,s.design,s.input,metric,slot,s.example,s.runs,
+                        substr(CASE metric WHEN 'tool' THEN tool_signature ELSE signature END,slot+1,1) AS outcome
+                    FROM routing_signatures s JOIN routing_best b USING(group_id,design,input)
+                    CROSS JOIN setups CROSS JOIN metrics WHERE b.report_count>1
+                 ), routing_votes AS (
+                    SELECT group_id,design,input,metric,slot,
+                        min(example) FILTER (WHERE outcome='0') AS held,min(example) FILTER (WHERE outcome='1') AS changed,
+                        sum(runs*(outcome='0')) AS held_runs,sum(runs*(outcome='1')) AS changed_runs,sum(runs*(outcome='?')) AS missing_runs
+                    FROM routing_slots GROUP BY group_id,design,input,metric,slot
+                 ), routing_conflicts AS (
+                    SELECT group_id,design,input,json_group_object(metric,json(pair)) AS witnesses FROM (
+                        SELECT group_id,design,input,metric,min(json_object('setup',slot,'held',json(held),'changed',json(changed),
+                            'held_runs',held_runs,'changed_runs',changed_runs,'missing_runs',missing_runs)) AS pair
+                        FROM routing_votes WHERE held IS NOT NULL AND changed IS NOT NULL GROUP BY group_id,design,input,metric
+                    ) GROUP BY group_id,design,input
+                 ), repeat_counts AS (
+                    SELECT group_id,design,input,json_group_array(json_object('proposal',proposal,'tool',tool,'missing',missing)
+                        ORDER BY slot) AS counts FROM (
+                        SELECT group_id,design,input,slot,max(changed_runs) FILTER (WHERE metric='proposal') AS proposal,
+                            max(changed_runs) FILTER (WHERE metric='tool') AS tool,max(missing_runs) AS missing
+                        FROM routing_votes GROUP BY group_id,design,input,slot
+                    ) GROUP BY group_id,design,input
+                 ), routing_inputs AS (
+                    SELECT group_id,design,input,factor,json_extract(sample,'$[1]') AS example,witnesses,counts,report_count,
+                        CASE WHEN json_type(witnesses,'$.proposal') IS NULL THEN json_extract(sample,'$[2]') ELSE 'mixed' END AS signature,
+                        CASE WHEN json_type(witnesses,'$.tool') IS NULL THEN json_extract(sample,'$[3]') ELSE 'mixed' END AS tool_signature
+                    FROM routing_best LEFT JOIN routing_conflicts USING(group_id,design,input) LEFT JOIN repeat_counts USING(group_id,design,input)
+                 ), routing_designs AS (
+                    SELECT group_id,design,count(*) AS inputs,
+                        sum(signature!='mixed' AND instr(signature,'?')=0) AS completed
+                    FROM routing_inputs GROUP BY group_id,design)");
+}

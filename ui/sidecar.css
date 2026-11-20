@@ -180,5 +180,14 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 .routing-table { overflow-x: auto; }
 .routing-table table { width: 100%; min-width: 36rem; border-collapse: collapse; }
 .routing-table tr.changed { background: var(--mist); }
+.routing-table tr:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .routing-table td, .routing-table th { padding: .5rem; text-align: left; }
 .routing-table code { overflow-wrap: anywhere; }
+
+.repeat-counts table { min-width: 0; }
+.repeat-counts th, .repeat-counts td { border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.repeat-counts td { font-variant-numeric: tabular-nums; }
+.repeat-counts meter { display: block; max-width: 6rem; height: 10px; }
+@media (max-width: 640px) {
+  .repeat-counts th, .repeat-counts td { padding: .35rem; font-size: .85rem; }
+}

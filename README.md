@@ -16,6 +16,8 @@ From the checkout, run with a stable Rust toolchain and open [Recommendations](h
 cargo run --locked -- sidecar --demo
 ```
 
+**Check whether an edit held up.** Open **Repeats disagreed** on the first recommendation. On one request the edit changed tool selection in two of four runs. Compare the runs to see when the model switched tools and when only the wording changed. [Open the sampled example](http://127.0.0.1:8040/?org=routing-sampling)
+
 [Open conversations where a proposal changed](http://127.0.0.1:8040/?level=1). Choose **journal-policy-support**, then **Compare the changed proposals** to see what the model answered before and after the source edit. The overview also links to score shifts and to input conflicts or repetition that still need a test.
 
 1. **Choose a source to test before answering.** Open **Before inference**, check a new request against earlier edits, then compare with scores on that request. The strongest measured edit changes the model’s preference from `UNKNOWN` to `KITE`. [Open the scored example](http://127.0.0.1:8040/?view=preview&scenario=scored-history)

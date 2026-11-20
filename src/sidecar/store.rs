@@ -567,6 +567,7 @@ impl Store {
         }
         if view == "factors" {
             sql.push_str(super::variation::TESTED_POSITIONS);
+            super::prefill::append_routing(&mut sql, false);
         }
         if matches!(view, "impact" | "conversation-outcomes") {
             sql.push_str(super::outcomes::CLASSIFIED);
@@ -623,14 +624,17 @@ impl Store {
                 let row: String = self.0.query_row(&sql, params_from_iter(args), |row| row.get(0))?;
                 return Ok(serde_json::from_str(&row)?);
             }
-            "factors" => sql.push_str(", grouped AS (
+            "factors" => sql.push_str(", disputed AS (
+                SELECT factor,min(json_object('group',group_id,'design',design)) AS test
+                FROM routing_inputs WHERE witnesses IS NOT NULL GROUP BY factor
+            ), grouped AS (
                 SELECT factor,org,factor IN (SELECT factor FROM variations) AS varies,json_extract(min(detail),'$.sources') AS sources,
                     count(DISTINCT thread_key) AS conversations,count(DISTINCT trace_id) AS requests,
                     count(DISTINCT CASE WHEN changed=1 THEN trace_id END) AS changed_requests,
                     count(DISTINCT CASE WHEN kind='prefill' AND json_extract(detail,'$.routing_test.design') IS NOT NULL
                         THEN json_extract(detail,'$.baseline_request_sha256') END) AS routing_inputs,
                     count(DISTINCT group_id) + (factor IN (SELECT factor FROM pairs)) + (factor IN (SELECT factor FROM variations)) AS recommendations,max(observed) AS latest,
-                    CASE WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -3 ELSE
+                    CASE WHEN factor IN (SELECT factor FROM disputed) THEN -5 WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -3 ELSE
                     min(CASE WHEN kind='replacement' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
                         WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' THEN 2 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -4
@@ -638,12 +642,12 @@ impl Store {
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
-                    'position_test',CASE WHEN t.pair IS NOT NULL THEN json_object(
+                    'disputed_routing',json(d.test),'position_test',CASE WHEN t.pair IS NOT NULL THEN json_object(
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
-                    'signal',CASE signal WHEN -4 THEN 'routing' WHEN -3 THEN 'order' WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
+                    'signal',CASE signal WHEN -5 THEN 'routing_repeats' WHEN -4 THEN 'routing' WHEN -3 THEN 'order' WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
                         WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
-                FROM grouped g LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
+                FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
             "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
                 'thread_key',thread_key,'observed',observed,'kind',kind,'detail',json(detail)) FROM events
@@ -669,6 +673,7 @@ impl Store {
                  )
                  ");
                 sql.push_str(super::prefill::SCOPED_COUNTS);
+                super::prefill::append_routing(&mut sql, true);
                 sql.push_str("                 SELECT json_object('id',g.group_id,'kind',g.kind,'occurrences',g.hits,'traces',g.traces,
                      'threads',g.threads,'latest',g.latest,'priority',g.priority,
                      'prefill_followup',CASE WHEN g.kind='prefill' THEN json((SELECT json_group_array(json_object(
@@ -679,9 +684,11 @@ impl Store {
                        (SELECT leader,inputs FROM prefill_counts WHERE group_id=g.group_id ORDER BY inputs DESC,leader))) END,
                      'routing_design_count',(SELECT count(*) FROM routing_designs d WHERE d.group_id=g.group_id),
                      'routing_profiles',CASE WHEN json_extract(e.detail,'$.routing_test.design') IS NOT NULL THEN json((
-                         SELECT json_group_array(json_object('signature',signature,'tool_signature',tool_signature,'inputs',inputs,'example',json(example))) FROM (
-                           SELECT signature,tool_signature,count(*) AS inputs,min(example) AS example FROM routing_inputs
-                           WHERE group_id=g.group_id AND design=json_extract(e.detail,'$.routing_test.design')
+                         SELECT json_group_array(json_object('signature',signature,'tool_signature',tool_signature,'inputs',inputs,
+                             'example',json_extract(sample,'$[1]'),'repeat_evidence',json_extract(sample,'$[2]'),
+                             'example_runs',json_extract(sample,'$[3]'),'repeat_counts',json_extract(sample,'$[4]'))) FROM (
+                           SELECT signature,tool_signature,count(*) AS inputs,min(json_array(input,json(example),json(witnesses),report_count,json(counts))) AS sample
+                           FROM routing_inputs WHERE group_id=g.group_id AND design=json_extract(e.detail,'$.routing_test.design')
                            GROUP BY signature,tool_signature ORDER BY inputs DESC,signature,tool_signature))) END,
                      'routing_conversations',CASE WHEN json_extract(e.detail,'$.routing_test.design') IS NOT NULL THEN (
                          SELECT count(DISTINCT thread_key) FROM routing_events r

@@ -1,0 +1,12 @@
+{
+  "reference": "routing-holdout-28",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "runner": "qwen2.5-0.5b-cpu-fp32-multinomial-temp0.7-topk0-topp1-paired-seeds-v1",
+  "temperature": 0.7,
+  "max_tokens": 48,
+  "seeds": [0, 1, 2, 3],
+  "design": "Use the first holdout request and its two scored source edits. For the generation experiment use routing-design.json and replace only the request-type source. Use one seed for both arms in all four setups, and reset it before each generation. Preserve incomplete comparisons. Each metric counts distinct input bodies once across seeds.",
+  "metrics": ["changed complete choice", "changed tool name or transition between text and tool"],
+  "repeat_disagreement": "Within one setup and metric, at least one seed yields a completed unchanged pair and another seed yields a completed changed pair. A failed arm supplies no outcome."
+}

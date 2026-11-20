@@ -285,10 +285,10 @@ function positionReadout(result) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
+  const signals = { routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
+  const step = { routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
@@ -300,8 +300,11 @@ function factorRow(factor, featured = false) {
   const name = factorName(factor.sources);
   const counts = [factor.org, plural(factor.conversations, "identified conversation"), plural(factor.requests, "request"),
     plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ");
+  const disputed = factor.disputed_routing;
+  const href = disputed ? url({factor:factor.id, recommendation:disputed.group, routing_design:disputed.design}) :
+    test ? positionLink(factor.id, test) : url({ factor: factor.id, ...(factor.signal === "order" && { order: 1 }), ...(factor.signal === "variation" && { variation: 1 }) });
   return element("a", { className: featured ? "factor-row featured" : "factor-row",
-    href: test ? positionLink(factor.id, test) : url({ factor: factor.id, ...(factor.signal === "order" && { order: 1 }), ...(factor.signal === "variation" && { variation: 1 }) }) },
+    href },
     element("div", {},
       featured ? element("span", { className: "first-step", text: test ? "Measured position test" : "Recommended next step" }) : null,
       element("strong", { text: featured ? (test ? headline : step[factor.signal]) : name }),
@@ -472,13 +475,45 @@ function routingPatterns(card) {
     return Array.from(signature, (ch, i) => ch === "1" ? setups[i] : ch === "?" ? setups[i] + " (missing)" : null)
       .filter(Boolean).join(" · ");
   }
+  function evidence(profile) {
+    const location = example => url({factor:factorId || detail.factor, recommendation:card.id, ...example});
+    if (!profile.repeat_evidence) return link("Inspect example", location(profile.example));
+    return element("div", {}, ...Object.entries(profile.repeat_evidence).sort().map(([metric, pair]) =>
+      element("details", {}, element("summary", {text:metric === "tool" ? "Compare tool selection" : "Compare full proposals"}),
+        element("p", {text:setups[pair.setup]}),
+        element("p", {text:pair.changed_runs + " changed · " + pair.held_runs + " unchanged · " + pair.missing_runs + " incomplete"}),
+        element("div", {className:"actions"}, link("Unchanged in this run", location(pair.held) + "#routing-setup-" + pair.setup),
+          link("Changed in this run", location(pair.changed) + "#routing-setup-" + pair.setup)))));
+  }
+  function runCounts(profile, expanded = false) {
+    if (!profile.repeat_counts) return null;
+    const total = profile.example_runs;
+    const rows = profile.repeat_counts.map((counts, i) => {
+      const completed = total - counts.missing;
+      return element("tr", {}, element("th", {scope:"row", text:setups[i]}),
+        ...[counts.proposal, counts.tool].map(changed => element("td", {},
+          element("span", {text:completed ? changed + " / " + completed : "No pairs"}),
+          completed ? element("meter", {min:0, max:completed, value:changed, "aria-hidden":"true"}) : null)),
+        element("td", {text:counts.missing}));
+    });
+    const table = element("div", {className:"routing-table repeat-counts", role:"region", "aria-label":"Repeat counts by setup", tabindex:"0"},
+        element("table", {}, element("thead", {}, element("tr", {}, ...["Setup", "Proposal changed", "Tool changed", "Missing"]
+          .map(text => element("th", {scope:"col", text})))), element("tbody", {}, ...rows)));
+    return expanded ? table : element("details", {}, element("summary", {text:"Compare " + plural(total, "run") + " on this input"}), table);
+  }
+  const sourceEdit = element("p", {text:"Tested source · " + (edit.source || edit.context_id) + " · " + edit.before + " → " +
+    (edit.operation === "remove_json" ? "(removed)" : edit.replacement)});
+  const first = card.routing_profiles[0];
+  if (card.routing_profiles.length === 1 && first.inputs === 1 && first.repeat_counts) {
+    return element("section", {className:"panel routing-comparison"}, element("h2", {text:"How often did the edit change the result?"}),
+      sourceEdit, element("p", {text:plural(first.example_runs, "captured run") + " on the same input. Counts show how many completed pairs changed under each setup."}),
+      runCounts(first, true), evidence(first), routingInstructions(test));
+  }
   const rows = card.routing_profiles.map(profile => element("tr", {},
     element("th", {scope:"row", text:profile.inputs}), element("td", {text:description(profile.signature)}),
-    element("td", {text:description(profile.tool_signature)}), element("td", {}, link("Inspect example",
-      url({factor:factorId || card.evidence.detail.factor, recommendation:card.id, ...profile.example})))));
+    element("td", {text:description(profile.tool_signature)}), element("td", {}, evidence(profile), runCounts(profile))));
   return element("section", {className:"panel routing-comparison"}, element("h2", {text:"Where the source edit mattered"}),
-    element("p", {text:"Tested source · " + (edit.source || edit.context_id) + " · " + edit.before + " → " +
-      (edit.operation === "remove_json" ? "(removed)" : edit.replacement)}),
+    sourceEdit,
     element("p", {text:"Each row counts inputs with the same result. A change in wording or arguments can leave tool selection unchanged."}),
     element("div", {className:"routing-table", tabindex:"0", role:"region", "aria-label":"Routing results across inputs"},
       element("table", {}, element("thead", {}, element("tr", {}, ...["Inputs", "Complete proposal changed", "Proposed tool changed", "Evidence"]
@@ -488,7 +523,7 @@ function routingPatterns(card) {
 function repeatedRouting(card) {
   const profiles = card.routing_profiles;
   if (!profiles?.length) return false;
-  return profiles.length > 1 || profiles[0].inputs > 1 || profiles[0].signature === "mixed" ||
+  return profiles.length > 1 || profiles[0].example_runs > 1 || profiles[0].inputs > 1 || profiles[0].signature === "mixed" ||
     profiles[0].tool_signature === "mixed" || card.routing_design_count > 1 ||
     card.prefill_counts.reduce((n, row) => n + row.inputs, 0) > profiles[0].inputs;
 }
@@ -694,13 +729,19 @@ function review(card, occurrences) {
     const titles = { tools:"Tool definitions changed the edit’s effect", instruction:"The instruction changed the edit’s effect",
       combined:"The edit depended on the routing setup", constant:"The edit’s effect held across setups", incomplete:"Some routing trials are missing" };
     const repeated = repeatedRouting(card);
-    byId("title").textContent = repeated ? "Routing results across requests" : titles[detail.routing_test?.pattern] || "First-token sensitivity";
+    const oneRepeated = card.routing_profiles?.length === 1 && card.routing_profiles[0].inputs === 1 && card.routing_profiles[0].repeat_counts;
+    const witnesses = oneRepeated && card.routing_profiles[0].repeat_evidence;
+    const contrast = witnesses && (witnesses.tool || witnesses.proposal);
+    const headline = contrast ? (witnesses.tool ? "Tool selection" : "The full proposal") + " changed in " +
+      contrast.changed_runs + " of " + (contrast.changed_runs + contrast.held_runs) + " completed runs in one setup" : card.action.title;
+    byId("title").textContent = oneRepeated ? "Repeat trials on one input" : repeated ? "Routing results across requests" : titles[detail.routing_test?.pattern] || "First-token sensitivity";
     byId("summary").textContent = repeated ? routingCoverage(card) : prefillSummary(card.prefill_counts);
     return element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId || detail.factor })),
-      panel(card.action.title, repeated ? null : prefillFollowup(card), element("p", {text:card.action.next})),
-      (measuredExample.trace || measuredExample.routing_design) && detail.routing_test ? link("All routing results in this scope", url({factor:factorId || detail.factor, recommendation:card.id})) : null,
+      panel(headline, repeated ? null : prefillFollowup(card), element("p", {text:contrast ?
+        "Open a changed and an unchanged run below. Check the original and edited proposals before deciding whether to change the source." : card.action.next})),
+      measuredExample.trace && detail.routing_test ? link("All routing results in this scope", url({factor:factorId || detail.factor, recommendation:card.id, routing_design:detail.routing_test.design})) : null,
       repeated ? routingPatterns(card) : routingComparison(detail),
-      element("p", { text: "These calls share the tested edits, model, runtime and request settings. Other user text can differ." }),
+      !oneRepeated && element("p", { text: "These calls share the tested edits, model, runtime and request settings. Other user text can differ." }),
       ...occurrences.rows.map((row, i) => element("details", { className: "panel", ...(!repeated && i === 0 && { open: "" }) },
         element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + findingTitle("prefill", row.detail) }),
         firstTokenPreview(row.detail, true),
@@ -787,7 +828,7 @@ function routingComparison(probe) {
   const trialText = trial => trial.status === "completed"
     ? trial.label + (trial.listed === false ? " (unlisted)" : "") + " · " + trial.outcome
     : "Trial failed";
-  const rows = test.cells.map((cell, index) => element("tr", {className:cell.changed ? "changed" : ""},
+  const rows = test.cells.map((cell, index) => element("tr", {className:cell.changed ? "changed" : "", "data-routing-setup":index},
     element("th", {scope:"row", text:index < 2 ? "Original" : "Alternate"}),
     element("td", {text:(index % 2 ? "Alternate · " : "Original · ") + toolList(test.inventories[index % 2])}),
     ...cell.trials.map(trial => element("td", {}, element("code", {text:trialText(trial)}))),
@@ -1127,6 +1168,14 @@ async function main() {
   if (scope.meta_key && !health.metadata_keys.includes(scope.meta_key)) meta.add(element("option", { value: scope.meta_key, text: scope.meta_key }));
   for (const [key, value] of Object.entries(scope)) form.elements.namedItem(key).value = value;
   await render();
+  const setup = /^#routing-setup-([0-3])$/.exec(location.hash);
+  if (setup && measuredExample.trace && measuredExample.call) {
+    const row = byId("content").querySelector('[data-routing-setup="' + setup[1] + '"]');
+    if (row) {
+      row.tabIndex = -1;
+      row.focus();
+    }
+  }
   if (view === "findings" && !factorId && !recommendationId && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });

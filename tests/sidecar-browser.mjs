@@ -15,15 +15,15 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
   await page.getByRole("heading", { name: "Conversations with findings" }).waitFor();
-  assert.equal(await page.locator(".impact-number").innerText(), "19");
-  assert.deepEqual(await page.locator(".impact-outcome strong").allTextContents(), ["10", "3", "6"]);
+  assert.equal(await page.locator(".impact-number").innerText(), "20");
+  assert.deepEqual(await page.locator(".impact-outcome strong").allTextContents(), ["11", "3", "6"]);
   assert.ok(await page.locator(".brand img").evaluate(img => img.complete && img.naturalWidth > 0));
   assert.equal(await page.locator("#navigation a").count(), 2);
   await factor(page, "Choice flipped").waitFor();
   if (process.env.FINDINGS_SCREENSHOT) await page.screenshot({ path: process.env.FINDINGS_SCREENSHOT });
   const coverage = page.locator(".replay-coverage");
-  await coverage.getByText("Scored replays in 7 of 19 conversations").click();
-  assert.deepEqual(await coverage.locator("dd").allTextContents(), ["0", "0", "7", "12"]);
+  await coverage.getByText("Scored replays in 7 of 20 conversations").click();
+  assert.deepEqual(await coverage.locator("dd").allTextContents(), ["0", "0", "7", "13"]);
   await factor(page, "Results varied with source order").click();
   await page.getByText(/in 2 of 4 matched comparisons/).waitFor();
   assert.equal(await page.getByRole("heading", { name: "Match counts held across orders" }).count(), 2);
@@ -193,6 +193,28 @@ try {
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   }
   for (const device of [page, mobile]) {
+    await device.goto(base + "/?org=routing-sampling");
+    await factor(device, "Repeats disagreed").click();
+    await device.getByRole("heading", {name:"Repeat trials on one input"}).waitFor();
+    const votes = device.getByRole("region", {name:"Repeat counts by setup"});
+    assert.deepEqual(await votes.locator("tbody tr td:nth-child(2)").allTextContents(), ["0 / 4", "3 / 4", "0 / 4", "4 / 4"]);
+    assert.deepEqual(await votes.locator("tbody tr td:nth-child(3)").allTextContents(), ["0 / 4", "2 / 4", "0 / 4", "4 / 4"]);
+    const toolWitness = device.locator("details").filter({has: device.locator("summary", {hasText:"Compare tool selection"})}).first();
+    await toolWitness.locator("summary").click();
+    assert.match(await toolWitness.innerText(), /2 changed · 2 unchanged · 0 incomplete/);
+    if (device === page && process.env.REPEAT_SCREENSHOT) await device.screenshot({path:process.env.REPEAT_SCREENSHOT});
+    const witnessUrl = device.url();
+    for (const [label, changed] of [["Unchanged in this run", false], ["Changed in this run", true]]) {
+      await toolWitness.getByRole("link", {name:label, exact:true}).click();
+      const selected = device.locator('[data-routing-setup="1"]:focus');
+      await selected.waitFor();
+      const outputs = await selected.locator("code").allTextContents();
+      assert.equal(outputs[0].split(" · ")[0] !== outputs[1].split(" · ")[0], changed);
+      assert.equal(new URL(device.url()).searchParams.get("org"), "routing-sampling");
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await device.goto(witnessUrl);
+      await toolWitness.locator("summary").click();
+    }
     await device.goto(base);
     await device.getByRole("link", {name:/Generated proposal changed/}).click();
     await device.getByRole("link", {name:/journal-policy-support/}).click();

@@ -26,15 +26,22 @@ class TransformersRuntime:
         encoded = self.tokenizer(prompt, add_special_tokens=False, return_offsets_mapping=True)
         return prompt, encoded.input_ids, encoded.offset_mapping, False
 
-    def generate(self, _prompt, tokens, request):
-        if request["temperature"] != 0:
-            raise ValueError("The Qwen2 adapter requires greedy generation.")
+    def generate(self, _prompt, tokens, request, *, seed=None):
+        sampling = {}
+        if seed is not None:
+            if request["temperature"] <= 0:
+                raise ValueError("Seeded sampling requires a positive temperature.")
+            self.torch.manual_seed(seed)
+            sampling = dict(do_sample=True, temperature=request["temperature"], top_k=0, top_p=1.0)
+        elif request["temperature"] != 0:
+            raise ValueError("Supply a sampling seed for a nonzero temperature.")
         inputs = self.torch.tensor([tokens])
         generated = self.model.generate(
             input_ids=inputs,
             attention_mask=self.torch.ones_like(inputs),
             generation_config=self.generation_config,
             max_new_tokens=request["max_tokens"],
+            **sampling,
         )[0, len(tokens):].tolist()
         if not generated or generated[-1] not in self.generation_config.eos_token_id:
             raise ValueError("The fixture answer must finish before the generation limit.")

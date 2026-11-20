@@ -40,6 +40,12 @@ Rabinovich and Anaby-Tavor studied how function selection responds to query vari
 
 Yeats et al. trained linear probes on model hidden states to detect incorrect tool calls across 18 models. This approach needs instrumented states and labels for errors. It addresses whether a call is likely incorrect. A controlled replay asks whether the proposed call changes under a specific input intervention. [Yeats et al., 2026, v1](https://arxiv.org/abs/2608.27750v1)
 
+## Repeatability and outcome choice
+
+A follow-up search on 20 November 2026 used `LLM evaluation prompt sensitivity decoding randomness repeated sampling`. Hua et al. found that the apparent sensitivity of performance to prompt templates depended on how answers were scored. This bears on our choice to report a change in the complete proposal and a change in the selected tool separately. Both outcomes describe captured behavior. Correctness and downstream task success require their own criteria. [Hua et al., EMNLP 2025](https://aclanthology.org/2025.emnlp-main.1006/)
+
+ReliableEval estimates how many meaning-preserving prompt resamplings an evaluation needs. Our pilot fixes one request and varies the sampling seed within a declared decoding configuration. The dashboard reports observed counts and missing comparisons. Four seeds on one input cannot establish how often an effect will recur on another input or runner. [Lior et al., Findings of EMNLP 2025](https://aclanthology.org/2025.findings-emnlp.594/) · [Fixed protocol and measurements](../examples/runtime-comparison/pending-routing/sampled.md)
+
 ## Attribution and experimental methods
 
 Wang et al. found discrepancies between first-token rankings and generated text on multiple-choice tasks with instruction-tuned language models. NexusWeave scores the full token sequence of each supplied continuation. Unscored alternatives can still receive substantial probability. The warranty check therefore compares score reversals with freely generated answers and reports the probability outside the specified pair. [Wang et al., Findings of ACL 2024](https://aclanthology.org/2024.findings-acl.441/) · [NexusWeave experiment](methods.md#what-do-model-scores-add-before-generation)

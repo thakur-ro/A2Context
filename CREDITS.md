@@ -14,6 +14,8 @@ The [scoping review](docs/research-review.md) compares the sidecar workflow with
 
 - The routing comparison draws on research into tool-set changes by Ella Rabinovich and Ateret Anaby-Tavor. BFCL and the hidden-state study by Eric Yeats and colleagues provide benchmark and probe comparisons. [Function-calling robustness](https://arxiv.org/abs/2504.00914v1) · [BFCL](https://proceedings.mlr.press/v267/patil25a.html) · [Tool-error probes](https://arxiv.org/abs/2608.27750v1)
 
+Hua and colleagues studied how the scoring method affects apparent prompt sensitivity. Lior and colleagues developed ReliableEval for sampling across prompt variants. The review compares those methods with repeated decoding of one source edit. [Hua et al., 2025](https://aclanthology.org/2025.emnlp-main.1006/) · [Lior et al., 2025](https://aclanthology.org/2025.findings-emnlp.594/)
+
 ## Data and tools
 
 - Exgentic’s `agent-llm-traces` dataset supplied the recorded retail sessions for the importer comparison. The [sample manifest](examples/retail-sample.manifest.json) pins the dataset revision and documents session selection. The policy excerpt in [retail-annotations.json](examples/retail-annotations.json) comes from that dataset and is distributed under [CDLA Permissive 2.0](LICENSES/CDLA-Permissive-2.0.txt). [Exgentic dataset card](https://huggingface.co/datasets/Exgentic/agent-llm-traces)

@@ -104,12 +104,39 @@ def check_recurrence(binary, folder, sdk_python):
         send_traces(base, modified(payload, 801, repeat))
         after, = recommendation(base)
         assert [r["inputs"] for r in after["routing_profiles"]] == [2,1,1] and after["routing_conversations"] == 5
+        def classification(record):
+            return [(r["signature"], r["tool_signature"], r["inputs"], r["example"], r["repeat_evidence"])
+                    for r in record["routing_profiles"]]
+        # Lose each arm in turn on a repeat of each saved routing input.
+        for i, record in enumerate(saved):
+            for arm in range(8):
+                def lose_trial(probe, attrs):
+                    probe["routing_test"]["cells"][arm // 2][arm % 2]["trial"] = {"status": "failed"}
+                missing = modified(export([record], reports), 900 + 8 * i + arm, lose_trial)
+                send_traces(base, missing)
+                after_loss, = recommendation(base)
+                assert classification(after_loss) == classification(after), (record["id"], arm)
         def disagree(probe, attrs):
             probe["routing_test"]["cells"][1][1]["trial"] = probe["routing_test"]["cells"][1][0]["trial"]
         send_traces(base, modified(payload, 802, disagree))
         mixed, = recommendation(base)
+        top = get(base, "factors", org="retail-south")["rows"][0]
+        assert top["signal"] == "routing_repeats"
+        test = top["disputed_routing"]
+        assert recommendation(base, group=test["group"], routing_design=test["design"]) == [mixed]
+        assert get(base, "factors", trace=f"otlp:{802:032x}")["rows"][0]["disputed_routing"] is None
         assert mixed["action"]["title"] == "Check the disagreeing repeat trials"
-        assert any(r["signature"] == "mixed" and r["inputs"] == 1 for r in mixed["routing_profiles"])
+        row, = [r for r in mixed["routing_profiles"] if r["signature"] == "mixed"]
+        assert row["inputs"] == 1
+        for metric, pair in row["repeat_evidence"].items():
+            assert pair["setup"] == 1 and pair["held"] != pair["changed"]
+            assert pair["held_runs"] == 1 and pair["changed_runs"] == 8 and pair["missing_runs"] == 2
+            for side in ("held", "changed"):
+                one, = recommendation(base, group=card["id"], **pair[side])
+                cell = one["evidence"]["detail"]["routing_test"]["cells"][pair["setup"]]
+                assert cell["tool_changed" if metric == "tool" else "changed"] is (side == "changed")
+                assert one["routing_profiles"][0]["repeat_evidence"] is None
+
         def another_runner(probe, attrs):
             probe["routing_test"]["runner_id"] = "different-decoding"
         send_traces(base, modified(payload, 803, another_runner))
@@ -130,6 +157,19 @@ def check_recurrence(binary, folder, sdk_python):
         assert sum(r["inputs"] for r in result["routing_profiles"]) == 3 and result["routing_conversations"] == 3
         assert sum(r["inputs"] for r in result["prefill_counts"]) == 4
         assert any("?" in r["signature"] for r in result["routing_profiles"])
+
+    with server(binary, folder/"complementary-repeats", "--capture-content") as base:
+        for index in range(2):
+            def half_run(probe, attrs):
+                for cell in probe["routing_test"]["cells"][2 * index:2 * index + 2]:
+                    cell[0]["trial"] = {"status": "failed"}
+            send_traces(base, modified(payload, 830 + index, half_run))
+        result, = recommendation(base)
+        profile, = result["routing_profiles"]
+        assert profile["example_runs"] == 2 and profile["repeat_evidence"] is None
+        assert profile["signature"].count("?") == 2
+        assert all(row["missing"] == 1 for row in profile["repeat_counts"])
+        assert result["action"]["title"] == "Complete the missing routing trials"
 
 
 
