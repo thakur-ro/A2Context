@@ -20,14 +20,34 @@ The harness uses the Qwen team's published Qwen-Agent 0.0.34. The wheel publishe
 
 This exercises a real agent loop with a replay transport and a synthetic business tool. It covers one framework version, one parser configuration and one checkpoint's previously saved generations. A deployed agent can choose a different parser, implement different argument validation or ask the model to repair rejected calls. This study supplies no second model response. Replaying both policies for all 40 responses took about 0.5 seconds on the test machine after imports. It made zero inference or paid API calls.
 
+## What happened when the model could try again?
+
+All 22 rejected arguments triggered a fresh greedy generation from Qwen-Agent’s assembled retry history. Each retry returned a text reply. None issued another tool call or changed the order state. Ten rejected trials involved held exchanges, which stayed held. The twelve other rejected trials involved approved exchanges, which remained unfulfilled. The ten first-pass text replies and eight successful writes were ineligible for retry. The approval gate and the unchecked policy both finished with 28 of 40 arms in the expected state.
+
+![Order state and retry path for each of the eight requests across five source-edit conditions](../../../../docs/media/exchange-retry-outcomes.png)
+
+Each row uses one authorization channel and customer wording. The customer-message edit preserves the requested intent. It changed four approved outcomes, restoring two writes and losing two. In a retrospective comparison, the pre-answer ranking picked the customer message first on all eight requests. Simply testing the latest customer message would have chosen the same eight edits with zero ranking calls. This dataset gives no reason to pay for the ranking on this workflow. [Original rankings](../results.json) · [Retry protocol frozen before inference](retry-protocol.md) · [Raw responses, paired states and hashes](retry-results.json)
+
+The 22 retries used 11,878 input tokens and 394 generated tokens including end markers. Local CPU decoding took 20.17 seconds on the first run. A second generation pass reproduced the histories, responses, token counts and 80 policy-specific receipts. The first responses were replayed from the earlier study. Only the retry generations were fresh. These are related variations of eight synthetic requests on one model and one application-defined error message.
+
 ## Reproduce the offline replay
 
-We used Python 3.13.7. From the repository root, install the optional study dependencies in a virtual environment, then run the check. The application and sidecar do not need these dependencies.
+We used Python 3.13.7. From the repository root, install the optional study dependencies in a virtual environment, then run the checks. The application and sidecar do not need these dependencies.
 
 ```sh
 python3.13 -m venv /tmp/nexus-qwen-agent
 /tmp/nexus-qwen-agent/bin/python -m pip install -r examples/exchange-approval/dispatch-study/framework/requirements.txt
 /tmp/nexus-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/replay.py --check
+/tmp/nexus-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/retry.py --check
+```
+
+To generate fresh retries, install `framework/retry-requirements.txt` in that environment and use the pinned local checkpoint from the dispatch study. To rebuild the figure, install Matplotlib 3.10.8 in a separate plotting environment.
+
+```sh
+/tmp/nexus-qwen-agent/bin/python -m pip install -r examples/exchange-approval/dispatch-study/framework/retry-requirements.txt
+/tmp/nexus-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/retry.py \
+  --snapshot /path/to/qwen/snapshot --output /tmp/fresh-exchange-retries.json
+python3 examples/exchange-approval/dispatch-study/plot_retries.py /tmp/exchange-retry-outcomes.png
 ```
 
 ## Verify the spans in a disposable sidecar

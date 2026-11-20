@@ -1,0 +1,2321 @@
+{
+  "protocol_sha256": "6269d7eb40649517924b656b50d7bc69df7dcbb89098bf460ea12fc74fbb76ce",
+  "first_pass_sha256": "3ca92df0fa75ebd2e6a2f56eb2940d10a2905fc39734eb345bff8227a8a75849",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+  "counts": {
+    "final_dispositions": {
+      "text": 32,
+      "executed": 8
+    },
+    "retry_dispositions": {
+      "text": 22
+    },
+    "input_tokens": 11878,
+    "generated_tokens": 394,
+    "decode_seconds": 20.166108332108706
+  },
+  "rows": [
+    {
+      "case": "held-service-a",
+      "arm": "original",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.8245205000275746,
+        "history_sha256": "d333671a7d0cdd9a60194e1930ee6c847614e0bc58f360d468f898ff55f3571c",
+        "prompt_sha256": "e45b4ec22431c0d2e0d8d19a9dc24dd37fe066681a91ebf7837f0546d205638f",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-a",
+      "arm": "cache",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.594446458038874,
+        "history_sha256": "33f38a38a38cf40303b8985b4d55ddeca04d700711848caef213da0a022a2b55",
+        "prompt_sha256": "4141e981ae88d69cd22193c009bdc4ff5289c147867e1807ba5473c1b9517d9a",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-a",
+      "arm": "record",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.602558791055344,
+        "history_sha256": "b15e0a31170d68bce11504fc9dd01dad4987f8b981a535fdfe7c7a68e049a82a",
+        "prompt_sha256": "1dce8e045d779fcca6ccedf82ddb7e298b6b813ccae2eb5c6435f5d3e4f806e4",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-a",
+      "arm": "customer",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-a",
+      "arm": "control",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.5990291249472648,
+        "history_sha256": "a3d106e283bb168bcb884dccae6aa36bafb01e30ca38920735911805d46407a2",
+        "prompt_sha256": "d5ce976f70eb73ca2047876250ec6c63b1ef054f99d68d34df43212cb9bdc183",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "original",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "record",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "customer",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.5944646659772843,
+        "history_sha256": "d333671a7d0cdd9a60194e1930ee6c847614e0bc58f360d468f898ff55f3571c",
+        "prompt_sha256": "e45b4ec22431c0d2e0d8d19a9dc24dd37fe066681a91ebf7837f0546d205638f",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "control",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-service-b",
+      "arm": "cache",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "original",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.5946032080100849,
+        "history_sha256": "5ea0e8291917d6bc3c9aba9008dc14b5e3d8f4dd03cbff86172f484be28d0a82",
+        "prompt_sha256": "f9cfeae15764a0088a39ba53da9ed6c861146cfff6cd52e553292b1f0aafb189",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "customer",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "control",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.5941012080293149,
+        "history_sha256": "be2c5d9135282989b8e71e60c4b0d0abc03a75123dbd2d99264fb03c263d4612",
+        "prompt_sha256": "a69a0766232ee09f5ebf7436395b0bded076965578b0880d4a432ad60aa0eadf",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "cache",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.5964950829511508,
+        "history_sha256": "24e64944015aeee2329c53ef8b0030392c3aa6088cc43d417e98942bdc3f8c53",
+        "prompt_sha256": "904dfb8a105e2770b835d831585ed9db219dbcc5e46257e911f556ee8ad4c8ff",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-a",
+      "arm": "record",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.596013666014187,
+        "history_sha256": "e0a238c917b1f7c827892b6fe4918349ebabc9df86d5a2bb61d52a5420d28269",
+        "prompt_sha256": "48e1ec61c6ef706d8b12fd558b90f7733e5f449976afa64d2bef5b077138f58b",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "original",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "control",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "33143e3e25cf916e98e6872f5e04c1b6a976d520700bd0a92e88d8b0ba8031da",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "cache",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "195766d5135fee07d706ec4566bf21511a02a2270125277f824b052b394d5ee9",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "record",
+      "expected_state": "delivered",
+      "first_disposition": "text",
+      "first_raw_sha256": "ee9a45a75c62a91bc757e53be088a32ce0a425f67463e10a23f31b168fb61431",
+      "retry": null,
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "held-checkout-b",
+      "arm": "customer",
+      "expected_state": "delivered",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I will not proceed with the exchange.",
+        "stop": "eos",
+        "generated_tokens": 9,
+        "decode_seconds": 0.593442750046961,
+        "history_sha256": "5ea0e8291917d6bc3c9aba9008dc14b5e3d8f4dd03cbff86172f484be28d0a82",
+        "prompt_sha256": "f9cfeae15764a0088a39ba53da9ed6c861146cfff6cd52e553292b1f0aafb189",
+        "input_tokens": 540,
+        "raw_sha256": "9f85829126e60c226954b41ea5838f639fd1887cc60c5197228e42b5b90982ed"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "original",
+      "expected_state": "exchange_requested",
+      "first_disposition": "executed",
+      "first_raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "retry": null,
+      "final_disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "customer",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as there is no valid tool available for the exchange.",
+        "stop": "eos",
+        "generated_tokens": 25,
+        "decode_seconds": 1.1202095840126276,
+        "history_sha256": "9f33eb7934f24d838651e68084179e800852e2d3687b57194056b4f50fd9fad7",
+        "prompt_sha256": "dc62ea15a8c5843dfc011c5949418cf1cb7a3c2901b0164c7753a5c0bf177fe0",
+        "input_tokens": 540,
+        "raw_sha256": "bc6b8e2995cbfe1a3612e71cf34f69eb2f50c5f8222d9037bc078ff10a2c71c4"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "control",
+      "expected_state": "exchange_requested",
+      "first_disposition": "executed",
+      "first_raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "retry": null,
+      "final_disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "cache",
+      "expected_state": "exchange_requested",
+      "first_disposition": "executed",
+      "first_raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "retry": null,
+      "final_disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-a",
+      "arm": "record",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I need to authorize the exchange on EX-271. Please send the request.",
+        "stop": "eos",
+        "generated_tokens": 19,
+        "decode_seconds": 0.9234941670438275,
+        "history_sha256": "5e367db87b6f3cd3437721d51ed6e8c8d28b105341d1b92cdcadb0c641d42e24",
+        "prompt_sha256": "e9e0b5f9b0a20d95c4a2eb4063a5fa158771af106be01148f02719c2e13b6635",
+        "input_tokens": 539,
+        "raw_sha256": "e95c1bebacc92d97beba564a8a61139097b47da7ab0499a7701553b4530f66c9"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "original",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as there is no valid tool available for the exchange.",
+        "stop": "eos",
+        "generated_tokens": 25,
+        "decode_seconds": 1.1255588750354946,
+        "history_sha256": "9f33eb7934f24d838651e68084179e800852e2d3687b57194056b4f50fd9fad7",
+        "prompt_sha256": "dc62ea15a8c5843dfc011c5949418cf1cb7a3c2901b0164c7753a5c0bf177fe0",
+        "input_tokens": 540,
+        "raw_sha256": "bc6b8e2995cbfe1a3612e71cf34f69eb2f50c5f8222d9037bc078ff10a2c71c4"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "control",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as there is no valid tool available for the exchange.",
+        "stop": "eos",
+        "generated_tokens": 25,
+        "decode_seconds": 1.3297048329841346,
+        "history_sha256": "6d3eff9b616548fb5ccb50fdb2a311dcb9cc8a336c60ba5e6ef12d9b806bf8c9",
+        "prompt_sha256": "4ddfca043b32b73a6ea7606022678a538cfc9cfe6a89ae7b1553c190c9f466a5",
+        "input_tokens": 540,
+        "raw_sha256": "bc6b8e2995cbfe1a3612e71cf34f69eb2f50c5f8222d9037bc078ff10a2c71c4"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "cache",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as there is no valid tool available for the exchange.",
+        "stop": "eos",
+        "generated_tokens": 25,
+        "decode_seconds": 1.2857555000809953,
+        "history_sha256": "7658c3220d58217ec3b7e177453af8598512752b794fcf19ff13f66be727d89c",
+        "prompt_sha256": "15d6254f83583fda0bf7a8a71ad0711203d991e2b5a1539aa50111e552f87925",
+        "input_tokens": 540,
+        "raw_sha256": "bc6b8e2995cbfe1a3612e71cf34f69eb2f50c5f8222d9037bc078ff10a2c71c4"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "record",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as the tool I'm using is invalid. Please provide a valid tool call.",
+        "stop": "eos",
+        "generated_tokens": 30,
+        "decode_seconds": 1.2851232499815524,
+        "history_sha256": "5091c799fd811f620e8d29f8fd53e68a922c651626b6438481a795b3d555e439",
+        "prompt_sha256": "821f67026bb26457b3736a8f3752a9576cbdbd0a244bb1b1b254b24d6cf84d33",
+        "input_tokens": 540,
+        "raw_sha256": "ac011008e4d24eee39e30a4457eb7857973f78cb69d6ca127e1b78a4030d44aa"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-service-b",
+      "arm": "customer",
+      "expected_state": "exchange_requested",
+      "first_disposition": "executed",
+      "first_raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "retry": null,
+      "final_disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "original",
+      "expected_state": "exchange_requested",
+      "first_disposition": "executed",
+      "first_raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "retry": null,
+      "final_disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "cache",
+      "expected_state": "exchange_requested",
+      "first_disposition": "executed",
+      "first_raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "retry": null,
+      "final_disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "record",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I need to authorize the exchange on EX-271. Please send the request.",
+        "stop": "eos",
+        "generated_tokens": 19,
+        "decode_seconds": 0.9234899589791894,
+        "history_sha256": "e246522c97a274d59bef34d59ec3887af6e1e3cbbf98c6c852b9d9ea935fb876",
+        "prompt_sha256": "660bdc4cdce3f58582a6f68eda1f6e4a7b467689ca25416a790718a394253218",
+        "input_tokens": 539,
+        "raw_sha256": "e95c1bebacc92d97beba564a8a61139097b47da7ab0499a7701553b4530f66c9"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "customer",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as there is no valid tool available for the exchange.",
+        "stop": "eos",
+        "generated_tokens": 25,
+        "decode_seconds": 1.1223525409586728,
+        "history_sha256": "efbc8321322d55347d31e60c9fa088b44ed26fccfe207b004566a6cd3e9dd91b",
+        "prompt_sha256": "740153268e376abf2452b6a87bf2b2cd81905747c0ed39de5d8e2d4b2ad2c015",
+        "input_tokens": 540,
+        "raw_sha256": "bc6b8e2995cbfe1a3612e71cf34f69eb2f50c5f8222d9037bc078ff10a2c71c4"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-a",
+      "arm": "control",
+      "expected_state": "exchange_requested",
+      "first_disposition": "executed",
+      "first_raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "retry": null,
+      "final_disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "original",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as there is no valid tool available for the exchange.",
+        "stop": "eos",
+        "generated_tokens": 25,
+        "decode_seconds": 1.1201720419339836,
+        "history_sha256": "efbc8321322d55347d31e60c9fa088b44ed26fccfe207b004566a6cd3e9dd91b",
+        "prompt_sha256": "740153268e376abf2452b6a87bf2b2cd81905747c0ed39de5d8e2d4b2ad2c015",
+        "input_tokens": 540,
+        "raw_sha256": "bc6b8e2995cbfe1a3612e71cf34f69eb2f50c5f8222d9037bc078ff10a2c71c4"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "record",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed without the exchange details. Could you please provide the order ID, item ID, new item ID, and payment method ID?",
+        "stop": "eos",
+        "generated_tokens": 36,
+        "decode_seconds": 1.492156167048961,
+        "history_sha256": "b8ea8e1a4fecb620af3a6418e5b666a326b7cbf3a0e40c20d85dcea948814b58",
+        "prompt_sha256": "6484803a2b8bc16f59613cff199bfca45c65e4f6ac5c781bf32a324dc1702eb8",
+        "input_tokens": 540,
+        "raw_sha256": "75b5776e5cc583fcad0b90572a3ca5a361756cf6952b432945c89e255753360c"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "customer",
+      "expected_state": "exchange_requested",
+      "first_disposition": "executed",
+      "first_raw_sha256": "78217612fdec5217be6788dd50c63985a36899b9e7bea8757a8179df8b8c4f7b",
+      "retry": null,
+      "final_disposition": "executed",
+      "detected_name": "exchange_delivered_order_items",
+      "detected_arguments": "{\"order_id\": \"EX-271\", \"item_id\": \"JIG-300\", \"new_item_id\": \"JIG-800\", \"payment_method_id\": \"CARD-07\"}",
+      "without_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "after": {
+          "dispatch": "written",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "exchange_requested"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "control",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as there is no valid tool available for the exchange.",
+        "stop": "eos",
+        "generated_tokens": 25,
+        "decode_seconds": 1.1224030000157654,
+        "history_sha256": "1c440f06fbe651781d178c9f0a08f351800bb4d4420f0a4dbb9ef5bc56a36b70",
+        "prompt_sha256": "b36fc59f02f2610f23e9a430334dcca4c028d729798441fd5c1bbafcd9a052f8",
+        "input_tokens": 540,
+        "raw_sha256": "bc6b8e2995cbfe1a3612e71cf34f69eb2f50c5f8222d9037bc078ff10a2c71c4"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    },
+    {
+      "case": "approved-checkout-b",
+      "arm": "cache",
+      "expected_state": "exchange_requested",
+      "first_disposition": "tool_validation_error",
+      "first_raw_sha256": "bbe63fc2ed3a8a80c171a27f1d79bf81ee2a3413eed6e8d0435de0e08b3806d8",
+      "retry": {
+        "raw": "I'm sorry, but I'm unable to proceed with the exchange as there is no valid tool available for the exchange.",
+        "stop": "eos",
+        "generated_tokens": 25,
+        "decode_seconds": 1.126012958935462,
+        "history_sha256": "8878708b704bc5aa8dedd666897742db55e8791673fc62ce63cd57f15551bf6e",
+        "prompt_sha256": "a3126bd8630ecaa44f4eb0b5a382c10bd73230242fce24ee98d7f4296ce72dd2",
+        "input_tokens": 540,
+        "raw_sha256": "bc6b8e2995cbfe1a3612e71cf34f69eb2f50c5f8222d9037bc078ff10a2c71c4"
+      },
+      "final_disposition": "text",
+      "detected_name": null,
+      "detected_arguments": null,
+      "without_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      },
+      "with_gate": {
+        "before": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "after": {
+          "dispatch": "no_write",
+          "orders": {
+            "EX-140": "exchange_requested",
+            "EX-271": "delivered"
+          }
+        },
+        "effect": "unchanged"
+      }
+    }
+  ],
+  "comparison": {
+    "stop": {
+      "without_gate": [
+        {
+          "id": "held-service-a",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-service-b",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-checkout-a",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-checkout-b",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-service-a",
+          "original_state": "exchange_requested",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "lost",
+          "listed_first_change": 1,
+          "listed_top": "lost"
+        },
+        {
+          "id": "approved-service-b",
+          "original_state": "delivered",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "restored",
+          "listed_first_change": 4,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-checkout-a",
+          "original_state": "exchange_requested",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "lost",
+          "listed_first_change": 2,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-checkout-b",
+          "original_state": "delivered",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "restored",
+          "listed_first_change": 2,
+          "listed_top": "unchanged"
+        }
+      ],
+      "with_gate": [
+        {
+          "id": "held-service-a",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-service-b",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-checkout-a",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-checkout-b",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-service-a",
+          "original_state": "exchange_requested",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "lost",
+          "listed_first_change": 1,
+          "listed_top": "lost"
+        },
+        {
+          "id": "approved-service-b",
+          "original_state": "delivered",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "restored",
+          "listed_first_change": 4,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-checkout-a",
+          "original_state": "exchange_requested",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "lost",
+          "listed_first_change": 2,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-checkout-b",
+          "original_state": "delivered",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "restored",
+          "listed_first_change": 2,
+          "listed_top": "unchanged"
+        }
+      ]
+    },
+    "retry": {
+      "without_gate": [
+        {
+          "id": "held-service-a",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-service-b",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-checkout-a",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-checkout-b",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-service-a",
+          "original_state": "exchange_requested",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "lost",
+          "listed_first_change": 1,
+          "listed_top": "lost"
+        },
+        {
+          "id": "approved-service-b",
+          "original_state": "delivered",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "restored",
+          "listed_first_change": 4,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-checkout-a",
+          "original_state": "exchange_requested",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "lost",
+          "listed_first_change": 2,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-checkout-b",
+          "original_state": "delivered",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "restored",
+          "listed_first_change": 2,
+          "listed_top": "unchanged"
+        }
+      ],
+      "with_gate": [
+        {
+          "id": "held-service-a",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-service-b",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-checkout-a",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "held-checkout-b",
+          "original_state": "delivered",
+          "expected_state": "delivered",
+          "ranked_first_change": null,
+          "ranked_top": "unchanged",
+          "listed_first_change": null,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-service-a",
+          "original_state": "exchange_requested",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "lost",
+          "listed_first_change": 1,
+          "listed_top": "lost"
+        },
+        {
+          "id": "approved-service-b",
+          "original_state": "delivered",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "restored",
+          "listed_first_change": 4,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-checkout-a",
+          "original_state": "exchange_requested",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "lost",
+          "listed_first_change": 2,
+          "listed_top": "unchanged"
+        },
+        {
+          "id": "approved-checkout-b",
+          "original_state": "delivered",
+          "expected_state": "exchange_requested",
+          "ranked_first_change": 1,
+          "ranked_top": "restored",
+          "listed_first_change": 2,
+          "listed_top": "unchanged"
+        }
+      ]
+    }
+  }
+}

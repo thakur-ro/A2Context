@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 from time import perf_counter
 
+from jsonschema.exceptions import ValidationError
 from qwen_agent.agents.fncall_agent import FnCallAgent
 from qwen_agent.log import logger
 from qwen_agent.llm.function_calling import BaseFnCallModel
@@ -49,7 +50,7 @@ class SavedCompletion(BaseFnCallModel):
 
 
 class LocalTool(BaseTool):
-    def __init__(self, schema, invoke, tracer):
+    def __init__(self, schema, invoke, tracer, *, validation_error_text=None):
         self.name, self.description = schema["name"], schema["description"]
         # Qwen-Agent accepts this declaration subset. SQLite still checks all four exact IDs.
         self.parameters = {k: schema["parameters"][k] for k in ("type", "properties", "required")}
@@ -57,6 +58,8 @@ class LocalTool(BaseTool):
         self.tracer = tracer
         self.receipt = None
         self.attempts = 0
+        self.rejections = 0
+        self.validation_error_text = validation_error_text
         super().__init__()
 
     def call(self, params, **kwargs):
@@ -66,9 +69,12 @@ class LocalTool(BaseTool):
                                                           "gen_ai.tool.name": self.name}) as span:
             try:
                 arguments = self._verify_json_format_args(params)
-            except ValueError:
+            except (ValueError, ValidationError):
+                self.rejections += 1
                 span.set_attribute("exchange.result", "argument_validation_error")
                 span.set_status(StatusCode.ERROR, "Argument validation failed")
+                if self.validation_error_text is not None:
+                    return self.validation_error_text
                 raise
             with self.tracer.start_as_current_span("Dispatch to SQLite") as child:
                 self.receipt = self.invoke({"kind": "tool_call", "label": self.name, "outcome": arguments})

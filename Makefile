@@ -36,6 +36,7 @@ check-dispatch-study:
 check-qwen-agent:
 	cargo build --locked
 	$(PYTHON) examples/exchange-approval/dispatch-study/framework/replay.py --check
+	$(PYTHON) examples/exchange-approval/dispatch-study/framework/retry.py --check
 	$(PYTHON) examples/exchange-approval/dispatch-study/framework/check_sidecar_export.py
 
 check-ui:
