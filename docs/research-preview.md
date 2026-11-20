@@ -12,6 +12,12 @@ Select a first-token finding to compare the source edits before generation. For 
 
 ![Context map showing the original and edited probabilities for the token 4 and the measured decoder-block swap](media/context-token.png)
 
+Choose **Follow source edits across this answer** to see which edits mattered at different points in the same generation. In the recorded sentence, **returns-policy** has the largest measured effect on the return-window number at position 6. **refund-policy** has the largest effect on the refund time at position 14. Selecting a cell shows the exact edit, the score change at that prefix and both freely generated answers. Untested inputs appear below the measurements. From the recommendation detail page, the address includes the selected token and source edit so another engineer can open the same comparison.
+
+![Three source edits across the sixteen tokens of a returns answer, with the refund time selected](media/source-edits-by-token.png)
+
+Each cell compares two log probabilities for the same output token with all earlier output tokens fixed. The sign shows direction and the color intensity uses one scale for the entire answer. The report requires access to a model that can score edited requests. A workflow trace alone supplies no cell values. [Measurement and generation conditions](methods.md) · [Saved CPU measurements](../examples/runtime-comparison/output-token-report-transformers.json)
+
 The overview fixture contains 43 findings. The overview draws up to 120 nodes and the picker includes every loaded node. The layout brings linked nodes closer for navigation. Edge length carries no importance score. To investigate model internals, open the exchange demo’s **Before inference** view, select the measured request, then **Inspect both activation positions**. Each dot there represents one intervention at a known decoder block and token position. [Walkthrough](demo.md#see-what-the-model-did-on-the-pending-request)
 
 ## Evidence ledger for 20 November 2026
@@ -57,7 +63,15 @@ We allowed one fresh local generation after each of the 22 argument rejections. 
 
 The next test needs a second workflow where evidence can come from a retrieved document, a tool result or the latest message. Register its expected outcome and compare the ranking to latest-message and first-listed selection before proposing a default. Use preflight to check whether the edits share request bytes. Have a workflow engineer investigate an affected request without guidance and record time to identify the failed stage and whether the recommended edit restores the outcome on a fresh request. The current fixtures supply no independent usability result.
 
-We screened the public τ-Bench airline tasks at revision `c06b07d`. Of 30 training tasks, six list both a reservation lookup and a cancellation or update among their reference actions. Five of 20 test tasks meet the same criterion. The selection counts tasks once per split, includes any action named `get_reservation_details` together with one beginning `cancel_` or `update_`, and uses no model outputs. This supplies a candidate transfer cohort with a tool result and an order-changing action. The reference arguments must stay on the scoring side. A reference action list alone does not establish the exact next tool call, so the study still needs validated checkpoints before scoring source edits. [Pinned airline tasks](https://github.com/sierra-research/tau2-bench/blob/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/data/tau2/domains/airline/tasks.json) · [Official splits](https://github.com/sierra-research/tau2-bench/blob/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/data/tau2/domains/airline/split_tasks.json)
+We froze five trial-zero checkpoints from Sierra’s public airline submission. Each follows a linked reservation lookup and stops immediately before an agent response. Across those checkpoints, all 19 controlled substitutions kept their source ID and passed the name-only preflight check. With independently pinned text digests, preflight flagged all 19 substitutions, distinguished all 19 missing-anchor controls, and passed all five intact requests. The source ranges were disjoint in each request. This measures whether exact upstream text survived assembly. It requires the workflow to know which text to expect. [Frozen checkpoints](../examples/airline-transfer/selection.json) · [Capture results](../examples/airline-transfer/capture-results.json)
+
+To reproduce the capture comparison after downloading the pinned inputs, build the CLI and run:
+
+```sh
+cargo build --locked
+python3 examples/airline-transfer/check_capture.py --data /tmp/airline-study --binary target/debug/nexusweave --check
+```
+
 
 ## Release scope
 

@@ -176,7 +176,9 @@ pub(crate) fn report_for_pending(
     report.anchor_overlap = anchor_overlap::measure(call);
     if let Some(fingerprint) = receipt_fingerprint(call, scope.as_ref(), required.as_ref()) {
         report.receipt = Some(Receipt {
-            version: if required.is_some() { 2 } else { VERSION },
+            version: required
+                .as_ref()
+                .map_or(VERSION, RequiredSources::receipt_version),
             scope,
             fingerprint,
             required_sources: required,
@@ -251,7 +253,7 @@ pub(crate) fn recorded<'a>(run_id: &'a str, call: &'a Call) -> Option<RecordedCh
         Ok(receipt) => {
             let mut report = compare(call, scope);
             report.source_coverage = receipt.required_sources.as_ref().map(|r| r.evaluate(call));
-            if receipt.version == 2 {
+            if receipt.version >= 2 {
                 report.anchor_overlap = anchor_overlap::measure(call);
             }
             Verification::Matched {
@@ -274,10 +276,12 @@ fn verify<'a>(call: &Call, captured: &'a CapturedReceipt) -> Result<&'a Receipt,
         .receipt
         .as_ref()
         .ok_or("The workflow supplied an unreadable preflight receipt.")?;
-    if !matches!(
-        (receipt.version, &receipt.required_sources),
-        (1, None) | (2, Some(_))
-    ) {
+    if receipt.version
+        != receipt
+            .required_sources
+            .as_ref()
+            .map_or(VERSION, RequiredSources::receipt_version)
+    {
         return Err("The preflight receipt version is unsupported.");
     }
     if call
@@ -301,7 +305,7 @@ fn verify<'a>(call: &Call, captured: &'a CapturedReceipt) -> Result<&'a Receipt,
     )
     .ok_or("The original request body was unavailable for verification.")?;
     if actual != receipt.fingerprint {
-        if receipt.version == 2 {
+        if receipt.version >= 2 {
             return Err("The request, source requirement or captured anchors differ from the preflight check.");
         }
         return Err(
@@ -315,7 +319,7 @@ pub(crate) fn verified_receipt(call: &Call) -> Option<&Receipt> {
     verify(call, call.preflight_receipt.as_ref()?).ok()
 }
 
-/// Recompute capture coverage only when a version-two receipt matches the recorded inputs.
+/// Recompute capture coverage only when a source requirement receipt matches the recorded inputs.
 pub fn verified_source_coverage(call: &Call) -> Option<SourceCoverage> {
     let captured = call.preflight_receipt.as_ref()?;
     let required = captured.receipt.as_ref()?.required_sources.as_ref()?;
@@ -348,7 +352,13 @@ fn receipt_fingerprint(
         })
         .collect();
     anchors.sort_unstable();
-    let payload = json!(["nexusweave.preflight", 2, base, required, anchors]);
+    let payload = json!([
+        "nexusweave.preflight",
+        required.receipt_version(),
+        base,
+        required,
+        anchors
+    ]);
     Some(crate::replay::sha256(payload.to_string().as_bytes()))
 }
 

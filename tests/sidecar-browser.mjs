@@ -47,6 +47,16 @@ try {
   const explanation = await token.innerText();
   for (const value of probabilities) assert.ok(value.endsWith("%") && explanation.includes(value));
   if (process.env.CONTEXT_TOKEN_CAPTURE) await map.screenshot({path:process.env.CONTEXT_TOKEN_CAPTURE});
+  const graphUrl = page.url();
+  await map.getByText("Follow source edits across this answer",{exact:true}).click();
+  const inlinePath = map.getByRole("region",{name:"Source edits along the answer"});
+  await inlinePath.getByRole("button",{name:/Token 6 ·/}).click();
+  await inlinePath.getByRole("button",{name:/Token 6 ·/}).press("ArrowRight");
+  await inlinePath.getByRole("button",{name:/Token 7 ·/,pressed:true}).waitFor();
+  const firstSignal = inlinePath.locator("tbody tr").first().getByRole("button").first();
+  await firstSignal.click();
+  assert.equal(await inlinePath.locator(".edit-ranks details[open]").count(),1);
+  assert.equal(page.url(),graphUrl);
   await focus.selectOption("");
   assert.equal(await map.locator(".selected-token").count(),0);
   const question = page.getByLabel("Question about workflow evidence");
@@ -197,12 +207,28 @@ try {
   await page.locator(".card").filter({ hasText: "Token measurements" }).getByRole("link", { name: "Review recommendation" }).click();
   const tokenRecommendation = page.url();
   const pathRegion = page.getByRole("region", {name:"Source edits along the answer"});
+  const matrix = pathRegion.getByRole("table",{name:"Measured source edits by output token"});
+  await matrix.waitFor();
+  const raw = JSON.parse(await readFile(new URL("../examples/runtime-comparison/output-token-report-transformers.json",import.meta.url),"utf8")).output_scores;
+  for (const [source, values] of Object.entries(raw.sources)) {
+    const cells = await matrix.getByRole("row").filter({has:page.getByRole("rowheader",{name:source,exact:true})}).getByRole("cell").allTextContents();
+    const expected = values.edited_log_probs.slice(0,16).map((v,i) => v > raw.baseline_log_probs[i] ? "↑" : v < raw.baseline_log_probs[i] ? "↓" : "=");
+    assert.deepEqual(cells,expected);
+  }
   await pathRegion.getByRole("button", {name:/Token 6 ·/}).click();
   assert.equal(await pathRegion.locator(".edit-result strong").first().innerText(), "returns-policy");
   await pathRegion.getByText("Inspect edit to refund-policy", {exact:true}).click();
   await pathRegion.getByRole("button", {name:/largest shift · token 14/}).click();
   assert.equal(await pathRegion.locator(".edit-result strong").first().innerText(), "refund-policy");
   assert.equal(new URL(page.url()).hash, "#output-token-14");
+  if (process.env.SOURCE_TOKEN_MAP_CAPTURE) await pathRegion.screenshot({path:process.env.SOURCE_TOKEN_MAP_CAPTURE});
+  await matrix.getByRole("button",{name:/refund-policy · Position 14 ·/}).click();
+  const selectedEdit = new URLSearchParams(new URL(page.url()).hash.slice(1));
+  assert.equal(selectedEdit.get("output-token"),"14");
+  assert.equal(selectedEdit.get("generation"),"refund-policy");
+  await page.reload();
+  await pathRegion.locator('details[data-generation="refund-policy"][open]').waitFor();
+  await pathRegion.getByRole("button",{name:/^Token 14 ·/,pressed:true}).waitFor();
   await pathRegion.getByText("2 captured inputs without a source-edit measurement").click();
   await pathRegion.getByText("format-instruction, question", {exact:true}).waitFor();
   await pathRegion.getByText("Inspect edit to store-name", {exact:true}).click();

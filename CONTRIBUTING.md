@@ -35,6 +35,20 @@ After editing `ui/mcp-app/view.js` or `ui/mcp-app/view.html`, run `npm ci --pref
 
 The dashboard uses A2UI 1.0 for recommendation surfaces. Its official Lit renderer and Basic Catalog are bundled into the Rust binary. After editing `ui/a2ui/surface.js`, run `npm ci --prefix ui/a2ui` and `npm run build --prefix ui/a2ui`. Run `npm run check --prefix ui/a2ui` to verify the bundle and dependency licenses. [A2UI client integration](https://a2ui.org/guides/client-integration/)
 
+### Check a release candidate on your machine
+
+Use a clean checkout, the browser setup above, and a running Docker daemon. Install the OTLP/HTTP exporter in a separate environment so the sidecar tests can send real Protobuf telemetry as well as JSON.
+
+```sh
+sdk_env=$(mktemp -d)
+python3 -m venv "$sdk_env"
+"$sdk_env/bin/python" -m pip install opentelemetry-exporter-otlp-proto-http==1.45.2
+PLAYWRIGHT_MODULE="$browser_tools/node_modules/playwright-core/index.mjs" \
+  make check-release SDK_PYTHON="$sdk_env/bin/python"
+```
+
+This runs the sidecar integration suite, saved study comparisons, browser journeys, both embedded UI bundle checks, container replacement, Rust API docs and installable crate verification. CI uses the same sidecar, browser, experiment and bundle targets. A local pass covers the host and container you ran it on. [Release and deployment measurements](docs/validation.md)
+
 ## Send a change
 
 Describe the workflow you were inspecting and the expected result. For an importer, include a minimal synthetic input and show which recorded fields it maps to. For a UI change, include the view and a way to reproduce it with a fixture. For a replay change, include the intervention and the outcome the runner scored.

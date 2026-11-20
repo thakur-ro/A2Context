@@ -1,7 +1,7 @@
 "use strict";
 
 // The scores on a page share the recorded output prefix at each position.
-function tokenPath(card) {
+function tokenPath(card, {sharePosition = true} = {}) {
   const {detail} = card.evidence;
   const {landmark, location: measured} = detail;
   const pageSize = 16;
@@ -13,7 +13,8 @@ function tokenPath(card) {
   const result = element("div", {"aria-live":"polite", text:"Loading token measurements…"});
   region.append(title, result);
   let currentRequest = 0;
-  let linkedGeneration = new URLSearchParams(location.hash.slice(1)).get("generation");
+  const linkedSelection = new URLSearchParams(sharePosition ? location.hash.slice(1) : "");
+  let linkedGeneration = linkedSelection.get("generation");
 
   async function load(index, focus = false) {
     const request = ++currentRequest;
@@ -25,26 +26,42 @@ function tokenPath(card) {
         offset, block:landmark.block});
       if (request !== currentRequest) return;
       const metadata = new Map(page.edits.map(edit => [edit.context_id, edit]));
-      const tokens = element("div", {className:"answer-tokens", role:"group", "aria-label":"Recorded output tokens"});
       const readout = element("div", {className:"token-readout"});
-      const maximum = Math.max(...landmark.positions.map(p => Math.abs(p.edited - p.baseline)));
       const buttons = page.tokens.map(row => {
         const text = row.fragment.text;
         const button = element("button", {type:"button", text:text.trim() ? excerpt(row.fragment) : (text ? "␣" : "◌"),
           "aria-label":"Token " + (row.output_token + 1) + " · " + JSON.stringify(fragment(text))});
-        const strongest = row.sources.reduce((peak, s) => Math.max(peak, Math.abs(s.edited_prompt_log_probability - row.baseline_log_probability)), 0);
-        button.style.setProperty("--shift", 100 * strongest / maximum + "%");
         button.addEventListener("click", () => select(row));
+        button.addEventListener("keydown", event => {
+          if (!["ArrowLeft","ArrowRight"].includes(event.key)) return;
+          event.preventDefault();
+          const next = row.output_token + (event.key === "ArrowRight" ? 1 : -1);
+          if (next >= 0 && next < page.total_output_tokens) goTo(next);
+        });
         return button;
       });
+      const map = tokenEditMap(page,buttons,select);
       function goTo(token) {
         const local = page.tokens.find(row => row.output_token === token);
         if (!local) return load(token, true);
         select(local);
         buttons[page.tokens.indexOf(local)].focus();
       }
-      function select(row) {
-        page.tokens.forEach((other, i) => buttons[i].setAttribute("aria-pressed", String(other === row)));
+      function select(row, sourceId) {
+        const index = page.tokens.indexOf(row);
+        buttons.forEach((button,i) => button.setAttribute("aria-pressed", String(i === index)));
+        for (const band of map.querySelectorAll("tbody tr")) {
+          for (const cell of Array.from(band.cells).slice(1)) {
+            const selected = cell.cellIndex === index+1;
+            cell.toggleAttribute("data-selected",selected);
+            if (cell.firstElementChild) cell.firstElementChild.tabIndex = selected ? 0 : -1;
+          }
+        }
+        const selected = buttons[index].getBoundingClientRect();
+        const visible = map.getBoundingClientRect();
+        const labelWidth = map.querySelector("thead th").getBoundingClientRect().width;
+        if (selected.left < visible.left+labelWidth) map.scrollLeft += selected.left-visible.left-labelWidth;
+        else if (selected.right > visible.right) map.scrollLeft += selected.right-visible.right;
         const baseline = row.baseline_log_probability;
         const sources = row.sources.map(s => ({edit:metadata.get(s.context_id), score:s.edited_prompt_log_probability,
           delta:s.edited_prompt_log_probability - baseline, other:s.other_edited_delta})).sort((a,b) => Math.abs(b.delta) - Math.abs(a.delta));
@@ -89,18 +106,17 @@ function tokenPath(card) {
           comparison.append(compare);
           readout.append(comparison);
         }
-        const share = new URL(window.location.href);
-        const generation = linkedGeneration && [...ranks.querySelectorAll("details")].find(node => node.dataset.generation === linkedGeneration);
+        const id = sourceId || linkedGeneration;
+        const generation = id && [...ranks.querySelectorAll("details")].find(node => node.dataset.generation === id);
+        if (generation) generation.open = true;
+        if (linkedGeneration && generation) generation.querySelector("summary").focus();
         linkedGeneration = null;
-        if (generation) {
-          generation.open = true;
-          generation.querySelector("summary").focus();
-        } else {
-          share.hash = "output-token-" + (row.output_token + 1);
-        }
+        if (!sharePosition) return;
+        const share = new URL(window.location.href);
+        share.hash = generation ? new URLSearchParams({"output-token":row.output_token+1,generation:id}) :
+          "output-token-" + (row.output_token + 1);
         history.replaceState(null, "", share);
       }
-      tokens.append(...buttons);
       const nav = element("div", {className:"actions"});
       for (const [label, next] of [["Earlier tokens", offset - pageSize], ["Later tokens", page.next_offset]]) {
         if (next == null || next < 0) continue;
@@ -113,7 +129,9 @@ function tokenPath(card) {
         page.captured_sources + (page.captured_sources === 1 ? " captured context entry" : " captured context entries")});
       const untestedList = untested ? element("details", {}, element("summary", {text:untested + " captured inputs without a source-edit measurement"}),
         element("p", {text:page.untested_examples.map(sourceName).join(", ") + (untested > page.untested_examples.length ? " …" : "")})) : null;
-      result.replaceChildren(coverage, element("p", {text:"Select an output token. The bar beneath it shows the largest absolute score shift among the tested edits, scaled to the largest shift in this answer."}), tokens, nav, readout);
+      result.replaceChildren(coverage, map,
+        element("p",{className:"token-map-key",text:"↑ Raised · ↓ Lowered · = No change. Darker cells show a larger absolute change in log probability across this answer. Select a cell to inspect the edit."}),
+        nav, readout);
       if (untestedList) result.append(untestedList);
       const selected = page.tokens.find(row => row.output_token === index);
       select(selected);
@@ -124,8 +142,40 @@ function tokenPath(card) {
       if (request === currentRequest) result.removeAttribute("aria-busy");
     }
   }
-  const linked = /^#output-token-([1-9]\d*)$/.exec(window.location.hash);
-  const requested = linked ? Number(linked[1]) - 1 : landmark.token;
-  load(requested < landmark.total_tokens ? requested : landmark.token);
+  const linked = sharePosition && /^#output-token-([1-9]\d*)$/.exec(window.location.hash);
+  const position = linked ? linked[1] : linkedSelection.get("output-token");
+  const requested = Number(position)-1;
+  load(Number.isSafeInteger(requested) && requested >= 0 && requested < landmark.total_tokens ? requested : landmark.token);
   return region;
+}
+
+function tokenEditMap(page,buttons,choose) {
+  const maximum = Math.max(0,...page.edits.map(edit => Math.abs(edit.peak?.delta || 0)));
+  const columns = page.tokens.map(row => new Map(row.sources.map(s =>
+    [s.context_id,s.edited_prompt_log_probability-row.baseline_log_probability])));
+  const header = element("tr",{},element("th",{scope:"col",text:"Source edited"}),
+    ...buttons.map((button,i) => element("th",{scope:"col"},element("small",{text:page.tokens[i].output_token+1}),button)));
+  const rows = page.edits.map(edit => element("tr",{},element("th",{scope:"row",text:sourceName(edit.source)}),
+    ...columns.map((column,i) => {
+      const delta = column.get(edit.context_id);
+      const description = "Position "+(page.tokens[i].output_token+1)+" · "+(delta == null ? "No measurement" : signed(delta)+" log p");
+      if (delta == null) return element("td",{text:"—",title:description,"aria-label":description});
+      const button = element("button",{type:"button",title:description,text:delta > 0 ? "↑" : delta < 0 ? "↓" : "=",
+        "aria-label":sourceName(edit.source)+" · "+description});
+      button.onclick = () => choose(page.tokens[i],edit.context_id);
+      button.onkeydown = event => {
+        const step = {ArrowLeft:-1,ArrowRight:1}[event.key];
+        if (!step) return;
+        const target = button.closest("tr").cells[i+1+step]?.querySelector("button");
+        if (target) {event.preventDefault();target.focus();target.click();}
+      };
+      const cell = element("td",{},button);
+      if (delta) {
+        cell.dataset.direction = delta > 0 ? "up" : "down";
+        cell.style.setProperty("--strength",String(Math.abs(delta)/maximum));
+      }
+      return cell;
+    })));
+  return element("div",{className:"token-edit-map",tabindex:"0","aria-label":"Scroll through output positions"},
+    element("table",{"aria-label":"Measured source edits by output token"},element("thead",{},header),element("tbody",{},...rows)));
 }

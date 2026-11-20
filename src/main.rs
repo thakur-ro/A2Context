@@ -977,6 +977,11 @@ fn browser_asset(path: &str) -> Option<(u16, &'static str, &'static [u8])> {
             "text/javascript; charset=utf-8",
             include_bytes!("../ui/context-replay-coverage.js").as_slice(),
         ),
+        "/source-coverage.js" => (
+            200,
+            "text/javascript; charset=utf-8",
+            include_bytes!("../ui/source-coverage.js").as_slice(),
+        ),
         "/conversation.js" => (
             200,
             "text/javascript; charset=utf-8",

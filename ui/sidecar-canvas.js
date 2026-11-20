@@ -21,7 +21,9 @@ function canvasRecord(card) {
       (target.before === target.with_guard ? "stayed" : "ended") + " in “" + state(target.with_guard) + "”.";
   } else if (card.kind === "source_gap") {
     facts.unconfirmed_sources = [...new Set(detail.coverage.alternatives.flatMap(group => group.unconfirmed))];
-    facts.observed = "No source alternative was complete. Unconfirmed IDs include " + facts.unconfirmed_sources.join(", ") + ".";
+    facts.observed = detail.coverage.text_mismatches?.length
+      ? detail.coverage.alternatives.map(group => sourceAlternativeText(detail.coverage, group)).join(". ")
+      : "No source alternative was complete. Unconfirmed IDs include " + facts.unconfirmed_sources.join(", ") + ".";
   } else if (card.kind === "conflict") {
     map = { root:detail.rule.replaceAll("_", " ") + " · " + detail.scope, arms:detail.sources.map((source, i) => ({
       label:sourceName(source), value:detail.values[i] ?? "Value unavailable",

@@ -90,7 +90,25 @@ nexusweave preflight examples/exchange-approval/pending.json | jq -e '.source_co
 
 Set the `nexusweave.required_sources` attribute to an object or its JSON encoding. For example, `{"name":"Exchange authorization","any_of":[["confirmation-cache","latest-customer-message"],["verified-consent-event"]]}` names two alternatives. Each inner list requires all its exact source IDs. Preflight counts an included declaration with a validated fragment in the original request body. The response lists each alternative's required and unconfirmed IDs. The dashboard shows the same result in **Before inference** when you load the request.
 
-An unconfirmed ID means the capture lacks that anchor. The text may still be present. A complete set establishes capture coverage only. Currency, revision, the meaning of the text and approval at dispatch require their own checks. When the request includes a body, preflight returns a version-two receipt for this check. Attach that receipt to the inference span alongside the original request and source declarations to see where a gap recurs. [Example request](../examples/exchange-approval/pending.json)
+With an ID-only requirement, an unconfirmed ID means the capture lacks that anchor. The text may still be present. A complete set establishes capture coverage only. Currency, revision, the meaning of the text and approval at dispatch require their own checks. When the request includes a body, preflight returns a version-two receipt for this check. Attach that receipt to the inference span alongside the original request and source declarations to see where a gap recurs. [Example request](../examples/exchange-approval/pending.json)
+
+#### Check that the expected text reached the model request
+
+A request builder can preserve a source label while accidentally inserting a placeholder or stale text. To check this before inference, compute the expected SHA-256 digest when your workflow receives the upstream value. Pass it with the named requirement when you inspect the assembled request.
+
+```python
+from hashlib import sha256
+
+requirement = {
+    "name": "Reservation lookup",
+    "any_of": [["reservation-details"]],
+    "expected_text_sha256": {"reservation-details": sha256(upstream_text.encode("utf-8")).hexdigest()},
+}
+```
+
+Preflight compares the exact decoded UTF-8 text at the declared byte range. Whitespace and Unicode spelling affect the digest. If an ID has several fragments, one exact match satisfies its requirement. An absent anchor stays unconfirmed. An anchored ID whose fragments all differ also appears in `text_mismatches`. An alternative can still pass through another configured route.
+
+A version-three receipt binds the digests to the request and its anchors. Calculating the digest after a faulty substitution would accept the substituted text. Verification depends on the workflow supplying the expected value independently. It does not establish that the upstream value was current or that the model used it. [Airline substitution test](../examples/airline-transfer/capture-results.json)
 
 ### Check whether editing a passage touches two sources
 
@@ -107,7 +125,7 @@ jq '.attributes["nexusweave.context.semantics"].request_sources +=
     examples/preflight-returns.json > /tmp/returns-source-boundaries.json
 ```
 
-`anchor_overlap.named_bytes` counts the union of all included, named fragment ranges. `shared_bytes` counts the bytes covered by at least two distinct source IDs in the same field. Offsets address UTF-8 bytes in the decoded JSON string. Repeated anchors for one ID count once. Without named fragments the CLI omits the measurement. A measured zero means the named ranges were disjoint across distinct IDs. The sidecar also exposes the measurement on a matching version-two recorded check.
+`anchor_overlap.named_bytes` counts the union of all included, named fragment ranges. `shared_bytes` counts the bytes covered by at least two distinct source IDs in the same field. Offsets address UTF-8 bytes in the decoded JSON string. Repeated anchors for one ID count once. Without named fragments the CLI omits the measurement. A measured zero means the named ranges were disjoint across distinct IDs. The sidecar also exposes the measurement on a matching version-two or version-three recorded check.
 
 ### Show preflight alongside the recorded answer
 

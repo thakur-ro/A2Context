@@ -214,7 +214,7 @@ function orderComparison({ forward, reverse, differs }) {
 
 function requiredSourceList(coverage) {
   return element("ul",{},...coverage.alternatives.map(group => element("li",{
-    text:group.required.join(" + ") + (group.unconfirmed.length ? " · Still unconfirmed: " + group.unconfirmed.join(", ") : " · All anchored in the request")
+    text:sourceAlternativeText(coverage, group)
   })));
 }
 
@@ -306,7 +306,9 @@ function findingTitle(kind, detail) {
 }
 
 function findingDetail(kind, detail) {
-  if (kind === "source_gap") return "No configured alternative had all its source fragments anchored in the request.";
+  if (kind === "source_gap") return detail.coverage.text_mismatches?.length
+    ? "Captured text differs from the expected value for " + detail.coverage.text_mismatches.join(", ") + "."
+    : "No configured alternative had all its source fragments anchored in the request.";
   if (kind === "source_mask") return maskOutcomes[detail.mask.outcome] + " · " + detail.mask.model;
   if (kind === "prefill") return plural(detail.ranked.length, "source edit") + " · " + detail.model_id;
   if (kind === "replacement") return detail.outcome + " · " + detail.model + " · " + plural(detail.wordings, "tested wording");

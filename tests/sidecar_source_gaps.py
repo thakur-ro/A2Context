@@ -10,18 +10,24 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from check_sidecar import attrs, case_span, export, get, root_span, send_traces, server
 
 
-def checked_span(binary, index, *, anchored=False, tamper=None, user="pat", source_version="v1"):
+def checked_span(binary, index, *, anchored=False, tamper=None, user="pat", source_version="v1", expected=None):
     request = json.loads((ROOT / "examples/exchange-approval/pending.json").read_text())
     fields = request["attributes"]
     fields["nexusweave.context.semantics"]["request_sources"][0]["source_version"] = source_version
     if not anchored:
         fields["nexusweave.context.semantics"]["request_sources"].pop()
+    if expected:
+        fields["nexusweave.required_sources"]["expected_text_sha256"] = {"latest-customer-message": expected}
     if index % 2:
         fields["nexusweave.required_sources"]["any_of"].reverse()
     report = json.loads(subprocess.check_output([binary, "preflight", "-"], input=json.dumps(request), text=True))
-    assert report["source_coverage"]["matched"] == anchored
+    assert report["source_coverage"]["matched"] == (anchored and expected is None)
     receipt = report["receipt"]
-    assert receipt["version"] == 2
+    assert receipt["version"] == (3 if expected else 2)
+    if tamper == "digest":
+        receipt["required_sources"]["expected_text_sha256"]["latest-customer-message"] = "0" * 64
+    if tamper == "downgrade":
+        receipt["version"] = 2
     if tamper == "contract":
         receipt["required_sources"]["name"] += " (modified)"
     if tamper == "anchor":
@@ -68,6 +74,19 @@ def verify(binary):
             send_traces(base, export(checked_span(binary, 8, source_version="v2")))
             distinct = get(base, "findings", kind="source_gap", user="pat", workflow="policy-workflow")["rows"]
             assert {row["threads"] for row in distinct} == {1, 2}
+            # Expected values are customer-specific. Group by the failing source and
+            # preserve each occurrence's own digest and failure mode in its evidence.
+            cases = [checked_span(binary, i, anchored=present, expected=digit * 64, tamper=tamper, user="sam")
+                     for i, present, digit, tamper in [(9, True, "a", None), (10, True, "b", None),
+                                                      (11, False, "c", None), (12, True, "d", "digest"),
+                                                      (13, True, "e", "downgrade")]]
+            send_traces(base, export(*cases))
+            pinned = get(base, "findings", kind="source_gap", user="sam")["rows"]
+            changed, missing = sorted(pinned, key=lambda row: -row["occurrences"])
+            assert (changed["occurrences"], missing["occurrences"]) == (2, 1)
+            assert changed["evidence"]["detail"]["coverage"]["text_mismatches"] == ["latest-customer-message"]
+            assert changed["action"]["title"] == "Compare captured text with the upstream source"
+            assert "text_mismatches" not in missing["evidence"]["detail"]["coverage"]
         with server(binary, path, "--capture-content") as base:
             assert get(base, "findings", group=pat["id"], user="pat")["rows"][0]["threads"] == 2
         with server(binary, Path(tmp) / "redacted.sqlite") as base:

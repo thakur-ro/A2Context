@@ -311,8 +311,7 @@ function renderPreflightCheck(parent, check, call, { open, run, shadowAction }) 
       }
       if (sources) {
         section.append(node("h3", (sources.matched ? "Sources captured for " : "Check sources for ") + sources.name));
-        for (const group of sources.alternatives) section.append(node("p", group.required.join(" + ") +
-          (group.unconfirmed.length ? " · Still unconfirmed: " + group.unconfirmed.join(", ") : " · All anchored in the request")));
+        for (const group of sources.alternatives) section.append(node("p", sourceAlternativeText(sources, group)));
       }
       if (!findings.length) {
         section.append(node("p", countLabel(check.report.scoped_rule_items, "declared rule") + " checked."));

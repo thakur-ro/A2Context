@@ -5,10 +5,13 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 
-from check_sidecar import ROOT, server
+from check_sidecar import ROOT, export as otlp_export, send_traces, server
 
 sys.path.insert(0, str(ROOT / "examples/exchange-approval"))
 from demo import export
+
+sys.path.insert(0, str(ROOT / "tests"))
+from sidecar_source_gaps import checked_span
 
 
 def main():
@@ -21,6 +24,7 @@ def main():
         subprocess.run(["node", "tests/exchange-a2ui-browser.mjs", base], cwd=ROOT, check=True)
     with TemporaryDirectory() as directory, server(binary, Path(directory) / "gap.sqlite", "--capture-content") as base:
         export(base, capture_gap_binary=binary)
+        send_traces(base, otlp_export(checked_span(binary, 1, user="digest-test", anchored=True, expected="c" * 64)))
         subprocess.run(["node", "tests/source-gap-browser.mjs", base], cwd=ROOT, check=True)
 
 

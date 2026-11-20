@@ -13,7 +13,7 @@ A customer pauses the second of two exchanges. The agent still proposes it after
 | Your question | Evidence NexusWeave uses |
 | --- | --- |
 | Which conversations share a context problem? | Open a recommendation to find the turns with the same declared conflict, repeated input or missing source anchor. [Try a recurring capture gap](docs/demo.md#diagnose-missing-context-capture) |
-| Did the request contain the sources my workflow requires? | Before dispatch, check whether one complete set of named source fragments was captured. [Staging example](docs/guide.md#check-alternative-sources-before-dispatch) |
+| Did the request contain the sources my workflow requires? | Before dispatch, check the named fragments and optionally match their text against an upstream digest. [Staging example](docs/guide.md#check-alternative-sources-before-dispatch) |
 | Can I edit this passage and isolate one source? | Check which named fragments share the same bytes in the assembled request. [See overlapping edits](docs/guide.md#check-whether-editing-a-passage-touches-two-sources) |
 | Which source should I test before answering? | Check the assembled request. If your scorer supplies probabilities, compare candidate continuations before and after a named source edit at the same answer prefix. |
 | Would this edit fix the answer elsewhere? | Compare original and edited generations against a supplied reference. The dashboard surfaces matched questions where the same edit had opposite effects on correctness. |
@@ -39,4 +39,4 @@ make check          # Exercise the source, UI scripts and detector fixtures
 make verify-image   # Build and test the actual container, including container replacement
 ```
 
-[Developer setup](CONTRIBUTING.md) · [Staging checks and resource measurements](docs/validation.md) · [Rust API](docs/rust-api.md) · [Research and dataset credits](CREDITS.md) · [Apache 2.0 license](LICENSE)
+[Full local release check](CONTRIBUTING.md#check-a-release-candidate-on-your-machine) · [Staging checks and resource measurements](docs/validation.md) · [Rust API](docs/rust-api.md) · [Research and dataset credits](CREDITS.md) · [Apache 2.0 license](LICENSE)

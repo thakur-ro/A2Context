@@ -32,6 +32,14 @@ try {
     assert.ok(call.context.some(source => source.role === "user" && /hold the puzzle|don't swap the puzzle/.test(source.text)));
     assert.ok(call.context.every(source => source.source_id !== "latest-customer-message"));
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.goto(new URL("/?user=digest-test&kind=source_gap", base).href);
+    await page.getByRole("button",{name:"Show the context map"}).click();
+    await map.getByLabel("Focus a node").selectOption({label:"finding · Check sources for Exchange authorization"});
+    await map.getByRole("region",{name:"Configured alternatives"}).getByText(/Captured text differs: latest-customer-message/).waitFor();
+    await map.getByRole("button",{name:"source · latest-customer-message"}).waitFor();
+    assert.equal(await map.locator(".network-node.unconfirmed").count(),1);
+    await map.getByRole("button",{name:"unconfirmed · verified-consent-event"}).waitFor();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors,[]);
     await page.close();
   }

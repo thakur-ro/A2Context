@@ -52,6 +52,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Vary the wording and the order of the sources on fresh requests. Keep the scoring rule fixed and check which result repeats before changing the workflow.",
             "Different match counts in comparable replay conditions",
         ),
+        "source_gap" if detail["coverage"]["text_mismatches"].as_array().is_some_and(|ids| !ids.is_empty()) => (
+            "Compare captured text with the upstream source",
+            "Check the named fragment against the upstream value used to set its digest. Repeat preflight after correcting the fragment, its byte range or the expected value.",
+            "The captured fragment differs from the workflow’s expected text",
+        ),
         "source_gap" => (
             "Check the request builder and source capture",
             "Inspect the unconfirmed IDs for one alternative. Verify that the builder included those inputs and exported their named fragments, then repeat preflight.",

@@ -646,6 +646,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 "/sidecar-canvas.js",
                 include_bytes!("../../ui/sidecar-canvas.js"),
             ),
+            (
+                "/source-coverage.js",
+                include_bytes!("../../ui/source-coverage.js"),
+            ),
             ("/sidecar.js", include_bytes!("../../ui/sidecar.js")),
         ];
         const JS: &str = "text/javascript; charset=utf-8";

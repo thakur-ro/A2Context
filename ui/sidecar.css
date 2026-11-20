@@ -221,11 +221,23 @@ meter::-moz-meter-bar { background: var(--accent); }
   .repeat-counts th, .repeat-counts td { padding: .35rem; font-size: .85rem; }
 }
 
-.answer-tokens { display: flex; flex-wrap: wrap; gap: .2rem; padding: .8rem; background: var(--mist); border-radius: 6px; }
-.answer-tokens button { position: relative; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; padding: .25rem .4rem; max-width: 100%; border-color: transparent; }
-.answer-tokens button::after { position: absolute; content: ""; height: 3px; inset-inline-start: 0; bottom: 0; width: var(--shift); background: var(--accent); }
-.answer-tokens button[aria-pressed="true"]::after { background: var(--accent); }
-.answer-tokens button[aria-pressed="true"] { color: white; background: var(--accent); }
+.token-edit-map { max-width:100%; overflow-x:auto; margin-block:.8rem .4rem; }
+.token-edit-map table { width:100%; min-width:0; border-spacing:2px; border-collapse:separate; table-layout:auto; }
+.token-edit-map th,.token-edit-map td { text-align:center; padding:.15rem; border:0; }
+.token-edit-map th:first-child { position:sticky; left:0; z-index:1; background:var(--paper,white); text-align:left; min-width:6rem; max-width:10rem; overflow-wrap:anywhere; }
+.token-edit-map th small { display:block; font-weight:400; font-variant-numeric:tabular-nums; }
+.token-edit-map th button { display:block; margin:auto; min-width:2.25rem; max-width:4.5rem; min-height:2.25rem; padding:.2rem; line-height:1.2; overflow-wrap:anywhere; }
+.token-edit-map button[aria-pressed="true"] { background:var(--accent); color:white; }
+.token-edit-map td { color:#26384d; font-variant-numeric:tabular-nums; background:#f2f3f5; height:1.75rem; border-radius:3px; }
+.token-edit-map td[data-direction="up"] { background:rgb(96 150 196 / calc(.14 + .64 * var(--strength))); }
+.token-edit-map td[data-direction="down"] { background:rgb(211 139 87 / calc(.14 + .64 * var(--strength))); }
+.token-edit-map td[data-selected] { box-shadow:inset 0 0 0 1px #50657d; }
+.token-edit-map td button { display:block; width:100%; min-height:1.75rem; padding:0; color:inherit; background:transparent; border:0; box-shadow:none; }
+.token-edit-map td button:hover,.token-edit-map td button:focus-visible { outline:1px solid currentColor; }
+.token-map-key { font-size:.8rem; color:var(--muted); }
+.network-answer-path { margin-top:12px; }
+.network-answer-path > summary { cursor:pointer; }
+
 .token-readout h3 { margin: 1.2rem 0 .4rem; }
 .edit-ranks { padding: 0; margin: 0 0 1rem; list-style: none; }
 .edit-ranks li { padding: .6rem 0; border-block-end: 1px solid var(--line); }

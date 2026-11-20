@@ -229,6 +229,45 @@ fn a_source_name_in_unanchored_text_cannot_satisfy_a_capture_requirement() {
 }
 
 #[test]
+fn pins_match_any_exact_fragment_with_the_named_id() {
+    use sha2::{Digest, Sha256};
+    let pin = format!("{:x}", Sha256::digest(" é ".as_bytes()));
+    let mut input = json!({"version":1,"attributes":{
+        "nexusweave.request.body":json!({"copies":["é"," é "]}).to_string(),
+        "nexusweave.context.semantics":{"version":1,"request_sources":[
+            {"id":"old","source_id":"policy","request_fragment":{"pointer":"/copies/0","text_range":{"start_byte":0,"end_byte":2}}},
+            {"id":"new","source_id":"policy","request_fragment":{"pointer":"/copies/1","text_range":{"start_byte":0,"end_byte":4}}}
+        ]},
+        "nexusweave.required_sources":{"name":"Current policy","any_of":[["policy"],["fallback"]],
+            "expected_text_sha256":{"policy":pin}}
+    }});
+    let check_input = |v: &Value| check(v.clone()).unwrap().source_coverage.unwrap();
+    assert!(check_input(&input).matched);
+    input["attributes"][SEMANTICS]["request_sources"]
+        .as_array_mut()
+        .unwrap()
+        .pop();
+    let coverage = check_input(&input);
+    assert!(!coverage.matched);
+    assert_eq!(
+        coverage.text_mismatches.into_iter().collect::<Vec<_>>(),
+        ["policy"]
+    );
+    input["attributes"][SEMANTICS]["request_sources"][0]["source_id"] = json!("fallback");
+    let coverage = check_input(&input);
+    assert!(coverage.matched);
+    assert!(coverage.text_mismatches.is_empty());
+    for pins in [
+        json!({"other":pin}),
+        json!({"policy":"x"}),
+        json!({"policy":pin.to_uppercase()}),
+    ] {
+        input["attributes"]["nexusweave.required_sources"]["expected_text_sha256"] = pins;
+        assert!(check(input.clone()).is_err());
+    }
+}
+
+#[test]
 fn empty_requirements_cannot_pass_vacuously() {
     let mut input: Value = serde_json::from_str(EXAMPLE).unwrap();
     for groups in [json!([]), json!([[]]), json!([[" "]])] {

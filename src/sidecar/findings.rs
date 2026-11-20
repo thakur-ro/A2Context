@@ -109,18 +109,25 @@ fn source_gap(run: &Run, call: &Call) -> Option<Observation> {
         .iter()
         .map(|item| (&item.source_id, &item.source_version))
         .collect();
-    let key = json!([
-        "source_gap",
-        run.source,
-        run.organization_id,
-        coverage.name,
-        routes,
-        versions
-    ]);
+    let mut key = vec![
+        json!("source_gap"),
+        json!(run.source),
+        json!(run.organization_id),
+        json!(coverage.name),
+        json!(routes),
+        json!(versions),
+    ];
+    if !coverage.expected_text_sha256.is_empty() {
+        key.push(json!(coverage
+            .expected_text_sha256
+            .keys()
+            .collect::<Vec<_>>()));
+        key.push(json!(coverage.text_mismatches));
+    }
     let sources: Vec<_> = present.into_iter().map(source).collect();
     Some(occurrence(
         "source_gap",
-        key,
+        Value::Array(key),
         call,
         json!({"coverage":coverage,"sources":sources}),
     ))

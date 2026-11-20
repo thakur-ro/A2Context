@@ -1,0 +1,139 @@
+{
+  "selection_sha256": "b82704c339aedfd48f034f36e160bcd55624dc71d10d6aab3577fc37b737d523",
+  "intact_requests_passing_both_checks": 5,
+  "edits": [
+    {
+      "task": "29",
+      "source": "policy",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "29",
+      "source": "lookup",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "29",
+      "source": "latest_tool",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "29",
+      "source": "user",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "30",
+      "source": "policy",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "30",
+      "source": "lookup",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "30",
+      "source": "latest_tool",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "30",
+      "source": "user",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "32",
+      "source": "policy",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "32",
+      "source": "lookup",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "32",
+      "source": "user",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "37",
+      "source": "policy",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "37",
+      "source": "lookup",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "37",
+      "source": "latest_tool",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "37",
+      "source": "user",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "44",
+      "source": "policy",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "44",
+      "source": "lookup",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "44",
+      "source": "latest_tool",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    },
+    {
+      "task": "44",
+      "source": "user",
+      "id_only_passed": true,
+      "substitution_flagged": true,
+      "absent_anchor_flagged": true
+    }
+  ]
+}
