@@ -177,6 +177,9 @@ function appendProbeStats(parent, stats, label, shadow) {
     countLabel(stats.conversations, "identified conversation");
   parent.append(element("p", counts.join(" · ")), element("p",
     [countLabel(stats.calls, "call"), conversations, countLabel(stats.organizations, "organization")].join(" · "), "muted"));
+  const targets = shadow && stats.edited_target_conversations;
+  if (targets) parent.append(element("p", "Edited target by conversation · " +
+    [targets.met + " met", targets.missed + " missed", targets.mixed + " mixed", targets.incomplete + " incomplete"].join(" · ")));
 }
 
 function screeningGroupName(group) {

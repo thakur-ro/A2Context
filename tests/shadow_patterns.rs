@@ -42,6 +42,14 @@ fn compares_measured_proposal_shifts_by_user_organization_thread_and_time() {
     assert_eq!(group["primary"]["increased"], 2);
     assert_eq!(group["primary"]["measured_conversations"], 2);
     assert_eq!(group["primary"]["min_difference_pp"], 100.0);
+    assert_eq!(
+        group["primary"]["edited_target_conversations"],
+        json!({"met":2,"missed":0,"mixed":0,"incomplete":0})
+    );
+    assert_eq!(
+        group["comparison"]["edited_target_conversations"],
+        json!({"met":1,"missed":1,"mixed":0,"incomplete":0})
+    );
     assert_eq!(group["comparison"]["increased"], 1);
     assert_eq!(group["comparison"]["unchanged"], 1);
     assert_eq!(group["comparison"]["min_difference_pp"], 0.0);
@@ -132,7 +140,36 @@ fn preserves_missing_comparisons_and_excludes_tampered_reports() {
     assert_eq!(group["primary"]["increased"], 1);
     assert_eq!(group["primary"]["unchanged"], 0);
     assert_eq!(group["primary"]["unavailable"], 1);
+    assert_eq!(
+        group["primary"]["edited_target_conversations"],
+        json!({"met":1,"missed":0,"mixed":0,"incomplete":1})
+    );
     assert_eq!(group["primary"]["min_difference_pp"], 100.0);
     spec["min_conversations"] = json!(2);
     assert_eq!(query(spec, &runs, false)["total_groups"], 0);
+}
+
+#[test]
+fn counts_a_conversation_with_conflicting_target_results_once() {
+    let mut runs = cohort()
+        .into_iter()
+        .filter(|r| r.organization_id.as_deref() == Some("retail-south"))
+        .collect::<Vec<_>>();
+    assert_eq!(runs.len(), 2);
+    runs[1].conversation_id = runs[0].conversation_id.clone();
+    let mut anonymous = runs[0].clone();
+    anonymous.conversation_id = None;
+    anonymous.id.push_str("-anonymous");
+    runs.push(anonymous);
+    let page = query(
+        json!({"version":1,"source_id":"request-type"}),
+        &runs,
+        false,
+    );
+    let summary = &page["groups"][0]["primary"];
+    assert_eq!(summary["calls"], 3);
+    assert_eq!(
+        summary["edited_target_conversations"],
+        json!({"met":0,"missed":0,"mixed":1,"incomplete":0})
+    );
 }

@@ -321,6 +321,16 @@ try {
   await mobile.getByRole("heading", { name: "Check which other answers are plausible" }).waitFor();
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
   for (const device of [page, mobile]) {
+    await device.goto(base + "/?view=preview&scenario=window-earlier");
+    const target = device.locator(".target-check");
+    await target.getByRole("heading", {name:"Retest the edit to journal-faq on another request"}).waitFor();
+    assert.deepEqual(await target.locator("tbody strong").allTextContents(), ["Missed","Missed","Met","Met"]);
+    await device.getByRole("link", {name:"Unopened journal"}).click();
+    await target.getByRole("heading", {name:"Try a different edit for this target"}).waitFor();
+    assert.deepEqual(await target.locator("tbody code").allTextContents(), ["100","120","100","120"]);
+    assert.deepEqual(await target.locator("tbody strong").allTextContents(), Array(4).fill("Missed"));
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (device === page && process.env.TARGET_SCREENSHOT) await target.screenshot({path:process.env.TARGET_SCREENSHOT});
     await device.goto(base + "/?view=preview&scenario=prefill");
     await device.getByRole("heading", { name: "Test the edit to request-type" }).waitFor();
     await device.getByText("Request type: price.", { exact: true }).waitFor();

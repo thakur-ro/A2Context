@@ -9,6 +9,7 @@ mod recommendations;
 mod replacement;
 mod screened;
 mod store;
+mod targets;
 mod variation;
 
 use crate::{
@@ -356,6 +357,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                     let activations = store.activations(id)?;
                     let sources = findings::derive(&run, &reports, &activations)?;
                     let mut prefill_issues = BTreeMap::new();
+                    let mut target_checks = BTreeMap::new();
                     for call in &mut run.calls {
                         if call.prefill_probe.is_some()
                             && !sources
@@ -368,14 +370,34 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                                 prefill_issues.insert(call.id.clone(), issue);
                             }
                         }
+                        if call.shadow_probes.is_some() {
+                            let probes = replay::shadow::recorded(id, call);
+                            let checks = targets::checks(call, &probes);
+                            if !checks.is_empty() {
+                                target_checks.insert(call.id.clone(), checks);
+                            }
+                        }
                         call.prefill_probe = None;
                         call.recorded_request = None;
                     }
-                    json!({"trace":run, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
+                    json!({"trace":run, "target_checks":target_checks, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
                         "replay_reports": reports.len()})
                 }
                 "/api/sidecar/preview-example" => {
                     let fixture = match fields.get("scenario").map(String::as_str) {
+                        Some(
+                            scenario @ ("window-earlier" | "window-followup" | "window-unopened"),
+                        ) => serde_json::from_str(match scenario {
+                            "window-earlier" => include_str!(
+                                "../../examples/context-screening/replay/earlier-target.json"
+                            ),
+                            "window-followup" => include_str!(
+                                "../../examples/context-screening/replay/followup-target.json"
+                            ),
+                            _ => include_str!(
+                                "../../examples/context-screening/replay/unopened-target.json"
+                            ),
+                        })?,
                         Some("screen") => {
                             let sample: serde_json::Value = serde_json::from_str(include_str!(
                                 "../../examples/context-screening/evidence.json"
@@ -447,8 +469,20 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/preflight-returns.json"))?,
                         }),
                     };
-                    recommendations::preview(store, serde_json::from_value(fixture)?)
-                        .map_err(|(_, message)| message)?
+                    let question = fixture["request"]["attributes"]["nexusweave.request.body"]
+                        .as_str()
+                        .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+                        .and_then(|body| {
+                            let last = body["messages"].as_array()?.last()?;
+                            (last["role"] == "user")
+                                .then(|| last["content"].as_str().map(str::to_owned))
+                                .flatten()
+                        });
+                    let mut result =
+                        recommendations::preview(store, serde_json::from_value(fixture)?)
+                            .map_err(|(_, message)| message)?;
+                    result["example_question"] = json!(question);
+                    result
                 }
                 "/api/inspection" => {
                     let details = detail_scope(store, &fields)?;

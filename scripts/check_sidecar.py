@@ -890,6 +890,9 @@ def check_proposal_coverage(binary, db):
         assert factor["signal"] == "equal" and factor["changed"] == 0
         only, = get(base, "findings", kind="shadow", trace="otlp:" + held["traceId"])["rows"]
         assert only["action"]["title"] == "Test another source on this request"
+        trace = get(base, "trace", id="otlp:" + held["traceId"])
+        check, = trace["target_checks"][held["spanId"]]
+        assert check["edits"][0]["status"] == "missed" and not check["edits"][0]["changed"]
     # Version 15 retained the raw shadow report but never emitted a finding for matching proposals.
     with sqlite3.connect(db) as conn:
         conn.execute("DELETE FROM observations WHERE kind='shadow'")
@@ -908,6 +911,31 @@ def check_predecision_recommendations(base):
     recommendation = send(base, preview_path, {"request": request, "candidate": candidate, "shadow": shadow})[1]
     result = recommendation["recommendations"]
     assert not recommendation["unverified_probes"]
+    target, = recommendation["target_checks"]
+    assert [a["control"] for a in target["edits"]] == [False, True]
+    assert target["edits"][0]["edit"]["pointer"] == "/messages/1/content"
+    assert target["match_rule"] == {"kind":"outcome_fields","pointers":["/product_id"]}
+    assert [arm["status"] for arm in [target["baseline"], *target["edits"], target["joint"]]] == ["missed", "met", "missed", "met"]
+    # Exercise the target policy through the same report verifier as a real producer.
+    control_hit = deepcopy(shadow)
+    control_hit["control_comparison"] = {"control_context_id": shadow["effects"][0]["intervention"]["context_id"],
+                                         "target_minus_control_pp": -100.0}
+    checked, = send(base, preview_path, {"request":request, "shadow":control_hit})[1]["target_checks"]
+    assert checked["next"] == "Check why the negative control changed the target result"
+    incomplete = deepcopy(shadow)
+    incomplete["pair"].update(trials=[{"status":"failed"}], summary={"attempted":1, "completed":0, "matched":0},
+                              difference_pp=None, interaction_pp=None)
+    checked, = send(base, preview_path, {"request":request, "shadow":incomplete})[1]["target_checks"]
+    assert checked["joint"]["status"] == "incomplete" and checked["joint"]["changed"] is None
+    assert checked["next"].startswith("Complete the missing")
+    for scenario, expected in [("window-earlier", "met"), ("window-followup", "missed"), ("window-unopened", "missed")]:
+        checked, = get(base, "preview-example", scenario=scenario)["target_checks"]
+        assert checked["expected"]["outcome_preview"] == "45"
+        assert checked["joint"]["changed"] and checked["joint"]["status"] == expected
+    stale_shadow = deepcopy(shadow)
+    stale_shadow["captured_request_sha256"] = "0" * 64
+    rejected_shadow = send(base, preview_path, {"request":request, "shadow":stale_shadow})[1]
+    assert rejected_shadow["unverified_probes"] and not rejected_shadow["target_checks"]
     scored_dir = ROOT / "examples/redundant-routing/candidate-checks"
     for example, expected in [("maple-dispatch-guide", "routing-note"), ("ash-routing-note", "routing-note")]:
         envelope = json.loads((scored_dir / (example + ".json")).read_text())

@@ -183,7 +183,30 @@ fn is_zero(count: &usize) -> bool {
     *count == 0
 }
 
+/// Whether the scored proposals in a trial condition attained its declared target.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TargetStatus {
+    Met,
+    Missed,
+    Mixed,
+    Incomplete,
+}
+
 impl Summary {
+    /// Require every planned trial to complete and score before classifying the condition.
+    pub fn target_status(&self) -> TargetStatus {
+        if self.attempted == 0 || !self.all_scored() {
+            TargetStatus::Incomplete
+        } else if self.matched == self.completed {
+            TargetStatus::Met
+        } else if self.matched == 0 {
+            TargetStatus::Missed
+        } else {
+            TargetStatus::Mixed
+        }
+    }
+
     fn all_scored(&self) -> bool {
         self.completed == self.attempted && self.unscored == 0
     }

@@ -240,3 +240,10 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 .screen-outcomes { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 .screen-outcomes th, .screen-outcomes td { text-align: right; padding: 7px; border-bottom: 1px solid var(--line); }
 .screen-outcomes th:first-child { text-align: left; overflow-wrap: anywhere; }
+
+.target-check table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-block: 12px; }
+.target-check th, .target-check td { padding: .5rem .25rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.target-check small { display: block; overflow-wrap: anywhere; }
+.target-check th small { font-weight: 400; color: var(--muted); }
+.target-check [data-target-status="met"] td strong { color: var(--accent); }
+.target-check [data-target-status="missed"] td strong { color: #874721; }

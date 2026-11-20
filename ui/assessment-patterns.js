@@ -83,6 +83,9 @@ function renderShadowPatternStats(parent, stats) {
   parent.append(node("p", [range, ...counts].filter(Boolean).join(" · ")),
     node("p", [countLabel(stats.calls, "call"), countLabel(stats.measured_conversations, "conversation") + " with scored comparisons",
       countLabel(stats.organizations, "organization")].join(" · "), "muted"));
+  const targets = stats.edited_target_conversations;
+  if (targets) parent.append(node("p", "Edited target by conversation · " +
+    [targets.met + " met", targets.missed + " missed", targets.mixed + " mixed", targets.incomplete + " incomplete"].join(" · ")));
 }
 
 function shadowPatternEvidence({ baseline, edited, difference_pp, difference_95_interval_pp }) {

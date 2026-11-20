@@ -1108,6 +1108,37 @@ function firstTokenPreview(probe, recorded = false, tested = false) {
       element("p", { className: "label", text: probe.model_id + " · " + probe.model_revision + " · " + probe.runtime })));
 }
 
+function declaredTarget(check, question) {
+  const proposal = p => p.kind === "model_output" ? p.outcome_preview : p.label + " · " + p.outcome_preview;
+  const totals = {met:"Met", missed:"Missed", mixed:"Mixed", incomplete:"Incomplete"};
+  const rule = check.match_rule;
+  const criterion = {exact:"Exact match", kind_and_label:"Match kind and label",
+    outcome_fields:"Match fields " + (rule.pointers || []).join(", "), text_capture:"Match captured text · " + (rule.pattern || "")};
+  const rows = [check.baseline, ...check.edits, ...(check.joint ? [check.joint] : [])].map((a, i) => {
+    const c = a.counts;
+    const score = c.completed - (c.unscored || 0);
+    return element("tr", {"data-target-status":a.status},
+      element("th", {scope:"row"}, a.label,
+        a.edit ? element("small", {text:(a.control ? "Negative control · " : "") +
+          (a.edit.operation === "remove_json" ? "Removed" : "Replaced with “" + a.edit.replacement + "”"),
+          title:a.edit.pointer + (a.edit.version ? " · " + a.edit.version : "")}) : null),
+      element("td", {}, element("code", {text:a.proposal ? proposal(a.proposal) : c.completed === c.attempted ? "Varied across trials" : "Incomplete trials"}),
+        i && a.changed != null ? element("small", {text:a.changed ? "Changed" : "Unchanged"}) : null),
+      element("td", {}, element("strong", {text:totals[a.status]}),
+        element("small", {text:c.matched + " of " + score + " scored trials matched" +
+          (score < c.attempted ? " · " + (c.attempted - score) + " missing or unscored" : "")})));
+  });
+  return element("section", {className:"panel target-check"},
+    element("span", {className:"label", text:"Test against the declared outcome"}),
+    element("h2", {text:check.next}),
+    question ? element("p", {text:question}) : null,
+    element("p", {}, "Target ", element("code", {text:proposal(check.expected)}), " · " + criterion[rule.kind]),
+    element("table", {}, element("thead", {}, element("tr", {},
+      ...["Condition", "Proposal", "Target result"].map(text => element("th", {scope:"col", text})))),
+      element("tbody", {}, ...rows)),
+    element("small", {text:check.runner}));
+}
+
 function pendingPreview() {
   const output = element("section", { className: "feed", "aria-live": "polite" });
   const input = element("input", { type: "file", accept: "application/json,.json" });
@@ -1119,6 +1150,7 @@ function pendingPreview() {
       const report = await load();
       if (currentLoad !== sequence) return;
       const current = [], findings = [], probes = new Map();
+      const targets = report.target_checks || [];
       const experiment = report.history?.experiment;
       for (const { kind, detail, action } of report.recommendations) {
         if (kind === "shadow" && experiment?.status === "ready" && experiment.edited_request_sha256 === detail.edited_request_sha256 &&
@@ -1134,6 +1166,8 @@ function pendingPreview() {
             probes.get(detail.report_id).append(element("details", {}, element("summary", {
               text: "Inspect the edit to " + sourceName(detail.sources[0]) }), card));
           }
+        } else if (kind === "shadow" && targets.some(check => check.report_id === detail.report_id && check.edits.length > 1)) {
+          findings.push(element("details", {}, element("summary", {text:"Inspect the edit to " + sourceName(detail.sources[0])}), card));
         } else if (kind === "shadow") current.push(card);
         else findings.push(card);
       }
@@ -1144,13 +1178,14 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
+        ...targets.map(check => declaredTarget(check, report.example_question)),
         ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
         report.prefill ? routingComparison(report.prefill) : null,
         checked ? history : null,
         report.prefill && !(testedTop && report.prefill.ranked.length === 1) ? firstTokenPreview(report.prefill, false, testedTop) : null,
         ...current, report.screen_suggestion ? screenReview(report.screen_suggestion) : null, checked ? null : history, followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
-        !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
+        !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
       if (currentLoad === sequence) output.textContent = error.message;
     }
@@ -1185,8 +1220,15 @@ function pendingPreview() {
       link("See the tested edit on this request", url({view:"preview",scenario:"checked-history"})), scores));
   });
   const scenario = query.get("scenario");
-  if (["screen", "scored-history", "checked-history", "warranty", "routing", "policy", "history", "prefill", "routing-test"].includes(scenario)) {
-    const next = scenario === "prefill" ? link("Compare the measured tool proposals", url({ view: "preview", scenario: "routing" }), "action") :
+  const windowQuestions = [["window-earlier", "First question"], ["window-followup", "Follow-up"], ["window-unopened", "Unopened journal"]];
+  const questions = element("nav", {className:"actions", "aria-label":"Journal questions"},
+    ...windowQuestions.map(([key, label]) => key === scenario ? element("strong", {text:label, "aria-current":"page"}) :
+      link(label, url({view:"preview", scenario:key}))));
+  if (windowQuestions.some(([key]) => key === scenario)) {
+    show(() => api("preview-example", {scenario}), questions);
+  } else if (["screen", "scored-history", "checked-history", "warranty", "routing", "policy", "history", "prefill", "routing-test"].includes(scenario)) {
+    const next = scenario === "screen" ? link("Test a 45-day answer on three questions", url({view:"preview", scenario:"window-earlier"}), "action") :
+      scenario === "prefill" ? link("Compare the measured tool proposals", url({ view: "preview", scenario: "routing" }), "action") :
       scenario === "routing" ? routingLinks : scenario === "checked-history" ?
         link("Compare the two source edits on this request", url({view:"preview",scenario:"scored-history"}), "action") : null;
     show(() => api("preview-example", { scenario }), next);
@@ -1196,7 +1238,7 @@ function pendingPreview() {
     element("div", { className: "actions" }, history, routing, policy)), output);
 }
 
-function traceDetail({ trace, findings, activation_reports, prefill_issues = {} }) {
+function traceDetail({ trace, findings, activation_reports, prefill_issues = {}, target_checks = {} }) {
   const selectedCall = query.get("call");
   const selectedSpan = query.get("span");
   const spans = new Map((trace.spans || []).map((span) => [span.id, span]));
@@ -1254,7 +1296,7 @@ function traceDetail({ trace, findings, activation_reports, prefill_issues = {} 
     rowLink("↳ ".repeat(Math.min(depth, 6)) + (row.name || entry?.model || row.id),
       entry ? (entry.turn_id ? "Turn " + entry.turn_id : "Captured call") : "Parent span",
       url({ view, trace: trace.id, ...(entry ? { call: entry.id } : { span: row.id }) }), entry?.id === initial || row.id === initial))),
-  element("div", { className: "feed" }, ...evidence, focus ? compareForm(focus.group) : null, detail));
+  element("div", { className: "feed" }, ...(target_checks[call?.id] || []).map(check => declaredTarget(check)), ...evidence, focus ? compareForm(focus.group) : null, detail));
 }
 
 async function render(refresh = false) {

@@ -198,6 +198,26 @@ python3 examples/send_otlp_replay.py --conversation-id journal-earlier --compare
 python3 examples/send_otlp_replay.py --conversation-id journal-followup --followup --compare-values
 ```
 
+### Did an edit reach the intended answer?
+
+The workflow can declare a target before running a shadow experiment. For the journal example we specified the exact answer `45` and tested changing the policy, the FAQ, and both to 45 days. The dashboard scores every condition against that same target. Open **Before inference**, choose **Try a policy conflict**, follow **Compare instructions using a text classifier**, then **Test a 45-day answer on three questions**. [Open the first question](http://127.0.0.1:8040/?view=preview&scenario=window-earlier)
+
+| Question | Original | Policy edit | FAQ edit | Both edits | Follow-up |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Maximum return period | 60 | 60 | 45 | 45 | Retest the FAQ edit on another request |
+| Returning my journal | 30 | 120 | 30 | 100 | Try a different edit |
+| Latest day for an unopened journal | 100 | 120 | 100 | 120 | Try a different edit |
+
+We knew the first two questions’ outputs from the earlier value-edit experiment. We added the unopened-journal wording before running this comparison. Each cell contains one greedy Qwen2.5-0.5B-Instruct proposal. An independent execution with the same checkpoint and settings reproduced all twelve proposals. These examples measure sensitivity to the edited numbers and question wording. They do not identify an internal reasoning step or estimate the success rate on production traffic. [Original case and runner](../examples/context-screening/replay/test_declared_window.py) · [New wording and recorded proposals](../examples/context-screening/replay/unopened-target.json)
+
+![Four conditions for the unopened-journal question. Editing the policy changed the answer to 120, and every condition missed the declared target of 45.](media/declared-target.png)
+
+To reproduce the three envelopes with the pinned local runtime, run the command below. Load any envelope in **Before inference** to verify the saved proposals without invoking a model.
+
+```sh
+python3 examples/context-screening/replay/test_declared_window.py "$qwen_dir" /tmp/journal-targets
+```
+
 ### Find recurring screened pairs
 
 ```sh
@@ -367,6 +387,8 @@ cargo run --locked -- serve "$demo_dir/evidence.json"
 In **Patterns → Shadow proposal shifts**, select **User · retail-north / routing-demo**, enter `request-type` under **Source**, and select **Organization · retail-south** under **Compare with**. North shows two increases of +100 percentage points. South shows one increase and one unchanged result. **See contributing turns** lists the baseline and edited trial counts in time order. Use **Open source on turn** to open the exact edited source. From that source on a turn, **Find recurring proposal shifts** opens the pattern view for the current user and source. Use the thread and UTC date filters to narrow either side. [Open the local inspector](http://127.0.0.1:8040)
 
 Groups require the same named source, captured content, version, role and kind, edit, runner, sampling design, and proposal criterion. The criterion follows the report's match rule. The demo tracks tool kind and name, so product IDs can differ across trials. A rule that scores selected argument fields requires the same expected values for those fields. Each scope reports its own range of measured shifts and counts of increased, decreased, unchanged, and unavailable comparisons. **Recurring only** requires scored comparisons in at least two identified conversations in either scope. Open a contributing turn to inspect the joint and negative-control comparisons.
+
+**Edited target by conversation** counts each identified conversation once for a comparable single-source edit. **Met** means every edited trial matched the workflow’s criterion. **Missed** means every trial was scored and none matched. **Mixed** includes disagreements across trials or across calls in one conversation. A failed or unscored edited trial takes precedence and puts that conversation under **Incomplete**. The baseline remains available in the contributing turns. Calls without a conversation ID count toward call and measurement totals. The conversation breakdown excludes them.
 
 The CLI, local API, and MCP share the probe pattern query format. Save a view such as the one below as `shadow-view.json`. Use `nexusweave query-shadow-patterns shadow-view.json <evidence.json>`, `POST /api/shadow-patterns`, or MCP `query_shadow_patterns`. Pass a returned `key` as `group` to page through contributing calls. In MCP, use turn evidence with captured excerpts to inspect the tracked target label and exact outcome. [Query schema](../schema/candidate-pattern-query-1.json)
 

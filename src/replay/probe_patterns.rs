@@ -1,4 +1,4 @@
-use super::{ReplayInterval, Summary};
+use super::{ReplayInterval, Summary, TargetStatus};
 use crate::{
     scoped_calls::{self, conversation_key, next_offset, ScopedCall, Selection},
     turn_evidence::inspector_path,
@@ -173,6 +173,35 @@ struct Stats {
     magnitude: f64,
 }
 
+// Each identified conversation counts once per comparable edit. An unfinished trial
+// keeps its conversation incomplete even if another call reached the target.
+fn edited_targets(rows: &[Occurrence]) -> BTreeMap<TargetStatus, usize> {
+    use TargetStatus::{Incomplete, Met, Missed, Mixed};
+    let mut by_conversation = BTreeMap::new();
+    for row in rows {
+        let (Some(key), Measure::Shadow { edited, .. }) = (conversation_key(row.run), row.measure)
+        else {
+            continue;
+        };
+        let status = edited.target_status();
+        by_conversation
+            .entry(key)
+            .and_modify(|prior| {
+                if *prior == Incomplete || status == Incomplete {
+                    *prior = Incomplete;
+                } else if *prior != status {
+                    *prior = Mixed;
+                }
+            })
+            .or_insert(status);
+    }
+    let mut counts = BTreeMap::from([(Met, 0), (Missed, 0), (Mixed, 0), (Incomplete, 0)]);
+    for status in by_conversation.into_values() {
+        *counts.entry(status).or_default() += 1;
+    }
+    counts
+}
+
 fn summarize(rows: &[Occurrence<'_>], kind: Kind) -> Option<Stats> {
     if rows.is_empty() {
         return None;
@@ -210,6 +239,7 @@ fn summarize(rows: &[Occurrence<'_>], kind: Kind) -> Option<Stats> {
             fields["max_change_log_odds"] = json!(bounds.map(|(_, max)| max));
         }
         Kind::Shadow => {
+            fields["edited_target_conversations"] = json!(edited_targets(rows));
             fields["measured_conversations"] = json!(measured_conversations.len());
             fields["increased"] = json!(increased);
             fields["decreased"] = json!(decreased);
