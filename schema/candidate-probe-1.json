@@ -4,10 +4,15 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "id", "scorer_id", "candidates", "interventions"],
+  "allOf": [{
+    "if": { "required": ["test_pair"], "properties": { "test_pair": { "const": true } } },
+    "then": { "properties": { "interventions": { "minItems": 2, "maxItems": 2 } } }
+  }],
   "properties": {
     "version": { "const": 1 },
     "id": { "type": "string", "pattern": "\\S" },
     "scorer_id": { "type": "string", "pattern": "\\S" },
+    "test_pair": { "type":"boolean", "default":false },
     "assistant_prefix": { "type": "string", "default": "" },
     "candidates": {
       "type": "array",

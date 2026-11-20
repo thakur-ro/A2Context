@@ -395,18 +395,17 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 "/api/sidecar/preview-example" => {
                     let fixture = match fields.get("scenario").map(String::as_str) {
                         Some(
-                            scenario @ ("window-earlier" | "window-followup" | "window-unopened"),
-                        ) => serde_json::from_str(match scenario {
-                            "window-earlier" => include_str!(
-                                "../../examples/context-screening/replay/earlier-target.json"
-                            ),
-                            "window-followup" => include_str!(
-                                "../../examples/context-screening/replay/followup-target.json"
-                            ),
-                            _ => include_str!(
-                                "../../examples/context-screening/replay/unopened-target.json"
-                            ),
-                        })?,
+                            scenario @ ("window-earlier" | "window-followup" | "window-unopened"
+                            | "window-fresh"),
+                        ) => journal_example(scenario.trim_start_matches("window-"))?,
+                        Some("window-before") => {
+                            let mut example = journal_example("earlier")?;
+                            example
+                                .as_object_mut()
+                                .expect("saved envelope")
+                                .remove("shadow");
+                            example
+                        }
                         Some("screen") => {
                             let sample: serde_json::Value = serde_json::from_str(include_str!(
                                 "../../examples/context-screening/evidence.json"
@@ -662,6 +661,25 @@ fn respond(request: Request, status: u16, content_type: &str, bytes: Vec<u8>) {
     );
 }
 
+fn journal_example(name: &str) -> Result<serde_json::Value> {
+    if name == "fresh" {
+        return Ok(serde_json::from_str(include_str!(
+            "../../examples/context-screening/replay/fresh-target-tokens.json"
+        ))?);
+    }
+    let mut envelope: serde_json::Value = serde_json::from_str(match name {
+        "earlier" => include_str!("../../examples/context-screening/replay/earlier-target.json"),
+        "followup" => include_str!("../../examples/context-screening/replay/followup-target.json"),
+        "unopened" => include_str!("../../examples/context-screening/replay/unopened-target.json"),
+        _ => return Err("Unknown journal experiment".into()),
+    })?;
+    let mut scores: serde_json::Value = serde_json::from_str(include_str!(
+        "../../examples/context-screening/replay/target-token-scores.json"
+    ))?;
+    envelope["candidate"] = scores[name].take();
+    Ok(envelope)
+}
+
 fn seed(store: &mut Store) -> Result<()> {
     let mut runs: Vec<Run> =
         serde_json::from_str(include_str!("../../fixtures/conversation.json"))?;
@@ -706,21 +724,12 @@ fn seed(store: &mut Store) -> Result<()> {
     ]);
     // Wrap the saved pending experiments as synthetic LangSmith captures. The
     // proposals belong to the shadow runner. No production answer was recorded.
-    for (question, saved) in [
-        (
-            "first",
-            include_str!("../../examples/context-screening/replay/earlier-target.json"),
-        ),
-        (
-            "follow-up",
-            include_str!("../../examples/context-screening/replay/followup-target.json"),
-        ),
-        (
-            "unopened",
-            include_str!("../../examples/context-screening/replay/unopened-target.json"),
-        ),
+    for (question, name) in [
+        ("first", "earlier"),
+        ("follow-up", "followup"),
+        ("unopened", "unopened"),
     ] {
-        let envelope: serde_json::Value = serde_json::from_str(saved)?;
+        let envelope = journal_example(name)?;
         let attrs = &envelope["request"]["attributes"];
         let body = attrs["nexusweave.request.body"]
             .as_str()
@@ -731,7 +740,7 @@ fn seed(store: &mut Store) -> Result<()> {
                 "thread_id":format!("journal-window-{question}"),"organization_id":"journal-window-study",
                 "user_id":"support-17","nexusweave.span.id":format!("journal-window-{question}"),"ls_model_name":attrs["gen_ai.request.model"],
                 "nexusweave.request.body":body,"nexusweave.context.semantics":attrs["nexusweave.context.semantics"],
-                "nexusweave.shadow_probes":[envelope["shadow"]]}}});
+                "nexusweave.candidate_probes":[envelope["candidate"]],"nexusweave.shadow_probes":[envelope["shadow"]]}}});
         runs.extend(nexusweave::langsmith::import(&capture)?);
     }
     let pending = include_str!("../../examples/runtime-comparison/pending-routing/trace.json");

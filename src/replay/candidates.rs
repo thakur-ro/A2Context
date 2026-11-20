@@ -3,9 +3,11 @@
 //! Build the baseline and source edits from a pending request. A runtime adapter
 //! scores both candidates at the same assistant prefix for every condition.
 
-use super::{prepare_edit, sha256, Intervention};
+use super::{edited_requests, prepare_edits, sha256, Intervention};
 pub mod patterns;
 mod recorded;
+mod target;
+pub use target::{continuation_path, target_path, TargetCondition, TargetPath};
 
 pub use recorded::recorded;
 pub use recorded::{CapturedReports, Measurement, RecordedEffect, RecordedProbe, Verification};
@@ -13,7 +15,6 @@ pub use recorded::{CapturedReports, Measurement, RecordedEffect, RecordedProbe, 
 use crate::{preflight, Evidence};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::BTreeSet;
 
 const VERSION: u32 = 1;
 
@@ -28,6 +29,8 @@ pub struct Case {
     pub assistant_prefix: String,
     pub candidates: [Candidate; 2],
     pub interventions: Vec<Intervention>,
+    #[serde(default)]
+    pub test_pair: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -75,6 +78,19 @@ pub struct ConditionScore {
     pub rendered_prefix_sha256: String,
     /// Natural log probabilities of the two complete candidate token sequences.
     pub log_probs: [f64; 2],
+    /// Optional vocabulary readouts, in token order along each supplied continuation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub steps: Option<[Vec<TokenStep>; 2]>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TokenStep {
+    pub text: String,
+    pub log_prob: f64,
+    pub top_id: u32,
+    pub top_text: String,
+    pub top_log_prob: f64,
 }
 
 impl ConditionScore {
@@ -97,6 +113,9 @@ pub struct Report {
     pub scores: ScoringResult,
     pub baseline_log_odds: f64,
     pub effects: Vec<Effect>,
+    /// When present, the final score belongs to both edits applied together.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub joint_request_sha256: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -135,28 +154,20 @@ pub fn execute(
     )?;
     let (call, request, _) = preflight::pending_call(input)?;
     let request = request.ok_or("A candidate probe requires the captured request body.")?;
-    let mut seen = BTreeSet::new();
-    let mut conditions = vec![Condition {
-        id: "baseline".into(),
-        request,
-    }];
-    let mut sources = Vec::new();
-    for intervention in &case.interventions {
-        if !seen.insert(&intervention.context_id) {
-            return Err(format!(
-                "Duplicate intervention for {}",
-                intervention.context_id
-            ));
-        }
-        let (item, _) = super::recorded_context(&call, &intervention.context_id)?;
-        let mut request = conditions[0].request.clone();
-        prepare_edit(&call, intervention)?.apply(&mut request)?;
-        conditions.push(Condition {
-            id: format!("edit:{}", item.id),
-            request,
-        });
-        sources.push(item);
-    }
+    let edits = prepare_edits(&call, &request, &case.interventions, case.test_pair)?;
+    let requests = edited_requests(request, &edits, case.test_pair)?;
+    let sources = case
+        .interventions
+        .iter()
+        .map(|i| super::recorded_context(&call, &i.context_id).map(|(item, _)| item))
+        .collect::<Result<Vec<_>, _>>()?;
+    let ids = std::iter::once("baseline".to_owned())
+        .chain(sources.iter().map(|item| format!("edit:{}", item.id)))
+        .chain(case.test_pair.then(|| "joint".to_owned()));
+    let conditions = ids
+        .zip(requests)
+        .map(|(id, request)| Condition { id, request })
+        .collect();
 
     let work = ScoringRequest {
         version: VERSION,
@@ -195,6 +206,16 @@ pub fn execute(
             change_log_odds,
         });
     }
+    let joint_request_sha256 = case.test_pair.then(|| {
+        sha256(
+            work.conditions
+                .last()
+                .expect("joint condition")
+                .request
+                .to_string()
+                .as_bytes(),
+        )
+    });
     Ok(Report {
         version: VERSION,
         id: case.id.clone(),
@@ -211,6 +232,7 @@ pub fn execute(
         scores,
         baseline_log_odds,
         effects,
+        joint_request_sha256,
     })
 }
 
@@ -276,6 +298,7 @@ fn validate_scores<'a>(
         let [first, second] = score.log_probs;
         if id != score.id
             || !digest(&score.rendered_prefix_sha256)
+            || !valid_steps(score, &scores.candidate_token_ids)
             || !score
                 .log_probs
                 .iter()
@@ -289,6 +312,55 @@ fn validate_scores<'a>(
         return Err(missing_score.into());
     }
     Ok(())
+}
+
+fn valid_steps(score: &ConditionScore, tokens: &[Vec<u32>; 2]) -> bool {
+    let Some(steps) = &score.steps else {
+        return true;
+    };
+    for ((path, ids), sequence_score) in steps.iter().zip(tokens).zip(score.log_probs) {
+        if path.len() != ids.len() {
+            return false;
+        }
+        let mut sum = 0.0;
+        for (step, id) in path.iter().zip(ids) {
+            if !step.log_prob.is_finite()
+                || !step.top_log_prob.is_finite()
+                || step.top_log_prob > 0.0
+                || step.log_prob > step.top_log_prob
+            {
+                return false;
+            }
+            if step.top_id == *id {
+                if step.log_prob != step.top_log_prob || step.text != step.top_text {
+                    return false;
+                }
+            } else if step.log_prob.exp() + step.top_log_prob.exp() > 1.0 + 1e-5 {
+                return false;
+            }
+            sum += step.log_prob;
+        }
+        if (sum - sequence_score).abs() > 1e-9 * (1.0 + sequence_score.abs()) {
+            return false;
+        }
+    }
+    // Both alternatives start at the same prefix. Their vocabulary maxima
+    // must agree until the supplied token sequences diverge. Separate forward
+    // passes can round differently for continuations of different lengths.
+    for (i, (first, second)) in steps[0].iter().zip(&steps[1]).enumerate() {
+        if (first.top_log_prob - second.top_log_prob).abs() > 1e-4
+            || (first.top_id == second.top_id && first.top_text != second.top_text)
+        {
+            return false;
+        }
+        if tokens[0][i] != tokens[1][i] {
+            break;
+        }
+        if first.text != second.text || (first.log_prob - second.log_prob).abs() > 1e-4 {
+            return false;
+        }
+    }
+    true
 }
 
 fn margin(score: &ConditionScore) -> f64 {

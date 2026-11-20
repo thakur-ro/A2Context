@@ -1,0 +1,773 @@
+{
+  "earlier": {
+    "version": 1,
+    "id": "journal-answer-prefix",
+    "scorer_id": "qwen2-transformers-continuation-v1",
+    "captured_request_sha256": "e72334ea6e94f244adcd9292c1c184f90feb5f4ccb27537385994910487a2777",
+    "assistant_prefix": "",
+    "candidates": [
+      {
+        "id": "new-window",
+        "continuation": "45"
+      },
+      {
+        "id": "original-policy",
+        "continuation": "30"
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "assistant_prefix_token_ids": [],
+      "candidate_token_ids": [
+        [
+          19,
+          20
+        ],
+        [
+          18,
+          15
+        ]
+      ],
+      "conditions": [
+        {
+          "id": "baseline",
+          "rendered_prefix_sha256": "6be54152650c0e4b468d7ff204329f2f7127b08adfcc0b8cdee2699f4c468be7",
+          "log_probs": [
+            -8.196496963500977,
+            -1.9953250885009768
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -7.111860275268555,
+                "top_id": 21,
+                "top_text": "6",
+                "top_log_prob": -0.15213966369628906
+              },
+              {
+                "text": "5",
+                "log_prob": -1.084636688232422,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.825592041015625
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -1.9946765899658203,
+                "top_id": 21,
+                "top_text": "6",
+                "top_log_prob": -0.15213966369628906
+              },
+              {
+                "text": "0",
+                "log_prob": -0.00064849853515625,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.00064849853515625
+              }
+            ]
+          ]
+        },
+        {
+          "id": "edit:request-source:journal-policy",
+          "rendered_prefix_sha256": "77bb7abef1ffcc75f6682754583117e9852b74ff0c1f7495d92f5bb45023cfcd",
+          "log_probs": [
+            -2.9602813720703125,
+            -8.950736999511719
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -2.957395553588867,
+                "top_id": 21,
+                "top_text": "6",
+                "top_log_prob": -0.06005859375
+              },
+              {
+                "text": "5",
+                "log_prob": -0.0028858184814453125,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.0028858184814453125
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -8.202505111694336,
+                "top_id": 21,
+                "top_text": "6",
+                "top_log_prob": -0.06005859375
+              },
+              {
+                "text": "0",
+                "log_prob": -0.7482318878173828,
+                "top_id": 21,
+                "top_text": "6",
+                "top_log_prob": -0.74755859375
+              }
+            ]
+          ]
+        },
+        {
+          "id": "edit:request-source:journal-faq",
+          "rendered_prefix_sha256": "d9e7578feee1c4c6ca4586bef3492656895c704c2d80c54082093dc13fc5fdb4",
+          "log_probs": [
+            -0.04878044128417969,
+            -3.192190170288086
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -0.047351837158203125,
+                "top_id": 19,
+                "top_text": "4",
+                "top_log_prob": -0.047351837158203125
+              },
+              {
+                "text": "5",
+                "log_prob": -0.0014286041259765625,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.0014286041259765625
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -3.1894302368164062,
+                "top_id": 19,
+                "top_text": "4",
+                "top_log_prob": -0.047351837158203125
+              },
+              {
+                "text": "0",
+                "log_prob": -0.0027599334716796875,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.0027599334716796875
+              }
+            ]
+          ]
+        },
+        {
+          "id": "joint",
+          "rendered_prefix_sha256": "a5626ddf46975e9e1d63a978ce800e773be140a67012c0b60131425bcb03bbe6",
+          "log_probs": [
+            -0.002330780029296875,
+            -10.049123764038086
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -0.0020885467529296875,
+                "top_id": 19,
+                "top_text": "4",
+                "top_log_prob": -0.0020885467529296875
+              },
+              {
+                "text": "5",
+                "log_prob": -0.0002422332763671875,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.0002422332763671875
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -9.351184844970703,
+                "top_id": 19,
+                "top_text": "4",
+                "top_log_prob": -0.0020885467529296875
+              },
+              {
+                "text": "0",
+                "log_prob": -0.6979389190673828,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.6979389190673828
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    "baseline_log_odds": -6.201171875,
+    "effects": [
+      {
+        "condition_id": "edit:request-source:journal-policy",
+        "intervention": {
+          "context_id": "request-source:journal-policy",
+          "pointer": "/messages/0/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 51,
+            "end_byte": 53
+          },
+          "replacement": "45"
+        },
+        "source_id": "journal-policy",
+        "source_version": "v1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "9343caa9b8afca52fd04864dff84311b4ccf098de52fd9f715b6bef411a763b0",
+        "log_odds": 5.990455627441406,
+        "change_log_odds": 12.191627502441406
+      },
+      {
+        "condition_id": "edit:request-source:journal-faq",
+        "intervention": {
+          "context_id": "request-source:journal-faq",
+          "pointer": "/messages/1/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 51,
+            "end_byte": 53
+          },
+          "replacement": "45"
+        },
+        "source_id": "journal-faq",
+        "source_version": "v1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "17ef27293e2827af73117fb023ec32c24b723efdaa87b87112ded3e11323c89e",
+        "log_odds": 3.1434097290039062,
+        "change_log_odds": 9.344581604003906
+      }
+    ],
+    "joint_request_sha256": "ba372a86975b4140713111375748255e6d10ed58907b332b61c31d909a2c2f12"
+  },
+  "followup": {
+    "version": 1,
+    "id": "journal-answer-prefix",
+    "scorer_id": "qwen2-transformers-continuation-v1",
+    "captured_request_sha256": "9d5c6506ead9b4c02d1b8900bfcb3001db69c62408ab215af1c3717b1c547ce5",
+    "assistant_prefix": "",
+    "candidates": [
+      {
+        "id": "new-window",
+        "continuation": "45"
+      },
+      {
+        "id": "original-policy",
+        "continuation": "30"
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "assistant_prefix_token_ids": [],
+      "candidate_token_ids": [
+        [
+          19,
+          20
+        ],
+        [
+          18,
+          15
+        ]
+      ],
+      "conditions": [
+        {
+          "id": "baseline",
+          "rendered_prefix_sha256": "bd773f0b9e013d41a537bb514d45447dfeba5b22be141ec1ba6f189a37ecf841",
+          "log_probs": [
+            -4.0204315185546875,
+            -1.4137687683105469
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -3.284826278686523,
+                "top_id": 18,
+                "top_text": "3",
+                "top_log_prob": -1.342571258544922
+              },
+              {
+                "text": "5",
+                "log_prob": -0.7356052398681641,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.7356052398681641
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -1.342571258544922,
+                "top_id": 18,
+                "top_text": "3",
+                "top_log_prob": -1.342571258544922
+              },
+              {
+                "text": "0",
+                "log_prob": -0.071197509765625,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.071197509765625
+              }
+            ]
+          ]
+        },
+        {
+          "id": "edit:request-source:journal-policy",
+          "rendered_prefix_sha256": "cdba095763659d83f5255b51b6960047335f17cf83e2216a57c41635813274d5",
+          "log_probs": [
+            -2.2619171142578125,
+            -2.368885040283203
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -1.9875450134277344,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.528310775756836
+              },
+              {
+                "text": "5",
+                "log_prob": -0.2743721008300781,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.2743721008300781
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -2.0980758666992188,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.528310775756836
+              },
+              {
+                "text": "0",
+                "log_prob": -0.2708091735839844,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.2708091735839844
+              }
+            ]
+          ]
+        },
+        {
+          "id": "edit:request-source:journal-faq",
+          "rendered_prefix_sha256": "1821058db6c73f9aba1f8c5922fdaba1faef94af785e2fe367310b91a28d0b5f",
+          "log_probs": [
+            -3.0732688903808594,
+            -1.4926815032958984
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -2.607086181640625,
+                "top_id": 18,
+                "top_text": "3",
+                "top_log_prob": -1.39434814453125
+              },
+              {
+                "text": "5",
+                "log_prob": -0.4661827087402344,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.4661827087402344
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -1.39434814453125,
+                "top_id": 18,
+                "top_text": "3",
+                "top_log_prob": -1.39434814453125
+              },
+              {
+                "text": "0",
+                "log_prob": -0.09833335876464844,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.09833335876464844
+              }
+            ]
+          ]
+        },
+        {
+          "id": "joint",
+          "rendered_prefix_sha256": "9e26246bf1dc96c8e2fa20557cb4e7d8eb60396bbbb0c64618678200506827f1",
+          "log_probs": [
+            -1.9102153778076172,
+            -2.1680355072021484
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -1.86737060546875,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.4600677490234375
+              },
+              {
+                "text": "5",
+                "log_prob": -0.04284477233886719,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.04284477233886719
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -1.9820213317871096,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.4600677490234375
+              },
+              {
+                "text": "0",
+                "log_prob": -0.18601417541503903,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.18601417541503903
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    "baseline_log_odds": -2.6066627502441406,
+    "effects": [
+      {
+        "condition_id": "edit:request-source:journal-policy",
+        "intervention": {
+          "context_id": "request-source:journal-policy",
+          "pointer": "/messages/0/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 51,
+            "end_byte": 53
+          },
+          "replacement": "45"
+        },
+        "source_id": "journal-policy",
+        "source_version": "v1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "87ce25ce1e0c4e7c066195d220642466d3ab0890deaf516f233932faf5c7081a",
+        "log_odds": 0.10696792602539062,
+        "change_log_odds": 2.7136306762695312
+      },
+      {
+        "condition_id": "edit:request-source:journal-faq",
+        "intervention": {
+          "context_id": "request-source:journal-faq",
+          "pointer": "/messages/1/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 51,
+            "end_byte": 53
+          },
+          "replacement": "45"
+        },
+        "source_id": "journal-faq",
+        "source_version": "v1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "7ee43c53c572785e29d8cf94f3c55d469e728eb6e4bed14bd489b5f835f9fb6c",
+        "log_odds": -1.580587387084961,
+        "change_log_odds": 1.0260753631591797
+      }
+    ],
+    "joint_request_sha256": "704577d025d04db2f6083d1f9c041eb4f18c5d51c92a8b4910ece98635990492"
+  },
+  "unopened": {
+    "version": 1,
+    "id": "journal-answer-prefix",
+    "scorer_id": "qwen2-transformers-continuation-v1",
+    "captured_request_sha256": "7c3f45d095b8421c013575ccef8bcd33827aeb534f426618da289838ab7fb6d5",
+    "assistant_prefix": "",
+    "candidates": [
+      {
+        "id": "new-window",
+        "continuation": "45"
+      },
+      {
+        "id": "original-policy",
+        "continuation": "30"
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "assistant_prefix_token_ids": [],
+      "candidate_token_ids": [
+        [
+          19,
+          20
+        ],
+        [
+          18,
+          15
+        ]
+      ],
+      "conditions": [
+        {
+          "id": "baseline",
+          "rendered_prefix_sha256": "685db0663de59b628d0ee7c8d40e4cc8c2decd000d6ac95d0f8bf7a96389aa39",
+          "log_probs": [
+            -5.425909042358398,
+            -2.227205276489258
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -3.270641326904297,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.7630348205566406
+              },
+              {
+                "text": "5",
+                "log_prob": -2.1552677154541016,
+                "top_id": 24,
+                "top_text": "9",
+                "top_log_prob": -1.665933609008789
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -1.7679576873779297,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.7630348205566406
+              },
+              {
+                "text": "0",
+                "log_prob": -0.4592475891113281,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.4592475891113281
+              }
+            ]
+          ]
+        },
+        {
+          "id": "edit:request-source:journal-policy",
+          "rendered_prefix_sha256": "9f95e47165a24d89747451a1caf60274c72e34df37dffcee4eef8cd655db4096",
+          "log_probs": [
+            -3.6954402923583984,
+            -2.8161888122558594
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -2.782838821411133,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.7269134521484375
+              },
+              {
+                "text": "5",
+                "log_prob": -0.9126014709472656,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.9126014709472656
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -2.19412612915039,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.7269134521484375
+              },
+              {
+                "text": "0",
+                "log_prob": -0.6220626831054688,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.6220626831054688
+              }
+            ]
+          ]
+        },
+        {
+          "id": "edit:request-source:journal-faq",
+          "rendered_prefix_sha256": "a1089a5a04b1c3eb131c347c4c944e71c66db233799117c202f21ffff75477f1",
+          "log_probs": [
+            -3.801362991333008,
+            -2.2614707946777344
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -2.642047882080078,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.7771987915039062
+              },
+              {
+                "text": "5",
+                "log_prob": -1.1593151092529297,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -1.1593151092529297
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -1.7974319458007812,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.7771987915039062
+              },
+              {
+                "text": "0",
+                "log_prob": -0.4640388488769531,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.4640388488769531
+              }
+            ]
+          ]
+        },
+        {
+          "id": "joint",
+          "rendered_prefix_sha256": "f7fb06bd6372fc9785f0244ad016537955393c324774df46fde57691445d7ee4",
+          "log_probs": [
+            -3.0745582580566406,
+            -2.797523498535156
+          ],
+          "steps": [
+            [
+              {
+                "text": "4",
+                "log_prob": -2.3224925994873047,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.749553680419922
+              },
+              {
+                "text": "5",
+                "log_prob": -0.7520656585693359,
+                "top_id": 20,
+                "top_text": "5",
+                "top_log_prob": -0.7520656585693359
+              }
+            ],
+            [
+              {
+                "text": "3",
+                "log_prob": -2.0896224975585938,
+                "top_id": 16,
+                "top_text": "1",
+                "top_log_prob": -1.749553680419922
+              },
+              {
+                "text": "0",
+                "log_prob": -0.7079010009765625,
+                "top_id": 15,
+                "top_text": "0",
+                "top_log_prob": -0.7079010009765625
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    "baseline_log_odds": -3.1987037658691406,
+    "effects": [
+      {
+        "condition_id": "edit:request-source:journal-policy",
+        "intervention": {
+          "context_id": "request-source:journal-policy",
+          "pointer": "/messages/0/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 51,
+            "end_byte": 53
+          },
+          "replacement": "45"
+        },
+        "source_id": "journal-policy",
+        "source_version": "v1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "e866292e71616024f6120f1c067ec66b6e68de4a9e56d0430c588490c3e1bc45",
+        "log_odds": -0.8792514801025391,
+        "change_log_odds": 2.3194522857666016
+      },
+      {
+        "condition_id": "edit:request-source:journal-faq",
+        "intervention": {
+          "context_id": "request-source:journal-faq",
+          "pointer": "/messages/1/content",
+          "operation": "replace_text_fragment",
+          "text_range": {
+            "start_byte": 51,
+            "end_byte": 53
+          },
+          "replacement": "45"
+        },
+        "source_id": "journal-faq",
+        "source_version": "v1",
+        "evidence": {
+          "span_id": null,
+          "field": "nexusweave.request.body",
+          "message_index": null,
+          "part_index": null
+        },
+        "request_sha256": "818682492631fa9bbda5d6d22beb19a8c8109cb7bf597c388603d194ee66fd95",
+        "log_odds": -1.5398921966552734,
+        "change_log_odds": 1.6588115692138672
+      }
+    ],
+    "joint_request_sha256": "a15849ed7a1605b800f0b91d8326b63fc8084d888d11ea8a0fdc1026045bfa8c"
+  }
+}

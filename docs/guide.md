@@ -200,7 +200,7 @@ python3 examples/send_otlp_replay.py --conversation-id journal-followup --follow
 
 ### Did an edit reach the intended answer?
 
-The workflow can declare a target before running a shadow experiment. For the journal example we specified the exact answer `45` and tested changing the policy, the FAQ, and both to 45 days. The dashboard scores every condition against that same target. Open **Before inference**, choose **Try a policy conflict**, follow **Compare instructions using a text classifier**, then **Test a 45-day answer on three questions**. [Open the first question](http://127.0.0.1:8040/?view=preview&scenario=window-earlier)
+The workflow can declare a target before running a shadow experiment. For the journal example we specified the exact answer `45` and tested changing the policy, the FAQ, and both to 45 days. The dashboard scores every condition against that same target. [Open the first question](http://127.0.0.1:8040/?view=preview&scenario=window-earlier)
 
 | Question | Original | Policy edit | FAQ edit | Both edits | Follow-up |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -216,6 +216,34 @@ To reproduce the three envelopes with the pinned local runtime, run the command 
 
 ```sh
 python3 examples/context-screening/replay/test_declared_window.py "$qwen_dir" /tmp/journal-targets
+```
+
+### Which edit moved a target token to the top before generation?
+
+Open the score-only example and select `45`. The table compares the original request with three edited requests. The FAQ edit alone made `4` the highest-scoring opening token on the first question. Select the alternative `30` to inspect the same conditions from the other direction. **Compare with generated answers** opens a separate set of greedy trials. [Inspect scores before generation](http://127.0.0.1:8040/?view=preview&scenario=window-before)
+
+We scored three previously tested questions and wrote a fourth before its first run. Here is what happened when **both** sources changed to 45 days. Each probability uses the model’s full vocabulary.
+
+| Question | Highest-scoring first token | Probability of `4` | Probability of `5` given `4` | Complete greedy answer |
+| --- | --- | ---: | ---: | --- |
+| First question | `4` | 99.79% | 99.98% | `45` |
+| Follow-up | `1` | 15.45% | 95.81% | `100` |
+| Unopened journal | `1` | 9.80% | 47.14% | `120` |
+| Fresh question | `4` | 20.39% | 99.56% | `45 days` |
+
+On the follow-up, the model generated `1` first. To score the second digit of the target, the probe supplied `4` anyway. That 95.81% describes a hypothetical continuation. On the fresh question the two target digits both led, yet the model appended “ days”. Scoring a prefix leaves the probability of stopping after it unmeasured. [Inspect the fresh question](http://127.0.0.1:8040/?view=preview&scenario=window-fresh)
+
+![The fresh question, its four generated answers, and the first-token scores for the same source edits.](media/target-tokens.png)
+
+The adapter reads logits from a pinned Qwen2.5-0.5B-Instruct checkpoint. Pass `--token-steps` to the scorer for per-position results and set `test_pair` on a two-edit case to score the combined edit. Older reports provide sequence scores only. To display scores alongside completed trials, the sidecar requires a matching model ID, captured request, source edit, edited request digest and exact text target. The score report identifies the scorer revision and runtime. The proposal runner has its own identity and can use different decoding settings. A trace alone cannot supply these probabilities. [Scorer](../scripts/score_qwen_candidates.py) · [Report schema](../schema/candidate-probe-report-1.json)
+
+Reproduce the scores and the four fresh proposals with the same local model and Python dependencies as the preceding experiment. The other three questions reuse saved proposal trials. Repeating the run reproduced both output files byte for byte.
+
+```sh
+cargo build --locked --release
+python3 examples/context-screening/replay/test_target_tokens.py "$qwen_dir" /tmp/journal-token-scores
+cmp /tmp/journal-token-scores/fresh-target-tokens.json examples/context-screening/replay/fresh-target-tokens.json
+cmp /tmp/journal-token-scores/target-token-scores.json examples/context-screening/replay/target-token-scores.json
 ```
 
 ### Find recurring screened pairs

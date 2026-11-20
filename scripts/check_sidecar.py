@@ -902,7 +902,43 @@ def check_proposal_coverage(binary, db):
         assert get(base, "proposal-conversations", result="both", org=org)["rows"] == [changed]
 
 
+def check_target_token_scores(base):
+    envelope = json.loads((ROOT / "examples/context-screening/replay/fresh-target-tokens.json").read_text())
+    def preview(payload):
+        return send(base, "/api/sidecar/preview", payload)[1]
+
+    checked, = preview(envelope)["target_checks"]
+    path, = checked["token_paths"]
+    assert path["continuation"] == "45" and checked["joint"]["status"] == "missed"
+    assert [c["first_lower"] for c in path["conditions"]] == [0, 0, 0, None]
+    assert checked["next"] == "Inspect the text after the target answer"
+    scores_only = preview({key: envelope[key] for key in ("request", "candidate")})
+    alternatives, = scores_only["continuation_paths"]
+    assert not scores_only["target_checks"] and [p["continuation"] for p in alternatives] == ["45", "30"]
+    assert alternatives[0] == path
+
+    for field in ("step_sum", "shared_max", "joint_hash"):
+        altered = deepcopy(envelope)
+        candidate = altered["candidate"]
+        step = candidate["scores"]["conditions"][0]["steps"][0][0]
+        if field == "step_sum":
+            step["log_prob"] -= 1
+        elif field == "shared_max":
+            step["top_log_prob"] -= 0.1
+        else:
+            candidate["joint_request_sha256"] = "0" * 64
+        rejected = preview(altered)
+        assert rejected["unverified_probes"] and not rejected["continuation_paths"]
+        assert not rejected["target_checks"][0]["token_paths"]
+
+    different = deepcopy(envelope)
+    different["shadow"]["expected"]["outcome"] = "90"
+    checked, = preview(different)["target_checks"]
+    assert not checked["token_paths"] and checked["joint"]["status"] == "missed"
+
+
 def check_predecision_recommendations(base):
+    check_target_token_scores(base)
     fixture = ROOT / "examples/runtime-comparison/pending-routing"
     read = lambda name: json.loads((fixture / name).read_text())
     request, candidate, shadow = read("request.json"), read("report.json"), read("shadow-report.json")

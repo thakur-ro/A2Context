@@ -20,6 +20,8 @@ Hua and colleagues studied how the scoring method affects apparent prompt sensit
 
 ## Data and tools
 
+- EleutherAI’s Language Model Evaluation Harness documents conditional continuation likelihood and greedy agreement. The journal experiment uses these ideas for its optional per-token comparisons. [Pinned model interface](https://github.com/EleutherAI/lm-evaluation-harness/blob/v0.4.7/docs/model_guide.md#interface)
+
 - Exgentic’s `agent-llm-traces` dataset supplied the recorded retail sessions for the importer comparison. The [sample manifest](examples/retail-sample.manifest.json) pins the dataset revision and documents session selection. The policy excerpt in [retail-annotations.json](examples/retail-annotations.json) comes from that dataset and is distributed under [CDLA Permissive 2.0](LICENSES/CDLA-Permissive-2.0.txt). [Exgentic dataset card](https://huggingface.co/datasets/Exgentic/agent-llm-traces)
 - The retail sessions come from the τ²-Bench benchmark, by Victor Barres, Honghua Dong, Soham Ray, Xujie Si, and Karthik Narasimhan. [τ²-Bench paper](https://proceedings.mlr.press/v306/barres26a.html)
 - The retail reference comparison uses `agentpile` as a trace viewer. [agentpile](https://github.com/yzhao062/agentpile)

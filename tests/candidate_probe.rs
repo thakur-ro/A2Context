@@ -31,6 +31,7 @@ fn scores(work: &candidates::ScoringRequest<'_>) -> candidates::ScoringResult {
                 id: condition.id.clone(),
                 rendered_prefix_sha256: "b".repeat(64),
                 log_probs,
+                steps: None,
             })
             .collect(),
     }

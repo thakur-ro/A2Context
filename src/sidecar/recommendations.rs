@@ -251,7 +251,21 @@ pub fn preview(
     }
     let target_checks = super::targets::checks(call, &shadow);
     let screen = super::capture::screen_candidate(call);
-    let unverified = replay::candidates::recorded("pending", call)
+    let candidates = replay::candidates::recorded("pending", call);
+    let paths: Vec<Value> = candidates
+        .iter()
+        .filter_map(|probe| {
+            let replay::candidates::Verification::Matched { measurement } = &probe.verification
+            else {
+                return None;
+            };
+            let paths: Vec<_> = (0..2)
+                .filter_map(|i| replay::candidates::continuation_path(measurement, i))
+                .collect();
+            (!paths.is_empty()).then(|| json!(paths))
+        })
+        .collect();
+    let unverified = candidates
         .into_iter()
         .filter_map(|probe| match probe.verification {
             replay::candidates::Verification::Unverified { issue } => Some(issue),
@@ -269,7 +283,7 @@ pub fn preview(
         .take(10)
         .collect::<Vec<_>>();
     Ok(json!({
-        "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks,
+        "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths,
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))

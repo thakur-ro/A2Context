@@ -33,7 +33,12 @@ fn arm<'a>(
     }
 }
 
-fn recommendation(baseline: &Arm, edits: &[Arm], joint: Option<&Arm>) -> String {
+fn recommendation(
+    baseline: &Arm,
+    edits: &[Arm],
+    joint: Option<&Arm>,
+    extended_target: bool,
+) -> String {
     let all = || std::iter::once(baseline).chain(edits).chain(joint);
     if all().any(|a| a.status == TargetStatus::Incomplete) {
         return "Complete the missing or unscored trials before choosing an edit".into();
@@ -65,6 +70,7 @@ fn recommendation(baseline: &Arm, edits: &[Arm], joint: Option<&Arm>) -> String 
             "Repeat the edit with a different negative control".into()
         }
         (None, _, Some(TargetStatus::Met)) => "Test the combined edit on another request".into(),
+        (None, _, _) if extended_target => "Inspect the text after the target answer".into(),
         (None, _, _) => "Try a different edit for this target".into(),
         (Some(_), _, Some(TargetStatus::Missed)) => {
             "Retest the successful single edits separately".into()
@@ -74,12 +80,40 @@ fn recommendation(baseline: &Arm, edits: &[Arm], joint: Option<&Arm>) -> String 
     }
 }
 
+fn has_extended_target(report: &shadow::Report) -> bool {
+    if report.expected.kind != "model_output"
+        || !matches!(report.match_rule, replay::MatchRule::Exact)
+    {
+        return false;
+    }
+    let Some(target) = report.expected.outcome.as_str().filter(|s| !s.is_empty()) else {
+        return false;
+    };
+    std::iter::once(report.baseline.as_slice())
+        .chain(report.effects.iter().map(|a| a.result.trials.as_slice()))
+        .chain(report.pair.iter().map(|p| p.result.trials.as_slice()))
+        .filter_map(outcomes::consistent)
+        .any(|choice| {
+            choice.kind == report.expected.kind
+                && choice.label == report.expected.label
+                && choice
+                    .outcome
+                    .as_str()
+                    .and_then(|s| s.strip_prefix(target))
+                    .is_some_and(|suffix| !suffix.is_empty())
+        })
+}
+
 pub(super) fn checks(call: &Call, probes: &[shadow::RecordedProbe]) -> Vec<Value> {
     let reports = call
         .shadow_probes
         .as_ref()
         .and_then(|c| c.reports.as_deref())
         .unwrap_or_default();
+    if reports.is_empty() {
+        return Vec::new();
+    }
+    let candidates = replay::candidates::recorded("target", call);
     let mut checks = Vec::new();
     for (probe, report) in probes.iter().zip(reports) {
         let shadow::Verification::Matched { measurement } = &probe.verification else {
@@ -115,8 +149,22 @@ pub(super) fn checks(call: &Call, probes: &[shadow::RecordedProbe]) -> Vec<Value
                 original,
             )
         });
-        let next = recommendation(&baseline, &edits, joint.as_ref());
-        checks.push(json!({
+        let next = recommendation(
+            &baseline,
+            &edits,
+            joint.as_ref(),
+            has_extended_target(report),
+        );
+        let token_paths: Vec<_> = candidates
+            .iter()
+            .filter_map(|probe| match &probe.verification {
+                replay::candidates::Verification::Matched {
+                    measurement: candidate,
+                } => replay::candidates::target_path(candidate, measurement),
+                _ => None,
+            })
+            .collect();
+        checks.push(json!({ "token_paths":token_paths,
             "report_id": report.id, "runner": report.runner_id, "expected": outcomes::preview(measurement.expected),
             "match_rule": measurement.match_rule, "next": next, "baseline": baseline, "edits": edits, "joint": joint,
         }));

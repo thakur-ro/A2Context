@@ -1120,6 +1120,43 @@ function targetCriterion(expected, rule) {
   return value + " · Exact match";
 }
 
+function targetTokenScores(path, paired = true) {
+  const positions = path.token_ids;
+  const conditions = path.conditions;
+  const firstMisses = conditions.filter(row => row.first_lower === 0).length;
+  const headline = firstMisses === 0 ? "The opening token had the top score in every condition" :
+    firstMisses === conditions.length ? "Another token led at the first position in every scored condition" :
+    "Another token led at the first position in " + firstMisses + " of " + conditions.length + " conditions";
+  const percent = n => n > 0 && n < 0.0001 ? "<0.01%" : Intl.NumberFormat(undefined,
+    {style:"percent", maximumFractionDigits:2}).format(n);
+  const token = s => JSON.stringify(s);
+  const select = element("select", {"aria-label":"Target token position"}, ...positions.map((id,i) =>
+    element("option", {value:i,text:(i + 1) + " · " + token(conditions[0].steps[i].text) + " · token " + id})));
+  const body = element("tbody");
+  const prefix = element("p", {className:"label"});
+  function selectPosition() {
+    const index = Number(select.value);
+    prefix.textContent = index === 0 ? (path.assistant_prefix ? "After the supplied assistant prefix " + token(path.assistant_prefix) + "." : "At the answer boundary, before any output token.") :
+      "Scores at this position assume the preceding " + plural(index, "target token") + ".";
+    body.replaceChildren(...conditions.map(row => {
+      const step = row.steps[index];
+      return element("tr", {},element("th",{scope:"row",text:row.label}),
+        element("td", {},element("meter", {min:0,max:1,value:Math.exp(step.log_prob),"aria-label":"Target token probability"}),
+          element("small",{text:percent(Math.exp(step.log_prob))})),
+        element("td", {},element("code",{text:token(step.top_text),title:"Token " + step.top_id}),
+          element("small",{text:percent(Math.exp(step.top_log_prob))})));
+    }));
+  }
+  select.addEventListener("change",selectPosition);
+  selectPosition();
+  return element("details", {className:"target-tokens"}, element("summary", {text:"Before generation · " + headline}),
+    element("label", {}, "Target token ",select), prefix,
+    element("table", {},element("thead", {},element("tr", {},
+      ...["Condition","Target token probability","Highest-scoring token"].map(text => element("th",{scope:"col",text})))), body),
+    element("small",{text:"The scorer reads the full vocabulary using the supplied prefix." + (paired ? " The completed proposal comes from a separate run." : "")}),
+    element("small",{text:[path.model,path.revision,path.runtime].join(" · ")}));
+}
+
 function declaredTarget(check, question) {
   const proposal = p => p.kind === "model_output" ? p.outcome_preview : p.label + " · " + p.outcome_preview;
   const totals = {met:"Met", missed:"Missed", mixed:"Mixed", incomplete:"Incomplete"};
@@ -1145,7 +1182,7 @@ function declaredTarget(check, question) {
     element("table", {}, element("thead", {}, element("tr", {},
       ...["Condition", "Proposal", "Target result"].map(text => element("th", {scope:"col", text})))),
       element("tbody", {}, ...rows)),
-    element("small", {text:check.runner}));
+    element("small", {text:check.runner}), ...(check.token_paths || []).map(path => targetTokenScores(path)));
 }
 
 function targetPatternRow(group) {
@@ -1205,6 +1242,28 @@ async function targetPatternView() {
       url({...targetSelection,trace:row.trace,call:row.call,report:row.report})))));
 }
 
+function pendingTokenScores(paths) {
+  const heading = element("h2");
+  const chart = element("div");
+  const select = element("select", {"aria-label":"Scored continuation"}, ...paths.map((p,i) =>
+    element("option", {value:i,text:p.continuation})));
+  function show() {
+    const path = paths[Number(select.value)];
+    const [original, ...edits] = path.conditions;
+    const gained = edits.filter(row => row.steps[0].log_prob === row.steps[0].top_log_prob);
+    heading.textContent = original.first_lower === 0 && gained.length
+      ? "Opening token " + JSON.stringify(original.steps[0].text) + " reached the top score in " + gained.length + " of " + plural(edits.length, "edited condition")
+      : "Compare token support for " + JSON.stringify(path.continuation);
+    const details = targetTokenScores(path, false);
+    details.open = true;
+    chart.replaceChildren(details);
+  }
+  select.addEventListener("change", show);
+  show();
+  return element("section", {className:"panel target-check"}, element("span", {className:"label",text:"Scored before a proposal"}), heading,
+    element("label", {}, "Continuation ", select), chart);
+}
+
 function pendingPreview() {
   const output = element("section", { className: "feed", "aria-live": "polite" });
   const input = element("input", { type: "file", accept: "application/json,.json" });
@@ -1217,13 +1276,17 @@ function pendingPreview() {
       if (currentLoad !== sequence) return;
       const current = [], findings = [], probes = new Map();
       const targets = report.target_checks || [];
+      const linked = new Set(targets.flatMap(c => (c.token_paths || []).map(p => p.report)));
+      const standalone = (report.continuation_paths || []).filter(paths => !linked.has(paths[0].report));
       const experiment = report.history?.experiment;
       for (const { kind, detail, action } of report.recommendations) {
         if (kind === "shadow" && experiment?.status === "ready" && experiment.edited_request_sha256 === detail.edited_request_sha256 &&
             experiment.interventions[0].context_id === detail.sources[0].id &&
             experiment.proposal_tests.some(test => test.report === detail.report_id && test.runner === detail.runner)) continue;
         const card = recommendationDetail(kind, detail, action);
-        if (kind === "candidate") {
+        if (kind === "candidate" && (linked.has(detail.report_id) || standalone.some(paths => paths[0].report === detail.report_id))) {
+          findings.push(element("details", {},element("summary",{text:"Compare candidate margins for " + sourceName(detail.sources[0])}),card));
+        } else if (kind === "candidate") {
           if (!probes.has(detail.report_id)) {
             const group = element("div", { className: "feed" }, card);
             probes.set(detail.report_id, group);
@@ -1244,14 +1307,14 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
-        ...targets.map(check => declaredTarget(check, report.example_question)),
+        ...targets.map(check => declaredTarget(check, report.example_question)), ...standalone.map(pendingTokenScores),
         ...report.unverified_probes.map((issue) => element("p", { className: "empty", text: issue })),
         report.prefill ? routingComparison(report.prefill) : null,
         checked ? history : null,
         report.prefill && !(testedTop && report.prefill.ranked.length === 1) ? firstTokenPreview(report.prefill, false, testedTop) : null,
         ...current, report.screen_suggestion ? screenReview(report.screen_suggestion) : null, checked ? null : history, followUp, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
-        !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
+        !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
       if (currentLoad === sequence) output.textContent = error.message;
     }
@@ -1286,14 +1349,18 @@ function pendingPreview() {
       link("See the tested edit on this request", url({view:"preview",scenario:"checked-history"})), scores));
   });
   const scenario = query.get("scenario");
-  const windowQuestions = [["window-earlier", "First question"], ["window-followup", "Follow-up"], ["window-unopened", "Unopened journal"]];
+  const windowQuestions = [["window-earlier", "First question"], ["window-followup", "Follow-up"], ["window-unopened", "Unopened journal"], ["window-fresh", "Fresh question"]];
   const questions = element("nav", {className:"actions", "aria-label":"Journal questions"},
     ...windowQuestions.map(([key, label]) => key === scenario ? element("strong", {text:label, "aria-current":"page"}) :
       link(label, url({view:"preview", scenario:key}))));
-  if (windowQuestions.some(([key]) => key === scenario)) {
-    show(() => api("preview-example", {scenario}), questions);
+  if (scenario === "window-before") {
+    show(() => api("preview-example", {scenario}),
+      link("Compare with generated answers",url({view:"preview",scenario:"window-earlier"}),"action"));
+  } else if (windowQuestions.some(([key]) => key === scenario)) {
+    show(() => api("preview-example", {scenario}), element("div",{className:"feed"}, questions,
+      scenario === "window-earlier" ? link("See the scores before running proposal trials",url({view:"preview",scenario:"window-before"})) : null));
   } else if (["screen", "scored-history", "checked-history", "warranty", "routing", "policy", "history", "prefill", "routing-test"].includes(scenario)) {
-    const next = scenario === "screen" ? link("Test a 45-day answer on three questions", url({view:"preview", scenario:"window-earlier"}), "action") :
+    const next = scenario === "screen" ? link("Test a 45-day answer across questions", url({view:"preview", scenario:"window-earlier"}), "action") :
       scenario === "prefill" ? link("Compare the measured tool proposals", url({ view: "preview", scenario: "routing" }), "action") :
       scenario === "routing" ? routingLinks : scenario === "checked-history" ?
         link("Compare the two source edits on this request", url({view:"preview",scenario:"scored-history"}), "action") : null;

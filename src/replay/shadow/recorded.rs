@@ -41,6 +41,10 @@ pub enum Verification<'a> {
 /// Verified comparisons for a declared proposal. Raw trials stay in the report.
 #[derive(Debug, Serialize)]
 pub struct Measurement<'a> {
+    #[serde(skip)]
+    pub(in crate::replay) report: &'a Report,
+    #[serde(skip)]
+    pub(in crate::replay) model: Option<&'a str>,
     pub runner_id: &'a str,
     pub expected: &'a Choice,
     pub match_rule: &'a MatchRule,
@@ -284,6 +288,8 @@ fn verify<'a>(
         }
     }
     Ok(Measurement {
+        report,
+        model: call.model.as_deref(),
         runner_id: &report.runner_id,
         expected: &report.expected,
         match_rule: &report.match_rule,

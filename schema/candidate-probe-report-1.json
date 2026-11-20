@@ -12,6 +12,7 @@
     "assistant_prefix": { "type": "string" },
     "candidates": { "$ref": "candidate-probe-1.json#/properties/candidates" },
     "scores": { "$ref": "#/$defs/scores" },
+    "joint_request_sha256": { "$ref": "#/$defs/digest" },
     "baseline_log_odds": { "type": "number" },
     "effects": {
       "type": "array", "minItems": 1,
@@ -62,6 +63,18 @@
             "properties": {
               "id": { "type": "string" },
               "rendered_prefix_sha256": { "$ref": "#/$defs/digest" },
+              "steps": {
+                "type": "array", "minItems": 2, "maxItems": 2,
+                "items": { "type":"array", "minItems":1, "items":{
+                  "type":"object", "additionalProperties":false,
+                  "required":["text","log_prob","top_id","top_text","top_log_prob"],
+                  "properties":{
+                    "text":{"type":"string"}, "log_prob":{"type":"number","maximum":0},
+                    "top_id":{"type":"integer","minimum":0,"maximum":4294967295},
+                    "top_text":{"type":"string"}, "top_log_prob":{"type":"number","maximum":0}
+                  }
+                }}
+              },
               "log_probs": {
                 "type": "array", "minItems": 2, "maxItems": 2,
                 "items": { "type": "number", "maximum": 0 }

@@ -1,10 +1,8 @@
 //! Bind reported candidate measurements to the exact recorded request and sources.
 
-use super::{
-    margin, prepare_edit, sha256, validate_case, validate_scores, Candidate, Report, ScoringResult,
-};
+use super::{margin, sha256, validate_case, validate_scores, Candidate, Report, ScoringResult};
 use crate::{
-    replay::{source_binding, Operation},
+    replay::{edited_requests, prepare_edit, prepare_edits, source_binding, Operation},
     Call, ContextItem, Evidence, TextRange,
 };
 use serde::{Deserialize, Serialize};
@@ -41,6 +39,8 @@ pub enum Verification<'a> {
 /// The reported model comparison resolved to captured sources on this call.
 #[derive(Debug, Serialize)]
 pub struct Measurement<'a> {
+    #[serde(skip)]
+    pub(in crate::replay) report: &'a Report,
     #[serde(skip)]
     pub(super) scores: &'a ScoringResult,
     pub scorer_id: &'a str,
@@ -149,6 +149,7 @@ fn verify<'a>(
             .iter()
             .map(|effect| effect.condition_id.as_str()),
     );
+    let expected = expected.chain(report.joint_request_sha256.as_ref().map(|_| "joint"));
     validate_scores(&report.assistant_prefix, expected, &report.scores)?;
     let baseline = margin(&report.scores.conditions[0]);
     if !same_score(baseline, report.baseline_log_odds) {
@@ -214,7 +215,32 @@ fn verify<'a>(
         });
     }
 
+    if let Some(hash) = &report.joint_request_sha256 {
+        let edits: Vec<_> = report
+            .effects
+            .iter()
+            .zip(&effects)
+            .map(|(raw, bound)| {
+                let mut edit = raw.intervention.clone();
+                edit.context_id = bound.context_id.to_owned();
+                edit
+            })
+            .collect();
+        let prepared = prepare_edits(call, request, &edits, true)?;
+        let requests = edited_requests(request.clone(), &prepared, true)?;
+        if sha256(
+            requests
+                .last()
+                .expect("joint condition")
+                .to_string()
+                .as_bytes(),
+        ) != *hash
+        {
+            return Err("The combined edits differ from the candidate probe request.".into());
+        }
+    }
     Ok(Measurement {
+        report,
         scores: &report.scores,
         scorer_id: &report.scorer_id,
         model_id: &report.scores.model_id,

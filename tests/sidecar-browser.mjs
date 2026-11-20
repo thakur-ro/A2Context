@@ -141,7 +141,7 @@ try {
   await selectedReport.getByText("Baseline matched the recorded decision in 1 of 1 completed trials", { exact: true }).waitFor();
 
   await page.goto(base);
-  await factor(page, "Choice flipped").click();
+  await page.locator(".factor-row").filter({hasText:"Choice flipped"}).filter({hasText:"request-type"}).click();
   const measured = page.locator(".card").filter({ hasText: "switched the preferred alternative" });
   await measured.getByRole("link", { name: "Review recommendation" }).click();
   await page.getByText("stock favored", { exact: true }).first().waitFor();
@@ -328,7 +328,7 @@ try {
     if (device === page && process.env.TARGET_GROUP_SCREENSHOT) await device.locator("#content").screenshot({path:process.env.TARGET_GROUP_SCREENSHOT});
     await device.getByRole("link", {name:/journal-window-unopened/}).click();
     await device.getByText(/For an unopened journal, state the latest day/).waitFor();
-    assert.deepEqual(await device.locator(".target-check tbody code").allTextContents(), ["100","120","100","120"]);
+    assert.deepEqual(await device.locator(".target-check > table tbody code").allTextContents(), ["100","120","100","120"]);
     assert.equal(new URL(device.url()).searchParams.get("org"), "journal-window-study");
     const download = device.waitForEvent("download");
     await device.getByRole("button", {name:"Download recorded trials"}).click();
@@ -338,16 +338,38 @@ try {
     await device.getByRole("link", {name:/journal-window-first/}).click();
     await device.getByRole("heading", {name:"Retest the edit to journal-faq on another request"}).waitFor();
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    await device.goto(base + "/?view=preview&scenario=window-earlier");
+    await device.goto(base + "/?view=preview&scenario=window-before");
+    await device.getByRole("heading", {name:'Opening token "4" reached the top score in 2 of 3 edited conditions'}).waitFor();
+    const candidateChoice = device.getByRole("combobox", {name:"Scored continuation"});
+    assert.deepEqual(await candidateChoice.locator("option").allTextContents(), ["45","30"]);
+    await candidateChoice.selectOption("1");
+    assert.match(await device.locator(".target-tokens select option").first().textContent(), /"3"/);
+    assert.equal(await device.locator(".target-check > table").count(), 0);
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await device.getByRole("link", {name:"Compare with generated answers"}).click();
     const target = device.locator(".target-check");
     await target.getByRole("heading", {name:"Retest the edit to journal-faq on another request"}).waitFor();
     assert.deepEqual(await target.locator("tbody strong").allTextContents(), ["Missed","Missed","Met","Met"]);
     await device.getByRole("link", {name:"Unopened journal"}).click();
     await target.getByRole("heading", {name:"Try a different edit for this target"}).waitFor();
-    assert.deepEqual(await target.locator("tbody code").allTextContents(), ["100","120","100","120"]);
+    assert.deepEqual(await target.locator(":scope > table tbody code").allTextContents(), ["100","120","100","120"]);
     assert.deepEqual(await target.locator("tbody strong").allTextContents(), Array(4).fill("Missed"));
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     if (device === page && process.env.TARGET_SCREENSHOT) await target.screenshot({path:process.env.TARGET_SCREENSHOT});
+    await device.getByRole("link", {name:"Fresh question",exact:true}).click();
+    await target.getByRole("heading", {name:"Inspect the text after the target answer"}).waitFor();
+    assert.deepEqual(await target.locator(":scope > table tbody code").allTextContents(), ["60 days","60 days","30 days","45 days"]);
+    const tokens = target.locator(".target-tokens");
+    await tokens.locator("summary").click();
+    assert.deepEqual(await tokens.locator("tbody code").allTextContents(), ['"6"','"6"','"3"','"4"']);
+    await tokens.getByRole("combobox", {name:"Target token position"}).selectOption("1");
+    assert.deepEqual(await tokens.locator("tbody code").allTextContents(), Array(4).fill('"5"'));
+    await tokens.getByText("Scores at this position assume the preceding 1 target token.").waitFor();
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (device === page && process.env.TARGET_TOKENS_SCREENSHOT) {
+      await tokens.getByRole("combobox").selectOption("0");
+      await target.screenshot({path:process.env.TARGET_TOKENS_SCREENSHOT});
+    }
     await device.goto(base + "/?view=preview&scenario=prefill");
     await device.getByRole("heading", { name: "Test the edit to request-type" }).waitFor();
     await device.getByText("Request type: price.", { exact: true }).waitFor();
