@@ -321,6 +321,16 @@ meter::-moz-meter-bar { background: var(--accent); }
 .block-legend .block-original::before { border-top-style:dotted; }
 .block-legend .block-edited::before { border-top-style:dashed; }
 .block-plot details { margin-top:.75rem; }
+.dispatch-comparison h2 { margin-bottom:.35rem; }
+.dispatch-comparison table { width:100%; table-layout:fixed; margin:.8rem 0 .45rem; }
+.dispatch-comparison th, .dispatch-comparison td { overflow-wrap:anywhere; }
+.dispatch-target > th { font-weight:750; }
+.dispatch-change { background:var(--warning); font-weight:650; }
+.dispatch-comparison details { margin-top:.8rem; }
+@media (max-width:480px) {
+  .dispatch-comparison table { font-size:.85rem; }
+  .dispatch-comparison th, .dispatch-comparison td { padding:.35rem .3rem; }
+}
 
 .prefix-experiment pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 

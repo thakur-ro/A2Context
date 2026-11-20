@@ -83,6 +83,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Replay the original and edited requests on the same runner. Check whether the measured first-token shift carries through to a completed proposal.",
             "Measured first-token distributions under named edits",
         ),
+        "shadow" if detail["sandbox_dispatch"]["protected"] == true => (
+            "Test the dispatch check on authorized requests",
+            "The check blocked this proposal and preserved the expected state in the sandbox. Replay a valid approved proposal as a control before enabling the check.",
+            "Same proposal and sandbox checkpoint with and without the dispatch check",
+        ),
         "shadow" if detail["response_pair"]["changed"] == false && detail["measurement"]["baseline"]["matched"] == 0 => (
             "Test another source on this request",
             "The original and edited proposals were identical and both missed the expected outcome. Try a different source while keeping the request and scoring rule fixed.",
@@ -410,13 +415,17 @@ pub fn probes(run: &Run, call: &Call, replays: &[replay::Replay], findings: &mut
                 effect.intervention.operation,
                 effect.intervention.replacement
             ]);
-            findings.push(findings::occurrence("shadow", key, call, json!({
+            let mut detail = json!({
                 "report_id": probe.report_id, "sources": [findings::source(item)], "outcome": measurement.expected,
                 "effect_pp": change, "response_pair": pair, "edited_request_sha256": arm.request_sha256,
                 "model": call.model, "runner": measurement.runner_id,
                 "measurement": {"baseline": measurement.baseline, "variant": effect.summary, "interval": effect.difference_95_interval_pp},
                 "replacement": effect.intervention.replacement, "operation": effect.intervention.operation,
-            })));
+            });
+            if let Some(dispatch) = replay::shadow::dispatch::review(report, arm) {
+                detail["sandbox_dispatch"] = dispatch;
+            }
+            findings.push(findings::occurrence("shadow", key, call, detail));
         }
     }
 }

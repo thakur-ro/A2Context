@@ -345,6 +345,8 @@ function impactPanel(impact) {
         element("a", {className:"impact-outcome", href:url({level:index + 1, by:index === 0 ? "edit" : "source"})},
           element("strong", {text:impact.evidence_counts[key]}), element("span", {text:title}),
           element("span", {"aria-hidden":"true",text:"→"}))] : []),
+      impact.sandbox_dispatch_conversations > 0 && element("p", {className:"row-extra",
+        text:"A dispatch check preserved sandbox state in " + plural(impact.sandbox_dispatch_conversations,"conversation") + "."}),
       proposalCoverage(impact)));
 }
 
@@ -448,11 +450,12 @@ function positionReadout(result) {
 
 function factorRow(factor, featured = false) {
   const signals = { routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
-    token: "Token score shifted", source_mask: "Source masks tested", score: "Preference shifted", conflict: "Conflicting rules",
+    token: "Token score shifted", source_mask: "Source masks tested", sandbox_dispatch: "Sandbox state preserved", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
   const step = { routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer", source_mask: "Compare tool proposals after masking sources",
+    sandbox_dispatch: "See what changed at dispatch",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
     duplicate: "Check whether one copy can be removed", dialogue: "Check the repeated message positions",
     equal: "Review the equal match rates" };
@@ -740,7 +743,8 @@ function findingCard(card) {
   const { kind, evidence: { detail } } = card;
   return element("article", { className: "card" },
     element("div", {}, tag(kind), element("h2", { text: kind === "prefill" ? prefillSummary(card.prefill_counts) : findingTitle(kind, detail) }),
-      repeatedRouting(card) ? element("p", {text:routingCoverage(card)}) : kind === "prefill" ? prefillFollowup(card) :
+      detail.sandbox_dispatch?.protected ? element("p", {text:"The same proposal changed state without the dispatch check. The check preserved the expected state."}) :
+        repeatedRouting(card) ? element("p", {text:routingCoverage(card)}) : kind === "prefill" ? prefillFollowup(card) :
         element("p", { text:kind === "source_mask" ? maskOutcomeSummary(card.mask_outcomes) : findingDetail(kind, detail) }),
       element("p", { className: "label", text: plural(card.occurrences, "observation") + " · " + plural(card.traces, "request") }),
       link("Review recommendation", url({ factor: factorId, recommendation: card.id }), "action"),
@@ -953,6 +957,23 @@ function responsePair(pair) {
     (pair.original.truncated || pair.edited.truncated) ? element("p", {className:"label", text:"Previews show the first 160 characters. The comparison uses the complete proposals."}) : null,
     element("p", {className:"label", text:pair.baseline_trials + " original and " + pair.edited_trials +
       " edited trials. All trials completed and agreed within each setup."}));
+}
+
+function sandboxDispatch(comparison) {
+  if (!comparison) return null;
+  const value = x => typeof x === "string" ? x.replaceAll("_"," ") : JSON.stringify(x);
+  const stateRows = comparison.states.map(row => element("tr", {className:row.key === comparison.target ? "dispatch-target" : ""},
+    element("th", {scope:"row",text:row.key}), ...[row.before,row.without_guard,row.with_guard].map((state,i) =>
+      element("td", {className:i === 1 && comparison.protected && row.key === comparison.target ? "dispatch-change" : "",
+        text:value(state)}))));
+  return element("section", {className:"panel dispatch-comparison", "aria-label":"Sandbox dispatch comparison"},
+    element("h2", {text:comparison.protected ? "The dispatch check preserved the expected state" : "Compare sandbox state after dispatch"}),
+    element("p", {text:"Both runs used the same tool proposal and starting checkpoint."}),
+    comparisonTable(["State","Before dispatch","Without check","With check"],stateRows),
+    element("p", {className:"row-extra",text:"Without check · " + comparison.without_guard + " / With check · " + comparison.with_guard}),
+    element("details", {}, element("summary", {text:"Replay details"}),
+      element("p", {text:"Runner " + comparison.runner + " · Check " + comparison.guard}),
+      element("p", {text:"Checkpoint " + comparison.checkpoint})));
 }
 
 const maskOutcomes = {
@@ -1231,7 +1252,7 @@ function findingReview(card, occurrences) {
     card.kind === "replay" ? link("Open trial comparison", advancedHref({ id: trace_id }, { id: call_id }, { detail })) : null);
   return element("div", { className: "feed" },
     link("Back to source factor", url({ factor: factorId || detail.factor })),
-    card.kind === "token" ? tokenPath(card) : null,
+    card.kind === "token" ? tokenPath(card) : null, sandboxDispatch(detail.sandbox_dispatch),
     card.prefix_review ? prefixReview(card.prefix_review) : card.kind === "token" ? element("details", {className:"panel"}, element("summary", {text:"Peak score change and block swap"}),
       recommendationDetail(card.kind, detail, card.action, card.trend)) : recommendationDetail(card.kind, detail, card.action, card.trend, card.conflict_test?.sources.some(s => s.comparisons.length)),
     conflictTest(card),
@@ -1242,7 +1263,7 @@ function findingReview(card, occurrences) {
     card.threads > 1 ? compareForm(card.id) : null, evidence,
     panel("Where this appeared", ...occurrences.rows.map((row) => element("details", { className: "occurrence" },
       element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + fullDate(row.observed) }),
-      element("p", { text: findingTitle(row.kind, row.detail) }), visual(row.kind, row.detail),
+      element("p", { text: findingTitle(row.kind, row.detail) }), sandboxDispatch(row.detail.sandbox_dispatch), visual(row.kind, row.detail),
       element("div", { className: "actions" },
         card.prefix_review && link("Inspect the prefix scores on this call", url({recommendation:card.id,factor:detail.factor,trace:row.trace,call:row.call,report:row.detail.report_id})),
         row.thread_key ? link("Open conversation", url({ view: "threads", thread: row.thread_key, focus_trace:row.trace, focus_call:row.call })) : null,

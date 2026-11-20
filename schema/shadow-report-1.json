@@ -17,6 +17,7 @@
     "captured_request_sha256": { "$ref": "#/$defs/sha256" },
     "baseline": { "$ref": "#/$defs/trials" },
     "baseline_summary": { "$ref": "#/$defs/counts" },
+    "sandbox_dispatch": { "$ref": "sandbox-dispatch-1.json" },
     "effects": {
       "type": "array",
       "minItems": 1,

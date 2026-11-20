@@ -1108,6 +1108,8 @@ impl Store {
                     'ranked_reference_losses',count(*) FILTER (WHERE kind='prefill'
                         AND json_extract(detail,'$.selector_check.reference.original')=1 AND json_extract(detail,'$.selector_check.reference.ranked')=0),
                     'captured_conversations',(SELECT count(*) FROM captured_threads),
+                    'sandbox_dispatch_conversations',count(DISTINCT thread_key)
+                        FILTER (WHERE json_extract(detail,'$.sandbox_dispatch.protected')=1),
                     'without_findings',(SELECT count(*) FROM without_findings),
                     'without_findings_with_screen_suggestion',(SELECT count(*) FROM without_findings WHERE flagged),
                     'changed',count(DISTINCT CASE WHEN changed=1 OR proposal_changed=1 THEN thread_key END),
@@ -1149,18 +1151,21 @@ impl Store {
                 SELECT factor,org,factor IN (SELECT factor FROM variations) AS varies,json_extract(min(detail),'$.sources') AS sources,
                     count(DISTINCT thread_key) AS conversations,count(DISTINCT trace_id) AS requests,
                     count(DISTINCT CASE WHEN changed=1 OR proposal_changed=1 THEN trace_id END) AS changed_requests,
+                    count(DISTINCT thread_key) FILTER (WHERE json_extract(detail,'$.sandbox_dispatch.protected')=1) AS sandbox_conversations,
                     count(DISTINCT CASE WHEN kind='prefill' AND json_extract(detail,'$.routing_test.design') IS NOT NULL
                         THEN json_extract(detail,'$.baseline_request_sha256') END) AS routing_inputs,
                     count(DISTINCT group_id) + (factor IN (SELECT factor FROM pairs)) + (factor IN (SELECT factor FROM variations)) AS recommendations,max(observed) AS latest,
                     CASE WHEN factor IN (SELECT factor FROM disputed) THEN -6 WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -4 ELSE
                     min(CASE WHEN kind='replacement' THEN -3 WHEN json_extract(detail,'$.joint_pattern')='joint_only' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
                         WHEN kind='replay' AND changed=1 THEN 1 WHEN kind IN ('shadow','replay') AND (changed OR proposal_changed) THEN 2
+                        WHEN json_extract(detail,'$.sandbox_dispatch.protected')=1 THEN 2.25
                         WHEN kind='source_mask' AND proposal_changed THEN 2.5 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
                         WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
+                    'sandbox_conversations',sandbox_conversations,
                     'disputed_routing',json(d.test),'order_counts',CASE WHEN signal=-4 THEN json((
                        SELECT json_object('changed',sum(differs),'total',count(*)) FROM pairs WHERE factor=g.factor)) END,
                     'position_test',CASE WHEN t.pair IS NOT NULL THEN json_object(
@@ -1168,7 +1173,7 @@ impl Store {
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -6 THEN 'routing_repeats' WHEN -5 THEN 'routing' WHEN -4 THEN 'order' WHEN -3 THEN 'replacement' WHEN -2 THEN 'joint_proposal' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
                         WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
-                        WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
+                        WHEN 2.25 THEN 'sandbox_dispatch' WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
             "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
@@ -1185,6 +1190,7 @@ impl Store {
                              WHEN kind='candidate' AND min(json_extract(detail,'$.baseline')*json_extract(detail,'$.edited'))<0 THEN -3
                              WHEN kind='token' OR (kind='shadow' AND max(changed OR proposal_changed)) THEN -2
                              WHEN kind='source_mask' AND max(proposal_changed) THEN -2
+                             WHEN max(json_extract(detail,'$.sandbox_dispatch.protected'))=1 THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
                              WHEN kind='conflict' AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
@@ -1244,6 +1250,7 @@ impl Store {
                        WHEN json_extract(chosen.detail,'$.joint_pattern')='joint_only' THEN -2
                        WHEN json_extract(chosen.detail,'$.routing_test') IS NOT NULL OR json_extract(chosen.detail,'$.joint_only')=1 THEN -1
                        WHEN chosen.kind='candidate' AND json_extract(chosen.detail,'$.baseline')*json_extract(chosen.detail,'$.edited')<0 THEN 0
+                       WHEN json_extract(chosen.detail,'$.sandbox_dispatch.protected')=1 THEN 0
                        WHEN chosen.kind IN ('shadow','replay','source_mask') AND (chosen.changed OR chosen.proposal_changed) THEN 0 ELSE 1 END,
                        d.completed DESC,d.inputs DESC,chosen.observed DESC,chosen.trace_id,chosen.call_id,chosen.n LIMIT 1)
                  ORDER BY priority,threads DESC,traces DESC,latest DESC,g.group_id");

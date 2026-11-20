@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NexusWeave sandbox dispatch comparison",
+  "description": "Two dispatch runs of one exact tool proposal from the same sandbox checkpoint. The edited request must identify one verified shadow effect, and both original and edited proposal trials must agree with the supplied proposal.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "edited_request_sha256", "runner_id", "guard_id", "proposal", "checkpoint", "target_key", "expected", "without_guard", "with_guard"],
+  "properties": {
+    "version": { "const": 1 },
+    "edited_request_sha256": { "$ref": "shadow-report-1.json#/$defs/sha256" },
+    "runner_id": { "$ref": "#/$defs/name" },
+    "guard_id": { "$ref": "#/$defs/name" },
+    "proposal": { "$ref": "shadow-case-1.json#/properties/expected" },
+    "checkpoint": { "$ref": "#/$defs/state" },
+    "target_key": { "$ref": "#/$defs/name" },
+    "expected": {},
+    "without_guard": { "$ref": "#/$defs/arm" },
+    "with_guard": { "$ref": "#/$defs/arm" }
+  },
+  "$defs": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "\\S" },
+    "state": {
+      "type": "object",
+      "description": "An allowlisted projection of the workflow state.",
+      "minProperties": 1,
+      "maxProperties": 12,
+      "propertyNames": { "$ref": "#/$defs/name" }
+    },
+    "arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checkpoint_sha256", "status", "after"],
+      "properties": {
+        "checkpoint_sha256": {
+          "description": "SHA-256 of the canonical JSON checkpoint, with object keys sorted recursively.",
+          "$ref": "shadow-report-1.json#/$defs/sha256"
+        },
+        "status": { "enum": ["applied", "blocked"] },
+        "after": { "$ref": "#/$defs/state" }
+      }
+    }
+  }
+}

@@ -1,7 +1,6 @@
 // Record the exchange-approval workflow loaded by make demo.
 import {spawn} from "node:child_process";
 import {once} from "node:events";
-import {readFile} from "node:fs/promises";
 const [base, output] = process.argv.slice(2);
 if (!base || !output) throw new Error("Usage: node scripts/record_demo.mjs SIDECAR_URL OUTPUT.mp4");
 const {chromium} = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
@@ -66,16 +65,12 @@ try {
     await hold(seconds, slides);
   }
   try {
-    const results = JSON.parse(await readFile(new URL("../examples/exchange-approval/results.json",import.meta.url),"utf8"));
-    const held = Object.values(results).filter(row => row.sandbox.refreshed);
-    const writes = guard => held.filter(row => row.sandbox.refreshed[guard].dispatch === "written").length;
-
     await slide("Retail agent replay","The boots exchange started.<br>Then the customer said stop.",
       [["First order","Exchange requested"],["Second order","Customer put it on hold"]],
       "Derived from a public τ²-Bench trace. The hold scenarios and replays run in a sandbox.",4.3);
     const impact = page.getByRole("region",{name:"Conversation impact"});
     await capture(impact,"Two hold scenarios left the agent proposing the same write.",3.4);
-    await page.getByRole("link",{name:/Equal match rates/}).click();
+    await page.getByRole("link",{name:"See what changed at dispatch"}).click();
     await page.getByRole("link",{name:"Review recommendation",exact:true}).click();
     await page.getByText("Underlying evidence",{exact:true}).click();
     await page.getByRole("link",{name:"Open original span",exact:true}).click();
@@ -83,13 +78,13 @@ try {
     await tree.getByText("Propose the second exchange",{exact:false}).first().waitFor();
     await capture(tree,"Identity, order and inventory checks came before the first exchange.",4.7);
     await page.goto(dashboard);
-    await page.locator(".featured").filter({hasText:"Conflicting rules"}).click();
+    await page.getByRole("link",{name:/Conflicting rules/}).click();
     await page.getByRole("link",{name:"Review recommendation",exact:true}).click();
     const declarations = page.locator(".panel .visual").filter({hasText:"Captured declarations"}).first();
     await declarations.getByText("confirmation-cache",{exact:true}).waitFor();
     await capture(declarations,"The cached approval still said yes. The customer’s latest message said hold.",5);
     await page.goto(dashboard);
-    await page.getByRole("link",{name:/Equal match rates/}).click();
+    await page.getByRole("link",{name:"See what changed at dispatch"}).click();
     await page.getByRole("link",{name:"Review recommendation",exact:true}).click();
     await page.getByText("Show tested replacement",{exact:true}).click();
     const edit = page.getByText("Show tested replacement",{exact:true}).locator("..");
@@ -97,10 +92,8 @@ try {
     const proposals = page.locator("details.response-pair");
     await proposals.getByText("Compare the matching proposals",{exact:true}).click();
     await capture(proposals,"The model still asks to exchange the puzzle in both replays.",5.2);
-    await slide("SQLite sandbox","Check authorization<br>before the write.",
-      [["Refreshed cache alone",`${writes("without_gate")}/${held.length} unwanted writes`],
-       ["Dispatch checks current approval",`${writes("with_gate")}/${held.length} unwanted writes`]],
-      "Same model proposals in both arms. The previously requested boots exchange stayed in place.",5.1);
+    const dispatch = page.getByRole("region",{name:"Sandbox dispatch comparison"});
+    await capture(dispatch,"At dispatch, the check held the puzzle order and preserved the boots exchange.",6.0);
   } finally {
     encoder.stdin.end();
   }

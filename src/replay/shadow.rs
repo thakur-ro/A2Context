@@ -3,6 +3,7 @@
 //! The runner returns a model proposal for each request. It can use an API that
 //! exposes generated outputs without exposing token scores.
 
+pub mod dispatch;
 pub mod patterns;
 mod recorded;
 
@@ -68,6 +69,9 @@ pub struct Report {
     pub pair: Option<JointEffect>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub control_comparison: Option<ControlComparison>,
+    /// Optional sandbox receipt for the same proposal after a single source edit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sandbox_dispatch: Option<Value>,
 }
 
 /// An individual request edit and the proposal outcomes it produced.
@@ -256,6 +260,7 @@ pub fn execute(
         effects,
         pair,
         control_comparison,
+        sandbox_dispatch: None,
     })
 }
 

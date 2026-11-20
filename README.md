@@ -4,9 +4,9 @@
 
 Ship NexusWeave as a small Rust service beside your LLM workflow. When a policy, retrieved passage, or tool description gives a surprising result, start with the affected conversations. Follow a recommendation to the exact source, the edit someone tested, and the answers it changed.
 
-https://github.com/user-attachments/assets/ed94d9ff-7e0d-4189-9b97-ed4a8f381b1a
+https://github.com/user-attachments/assets/4d9e0a55-55ef-4680-b0e1-c5b41073c425
 
-A customer stops the second of two exchanges after the first has been requested. The agent still proposes the second write after its confirmation cache is refreshed. Follow the trace to see why the fix belongs at dispatch. [Run the walkthrough](docs/demo.md)
+A customer stops the second of two exchanges after the first has been requested. The agent still proposes the second write after its confirmation cache is refreshed. The dashboard compares what the same proposal changed with and without an authorization check. [Run the walkthrough](docs/demo.md)
 
 ## What can I learn?
 
