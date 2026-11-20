@@ -238,10 +238,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 11 {
+        if version == 12 {
             return Ok(());
         }
-        if !(0..11).contains(&version) {
+        if !(0..12).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -249,7 +249,7 @@ impl Store {
             let ids = {
                 let mut stmt = self.0.prepare(
                     "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL AND
-                      (?2<8 OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
+                      (?2<8 OR instr(run,'shadow_probes')>0 OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='replay-reports') OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
                        OR (?2 IN (9,10) AND (instr(raw,'routing_test')>0 OR instr(run,'routing_test')>0)))
                       ORDER BY id LIMIT 16",
                 )?;
@@ -284,7 +284,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 11)?;
+        self.0.pragma_update(None, "user_version", 12)?;
         Ok(())
     }
 
@@ -508,15 +508,22 @@ impl Store {
             .unwrap_or(0);
         if matches!(
             view,
-            "findings" | "factors" | "impact" | "occurrences" | "order-tests" | "replay-variations"
+            "findings"
+                | "factors"
+                | "impact"
+                | "conversation-outcomes"
+                | "occurrences"
+                | "order-tests"
+                | "replay-variations"
         ) {
-            sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,json_extract(o.detail,'$.factor') AS factor,
+            sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,t.user,json_extract(o.detail,'$.factor') AS factor,
                 CASE WHEN o.kind IN ('candidate','token','shadow') OR (o.kind='prefill' AND json_extract(o.detail,'$.shifted')=1) OR
                     (o.kind='replay' AND json_extract(o.detail,'$.effect_pp') != 0) THEN 1 ELSE 0 END AS changed
                 FROM observations o JOIN selected t ON t.id=o.trace_id WHERE 1");
             for (key, field) in [
                 ("kind", "o.kind"),
                 ("group", "o.group_id"),
+                ("report", "json_extract(o.detail,'$.report_id')"),
                 ("trace", "o.trace_id"),
                 ("call", "o.call_id"),
                 ("replay", "json_extract(o.detail,'$.measurement.replay_id')"),
@@ -561,7 +568,35 @@ impl Store {
         if view == "factors" {
             sql.push_str(super::variation::TESTED_POSITIONS);
         }
+        if matches!(view, "impact" | "conversation-outcomes") {
+            sql.push_str(super::outcomes::CLASSIFIED);
+        }
         match view {
+            "conversation-outcomes" => {
+                sql.push_str(", ranked AS (
+                    SELECT *,row_number() OVER (PARTITION BY thread_key ORDER BY level,observed DESC,trace_id,call_id,n) AS choice
+                    FROM classified
+                ), page AS (SELECT * FROM ranked WHERE choice=1");
+                if let Some(level) = filters.get("level") {
+                    if !matches!(level.as_str(), "1" | "2" | "3" | "4" | "5") {
+                        return Err("choose an evidence level from 1 to 5".into());
+                    }
+                    sql.push_str(" AND level=CAST(? AS INTEGER)");
+                    args.push(level.clone());
+                }
+                sql.push_str(" ORDER BY level,observed DESC,thread_key LIMIT ? OFFSET ?)
+                    SELECT json_object('thread',t.thread,'user',t.user,'org',t.org,'level',p.level,
+                        'kind',o.kind,'sources',json_extract(detail,'$.sources'),'observed',p.observed,
+                        'factor',json_extract(detail,'$.factor'),'group',o.group_id,'trace',p.trace_id,'call',p.call_id,
+                        'replay',json_extract(detail,'$.measurement.replay_id'),'report',json_extract(detail,'$.report_id'),
+                        'context',json_extract(detail,'$.measurement.context_id'),
+                        'unchanged_pair',json(CASE WHEN json_type(detail,'$.response_pair.changed')='false'
+                            OR EXISTS (SELECT 1 FROM json_each(detail,'$.proposal_checks') c WHERE json_type(c.value,'$.changed')='false')
+                            OR EXISTS (SELECT 1 FROM json_each(detail,'$.routing_test.cells') c WHERE json_type(c.value,'$.changed')='false')
+                            THEN 'true' ELSE 'false' END))
+                    FROM page p JOIN observations o ON o.trace_id=p.trace_id AND o.n=p.n
+                    JOIN traces t ON t.id=p.trace_id ORDER BY p.level,p.observed DESC,p.thread_key");
+            }
             "replay-variations" => sql.push_str(super::variation::EXAMPLES),
             "order-tests" => sql.push_str(" SELECT json_object('factor',factor,'design',design,
                 'differs',differs,'total',count(*) OVER (),'differing',sum(differs) OVER (),
@@ -574,6 +609,9 @@ impl Store {
                     FROM events WHERE thread_key IS NOT NULL GROUP BY thread_key
                 ) SELECT json_object('conversations',count(DISTINCT thread_key),
                     'changed',count(DISTINCT CASE WHEN changed=1 THEN thread_key END),
+                    'evidence_counts',(SELECT json_object('proposal',count(*) FILTER (WHERE level=1),'rate',count(*) FILTER (WHERE level=2),
+                        'score',count(*) FILTER (WHERE level=3),'tested',count(*) FILTER (WHERE level=4),'inputs',count(*) FILTER (WHERE level=5))
+                        FROM (SELECT min(level) AS level FROM classified GROUP BY thread_key)),
                     'replay_outcomes',(SELECT json_object(
                         'changed_only',count(*) FILTER (WHERE shifted AND NOT held),
                         'equal_only',count(*) FILTER (WHERE held AND NOT shifted),

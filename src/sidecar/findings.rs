@@ -225,6 +225,10 @@ pub fn derive(
                        "single_edits":single_edits, "joint_only":joint_only, "outcome": group.comparison.decision_label, "match_rule": group.comparison.match_rule,
                        "sampling_design": group.comparison.sampling_design});
             if edit == "joint" {
+                if let Some(pair) = &report.pair {
+                    detail["response_pair"] =
+                        json!(super::outcomes::compare(&report.baseline, &pair.trials));
+                }
                 if let Some(trial) = super::order::trial(call, report) {
                     detail["order_test"] = trial;
                 }
@@ -245,6 +249,8 @@ pub fn derive(
                         };
                         input.annotate(&mut detail, &variant.intervention);
                     }
+                    detail["response_pair"] =
+                        json!(super::outcomes::compare(&report.baseline, &variant.trials));
                     detail["baseline_answer"] =
                         json!(super::replacement::consistent_answer(&report.baseline));
                     detail["edited_answer"] =

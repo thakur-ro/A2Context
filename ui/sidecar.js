@@ -11,7 +11,7 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const traceId = query.get("trace");
-const measuredExample = Object.fromEntries(["trace", "call", "replay", "context", "routing_design"]
+const measuredExample = Object.fromEntries(["trace", "call", "replay", "context", "routing_design", "report"]
   .filter((key) => recommendationId && query.has(key)).map((key) => [key, query.get(key)]));
 const positionPair = query.get("pair");
 const positionDesign = positionPair ? Object.fromEntries(["group", "baseline_trials", "edit_trials"]
@@ -202,6 +202,7 @@ function findingTitle(kind, detail) {
       detail.baseline_answer !== detail.edited_answer) {
     return "Editing “" + sourceName(detail.sources[0]) + "” changed the replayed answer";
   }
+  if (detail.effect_pp === 0 && detail.response_pair?.changed) return "The proposal changed with an equal match rate";
   if (detail.joint_only) return "Only the joint edit changed the match rate";
   const amount = Math.abs(detail.effect_pp);
   const points = amount < 0.01 ? "less than 0.01 percentage points" :
@@ -248,16 +249,27 @@ function replayCoverage(impact) {
     ].map(([label, count]) => element("div", {}, element("dt", { text: label }), element("dd", { text: count })))));
 }
 
+const outcomeLevels = [
+  {key:"proposal", title:"Generated proposal changed", description:"Every listed conversation has a source edit that changed a complete replayed answer or tool proposal."},
+  {key:"rate", title:"Replay match rate changed", description:"A change in the fraction of proposals meeting a scoring rule is the strongest recorded result here."},
+  {key:"score", title:"Model score shifted", description:"A first-token, candidate or output-token score moved. These conversations have no verified proposal change or match-rate shift in this scope."},
+  {key:"tested", title:"Tested without a measured shift", description:"A verified comparison had equal scores or match rates. A matched rate alone can conceal differences in the generated text."},
+  {key:"inputs", title:"Captured inputs only", description:"Declared rules conflict or input text repeats. These conversations have no measured comparison among their findings in this scope."},
+];
+const outcomeLevel = Number(query.get("level"));
+const outcomeCategory = outcomeLevels[outcomeLevel - 1];
+
 function impactPanel(impact) {
   return element("section", { className: "impact", "aria-label": "Conversation impact" },
     element("div", {}, element("h2", { text: "Conversations with findings" }),
       element("strong", { className: "impact-number", text: impact.conversations }),
       element("p", { text: plural(impact.factors, "source factor") + (impact.unlinked_requests ? " · " + plural(impact.unlinked_requests, "additional request") + " without a conversation ID" : "") })),
     element("div", { className: "impact-breakdown" },
-      element("strong", { text: impact.changed + " with a measured change" }),
-      element("meter", { min: 0, max: Math.max(1, impact.conversations), value: impact.changed,
-        "aria-label": "Conversations with a change under a tested edit" }),
-      element("p", { text: "A source edit changed a score or an outcome in a test linked to these conversations." }),
+      element("p", {text:"Strongest evidence per conversation"}),
+      ...outcomeLevels.flatMap(({key, title}, index) => impact.evidence_counts[key] ? [
+        element("a", {className:"impact-outcome", href:url({level:index + 1})},
+          element("strong", {text:impact.evidence_counts[key]}), element("span", {text:title}),
+          element("span", {"aria-hidden":"true",text:"→"}))] : []),
       replayCoverage(impact)));
 }
 
@@ -273,7 +285,7 @@ function positionReadout(result) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
+  const signals = { routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
   const step = { routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
@@ -623,6 +635,18 @@ function recommendationContext(kind, detail) {
   return null;
 }
 
+function responsePair(pair) {
+  if (!pair) return null;
+  const proposal = p => p.kind === "tool_call" || pair.original.label !== pair.edited.label || pair.original.kind !== pair.edited.kind
+    ? [p.kind, p.label, p.outcome_preview].join(" · ") : p.outcome_preview;
+  return element("details", {className:"response-pair"}, element("summary", {text:pair.changed ? "Compare the changed proposals" : "Compare the matching proposals"}),
+    element("div", {className:"comparison"}, ...[[pair.original,"Original"],[pair.edited,"Edited"]].map(([p, name]) =>
+      element("div", {}, element("strong", {text:name}), element("code", {text:proposal(p)})))),
+    (pair.original.truncated || pair.edited.truncated) ? element("p", {className:"label", text:"Previews show the first 160 characters. The comparison uses the complete proposals."}) : null,
+    element("p", {className:"label", text:pair.baseline_trials + " original and " + pair.edited_trials +
+      " edited trials. All trials completed and agreed within each setup."}));
+}
+
 function recommendationDetail(kind, detail, action, rows = []) {
   const interval = detail.measurement?.interval || detail.measurement?.difference_95_interval_pp;
   const uncertainty = interval ? "95% interval for the difference: " + interval.lower + " to " + interval.upper + " percentage points." :
@@ -635,7 +659,7 @@ function recommendationDetail(kind, detail, action, rows = []) {
        duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
   return panel(findingTitle(kind, detail), tag(kind),
     kind === "replacement" ? element("p", { className: "label", text: detail.model + " · " + plural(detail.conditions[0].baseline.attempted, "trial") + " per condition" }) : element("p", { className: "label", text: action.basis }), visual(kind, detail, rows),
-    recommendationContext(kind, detail), element("p", { className: "uncertainty", text: uncertainty }),
+    responsePair(detail.response_pair), recommendationContext(kind, detail), element("p", { className: "uncertainty", text: uncertainty }),
     element("details", {}, element("summary", { text: "How this was measured" }),
       element("p", { text: ({
         replacement: "The sidecar compared two replay reports with the same recorded decision, runner, request, edit locations, scoring rule, sampling design and baseline counts. The reports used different replacement texts.",
@@ -962,8 +986,22 @@ async function render(refresh = false) {
       const filters = { ...scope, ...measuredExample, group: recommendationId, ...(factorId && { factor: factorId }) };
       const [cards, occurrences] = await Promise.all([api("findings", filters),
         api("occurrences", { ...filters, offset: pageOffset })]);
-      if (cards.rows.length) body = review(cards.rows[0], occurrences);
-      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, ...measuredExample });
+      if (cards.rows.length) {
+        body = review(cards.rows[0], occurrences);
+        if (outcomeCategory) body.prepend(link("Back to conversations", url({level:outcomeLevel})));
+      }
+      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, level:outcomeCategory && outcomeLevel, ...measuredExample });
+    } else if (outcomeCategory) {
+      const data = await api("conversation-outcomes", {...scope, level:outcomeLevel, offset:pageOffset});
+      byId("title").textContent = outcomeCategory.title;
+      byId("summary").textContent = outcomeCategory.description;
+      body = element("div", {className:"feed"}, link("All source factors", url({})),
+        data.rows.length ? listing(data.rows, row => rowLink(row.thread,
+          [factorName(row.sources), kindLabels[row.kind], row.level === 3 && (row.unchanged_pair ? "Paired proposals stayed the same" : "Score evidence only for this finding"), row.user, fullDate(row.observed)].filter(Boolean).join(" · "),
+          url({level:outcomeLevel, factor:row.factor, recommendation:row.group, trace:row.trace, call:row.call,
+            report:row.report, replay:row.replay, context:row.context}))) :
+          element("p", {className:"empty", text:"No conversations have this evidence level in the current scope."}));
+      pagination(data.next_offset, {level:outcomeLevel});
     } else if (factorId && query.has("variation")) {
       const data = await api("replay-variations", { ...scope, factor: factorId, ...positionDesign, offset: pageOffset });
       byId("title").textContent = "When does the edit matter?";
@@ -1081,7 +1119,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      pair: positionPair, ...positionDesign, recommendation: recommendationId, ...measuredExample }, values);
+      pair: positionPair, ...positionDesign, recommendation: recommendationId, level:outcomeCategory && outcomeLevel, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
@@ -1089,7 +1127,7 @@ async function main() {
   if (scope.meta_key && !health.metadata_keys.includes(scope.meta_key)) meta.add(element("option", { value: scope.meta_key, text: scope.meta_key }));
   for (const [key, value] of Object.entries(scope)) form.elements.namedItem(key).value = value;
   await render();
-  if (view === "findings" && !factorId && !recommendationId && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !factorId && !recommendationId && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
     }

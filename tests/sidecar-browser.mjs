@@ -16,7 +16,8 @@ try {
   await page.goto(base);
   await page.getByRole("heading", { name: "Conversations with findings" }).waitFor();
   assert.equal(await page.locator(".impact-number").innerText(), "19");
-  await page.getByText("13 with a measured change").waitFor();
+  assert.deepEqual(await page.locator(".impact-outcome strong").allTextContents(), ["10", "3", "6"]);
+  assert.ok(await page.locator(".brand img").evaluate(img => img.complete && img.naturalWidth > 0));
   assert.equal(await page.locator("#navigation a").count(), 2);
   await factor(page, "Choice flipped").waitFor();
   if (process.env.FINDINGS_SCREENSHOT) await page.screenshot({ path: process.env.FINDINGS_SCREENSHOT });
@@ -66,7 +67,7 @@ try {
   await page.getByText(/Joint interaction: -100 percentage points/).waitFor();
   await page.getByText("How this was measured", { exact: true }).click();
   await page.getByText(/sidecar checked the request digests/).waitFor();
-  const arms = page.locator(".panel").first().locator(".comparison > div");
+  const arms = page.locator(".panel").first().locator(".comparison").first().locator(":scope > div");
   assert.equal(await arms.count(), 4);
   assert.match(await arms.nth(1).innerText(), /1 \/ 1 matched/);
   assert.match(await arms.nth(3).innerText(), /0 \/ 1 matched/);
@@ -192,7 +193,23 @@ try {
     assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   }
   for (const device of [page, mobile]) {
+    await device.goto(base);
+    await device.getByRole("link", {name:/Generated proposal changed/}).click();
+    await device.getByRole("link", {name:/journal-policy-support/}).click();
+    await device.getByText("Compare the changed proposals", {exact:true}).click();
+    const [original, edited] = await device.locator(".response-pair code").allTextContents();
+    assert.ok(original && edited && original !== edited);
+    assert.equal(new URL(device.url()).searchParams.get("replay"), "qwen-screened-journal-policy");
     await device.goto(base + "/?org=retail-south");
+    await device.getByRole("link", {name:/Model score shifted/}).click();
+    assert.equal(await device.getByRole("link", {name:/Paired proposals stayed the same/}).count(), 2);
+    await device.getByRole("link", {name:/routing-holdout-64/}).click();
+    await device.getByRole("region", {name:"Four routing setups"}).waitFor();
+    await device.getByRole("link", {name:"Back to conversations"}).click();
+    await device.getByRole("link", {name:/routing-holdout-91/}).waitFor();
+    assert.equal(new URL(device.url()).searchParams.get("org"), "retail-south");
+    assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await device.getByRole("link", {name:"All source factors"}).click();
     await factor(device, "Routing tests on 4 inputs").click();
     await device.locator(".card").filter({hasText:"4 of 4 distinct inputs"}).getByRole("link").click();
     const region = device.getByRole("region", {name:"Routing results across inputs"});

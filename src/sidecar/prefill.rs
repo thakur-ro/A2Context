@@ -99,21 +99,6 @@ fn settings(call: &Call) -> Option<Value> {
     Some(settings)
 }
 
-fn proposal_preview(choice: &replay::Choice) -> Value {
-    let text = choice
-        .outcome
-        .as_str()
-        .map(str::to_owned)
-        .unwrap_or_else(|| choice.outcome.to_string());
-    let mut chars = text.chars();
-    let mut preview: String = chars.by_ref().take(160).collect();
-    let truncated = chars.next().is_some();
-    if truncated {
-        preview.push('…');
-    }
-    json!({"kind":choice.kind,"label":choice.label,"outcome_preview":preview,"truncated":truncated})
-}
-
 fn proposal_checks(
     shadow: &[replay::shadow::RecordedProbe],
     call: &Call,
@@ -140,7 +125,7 @@ fn proposal_checks(
                     && row["context_id"] == resolved.context_id
             }) {
                 checks.push(json!({"context_id":resolved.context_id,"report":report.id,"runner":report.runner_id,
-                    "changed":original!=edited,"original":proposal_preview(original), "edited":proposal_preview(edited)}));
+                    "changed":original!=edited,"original":super::outcomes::preview(original), "edited":super::outcomes::preview(edited)}));
             }
         }
     }

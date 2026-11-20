@@ -16,6 +16,8 @@ From the checkout, run with a stable Rust toolchain and open [Recommendations](h
 cargo run --locked -- sidecar --demo
 ```
 
+[Open conversations where a proposal changed](http://127.0.0.1:8040/?level=1). Choose **journal-policy-support**, then **Compare the changed proposals** to see what the model answered before and after the source edit. The overview also links to score shifts and to input conflicts or repetition that still need a test.
+
 1. **Choose a source to test before answering.** Open **Before inference**, check a new request against earlier edits, then compare with scores on that request. The strongest measured edit changes the model’s preference from `UNKNOWN` to `KITE`. [Open the scored example](http://127.0.0.1:8040/?view=preview&scenario=scored-history)
 2. **Check which copy of an instruction mattered.** Choose **Compare the two source orders**. With one replacement, moving a dispatch record from the earlier slot to the later one changed the answer after that record was edited. Try the neutral wording in the same view to see where the match counts held. [Experiment](docs/methods.md#check-the-result-against-new-parcel-codes-and-source-order)
 3. **Locate the effect along an answer.** Open the refund-policy token recommendation to see which output token changed most under the source edit and what the decoder-block swap measured.

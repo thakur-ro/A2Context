@@ -275,12 +275,21 @@ pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
     }
     let shadow = replay::shadow::recorded(&run.id, call);
     findings.extend(super::prefill::observation(run, call, &shadow));
-    for probe in shadow {
+    let reports = call
+        .shadow_probes
+        .as_ref()
+        .and_then(|c| c.reports.as_deref())
+        .unwrap_or_default();
+    for (probe, report) in shadow.into_iter().zip(reports) {
         let replay::shadow::Verification::Matched { measurement } = probe.verification else {
             continue;
         };
-        for effect in &measurement.effects {
-            let Some(change) = effect.difference_pp.filter(|change| *change != 0.0) else {
+        for (effect, arm) in measurement.effects.iter().zip(&report.effects) {
+            let pair = super::outcomes::compare(&report.baseline, &arm.result.trials);
+            let Some(change) = effect.difference_pp else {
+                continue;
+            };
+            if change == 0.0 && !pair.as_ref().is_some_and(|p| p["changed"] == true) {
                 continue;
             };
             let Some(item) = call
@@ -303,7 +312,7 @@ pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
             ]);
             findings.push(findings::occurrence("shadow", key, call, json!({
                 "report_id": probe.report_id, "sources": [findings::source(item)], "outcome": measurement.expected,
-                "effect_pp": change, "model": call.model, "runner": measurement.runner_id,
+                "effect_pp": change, "response_pair": pair, "model": call.model, "runner": measurement.runner_id,
                 "measurement": {"baseline": measurement.baseline, "variant": effect.summary, "interval": effect.difference_95_interval_pp},
                 "replacement": effect.intervention.replacement, "operation": effect.intervention.operation,
             })));

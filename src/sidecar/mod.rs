@@ -1,6 +1,7 @@
 mod findings;
 mod history;
 mod order;
+mod outcomes;
 mod position_plan;
 mod prefill;
 mod recommendations;
@@ -325,6 +326,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/traces"
                 | "/api/sidecar/threads"
                 | "/api/sidecar/impact"
+                | "/api/sidecar/conversation-outcomes"
                 | "/api/sidecar/factors"
                 | "/api/sidecar/order-tests"
                 | "/api/sidecar/replay-variations"

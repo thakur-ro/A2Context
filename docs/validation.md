@@ -27,7 +27,7 @@ The checks cover the native recommendations, the request preview before inferenc
 
 The preview and live-path tests verify a candidate flip, its smaller comparison edit, the report’s binding to the captured request, and a token-level recommendation from an attached activation report. A stale request hash yields an unverified probe and no measured card. Restarting a retained database from the earlier schema version regenerates the recommendation projections.
 
-The layered dashboard tests also verify the difference between distinct conversations and requests without a conversation ID. In the saved demo, 11 identified conversations have findings and five have a measured change. Browser checks open the four-arm joint-edit result, verify the counts for each selected arm, and follow a scoped occurrence back to its original span. These are scripted journeys. Ease of use with workflow engineers still needs a user study.
+The layered dashboard tests also verify the difference between distinct conversations and requests without a conversation ID. The saved demo has 19 identified conversations with findings. Ten have a changed generated proposal, three have a score shift as their strongest finding, and six have captured-input findings only. In two of the three score cases the proposal stayed the same in the completed routing trials. The browser checks follow a changed journal-policy answer and an unchanged routing example on desktop and mobile. Browser checks open the four-arm joint-edit result, verify the counts for each selected arm, and follow a scoped occurrence back to its original span. These are scripted journeys. Ease of use with workflow engineers still needs a user study.
 
 The comparison test attaches two different wordings to one live decision. A different runner or scoring rule cannot generate the comparison. Retrying the same report keeps one recommendation. When a repeat under identical wording disagrees with its earlier results, the sidecar withdraws the example that depended on it. The browser opens both original replay links and checks the source-specific answer text beside each count. A separate [local replication with reversed source order](methods.md#check-the-result-against-new-parcel-codes-and-source-order) retains all 28 generated answers.
 
@@ -75,6 +75,8 @@ python3 scripts/measure_exporter_latency.py /path/to/pinned/qwen/snapshot \
 ```
 
 ## Constrained overload
+
+With conversation evidence categories enabled, the burst below retained all 2,304 traces and placed all 12 identified conversations in the captured-input category. The server accepted 51 batches on the first attempt and recovered the other 141 on retry. The median across ten pairs of overview reads was 20.86 ms after ingestion. The sidecar peaked at 46.9 MiB with zero OOM events. These measurements cover conflict-only inputs and a warm database. Score and proposal reports carry larger payloads.
 
 Use a fresh disposable container so retries can be compared against counts from an empty database. The burst sends 192 exports of 12 spans from 24 clients. Each span has 4 KiB of additional captured input. The load generator runs in a separate container and shares only the sidecar's network namespace.
 

@@ -274,10 +274,29 @@ def check_replay_representative(base):
     assert specific["evidence"]["trace_id"] == selected["trace"] and specific["evidence"]["detail"]["effect_pp"] == 0
     assert len(get(base, "occurrences", **selected)["rows"]) == 1
     assert not get(base, "findings", **{**selected, "context": "absent"})["rows"]
+    counts = get(base, "impact")["evidence_counts"]
+    assert counts == {"proposal": 1, "rate": 0, "score": 0, "tested": 1, "inputs": 0}, counts
+    equal, = get(base, "conversation-outcomes", level=4)["rows"]
+    assert equal["unchanged_pair"] and equal["trace"] == equal_report["location"]["run_id"]
     outcomes = get(base, "impact")["replay_outcomes"]
     assert outcomes == {"mixed": 1, "changed_only": 0, "equal_only": 1, "unmeasured": 0}, outcomes
     outcomes = get(base, "impact", factor=card["evidence"]["detail"]["factor"])["replay_outcomes"]
     assert outcomes == {"mixed": 0, "changed_only": 1, "equal_only": 1, "unmeasured": 0}, outcomes
+
+    # Mixed proposals in one arm can shift the rate without establishing a uniform answer pair.
+    mixed_trace, mixed = prepare_replay("mixed-proposal-trials")
+    mixed.pop("pair")
+    mixed["variants"] = [mixed["variants"][1]]
+    changed = mixed["variants"][0]
+    changed["trials"] += deepcopy(mixed["baseline"])
+    mixed["baseline"] *= 2
+    mixed["baseline_summary"] = {"attempted": 2, "completed": 2, "matched": 2}
+    changed.update(summary={"attempted": 2, "completed": 2, "matched": 1}, difference_pp=-50.0)
+    send_traces(base, mixed_trace)
+    send(base, "/api/replay-reports", mixed, expected=201)
+    rate, = get(base, "conversation-outcomes", level=2)["rows"]
+    assert rate["thread"] == "mixed-proposal-trials" and rate["replay"] == mixed["id"]
+    assert get(base, "impact", trace=rate["trace"])["evidence_counts"]["rate"] == 1
 
 
 def check_replay_variation(base):
@@ -610,6 +629,7 @@ def load(base, clients, batches, batch_size, payload_bytes):
         factors = get(base, "factors", org=org)
         reads.append(1000 * (time.monotonic() - start))
         assert impact == {"conversations": batch_size, "changed": 0, "unlinked_requests": 0, "factors": batches,
+                          "evidence_counts": {"proposal": 0, "rate": 0, "score": 0, "tested": 0, "inputs": batch_size},
                           "replay_outcomes": {"mixed": 0, "changed_only": 0, "equal_only": 0, "unmeasured": batch_size}}
         assert len(factors["rows"]) == min(batches, 15)
     return {"responses": {code: sum(status == code for status, _ in outcomes) for code in codes},
@@ -681,6 +701,13 @@ def main():
             check_replay_variation(base)
             check_order_tests(base)
             pairs = get(base, "order-tests", org="order-check")
+            proposal_rows = get(base, "conversation-outcomes", level=1)
+            assert proposal_rows["rows"]
+        with sqlite3.connect(representative) as sql:
+            sql.execute("PRAGMA user_version = 11")
+            sql.execute("UPDATE observations SET detail=json_remove(detail,'$.response_pair') WHERE kind='replay'")
+        with server(args.binary, representative, "--capture-content") as base:
+            assert get(base, "conversation-outcomes", level=1) == proposal_rows
         with sqlite3.connect(representative) as sql:
             sql.execute("PRAGMA user_version = 3")
             sql.execute("UPDATE observations SET detail=json_remove(detail,'$.order_test') WHERE kind='replay'")
