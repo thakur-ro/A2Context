@@ -1,6 +1,6 @@
 # Run NexusWeave beside inference
 
-The sidecar receives [OTLP/HTTP](https://opentelemetry.io/docs/specs/otlp/) trace exports and writes normalized evidence to embedded SQLite. The dashboard opens on **Recommendations**. **Traces** shows the span tree and source evidence. **Threads** shows ordered traces for a recorded conversation. URL filters carry across those views.
+The sidecar receives [OTLP/HTTP](https://opentelemetry.io/docs/specs/otlp/) trace exports and writes normalized evidence to embedded SQLite. The dashboard opens on **Recommendations**. It counts distinct identified conversations with findings, including the subset with a measured score or outcome change. Choose a source factor and a recommendation to see the tested conditions. Each occurrence links to its original conversation and span. URL filters carry across those layers.
 
 ```sh
 cargo build --release --locked
@@ -9,7 +9,7 @@ target/release/nexusweave sidecar --db ./evidence.sqlite --metadata deployment.e
 
 Use `http://127.0.0.1:8040/v1/traces` as the traces endpoint of an asynchronous OTLP exporter. The sidecar accepts OTLP JSON or Protobuf, optionally gzip encoded. It acknowledges success after the SQLite transaction commits. An exact retry preserves a single copy per trace and span ID. A late span merges into the existing trace, including a parent span that arrived after its child. Trace exports for unsupported instrumentation can be stored as topology until a supported span arrives.
 
-Existing detail links resolve through the sidecar when it has the referenced trace. Legacy thread or workspace snapshots are limited to eight traces or 8 MiB of trace data. Use the paginated **Threads** and **Traces** views for larger scopes.
+Existing detail links resolve through the sidecar when it has the referenced trace. Legacy thread or workspace snapshots are limited to eight traces or 8 MiB of trace data. The conversation and request lists support pagination.
 
 ### Preview an assembled request
 

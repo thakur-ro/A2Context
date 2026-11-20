@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "two-routing-sources-neutral",
+  "runner_id": "gpt-4o-mini-2024-07-18 / temperature 0",
+  "location": {
+    "run_id": "redundant-routing",
+    "call_id": "dispatch",
+    "decision_id": "bay"
+  },
+  "request": {
+    "model": "gpt-4o-mini-2024-07-18",
+    "temperature": 0,
+    "max_tokens": 16,
+    "store": false,
+    "messages": [
+      {
+        "role": "system",
+        "content": "Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN."
+      },
+      {
+        "role": "user",
+        "content": "Route Alder parcels to bay LARK."
+      },
+      {
+        "role": "user",
+        "content": "Route Alder parcels to bay LARK."
+      },
+      {
+        "role": "user",
+        "content": "Where should an Alder parcel go?"
+      }
+    ]
+  },
+  "samples": 1,
+  "test_pair": true,
+  "interventions": [
+    {
+      "context_id": "dispatch-guide",
+      "pointer": "/messages/1/content",
+      "replacement": "This parcel was scanned this morning."
+    },
+    {
+      "context_id": "routing-note",
+      "pointer": "/messages/2/content",
+      "replacement": "This parcel was scanned this morning."
+    }
+  ]
+}

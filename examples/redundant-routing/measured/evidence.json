@@ -1,0 +1,62 @@
+[
+  {
+    "id": "redundant-routing",
+    "source": "synthetic-openai",
+    "schema_version": 1,
+    "conversation_id": "Alder parcel",
+    "calls": [
+      {
+        "id": "dispatch",
+        "model": "gpt-4o-mini-2024-07-18",
+        "started_at": "2026-11-20T02:34:12.817313+00:00",
+        "context": [
+          {
+            "id": "dispatch-guide",
+            "source_id": "dispatch-guide",
+            "source_version": "1",
+            "kind": "message",
+            "role": "user",
+            "availability": "included",
+            "text": "Route Alder parcels to bay LARK.",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 1
+            }
+          },
+          {
+            "id": "routing-note",
+            "source_id": "routing-note",
+            "source_version": "1",
+            "kind": "message",
+            "role": "user",
+            "availability": "included",
+            "text": "Route Alder parcels to bay LARK.",
+            "evidence": {
+              "field": "request.messages",
+              "message_index": 2
+            }
+          }
+        ],
+        "recorded_request": {
+          "body": "{\"model\":\"gpt-4o-mini-2024-07-18\",\"temperature\":0,\"max_tokens\":16,\"store\":false,\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Route Alder parcels to bay LARK.\"},{\"role\":\"user\",\"content\":\"Route Alder parcels to bay LARK.\"},{\"role\":\"user\",\"content\":\"Where should an Alder parcel go?\"}]}",
+          "evidence": {
+            "field": "request.body"
+          }
+        },
+        "decisions": [
+          {
+            "id": "bay",
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "LARK",
+            "evidence": {
+              "field": "choices.0.message.content"
+            }
+          }
+        ],
+        "tool_results": [],
+        "relationships": []
+      }
+    ]
+  }
+]

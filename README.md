@@ -1,10 +1,10 @@
 # NexusWeave
 
-**See which inputs shifted a model’s choice and what to test next.**
+**Find the conversations where a context edit changed a model’s answer.**
 
 NexusWeave recommends what to change or test when instructions conflict, an input repeats, or a controlled source edit changes a model’s behavior. Review an assembled request before inference, or let the Rust sidecar surface new evidence as it arrives over OpenTelemetry.
 
-![NexusWeave Recommendations shows that editing the request type shifts model preference from the stock tool to the price tool](docs/media/findings.png)
+![NexusWeave shows conversation coverage and groups the recommendations by the sources involved](docs/media/findings.png)
 
 [Quickstart](#try-the-demo) · [Deploy a sidecar](docs/sidecar.md) · [Methods](docs/methods.md) · [Research review](docs/research-review.md) · [Rust API](docs/rust-api.md)
 
@@ -17,10 +17,11 @@ cargo run --locked -- sidecar --demo
 ```
 
 1. **See what shifted a tool choice.** Open **Before inference** and try the measured tool choice. The request-type edit flips preference from stock to price. Editing the store name barely changes the score in the same test.
-2. **Locate the effect along an answer.** Open the refund-policy token recommendation to see which output token changed most under the source edit and what the decoder-block swap measured.
-3. **Test what to change.** Try a policy conflict before inference. Filter Recommendations by organization `demo-retail` and user `user-042` to compare recurrence with `user-077`.
+2. **Test whether two sources can substitute for each other.** Open the dispatch-guide and routing-note factor, then the joint-edit recommendation. Compare all four trial arms. Changing the wording of the replacement produced a different result. [Experiment](docs/methods.md#two-copies-of-a-dispatch-record)
+3. **Locate the effect along an answer.** Open the refund-policy token recommendation to see which output token changed most under the source edit and what the decoder-block swap measured.
+4. **Test what to change.** Try a policy conflict before inference. Filter Recommendations by organization `demo-retail` and user `user-042` to compare recurrence with `user-077`.
 
-The demo uses saved local-model measurements on synthetic inputs and makes zero model calls.
+The demo uses saved local and hosted model measurements on synthetic inputs and makes zero model calls.
 
 ## Connect a workflow
 

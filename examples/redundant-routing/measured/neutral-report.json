@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "id": "two-routing-sources-neutral",
+  "runner_id": "gpt-4o-mini-2024-07-18 / temperature 0",
+  "location": {
+    "run_id": "redundant-routing",
+    "call_id": "dispatch",
+    "decision_id": "bay"
+  },
+  "recorded": {
+    "kind": "model_output",
+    "label": "Model answer",
+    "outcome": "LARK"
+  },
+  "baseline_request_sha256": "2f7dbd45319e80d9cdd3f9c485581f68fe14f1979afe609e80268b163b9da10c",
+  "baseline": [
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "model_output",
+        "label": "Model answer",
+        "outcome": "LARK"
+      }
+    }
+  ],
+  "baseline_summary": {
+    "attempted": 1,
+    "completed": 1,
+    "matched": 1
+  },
+  "variants": [
+    {
+      "intervention": {
+        "context_id": "dispatch-guide",
+        "pointer": "/messages/1/content",
+        "replacement": "This parcel was scanned this morning."
+      },
+      "captured_context_sha256": "781f1fad77053b6b30f4a06acd17dd85572ac044196a363f4e1d8bba5dcca564",
+      "trials": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "LARK"
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "difference_pp": 0.0
+    },
+    {
+      "intervention": {
+        "context_id": "routing-note",
+        "pointer": "/messages/2/content",
+        "replacement": "This parcel was scanned this morning."
+      },
+      "captured_context_sha256": "781f1fad77053b6b30f4a06acd17dd85572ac044196a363f4e1d8bba5dcca564",
+      "trials": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "model_output",
+            "label": "Model answer",
+            "outcome": "LARK"
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 1,
+        "completed": 1,
+        "matched": 1
+      },
+      "difference_pp": 0.0
+    }
+  ],
+  "pair": {
+    "trials": [
+      {
+        "status": "completed",
+        "choice": {
+          "kind": "model_output",
+          "label": "Model answer",
+          "outcome": "UNKNOWN"
+        }
+      }
+    ],
+    "summary": {
+      "attempted": 1,
+      "completed": 1,
+      "matched": 0
+    },
+    "difference_pp": -100.0,
+    "interaction_pp": -100.0
+  }
+}

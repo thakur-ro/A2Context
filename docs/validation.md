@@ -1,6 +1,6 @@
 # Private release validation
 
-The evaluation uses synthetic trace labels and saved local-model trials. The labels describe which cards an engineer should investigate. This is a test of the initial design and its failure modes. It makes no estimate of production accuracy.
+The evaluation uses synthetic trace labels and saved local and hosted model trials. The labels describe which cards an engineer should investigate. This is a test of the initial design and its failure modes. It makes no estimate of production accuracy.
 
 ## Reproduce the checks
 
@@ -26,6 +26,20 @@ node tests/sidecar-browser.mjs
 The checks cover the native recommendations, the request preview before inference, cross-user recurrence with filter persistence, the original span and replay links, and horizontal layout at widths of 1280 and 390 pixels. Set `FINDINGS_SCREENSHOT` to regenerate the [README preview](media/findings.png).
 
 The preview and live-path tests verify a candidate flip, its smaller comparison edit, the report’s binding to the captured request, and a token-level recommendation from an attached activation report. A stale request hash yields an unverified probe and no measured card. Restarting a retained database from the earlier schema version regenerates the recommendation projections.
+
+The layered dashboard tests also verify the difference between distinct conversations and requests without a conversation ID. In the saved demo, 11 identified conversations have findings and five have a measured change. Browser checks open the four-arm joint-edit result, verify the counts for each selected arm, and follow a scoped occurrence back to its original span. These are scripted journeys. Ease of use with workflow engineers still needs a user study.
+
+## What the public traces support
+
+The pinned Exgentic retail sample contains eight conversations and 99 model calls. On the unannotated import, the sidecar found 101 exact repetitions across 83 calls in all eight conversations. Every repetition was dialogue from unnamed assistant or user messages. The normalized calls had no declared rules, bound experiment reports or replay-ready request bodies. The traces support locating those repetitions. A causal change in the historical model's answer remains unmeasured.
+
+This result exposed a problem with recommending removal whenever two texts match. The factor list now labels these cases **Repeated dialogue** and places them after named input repetitions. Its recommendation asks whether a workflow inserted a copy. Genuine conversation history may repeat naturally. To reproduce, import the pinned sample, then run the optional check from the repository root.
+
+```sh
+cargo test --locked public_retail_recommendations -- --ignored
+```
+
+[Sample and import instructions](guide.md#import-public-retail-traces) · [Pinned sample manifest](../examples/retail-sample.manifest.json)
 
 ## Ranking
 

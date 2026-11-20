@@ -10,12 +10,17 @@ pub struct Action {
     basis: &'static str,
 }
 
-pub fn action(kind: &str) -> Action {
+pub fn action(kind: &str, detail: &Value) -> Action {
     let (title, next, basis) = match kind {
         "conflict" => (
             "Resolve the competing rules",
             "Confirm which source should govern this scope. Test changing only the other declaration against the answer or tool choice you expect.",
             "Observed input disagreement",
+        ),
+        "duplicate" if detail["dialogue_only"] == true => (
+            "Check whether the repetition belongs to the conversation",
+            "Compare the message positions. Repeated replies can be part of a normal exchange. Test deduplication only if capture shows the workflow inserted an extra copy.",
+            "Observed repeated dialogue without named sources",
         ),
         "duplicate" => (
             "Test removing one copy",
@@ -73,9 +78,15 @@ pub fn preview(input: pending::Request) -> Result<Value, String> {
         _ => 2,
     });
     let total = observations.len();
-    let items = observations.into_iter().take(15).map(|item| json!({
-        "kind": item.kind, "id": item.group, "detail": item.detail, "action": action(item.kind),
-    })).collect::<Vec<_>>();
+    let items = observations
+        .into_iter()
+        .take(15)
+        .map(|item| {
+            json!({
+                "kind": item.kind, "id": item.group, "detail": item.detail, "action": item.action,
+            })
+        })
+        .collect::<Vec<_>>();
     let unverified = replay::candidates::recorded("pending", call)
         .into_iter()
         .filter_map(|probe| match probe.verification {

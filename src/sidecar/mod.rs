@@ -312,7 +312,12 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                     "accepted_batches": metrics.accepted.load(Relaxed), "rejected_batches": metrics.rejected.load(Relaxed),
                     "coverage": store.coverage(&fields)?,
                 }),
-                "/api/sidecar/findings" | "/api/sidecar/traces" | "/api/sidecar/threads" => {
+                "/api/sidecar/findings"
+                | "/api/sidecar/traces"
+                | "/api/sidecar/threads"
+                | "/api/sidecar/impact"
+                | "/api/sidecar/factors"
+                | "/api/sidecar/occurrences" => {
                     store.list(path.rsplit('/').next().expect("view path"), &fields)?
                 }
                 "/api/sidecar/trace" => {
@@ -522,7 +527,16 @@ fn seed(store: &mut Store) -> Result<()> {
     runs.extend(serde_json::from_str::<Vec<Run>>(include_str!(
         "../../examples/context-screening/replay/evidence.json"
     ))?);
+    runs.extend(serde_json::from_str::<Vec<Run>>(include_str!(
+        "../../examples/redundant-routing/measured/evidence.json"
+    ))?);
     let reports = [
+        serde_json::from_str(include_str!(
+            "../../examples/redundant-routing/measured/unavailable-report.json"
+        ))?,
+        serde_json::from_str(include_str!(
+            "../../examples/redundant-routing/measured/neutral-report.json"
+        ))?,
         serde_json::from_str(include_str!(
             "../../examples/context-screening/replay/report.json"
         ))?,

@@ -42,6 +42,7 @@ impl Store {
                  group_id TEXT, observed INTEGER, detail TEXT, PRIMARY KEY(trace_id,n)
              );
              CREATE INDEX IF NOT EXISTS observations_type ON observations(kind,group_id,observed);
+             CREATE INDEX IF NOT EXISTS observations_factor ON observations(json_extract(detail,'$.factor'),observed);
              CREATE TABLE IF NOT EXISTS reports (
                  trace_id TEXT REFERENCES traces(id) ON DELETE CASCADE, kind TEXT, call_id TEXT, decision_id TEXT, id TEXT, body TEXT,
                  PRIMARY KEY(trace_id,kind,call_id,decision_id,id)
@@ -222,10 +223,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 1 {
+        if version == 2 {
             return Ok(());
         }
-        if version != 0 {
+        if !(0..2).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
@@ -247,7 +248,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 1)?;
+        self.0.pragma_update(None, "user_version", 2)?;
         Ok(())
     }
 
@@ -304,7 +305,7 @@ impl Store {
         let mut sql = "WITH selected AS (SELECT t.id,t.start,t.org,t.user,t.thread,t.thread_key,t.workflow,t.source,t.calls,t.with_inputs,t.metadata FROM traces t WHERE t.run IS NOT NULL".to_owned();
         let mut args = Vec::new();
         append_scope(&mut sql, &mut args, filters)?;
-        if view != "findings" {
+        if matches!(view, "traces" | "threads") {
             append_window(&mut sql, &mut args, "t.start", filters)?;
         }
         sql.push(')');
@@ -313,19 +314,52 @@ impl Store {
             .map(|offset| offset.parse::<u32>())
             .transpose()?
             .unwrap_or(0);
+        if matches!(view, "findings" | "factors" | "impact" | "occurrences") {
+            sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,json_extract(o.detail,'$.factor') AS factor,
+                CASE WHEN o.kind IN ('candidate','token','shadow') OR
+                    (o.kind='replay' AND json_extract(o.detail,'$.effect_pp') != 0) THEN 1 ELSE 0 END AS changed
+                FROM observations o JOIN selected t ON t.id=o.trace_id WHERE 1");
+            for (key, field) in [
+                ("kind", "o.kind"),
+                ("group", "o.group_id"),
+                ("factor", "json_extract(o.detail,'$.factor')"),
+            ] {
+                if let Some(value) = filters.get(key).filter(|value| !value.is_empty()) {
+                    sql.push_str(&format!(" AND {field}=?"));
+                    args.push(value.clone());
+                }
+            }
+            append_window(&mut sql, &mut args, "o.observed", filters)?;
+            sql.push(')');
+        }
         match view {
+            "impact" => {
+                sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
+                    'changed',count(DISTINCT CASE WHEN changed=1 THEN thread_key END),
+                    'unlinked_requests',count(DISTINCT CASE WHEN thread_key IS NULL THEN trace_id END),
+                    'factors',count(DISTINCT factor)) FROM events");
+                let row: String = self.0.query_row(&sql, params_from_iter(args), |row| row.get(0))?;
+                return Ok(serde_json::from_str(&row)?);
+            }
+            "factors" => sql.push_str(", grouped AS (
+                SELECT factor,org,json_extract(min(detail),'$.sources') AS sources,
+                    count(DISTINCT thread_key) AS conversations,count(DISTINCT trace_id) AS requests,
+                    count(DISTINCT CASE WHEN changed=1 THEN trace_id END) AS changed_requests,
+                    count(DISTINCT group_id) AS recommendations,max(observed) AS latest,
+                    min(CASE WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
+                        WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' THEN 2 WHEN kind='token' THEN 3
+                        WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 6 ELSE 7 END) AS signal
+                FROM events GROUP BY factor)
+                SELECT json_object('id',factor,'sources',json(sources),'org',org,'conversations',conversations,
+                    'requests',requests,'changed',changed_requests,'recommendations',recommendations,
+                    'signal',CASE signal WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN 'replay' WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
+                        WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
+                FROM grouped ORDER BY signal,conversations DESC,requests DESC,latest DESC,factor LIMIT ? OFFSET ?"),
+            "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
+                'thread_key',thread_key,'observed',observed,'kind',kind,'detail',json(detail)) FROM events
+                ORDER BY observed DESC,trace_id,call_id,n LIMIT ? OFFSET ?"),
             "findings" => {
-                sql.push_str(", events AS (SELECT o.*,t.thread_key FROM observations o JOIN selected t ON t.id=o.trace_id WHERE 1");
-                if let Some(kind) = filters.get("kind").filter(|value| !value.is_empty()) {
-                    sql.push_str(" AND o.kind=?");
-                    args.push(kind.clone());
-                }
-                if let Some(group) = filters.get("group").filter(|value| !value.is_empty()) {
-                    sql.push_str(" AND o.group_id=?");
-                    args.push(group.clone());
-                }
-                append_window(&mut sql, &mut args, "o.observed", filters)?;
-                sql.push_str("), groups AS (
+                sql.push_str(", groups AS (
                     SELECT group_id,kind,count(*) AS hits,count(DISTINCT trace_id) AS traces,
                            count(DISTINCT thread_key) AS threads,max(observed) AS latest,
                            CASE
@@ -335,6 +369,7 @@ impl Store {
                              WHEN kind='conflict' AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
                              WHEN kind='conflict' THEN 2
+                             WHEN kind='duplicate' AND min(coalesce(json_extract(detail,'$.dialogue_only'),0))=1 THEN 5
                              WHEN kind='duplicate' THEN 3
                              ELSE 4 END AS priority
                     FROM events GROUP BY group_id,kind
@@ -342,9 +377,10 @@ impl Store {
                  )
                  SELECT json_object('id',g.group_id,'kind',g.kind,'occurrences',g.hits,'traces',g.traces,
                      'threads',g.threads,'latest',g.latest,'priority',g.priority,
-                     'evidence',json((SELECT json_object('trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail))
+                     'evidence',json((SELECT json_object('thread_key',e.thread_key,'thread',e.thread,'trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail))
                        FROM events e WHERE e.group_id=g.group_id
                        ORDER BY CASE
+                                  WHEN json_extract(e.detail,'$.joint_only')=1 THEN -1
                                   WHEN e.kind='candidate' AND json_extract(e.detail,'$.baseline')*json_extract(e.detail,'$.edited')<0 THEN 0
                                   WHEN e.kind='replay' AND abs(json_extract(e.detail,'$.effect_pp'))>0 THEN 0
                                   ELSE 1 END,
@@ -380,7 +416,10 @@ impl Store {
         if view == "findings" {
             for row in &mut rows {
                 let kind = row["kind"].as_str().ok_or("finding kind missing")?;
-                row["action"] = serde_json::to_value(recommendations::action(kind))?;
+                row["action"] = serde_json::to_value(recommendations::action(
+                    kind,
+                    &row["evidence"]["detail"],
+                ))?;
             }
         }
         Ok(json!({"rows":rows,"next_offset":next}))
@@ -555,7 +594,8 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     let activations = load_reports(tx, &run.id)?;
     let observations = findings::derive(run, &reports, &activations)?;
     let mut insert = tx.prepare("INSERT INTO observations VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
-    for (index, observation) in observations.iter().enumerate() {
+    for (index, mut observation) in observations.into_iter().enumerate() {
+        observation.detail["factor"] = findings::factor_id(run, &observation).into();
         insert.execute(params![
             run.id,
             index,

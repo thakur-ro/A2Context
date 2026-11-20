@@ -259,6 +259,8 @@ def check_predecision_recommendations(base):
     })
     send_traces(base, export(observed))
     published = get(base, "findings", kind="candidate", org="candidate-validation")["rows"]
+    impact = get(base, "impact", org="candidate-validation")
+    assert impact["conversations"] == 0 and impact["unlinked_requests"] == 1, impact
     assert published[0]["action"]["basis"] == "Measured preference at a fixed prefix"
     assert published[0]["evidence"]["detail"]["baseline"] > 0 > published[0]["evidence"]["detail"]["edited"]
     assert not get(base, "findings", kind="duplicate", org="candidate-validation")["rows"]
@@ -318,6 +320,15 @@ def rank(base, cohort, send_trace=send_traces):
         spans = (case_span(name, mode, number, org=cohort, shift=shift) for number in range(count))
         send_trace(base, export(*spans))
     rows = get(base, "findings", org=cohort)["rows"]
+    impact = get(base, "impact", org=cohort)
+    assert impact["conversations"] == 4 and impact["changed"] == 0, impact
+    factors = get(base, "factors", org=cohort)["rows"]
+    assert impact["factors"] == len(factors)
+    assert get(base, "impact", org=cohort, user="absent")["conversations"] == 0
+    assert get(base, "factors", org=cohort, user="absent")["rows"] == []
+    sample = get(base, "occurrences", org=cohort, group=rows[0]["id"])["rows"]
+    assert len(sample) == rows[0]["occurrences"]
+    assert len({row["thread_key"] for row in sample}) == rows[0]["threads"]
     assert len(rows) == 4, rows
     assert rows[0]["evidence"]["detail"]["rule"] == primary
     assert len(rows[0]["trend"]) == 4
@@ -424,6 +435,18 @@ def main():
             development = rank(base, "development")
             heldout = rank(base, "heldout")
             check_predecision_recommendations(base)
+            chat = case_span("conversation-history", "duplicate", org="dialogue")
+            for field in chat["attributes"]:
+                if field["key"] == "gen_ai.input.messages":
+                    entries = json.loads(field["value"]["stringValue"])
+                    for item in entries:
+                        item["role"] = "assistant"
+                    field["value"]["stringValue"] = json.dumps(entries)
+            chat["attributes"] = [field for field in chat["attributes"] if field["key"] != "nexusweave.context.semantics"]
+            send_traces(base, export(chat))
+            repeated = get(base, "findings", org="dialogue")["rows"][0]
+            assert repeated["evidence"]["detail"]["dialogue_only"] and repeated["priority"] == 5
+            assert get(base, "factors", org="dialogue")["rows"][0]["signal"] == "dialogue"
             if args.sdk_python:
                 check_activation(base, args.sdk_python)
         with sqlite3.connect(captured) as sql:

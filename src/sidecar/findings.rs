@@ -18,6 +18,29 @@ fn digest(value: impl AsRef<[u8]>) -> String {
     format!("{:x}", Sha256::digest(value))
 }
 
+/// A factor links evidence about the same source set. Each experiment retains its own comparison.
+pub(super) fn factor_id(run: &Run, observation: &Observation) -> String {
+    let sources = observation.detail["sources"]
+        .as_array()
+        .expect("finding sources");
+    let mut identities: Vec<_> = sources
+        .iter()
+        .map(|source| {
+            let stable = source["source"].as_str();
+            (
+                stable.is_none().then_some(run.id.as_str()),
+                stable.or(source["id"].as_str()),
+                source["version"].as_str(),
+            )
+        })
+        .collect();
+    identities.sort_unstable();
+    // The repeat preview shows only the first two sources, so preserve its full group identity.
+    let full_repeat =
+        (observation.detail["copies"].as_u64().unwrap_or(0) > 2).then_some(&observation.group);
+    digest(json!([run.source, run.organization_id, identities, full_repeat]).to_string())
+}
+
 pub(super) fn source(item: &ContextItem) -> Value {
     json!({"id": item.id, "source": item.source_id, "version": item.source_version, "role": item.role})
 }
@@ -39,13 +62,14 @@ pub(super) fn occurrence(
     call: &Call,
     detail: Value,
 ) -> Observation {
+    let action = super::recommendations::action(kind, &detail);
     Observation {
         kind,
         group: digest(key.to_string()),
         call_id: call.id.clone(),
         observed: call.started_at.clone(),
         detail,
-        action: super::recommendations::action(kind),
+        action,
     }
 }
 
@@ -135,14 +159,24 @@ pub fn derive(
                 .iter()
                 .map(|item| identity(run, item))
                 .collect::<Vec<_>>();
+            let dialogue_only = entries.iter().all(|item| {
+                item.source_id.is_none()
+                    && matches!(item.role.as_deref(), Some("user" | "assistant"))
+                    && matches!(item.kind.as_str(), "text" | "message")
+                    && item.evidence.message_index.is_some()
+            });
             findings.push(occurrence("duplicate", json!(["duplicate", digest(text), sources]), call,
-                json!({"sources": [source(entries[0]), source(entries[1])], "copies": entries.len()})));
+                json!({"sources": [source(entries[0]), source(entries[1])], "copies": entries.len(), "dialogue_only": dialogue_only})));
         }
     }
     for call in &run.calls {
         super::recommendations::probes(run, call, &mut findings);
     }
     super::recommendations::token_measurements(run, activations, &mut findings);
+    let by_location: BTreeMap<_, _> = reports
+        .iter()
+        .map(|report| ((&report.location, report.id.as_str()), report))
+        .collect();
     for group in replay_effects::group(&[run], reports)? {
         for item in &group.occurrences {
             let Some(effect) = item.difference_pp else {
@@ -161,13 +195,33 @@ pub fn derive(
                     control_edit,
                 } => ("control", vec![target_edit, control_edit]),
             };
-            let sources: Vec<_> = sources.iter()
-                .map(|change| json!({"source": change.source_id, "version": change.source_version, "role": change.context_role}))
+            let ids = match &item.target {
+                replay_effects::OccurrenceTarget::Single { context_id } => vec![*context_id],
+                replay_effects::OccurrenceTarget::Pair { context_ids, .. } => context_ids.to_vec(),
+                replay_effects::OccurrenceTarget::Control {
+                    target_context_id,
+                    control_context_id,
+                    ..
+                } => vec![*target_context_id, *control_context_id],
+            };
+            let sources: Vec<_> = sources.iter().zip(ids)
+                .map(|(change,id)| json!({"id": id,"source": change.source_id, "version": change.source_version, "role": change.context_role}))
                 .collect();
+            let report = by_location[&(item.location, item.replay_id)];
+            let single_edits: Vec<_> = report.variants.iter().filter(|_| edit == "joint").map(|arm| {
+                json!({"id":arm.intervention.context_id,"replacement":arm.intervention.replacement.chars().take(200).collect::<String>(),
+                    "summary":arm.summary,"difference_pp":arm.difference_pp})
+            }).collect();
+            let joint_only = edit == "joint"
+                && effect != 0.0
+                && report
+                    .variants
+                    .iter()
+                    .all(|arm| arm.difference_pp == Some(0.0));
             findings.push(occurrence("replay", json!(["replay", group.key]), call,
                 json!({"effect_pp": effect, "measurement": item, "sources": sources, "edit": edit,
                        "runner": group.comparison.runner_id, "model": group.comparison.model,
-                       "outcome": group.comparison.decision_label, "match_rule": group.comparison.match_rule,
+                       "single_edits":single_edits, "joint_only":joint_only, "outcome": group.comparison.decision_label, "match_rule": group.comparison.match_rule,
                        "sampling_design": group.comparison.sampling_design})));
         }
     }
@@ -182,4 +236,40 @@ fn preview(value: &Value) -> String {
         preview.push('…');
     }
     preview
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regenerate the pinned eight-session retail sample using docs/guide.md.
+    #[test]
+    #[ignore = "requires data/exgentic-evidence.json from the public retail sample"]
+    fn public_retail_recommendations() {
+        let file = std::fs::File::open("data/exgentic-evidence.json").unwrap();
+        let runs: Vec<Run> = serde_json::from_reader(file).unwrap();
+        let mut calls = 0;
+        let mut repeats = 0;
+        let mut repeated_calls = BTreeSet::new();
+        let mut repeated_conversations = BTreeSet::new();
+        for run in &runs {
+            calls += run.calls.len();
+            for observation in derive(run, &[], &[]).unwrap() {
+                assert_eq!(observation.kind, "duplicate");
+                assert_eq!(observation.detail["dialogue_only"], true);
+                repeated_calls.insert((&run.id, observation.call_id));
+                repeated_conversations.insert(&run.conversation_id);
+                repeats += 1;
+            }
+        }
+        assert_eq!(
+            (
+                calls,
+                repeats,
+                repeated_calls.len(),
+                repeated_conversations.len()
+            ),
+            (99, 101, 83, 8)
+        );
+    }
 }

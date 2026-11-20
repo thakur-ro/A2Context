@@ -9,6 +9,7 @@ const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.
 const kindLabels = { conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
 const recommendationId = query.get("recommendation");
+const factorId = query.get("factor");
 const traceId = query.get("trace");
 const threadId = query.get("thread");
 const pageOffset = Number(query.get("offset")) || 0;
@@ -65,10 +66,12 @@ function trend(rows) {
 
 function replayTrials(detail) {
   const m = detail.measurement;
-  const arms = [["Baseline", m.baseline], [detail.edit === "joint" ? "Joint edit" : "Source edit", m.variant], ["Control edit", m.control]];
+  const singles = (detail.single_edits || []).map((arm) => ["Edit " + arm.id, arm.summary]);
+  const arms = [["Baseline", m.baseline], ...singles, [detail.edit === "joint" ? "Joint edit" : "Source edit", m.variant], ["Control edit", m.control]];
   return element("div", { className: "comparison" }, ...arms.filter(([, data]) => data).map(([label, data]) =>
     element("div", {}, element("strong", { text: label }),
       element("span", { text: data.matched + " / " + data.attempted + " matched" }),
+      element("meter", { min: 0, max: Math.max(1, data.attempted), value: data.matched, "aria-label": label + " matched trials out of attempted trials" }),
       data.unscored || data.completed < data.attempted ? element("div", { className: "label", text: plural(data.unscored || 0, "unscored trial") + " · " + data.completed + " completed" }) : null)));
 }
 
@@ -104,6 +107,7 @@ function visual(kind, detail, rows = []) {
 
 function findingTitle(kind, detail) {
   if (kind === "conflict") return "Conflicting values for " + detail.rule.replaceAll("_", " ");
+  if (kind === "duplicate" && detail.dialogue_only) return "The same dialogue appears at " + plural(detail.copies, "message location");
   if (kind === "duplicate") return "The same input appears " + detail.copies + " times";
   if (kind === "candidate") {
     const id = sourceName(detail.sources[0]);
@@ -111,6 +115,7 @@ function findingTitle(kind, detail) {
     return "Editing " + id + " shifted candidate scores";
   }
   if (kind === "token") return "Editing " + sourceName(detail.sources[0]) + " changed a token score";
+  if (detail.joint_only) return "Only the joint edit changed the match rate";
   const amount = Math.abs(detail.effect_pp);
   const points = amount < 0.01 ? "less than 0.01 percentage points" :
     plural(Number(amount.toFixed(2)), "percentage point");
@@ -133,18 +138,44 @@ function tag(kind) {
   return element("span", { className: "kind " + kind, text: kindLabels[kind] });
 }
 
+function factorName(sources) {
+  return sources.map((source) => sourceName(source) + (source.version ? " (" + source.version + ")" : "")).join(" + ");
+}
+
+function impactPanel(impact) {
+  return element("section", { className: "impact", "aria-label": "Conversation impact" },
+    element("div", {}, element("h2", { text: "Conversations with findings" }),
+      element("strong", { className: "impact-number", text: impact.conversations }),
+      element("p", { text: plural(impact.factors, "source factor") + (impact.unlinked_requests ? " · " + plural(impact.unlinked_requests, "additional request") + " without a conversation ID" : "") })),
+    element("div", { className: "impact-breakdown" },
+      element("strong", { text: impact.changed + " with a measured change" }),
+      element("meter", { min: 0, max: Math.max(1, impact.conversations), value: impact.changed,
+        "aria-label": "Conversations with a change under a tested edit" }),
+      element("p", { text: "A source edit changed a score or an outcome in a test linked to these conversations." })));
+}
+
+function factorRow(factor) {
+  const signals = { joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
+    token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
+    duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
+  return element("a", { className: "factor-row", href: url({ factor: factor.id }) },
+    element("div", {}, element("strong", { text: factorName(factor.sources) }),
+      element("span", { className: "row-extra", text: [factor.org, plural(factor.conversations, "identified conversation"),
+        plural(factor.requests, "request"), plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ") })),
+    element("span", { className: ["conflict", "duplicate", "dialogue"].includes(factor.signal) ? "basis" : "basis measured",
+      text: signals[factor.signal] }),
+    element("span", { className: "arrow", "aria-hidden": "true", text: "→" }));
+}
+
 function findingCard(card) {
-  const { kind, evidence } = card;
-  const { detail } = evidence;
-  const href = url({ recommendation: card.id, offset: pageOffset || null });
-  return element("article", { className: "card" }, element("div", {}, tag(kind),
-    element("h2", { text: findingTitle(kind, detail) }),
-    element("p", { text: findingDetail(kind, detail) }),
-    element("p", { className: "recommendation-action", text: card.action.title }),
-    element("p", { text: [plural(card.occurrences, "observation"), plural(card.traces, "request"),
-      card.threads ? plural(card.threads, "identified thread") : "Thread IDs unavailable"].join(" · ") }),
-    evidence.observed == null ? null : element("p", { className: "label", text: "Evidence from " + fullDate(evidence.observed) }),
-    link("Review recommendation", href, "action")), visual(kind, detail, card.trend));
+  const { kind, evidence: { detail } } = card;
+  return element("article", { className: "card" },
+    element("div", {}, tag(kind), element("h2", { text: findingTitle(kind, detail) }),
+      element("p", { text: findingDetail(kind, detail) }),
+      element("p", { className: "label", text: plural(card.occurrences, "observation") + " · " + plural(card.traces, "request") }),
+      link("Review recommendation", url({ factor: factorId, recommendation: card.id }), "action")),
+    element("div", { className: "suggestion" }, element("span", { className: "label", text: "Next experiment" }),
+      element("p", { text: detail.joint_only ? "Test the two sources together" : card.action.title })));
 }
 
 function panel(title, ...children) {
@@ -209,8 +240,9 @@ function compareForm(group) {
     }
     result.textContent = "Loading comparison…";
     try {
-      const [current, other] = await Promise.all([api("findings", { ...scope, group }),
-        api("findings", { ...scope, user: otherUser, group })]);
+      const filters = { ...scope, group, ...(factorId && { factor: factorId }) };
+      const [current, other] = await Promise.all([api("findings", filters),
+        api("findings", { ...filters, user: otherUser })]);
       const describe = (rows) => rows.length ? plural(rows[0].traces, "trace") + " · " + plural(rows[0].threads, "identified thread") : "No captured matches";
       result.replaceChildren(element("div", { className: "comparison" }, ...[
         [scope.user || "Current scope", current.rows], [otherUser, other.rows],
@@ -243,6 +275,13 @@ function recommendationContext(kind, detail) {
       element("p", { text: "At this token, the largest tested decoder-block swap was at block " +
         point.block + " (" + signed(point.block_delta) + " log probability)." }));
   }
+  if (kind === "replay" && detail.edit === "joint" && detail.single_edits?.length) {
+    return element("div", {},
+      element("p", { text: "Joint interaction: " + (detail.measurement.interaction_pp == null ? "unavailable" :
+        signed(detail.measurement.interaction_pp) + " percentage points beyond the sum of the two individual changes.") }),
+      element("details", {}, element("summary", { text: "Tested replacements" }),
+        ...detail.single_edits.map((arm) => element("p", { text: arm.id + " · " + (arm.replacement || "(Removed text)") }))));
+  }
   if (kind === "shadow") {
     return element("details", {}, element("summary", { text: "Show expected proposal" }),
       element("pre", { text: JSON.stringify(detail.outcome, null, 2) }));
@@ -251,15 +290,33 @@ function recommendationContext(kind, detail) {
 }
 
 function recommendationDetail(kind, detail, action, rows = []) {
+  const interval = detail.measurement?.interval || detail.measurement?.difference_95_interval_pp;
+  const uncertainty = interval ? "95% interval for the difference: " + interval.lower + " to " + interval.upper + " percentage points." :
+    ({ replay: "The supplied trials have no estimated interval for this comparison.",
+       shadow: "The supplied proposal trials have no estimated interval for this comparison.",
+       candidate: "These scores compare two specified alternatives on one request.",
+       token: "This comparison holds the output prefix fixed at each position.",
+       conflict: "The disagreement is visible in the inputs. Its effect on the answer still needs a test.",
+       duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
   return panel(findingTitle(kind, detail), tag(kind),
     element("p", { className: "label", text: action.basis }), visual(kind, detail, rows),
-    recommendationContext(kind, detail),
-    element("h3", { text: action.title }), element("p", { text: action.next }),
+    recommendationContext(kind, detail), element("p", { className: "uncertainty", text: uncertainty }),
+    element("details", {}, element("summary", { text: "How this was measured" }),
+      element("p", { text: ({
+        candidate: "A model runner scored two fixed continuations before choosing an answer. The sidecar verified that its report matches the captured request and source edit.",
+        shadow: "A model runner proposed answers or tool calls for the baseline and edited requests. The sidecar checked the request and recomputed the match rates.",
+        token: "An instrumented model runner replaced a source and swapped decoder-block activations on a fixed output path. This view shows where the original token’s score moved under those interventions.",
+        replay: "A runner replayed the original request and the specified edits. The sidecar checked the request digests and counted the returned answers or tool calls that matched the recorded outcome.",
+        conflict: "The sidecar compared the rule key, scope and declared value on captured inputs. This check can run as soon as the workflow assembles a request.",
+        duplicate: "The sidecar found the same text at separate input locations. This check can run before the workflow sends the request."
+      })[kind] })),
+    element("h3", { text: detail.joint_only ? "Keep one source available while testing removal" : action.title }),
+    element("p", { text: detail.joint_only ? "Repeat both single edits and the joint edit with a second replacement. A different wording can change the result." : action.next }),
     detail.replacement == null ? null : element("details", {}, element("summary", { text: "Show tested replacement" }),
       element("pre", { text: detail.replacement || "(Removed text)" })));
 }
 
-function review(card) {
+function review(card, occurrences) {
   const { trace_id, call_id, detail } = card.evidence;
   byId("title").textContent = "Recommendation";
   byId("summary").textContent = card.action.basis;
@@ -268,9 +325,15 @@ function review(card) {
     link("Open original span", traceLink),
     card.kind === "replay" ? link("Open trial comparison", advancedHref({ id: trace_id }, { id: call_id }, { detail })) : null);
   return element("div", { className: "feed" },
-    link("Back to recommendations", url({ offset: pageOffset || null })),
+    link("Back to source factor", url({ factor: factorId || detail.factor })),
     recommendationDetail(card.kind, detail, card.action, card.trend),
-    card.threads > 1 ? compareForm(card.id) : null, evidence);
+    card.threads > 1 ? compareForm(card.id) : null, evidence,
+    panel("Where this appeared", ...occurrences.rows.map((row) => element("details", { className: "occurrence" },
+      element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + fullDate(row.observed) }),
+      element("p", { text: findingTitle(row.kind, row.detail) }), visual(row.kind, row.detail),
+      element("div", { className: "actions" },
+        row.thread_key ? link("Open conversation", url({ view: "threads", thread: row.thread_key })) : null,
+        link("Open span " + row.call, url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))))));
 }
 
 function pendingPreview() {
@@ -384,21 +447,36 @@ async function render(refresh = false) {
     byId("summary").textContent = "Traces in chronological order.";
     body = data.rows.length ? traceRows(data.rows) : null;
     pagination(data.next_offset, { thread: threadId });
-  } else {
-    const data = await api(view, { ...scope, ...(recommendationId ? { group: recommendationId } : { offset: pageOffset }) });
-    if (data.rows.length) {
-      if (view === "findings" && recommendationId) body = review(data.rows[0]);
-      else if (view === "findings") {
-        const signature = JSON.stringify(data);
-        if (refresh && byId("content").dataset.signature === signature) return;
-        byId("content").dataset.signature = signature;
-        body = element("div", { className: "feed" }, ...data.rows.map(findingCard));
-      } else if (view === "traces") body = traceRows(data.rows);
-      else body = listing(data.rows, (item) => rowLink(item.thread,
-        [item.org, item.user, plural(item.trace_count, "trace"), fullDate(item.start)].filter(Boolean).join(" · "),
-        url({ view, thread: item.id })));
+  } else if (view === "findings") {
+    if (recommendationId) {
+      const filters = { ...scope, group: recommendationId, ...(factorId && { factor: factorId }) };
+      const [cards, occurrences] = await Promise.all([api("findings", filters),
+        api("occurrences", { ...filters, offset: pageOffset })]);
+      if (cards.rows.length) body = review(cards.rows[0], occurrences);
+      pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId });
+    } else if (factorId) {
+      const data = await api("findings", { ...scope, factor: factorId, offset: pageOffset });
+      byId("title").textContent = data.rows.length ? factorName(data.rows[0].evidence.detail.sources) : "Source factor";
+      byId("summary").textContent = "Each recommendation below uses its own comparison and outcome.";
+      body = element("div", { className: "feed" }, link("All source factors", url({})),
+        ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
+      pagination(data.next_offset, { factor: factorId });
+    } else {
+      const [impact, factors] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset })]);
+      const signature = JSON.stringify([impact, factors]);
+      if (refresh && byId("content").dataset.signature === signature) return;
+      byId("content").dataset.signature = signature;
+      body = element("div", { className: "overview" }, impactPanel(impact),
+        element("section", { className: "factors" }, element("h2", { text: "Source factors" }),
+          factors.rows.length ? listing(factors.rows, factorRow) :
+            element("p", { className: "empty", text: "No recommendations in this scope." })));
+      pagination(factors.next_offset);
     }
-    if (!recommendationId) pagination(data.next_offset);
+  } else {
+    const data = await api(view, { ...scope, offset: pageOffset });
+    if (data.rows.length) body = view === "traces" ? traceRows(data.rows) : listing(data.rows, (item) => rowLink(item.thread,
+      [item.org, item.user, plural(item.trace_count, "trace"), fullDate(item.start)].filter(Boolean).join(" · "), url({ view, thread: item.id })));
+    pagination(data.next_offset);
   }
   byId("content").replaceChildren(body || element("p", { className: "empty", text: view === "findings" ?
     "No recommendations in this scope. Cards appear as supported evidence arrives." : "No captured records in this scope." }));
@@ -432,14 +510,15 @@ async function main() {
     return;
   }
   const views = { findings: "Recommendations", preview: "Before inference", traces: "Traces", threads: "Threads" };
-  byId("navigation").replaceChildren(...Object.entries(views).map(([key, label]) => link(label, url({ view: key }), null, view === key)));
+  byId("navigation").replaceChildren(...Object.entries(views).filter(([key]) => ["findings", "preview"].includes(key)).map(([key, label]) => link(label, url({ view: key }), null, view === key || (key === "findings" && view !== "preview"))));
   byId("title").textContent = views[view];
-  byId("summary").textContent = { findings: "See which inputs shifted a choice and which edits to test.",
+  byId("summary").textContent = { findings: "See which conversations warrant a closer look, then choose a source to investigate.",
     preview: "Check an assembled request and any supplied tests before committing a decision.",
     traces: "Open a trace to inspect its spans and captured sources.",
     threads: "Browse traces grouped by their recorded conversation." }[view];
   if (view === "preview") {
     byId("filters").hidden = true;
+    byId("capture").hidden = true;
     byId("content").replaceChildren(pendingPreview());
     return;
   }
@@ -455,7 +534,7 @@ async function main() {
       delete values.meta_value;
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
-      span: query.get("span"), finding: query.get("finding"), recommendation: recommendationId }, values);
+      span: query.get("span"), finding: query.get("finding"), factor: factorId, recommendation: recommendationId }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
@@ -463,11 +542,11 @@ async function main() {
   if (scope.meta_key && !health.metadata_keys.includes(scope.meta_key)) meta.add(element("option", { value: scope.meta_key, text: scope.meta_key }));
   for (const [key, value] of Object.entries(scope)) form.elements.namedItem(key).value = value;
   await render();
-  if (view === "findings" && !recommendationId && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !factorId && !recommendationId && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
-      Promise.all([status(), render(true)]).catch((error) => { byId("status").textContent = error.message; });
+      Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
     }
   }, 15000);
 }
 
-main().catch((error) => { byId("status").textContent = error.message; });
+main().catch((error) => { byId("error").textContent = error.message; });
