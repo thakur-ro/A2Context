@@ -247,10 +247,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 31 {
+        if version == 32 {
             return Ok(());
         }
-        if !(0..31).contains(&version) {
+        if !(0..32).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -267,10 +267,11 @@ impl Store {
                 EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='prefill'
                     AND json_type(o.detail,'$.ranked[0].opening_changed') IN ('true','false')) AS has_opening,
                 instr(t.run,'\"candidate_probes\"')>0 AS has_candidates,
-                EXISTS(SELECT 1 FROM reports p WHERE p.trace_id=t.id AND p.kind='activation-reports'
-                    AND json_extract(p.body,'$.kind')='source_visibility' AND json_array_length(p.body,'$.continuations')>0) AS has_masks
+                (?2<31 AND EXISTS(SELECT 1 FROM reports p WHERE p.trace_id=t.id AND p.kind='activation-reports'
+                    AND json_extract(p.body,'$.kind')='source_visibility' AND json_array_length(p.body,'$.continuations')>0)) AS has_masks,
+                instr(t.run,'\"sandbox_dispatch\"')>0 AS has_dispatch
             FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR (?2<25 AND has_conflict_trials)
-                OR (?2<26 AND has_opening) OR (?2<30 AND has_candidates) OR has_masks)
+                OR (?2<26 AND has_opening) OR (?2<30 AND has_candidates) OR has_masks OR has_dispatch)
             ORDER BY t.id LIMIT 16",
             )?;
             let ids = stmt
@@ -282,13 +283,21 @@ impl Store {
                         r.get::<_, bool>(3)?,
                         r.get::<_, bool>(4)?,
                         r.get::<_, bool>(5)?,
+                        r.get::<_, bool>(6)?,
                     ))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
             drop(stmt);
             let Some(last) = ids.last() else { break };
-            for (id, has_ranking, has_conflict_trials, has_opening, has_candidates, has_masks) in
-                &ids
+            for (
+                id,
+                has_ranking,
+                has_conflict_trials,
+                has_opening,
+                has_candidates,
+                has_masks,
+                has_dispatch,
+            ) in &ids
             {
                 let run = load_run(&tx, id)?;
                 if let Some(run) = run {
@@ -307,6 +316,7 @@ impl Store {
                         || (version < 25 && *has_conflict_trials)
                         || (version < 26 && *has_opening)
                         || *has_masks
+                        || *has_dispatch
                     {
                         refresh_findings(&tx, &run)?;
                     }
@@ -315,7 +325,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 31)?;
+        self.0.pragma_update(None, "user_version", 32)?;
         Ok(())
     }
 
@@ -681,6 +691,8 @@ impl Store {
                 | "conflict-examples"
                 | "conflict-conversations"
                 | "conflict-coverage"
+                | "dispatch-summary"
+                | "dispatch-conversations"
                 | "outcome-factors"
                 | "conversation-outcomes"
                 | "proposal-conversations"
@@ -1072,6 +1084,21 @@ impl Store {
                 args.push(filters["design"].clone());
                 sql.push_str(super::conflict::EXAMPLES);
             }
+            "dispatch-summary" | "dispatch-conversations" => {
+                for key in ["group","factor","design"] {
+                    if super::required(filters,key)?.is_empty() { return Err(format!("missing {key}").into()); }
+                }
+                args.push(filters["design"].clone());
+                sql.push_str(super::dispatch::COHORT);
+                if view == "dispatch-summary" {
+                    sql.push_str(super::dispatch::SUMMARY);
+                } else {
+                    let outcome = super::required(filters,"outcome")?;
+                    if !super::dispatch::valid_outcome(outcome) { return Err("unknown dispatch outcome".into()); }
+                    args.push(outcome.to_owned());
+                    sql.push_str(super::dispatch::EXAMPLES);
+                }
+            }
             "conflict-coverage" | "conflict-conversations" => {
                 for key in ["group","factor"] {
                     if super::required(filters,key)?.is_empty() { return Err(format!("missing {key}").into()); }
@@ -1110,6 +1137,8 @@ impl Store {
                     'captured_conversations',(SELECT count(*) FROM captured_threads),
                     'sandbox_dispatch_conversations',count(DISTINCT thread_key)
                         FILTER (WHERE json_extract(detail,'$.sandbox_dispatch.protected')=1),
+                    'sandbox_regression_conversations',count(DISTINCT thread_key)
+                        FILTER (WHERE json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check'),
                     'without_findings',(SELECT count(*) FROM without_findings),
                     'without_findings_with_screen_suggestion',(SELECT count(*) FROM without_findings WHERE flagged),
                     'changed',count(DISTINCT CASE WHEN changed=1 OR proposal_changed=1 THEN thread_key END),
@@ -1158,6 +1187,7 @@ impl Store {
                     CASE WHEN factor IN (SELECT factor FROM disputed) THEN -6 WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -4 ELSE
                     min(CASE WHEN kind='replacement' THEN -3 WHEN json_extract(detail,'$.joint_pattern')='joint_only' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
                         WHEN kind='replay' AND changed=1 THEN 1 WHEN kind IN ('shadow','replay') AND (changed OR proposal_changed) THEN 2
+                        WHEN json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check' THEN 1.5
                         WHEN json_extract(detail,'$.sandbox_dispatch.protected')=1 THEN 2.25
                         WHEN kind='source_mask' AND proposal_changed THEN 2.5 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
@@ -1173,7 +1203,7 @@ impl Store {
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -6 THEN 'routing_repeats' WHEN -5 THEN 'routing' WHEN -4 THEN 'order' WHEN -3 THEN 'replacement' WHEN -2 THEN 'joint_proposal' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
                         WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
-                        WHEN 2.25 THEN 'sandbox_dispatch' WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
+                        WHEN 1.5 THEN 'sandbox_regression' WHEN 2.25 THEN 'sandbox_dispatch' WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
             "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
@@ -1190,6 +1220,7 @@ impl Store {
                              WHEN kind='candidate' AND min(json_extract(detail,'$.baseline')*json_extract(detail,'$.edited'))<0 THEN -3
                              WHEN kind='token' OR (kind='shadow' AND max(changed OR proposal_changed)) THEN -2
                              WHEN kind='source_mask' AND max(proposal_changed) THEN -2
+                             WHEN max(json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check') THEN -2
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.protected'))=1 THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
                              WHEN kind='conflict' AND count(DISTINCT trace_id)>1 THEN 0
@@ -1250,6 +1281,7 @@ impl Store {
                        WHEN json_extract(chosen.detail,'$.joint_pattern')='joint_only' THEN -2
                        WHEN json_extract(chosen.detail,'$.routing_test') IS NOT NULL OR json_extract(chosen.detail,'$.joint_only')=1 THEN -1
                        WHEN chosen.kind='candidate' AND json_extract(chosen.detail,'$.baseline')*json_extract(chosen.detail,'$.edited')<0 THEN 0
+                       WHEN json_extract(chosen.detail,'$.sandbox_dispatch.outcome')='matched_without_check' THEN -1
                        WHEN json_extract(chosen.detail,'$.sandbox_dispatch.protected')=1 THEN 0
                        WHEN chosen.kind IN ('shadow','replay','source_mask') AND (chosen.changed OR chosen.proposal_changed) THEN 0 ELSE 1 END,
                        d.completed DESC,d.inputs DESC,chosen.observed DESC,chosen.trace_id,chosen.call_id,chosen.n LIMIT 1)

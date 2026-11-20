@@ -14,7 +14,7 @@ make demo
 
 Open the address it prints. The demo loads saved telemetry and measurements into a temporary SQLite database. It requires no API key.
 
-1. Open **See what changed at dispatch**, then **Review recommendation**. The state table compares the two orders before dispatch and after the same tool proposal runs with and without the authorization check.
+1. Open **See what changed at dispatch**, then **Review recommendation**. The state table compares the two orders before dispatch and after the same tool proposal runs with and without the authorization check. Under **Which runs reached the expected state?**, open **Only with the check** to see both conversations and their exact replay links.
 2. Open **Compare the matching proposals**. The original and refreshed-cache requests both produced `exchange_delivered_order_items` for the puzzle order. **Underlying evidence** opens the span tree and the arguments.
 3. Return to the overview and open the conflicting rules for **confirmation-cache** and **latest-customer-message**. The cache still says approved and the customer’s latest message says hold.
 
@@ -33,6 +33,8 @@ The public τ²-Bench trajectory supplied the two orders, catalog result, paymen
 The authorization check also accepts a known valid approved proposal and rejects a mismatched item. In the approved model control, Qwen produced text without a usable tool call. The database check covers authorization and order state for this workflow. Agent task success would also require a valid proposal on authorized requests and accurate communication to the customer. [State assertions](../tests/check_exchange_demo.py) · [τ²-Bench evaluation](https://github.com/sierra-research/tau2-bench/blob/main/docs/evaluation.md)
 
 The example attaches a `sandbox_dispatch` receipt to the shadow report. The sidecar matches the exact proposal and edited request, checks the checkpoint digest for both arms, and compares the reported state fields. A blocked run must preserve the entire supplied state projection. The sandbox runner supplies the execution evidence. [Receipt format](../schema/sandbox-dispatch-1.json)
+
+The outcome list counts each identified conversation once within the selected source recommendation and scope. Comparisons share a guard ID, sandbox runner ID, tool, target field and projected state fields. The expected value belongs to each comparison, so a hold and an authorized write can be judged under the same design. Reports that disagree within one conversation open under **Mixed results in one conversation**, with a link for each observed outcome. A conversation without an applicable receipt remains visible as **No comparison with these settings**.
 
 For a fresh measurement, install Transformers 4.57.6 and PyTorch 2.11.0 and supply the pinned Qwen2.5-0.5B-Instruct checkpoint. The run uses CPU float32 and greedy decoding. [Checkpoint](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/tree/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2)
 

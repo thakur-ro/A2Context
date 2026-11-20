@@ -48,11 +48,34 @@ pub fn review(report: &Report, effect: &Effect) -> Option<Value> {
         return None;
     }
     let comparison = Comparison::deserialize(raw).ok()?;
-    let protected = comparison.validate(report, effect)?;
+    comparison.validate(report, effect)?;
+    let target = &comparison.target_key;
+    let without = comparison.without_guard.after[target] == comparison.expected;
+    let with = comparison.with_guard.after[target] == comparison.expected;
+    let outcome = match (without, with) {
+        (false, true) => "matched_with_check",
+        (true, false) => "matched_without_check",
+        (true, true) => "matched_both",
+        (false, false) => "missed_both",
+    };
+    let protected = !without && with && comparison.with_guard.status == Status::Blocked;
+    let design = sha256(
+        json!([
+            comparison.version,
+            comparison.runner_id,
+            comparison.guard_id,
+            comparison.proposal.label,
+            target,
+            comparison.checkpoint.keys().collect::<Vec<_>>()
+        ])
+        .to_string()
+        .as_bytes(),
+    );
     Some(json!({
         "runner":comparison.runner_id, "guard":comparison.guard_id,
         "checkpoint":comparison.with_guard.checkpoint_sha256,
-        "target":comparison.target_key, "protected":protected,
+        "design":design, "tool":comparison.proposal.label,
+        "target":target, "expected":comparison.expected, "outcome":outcome, "protected":protected,
         "without_guard":comparison.without_guard.status,
         "with_guard":comparison.with_guard.status,
         "states":comparison.checkpoint.iter().map(|(key,before)| json!({
@@ -63,7 +86,7 @@ pub fn review(report: &Report, effect: &Effect) -> Option<Value> {
 }
 
 impl Comparison {
-    fn validate(&self, report: &Report, effect: &Effect) -> Option<bool> {
+    fn validate(&self, report: &Report, effect: &Effect) -> Option<()> {
         if self.version != 1
             || self.proposal.kind != "tool_call"
             || report
@@ -93,13 +116,8 @@ impl Comparison {
                 return None;
             }
         }
-        let before = self.checkpoint.get(&self.target_key)?;
-        Some(
-            before == &self.expected
-                && self.without_guard.status == Status::Applied
-                && self.with_guard.status == Status::Blocked
-                && self.without_guard.after[&self.target_key] != self.expected,
-        )
+        self.checkpoint.get(&self.target_key)?;
+        Some(())
     }
 }
 

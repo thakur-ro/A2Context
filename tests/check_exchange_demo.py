@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import sqlite3
 import sys
 from tempfile import TemporaryDirectory
 
@@ -90,3 +91,82 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     assert rejected[0]["occurrences"] == 3 and "sandbox_dispatch" not in rejected[0]["evidence"]["detail"]
     assert get(base,"impact")["sandbox_dispatch_conversations"] == 0
 print("Verified saved exchanges, revoked and approved dispatch, and both order states.")
+
+
+def capture_variant(index, thread, configure):
+    """Use the verified proposal as a fixture for alternate sandbox conditions."""
+    resource = demo.capture_batch()["resourceSpans"][0]
+    spans = resource["scopeSpans"][0]["spans"]
+    attributes = {a["key"]:a["value"] for span in spans for a in span["attributes"]}
+    field = attributes["nexusweave.shadow_probes"]
+    report, = json.loads(field["stringValue"])
+    configure(report)
+    field["stringValue"] = json.dumps([report])
+    attributes["gen_ai.conversation.id"]["stringValue"] = thread
+    for span in spans:
+        span["traceId"] = f"{index:032x}"
+    return {"resourceSpans":[resource]}
+
+
+def approved_write(report, allow_with_check):
+    receipt = report["sandbox_dispatch"]
+    receipt["expected"] = "exchange_requested"
+    if allow_with_check:
+        receipt["with_guard"] = receipt["without_guard"]
+
+
+def stale_approval(report):
+    receipt = report["sandbox_dispatch"]
+    receipt["with_guard"] = receipt["without_guard"]
+
+
+def other_guard(report):
+    report["sandbox_dispatch"]["guard_id"] = "another-dispatch-check"
+
+
+def summary_for(base, filters):
+    return {row["outcome"]:row["conversations"]
+            for row in get(base,"dispatch-summary",**filters)["rows"]}
+
+
+with TemporaryDirectory() as tmp:
+    database = Path(tmp)/"dispatch.sqlite"
+    binary = Path(sys.argv[1]).resolve()
+    with server(binary,database,"--capture-content") as base:
+        demo.export(base)
+        group = get(base,"findings",kind="shadow")["rows"][0]
+        detail = group["evidence"]["detail"]
+        settings = dict(group=group["id"],factor=detail["factor"],design=detail["sandbox_dispatch"]["design"])
+        assert summary_for(base,settings) == {"matched_with_check":2}
+
+        for i, (thread, configure) in enumerate([
+            ("Approved and applied",lambda report: approved_write(report,True)),
+            ("Approved but blocked",lambda report: approved_write(report,False)),
+            ("Stale approval at dispatch",stale_approval),
+            ("Hold the puzzle",stale_approval),
+            ("Wait on the second exchange",lambda report: None),
+            ("Different check",other_guard),
+            ("Proposal only",lambda report: report.pop("sandbox_dispatch")),
+        ],101):
+            send_traces(base,capture_variant(i,thread,configure))
+        expected = {"matched_with_check":1,"matched_without_check":1,"matched_both":1,
+                    "missed_both":1,"mixed":1,"unmeasured":2}
+        assert summary_for(base,settings) == expected
+        assert summary_for(base,dict(settings,org="unrelated")) == {}
+        row, = get(base,"dispatch-conversations",**settings,outcome="mixed")["rows"]
+        assert row["thread"] == "Hold the puzzle"
+        assert {example["outcome"] for example in row["examples"]} == {"matched_with_check","missed_both"}
+        for example in row["examples"]:
+            witness, = get(base,"findings",group=group["id"],factor=settings["factor"],
+                           trace=example["trace"],call=example["call"],report=example["report"])["rows"]
+            assert witness["evidence"]["detail"]["sandbox_dispatch"]["outcome"] == example["outcome"]
+        assert get(base,"impact")["sandbox_regression_conversations"] == 1
+        assert get(base,"factors")["rows"][0]["signal"] == "sandbox_regression"
+
+    with sqlite3.connect(database) as db:
+        db.execute("UPDATE observations SET detail=json_remove(detail,'$.sandbox_dispatch.design','$.sandbox_dispatch.outcome')")
+        db.execute("PRAGMA user_version=31")
+    with server(binary,database,"--capture-content") as base:
+        assert summary_for(base,settings) == expected
+
+print("Verified scoped dispatch outcomes, mixed witnesses, and database upgrade.")

@@ -83,6 +83,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Replay the original and edited requests on the same runner. Check whether the measured first-token shift carries through to a completed proposal.",
             "Measured first-token distributions under named edits",
         ),
+        "shadow" if detail["sandbox_dispatch"]["outcome"] == "matched_without_check" => (
+            "Check why dispatch missed the expected state",
+            "Review the approved proposal, checkpoint and guard condition. Repeat this comparison with a valid authorized request before enabling the check.",
+            "Only the run without the dispatch check matched the expected sandbox state",
+        ),
         "shadow" if detail["sandbox_dispatch"]["protected"] == true => (
             "Test the dispatch check on authorized requests",
             "The check blocked this proposal and preserved the expected state in the sandbox. Replay a valid approved proposal as a control before enabling the check.",

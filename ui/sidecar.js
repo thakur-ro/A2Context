@@ -10,6 +10,9 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
+const dispatchSelection = query.has("dispatch_design") && query.has("dispatch_outcome") ? {
+  dispatch_design:query.get("dispatch_design"), dispatch_outcome:query.get("dispatch_outcome")
+} : null;
 const openingStudy = query.get("opening") === "1";
 const openingSlot = query.get("slot");
 const conflictDesign = query.get("conflict_design");
@@ -347,6 +350,9 @@ function impactPanel(impact) {
           element("span", {"aria-hidden":"true",text:"→"}))] : []),
       impact.sandbox_dispatch_conversations > 0 && element("p", {className:"row-extra",
         text:"A dispatch check preserved sandbox state in " + plural(impact.sandbox_dispatch_conversations,"conversation") + "."}),
+      impact.sandbox_regression_conversations > 0 && element("p", {className:"uncertainty",
+        text:"The expected sandbox state was reached only without the check in " +
+          plural(impact.sandbox_regression_conversations,"conversation") + "."}),
       proposalCoverage(impact)));
 }
 
@@ -450,12 +456,14 @@ function positionReadout(result) {
 
 function factorRow(factor, featured = false) {
   const signals = { routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
-    token: "Token score shifted", source_mask: "Source masks tested", sandbox_dispatch: "Sandbox state preserved", score: "Preference shifted", conflict: "Conflicting rules",
+    token: "Token score shifted", source_mask: "Source masks tested", sandbox_dispatch: "Sandbox state preserved",
+    sandbox_regression: "Expected state missed with check", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
   const step = { routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer", source_mask: "Compare tool proposals after masking sources",
     sandbox_dispatch: "See what changed at dispatch",
+    sandbox_regression: "Check where dispatch missed the expected state",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
     duplicate: "Check whether one copy can be removed", dialogue: "Check the repeated message positions",
     equal: "Review the equal match rates" };
@@ -743,6 +751,8 @@ function findingCard(card) {
   const { kind, evidence: { detail } } = card;
   return element("article", { className: "card" },
     element("div", {}, tag(kind), element("h2", { text: kind === "prefill" ? prefillSummary(card.prefill_counts) : findingTitle(kind, detail) }),
+      detail.sandbox_dispatch?.outcome === "matched_without_check" ?
+        element("p", {text:"The expected state was reached only when the proposal ran without the dispatch check."}) :
       detail.sandbox_dispatch?.protected ? element("p", {text:"The same proposal changed state without the dispatch check. The check preserved the expected state."}) :
         repeatedRouting(card) ? element("p", {text:routingCoverage(card)}) : kind === "prefill" ? prefillFollowup(card) :
         element("p", { text:kind === "source_mask" ? maskOutcomeSummary(card.mask_outcomes) : findingDetail(kind, detail) }),
@@ -959,6 +969,44 @@ function responsePair(pair) {
       " edited trials. All trials completed and agreed within each setup."}));
 }
 
+const dispatchOutcomes = {
+  matched_with_check:"Only with the check",
+  matched_without_check:"Only without the check",
+  matched_both:"Both runs matched",
+  missed_both:"Neither run matched",
+  mixed:"Mixed results in one conversation",
+  unmeasured:"No comparison with these settings",
+};
+
+function dispatchCoverage(card, rows) {
+  const dispatch = card.evidence.detail.sandbox_dispatch;
+  if (!dispatch || !rows?.length) return null;
+  const total = rows.reduce((sum,row) => sum + row.conversations,0);
+  const counts = new Map(rows.map(row => [row.outcome,row.conversations]));
+  return element("section", {className:"panel dispatch-coverage","aria-label":"Dispatch outcomes across conversations"},
+    element("h2", {text:"Which runs reached the expected state?"}),
+    element("p", {text:plural(total,"identified conversation") + " · " + dispatch.guard + " · " + dispatch.runner}),
+    listing(Object.entries(dispatchOutcomes).filter(([name]) => counts.has(name)), ([name,label]) =>
+      rowLink(label,plural(counts.get(name),"conversation"),url({recommendation:card.id,factor:card.evidence.detail.factor,
+        dispatch_design:dispatch.design,dispatch_outcome:name}))));
+}
+
+async function dispatchConversations() {
+  const selection = {recommendation:recommendationId,factor:factorId,...dispatchSelection};
+  const outcome = dispatchSelection.dispatch_outcome;
+  const data = await api("dispatch-conversations",{...scope,group:recommendationId,factor:factorId,
+    design:dispatchSelection.dispatch_design,outcome,offset:pageOffset});
+  byId("title").textContent = dispatchOutcomes[outcome];
+  byId("summary").textContent = "Open a reported comparison to see the proposal and state on that call.";
+  pagination(data.next_offset,selection);
+  return element("div",{className:"feed"},link("Back to recommendation",url({recommendation:recommendationId,factor:factorId})),
+    ...data.rows.map(row => panel(row.thread,element("p",{className:"label",text:fullDate(row.observed)}),
+      element("div",{className:"actions"},...row.examples.map(example => link(
+        example.outcome ? dispatchOutcomes[example.outcome] : "Open proposal comparison",
+        url({...selection,trace:example.trace,call:example.call,report:example.report})))))),
+    !data.rows.length && element("p",{className:"empty",text:"No conversations in this scope."}));
+}
+
 function sandboxDispatch(comparison) {
   if (!comparison) return null;
   const value = x => typeof x === "string" ? x.replaceAll("_"," ") : JSON.stringify(x);
@@ -970,6 +1018,9 @@ function sandboxDispatch(comparison) {
     element("h2", {text:comparison.protected ? "The dispatch check preserved the expected state" : "Compare sandbox state after dispatch"}),
     element("p", {text:"Both runs used the same tool proposal and starting checkpoint."}),
     comparisonTable(["State","Before dispatch","Without check","With check"],stateRows),
+    comparison.outcome && element("p", {className:"row-extra",text:"Expected for " + comparison.target + " · " + value(comparison.expected) +
+      ". " + dispatchOutcomes[comparison.outcome] + (comparison.outcome.startsWith("matched_") &&
+        comparison.outcome !== "matched_both" ? " matched." : ".")}),
     element("p", {className:"row-extra",text:"Without check · " + comparison.without_guard + " / With check · " + comparison.with_guard}),
     element("details", {}, element("summary", {text:"Replay details"}),
       element("p", {text:"Runner " + comparison.runner + " · Check " + comparison.guard}),
@@ -1170,7 +1221,7 @@ function conflictTest(card) {
       plan("Compare both edits in one replay",test.sources[0].id,test.sources[1].id));
 }
 
-function findingReview(card, occurrences) {
+function findingReview(card, occurrences, dispatchSummary) {
   const { trace_id, call_id, detail } = card.evidence;
   byId("title").textContent = detail.joint_pattern ? "Two-source replay" : "Recommendation";
   byId("summary").textContent = detail.joint_pattern ? [card.evidence.thread, detail.model,
@@ -1252,7 +1303,7 @@ function findingReview(card, occurrences) {
     card.kind === "replay" ? link("Open trial comparison", advancedHref({ id: trace_id }, { id: call_id }, { detail })) : null);
   return element("div", { className: "feed" },
     link("Back to source factor", url({ factor: factorId || detail.factor })),
-    card.kind === "token" ? tokenPath(card) : null, sandboxDispatch(detail.sandbox_dispatch),
+    card.kind === "token" ? tokenPath(card) : null, sandboxDispatch(detail.sandbox_dispatch), dispatchCoverage(card,dispatchSummary),
     card.prefix_review ? prefixReview(card.prefix_review) : card.kind === "token" ? element("details", {className:"panel"}, element("summary", {text:"Peak score change and block swap"}),
       recommendationDetail(card.kind, detail, card.action, card.trend)) : recommendationDetail(card.kind, detail, card.action, card.trend, card.conflict_test?.sources.some(s => s.comparisons.length)),
     conflictTest(card),
@@ -1266,6 +1317,9 @@ function findingReview(card, occurrences) {
       element("p", { text: findingTitle(row.kind, row.detail) }), sandboxDispatch(row.detail.sandbox_dispatch), visual(row.kind, row.detail),
       element("div", { className: "actions" },
         card.prefix_review && link("Inspect the prefix scores on this call", url({recommendation:card.id,factor:detail.factor,trace:row.trace,call:row.call,report:row.detail.report_id})),
+        row.detail.sandbox_dispatch && row.detail.sandbox_dispatch.design !== detail.sandbox_dispatch?.design &&
+          link("Compare these dispatch settings",url({recommendation:card.id,factor:detail.factor,
+            dispatch_design:row.detail.sandbox_dispatch.design,dispatch_outcome:row.detail.sandbox_dispatch.outcome})),
         row.thread_key ? link("Open conversation", url({ view: "threads", thread: row.thread_key, focus_trace:row.trace, focus_call:row.call })) : null,
         link("Open span " + row.call, url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))))));
 }
@@ -2044,12 +2098,19 @@ async function render(refresh = false) {
             decision:row.detail.measurement.location.decision_id, replay:row.detail.measurement.replay_id}))) :
           element("p", {className:"empty", text:"No matching comparisons in this scope."}));
       pagination(data.next_offset, selection);
+    } else if (recommendationId && factorId && dispatchSelection && !traceId) {
+      body = await dispatchConversations();
     } else if (recommendationId) {
       const filters = { ...scope, ...(threadId && {thread:threadId}), ...measuredExample, group: recommendationId, ...(factorId && { factor: factorId }) };
       const [cards, occurrences] = await Promise.all([api("findings", filters),
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) {
-        body = findingReview(cards.rows[0], occurrences);
+        const card = cards.rows[0];
+        const dispatch = card.evidence.detail.sandbox_dispatch;
+        const dispatchSummary = !traceId && dispatch ? await api("dispatch-summary",{...filters,
+          factor:card.evidence.detail.factor,design:dispatch.design}) : null;
+        body = findingReview(card,occurrences,dispatchSummary?.rows);
+        if (dispatchSelection) body.prepend(link("Back to dispatch outcomes",url({recommendation:recommendationId,factor:factorId,...dispatchSelection})));
         if (threadId || cards.rows[0].evidence.thread_key) {
           const key = threadId || cards.rows[0].evidence.thread_key;
           const conversationLink = link(threadId ? "Back to conversation" : "See this call in its conversation",
@@ -2289,6 +2350,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
+      ...dispatchSelection,
       ...(prefixCohorts && {prefixes:1,...Object.fromEntries(["design","compare_refs","matched","pair_setup","ref_edit",
         "edit_index","edit_outcome","reference","ref_set","ref_outcome","ref_prediction","needs_trial","verdict","source","unnamed","report"]
         .filter(k => query.has(k)).map(k => [k,query.get(k)]))}),
