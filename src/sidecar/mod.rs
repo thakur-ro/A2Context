@@ -39,11 +39,17 @@ use tiny_http::{Method, Request, Response, Server};
 const LIMIT: usize = 2 * 1024 * 1024;
 const QUEUE: usize = 8;
 
+#[derive(Clone, Copy)]
+enum Demo {
+    Gallery,
+    Exchange,
+}
+
 struct Options {
     address: SocketAddr,
     db: Option<PathBuf>,
     retention: i64,
-    demo: bool,
+    demo: Option<Demo>,
     content: bool,
     metadata: BTreeSet<String>,
 }
@@ -54,14 +60,14 @@ impl Options {
             address: "127.0.0.1:8040".parse()?,
             db: None,
             retention: 7,
-            demo: false,
+            demo: None,
             content: false,
             metadata: BTreeSet::new(),
         };
         while let Some((flag, rest)) = args.split_first() {
             args = match (*flag, rest) {
                 ("--demo", rest) => {
-                    options.demo = true;
+                    options.demo = Some(Demo::Gallery);
                     rest
                 }
                 ("--capture-content", rest) => {
@@ -88,7 +94,7 @@ impl Options {
             };
         }
         if !options.address.ip().is_loopback()
-            || options.demo == options.db.is_some()
+            || options.demo.is_some() == options.db.is_some()
             || !(1..=365).contains(&options.retention)
             || options.metadata.len() > 16
         {
@@ -127,23 +133,47 @@ struct Metrics {
 }
 
 pub fn serve(args: &[&str]) -> Result<()> {
-    let options = Options::parse(args)?;
-    let temp = options.demo.then(tempfile::tempdir).transpose()?;
+    start(Options::parse(args)?)
+}
+
+pub fn exchange_demo() -> Result<()> {
+    let mut options = Options::parse(&["--demo", "--listen", "127.0.0.1:0"])?;
+    options.demo = Some(Demo::Exchange);
+    start(options)
+}
+
+fn start(mut options: Options) -> Result<()> {
+    let demo = options.demo.is_some();
+    let temp = demo.then(tempfile::tempdir).transpose()?;
     let db_path = options
         .db
         .clone()
         .or_else(|| temp.as_ref().map(|dir| dir.path().join("demo.sqlite")))
         .expect("sidecar storage");
     let mut writer = Store::open(&db_path)?;
-    writer.bind_policy(options.content || options.demo, &options.metadata)?;
+    writer.bind_policy(options.content || demo, &options.metadata)?;
     writer.purge(now() - options.retention * 86_400)?;
     writer.upgrade_observations()?;
-    if options.demo {
-        seed(&mut writer)?;
+    match options.demo {
+        Some(Demo::Gallery) => seed(&mut writer)?,
+        Some(Demo::Exchange) => {
+            let batch = serde_json::from_str(include_str!(
+                "../../examples/exchange-approval/exchange.otlp.json"
+            ))?;
+            let policy = CapturePolicy {
+                content: true,
+                metadata: &options.metadata,
+            };
+            writer
+                .ingest(&batch, &policy, now())
+                .map_err(|(_, message)| message)?;
+        }
+        None => {}
     }
     let store = Store::open(&db_path)?;
     let server = Server::http(options.address)?;
     let address = server.server_addr().to_ip().expect("TCP listener");
+    options.address = address;
     let hosts = [address.to_string(), format!("localhost:{}", address.port())];
     let metrics = Arc::new(Metrics::default());
     let (send, receive) = mpsc::sync_channel(QUEUE);
@@ -163,7 +193,11 @@ pub fn serve(args: &[&str]) -> Result<()> {
                 retention,
             )
         })?;
-    println!("NexusWeave sidecar is listening at http://{address}");
+    if matches!(options.demo, Some(Demo::Exchange)) {
+        println!("Open http://{address}/?workflow=exchange-agent");
+    } else {
+        println!("NexusWeave sidecar is listening at http://{address}");
+    }
     for mut request in server.incoming_requests() {
         if !local(&request, &hosts) {
             respond(
@@ -185,7 +219,7 @@ pub fn serve(args: &[&str]) -> Result<()> {
                     | "/api/sidecar/preview"
             )
         {
-            if options.demo && request.url() != "/api/sidecar/preview" {
+            if demo && request.url() != "/api/sidecar/preview" {
                 respond(
                     request,
                     405,
@@ -331,6 +365,7 @@ fn local(request: &Request, hosts: &[String]) -> bool {
 type Reply = (u16, &'static str, Vec<u8>);
 
 fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Options) -> Reply {
+    let demo = options.demo.is_some();
     let url = request.url().to_owned();
     let (path, query) = url.split_once('?').unwrap_or((&url, ""));
     let fields = query_fields(query);
@@ -339,7 +374,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
             let value = match path {
                 "/api/sidecar/chat-config" => json!({"models":[]}),
                 "/api/sidecar/health" => json!({
-                    "demo": options.demo, "content_capture": options.content || options.demo,
+                    "demo": demo, "content_capture": options.content || demo,
+                    "otlp_http_endpoint": format!("http://{}/v1/traces", options.address),
                     "metadata_keys": options.metadata, "queue_depth": metrics.depth.load(Relaxed),
                     "queue_limit": QUEUE, "queue_drops": metrics.drops.load(Relaxed),
                     "processing_lag_ms": metrics.lag_ms.load(Relaxed),
@@ -384,7 +420,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/occurrences" => {
                     store.list(path.rsplit('/').next().expect("view path"), &fields)?
                 }
-                "/api/sidecar/token-path" if options.content || options.demo => {
+                "/api/sidecar/token-path" if options.content || demo => {
                     store.token_path(&fields)?
                 }
                 "/api/sidecar/prefix-input" if options.content => {

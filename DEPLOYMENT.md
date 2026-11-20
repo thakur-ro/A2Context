@@ -4,6 +4,8 @@ Run the Rust sidecar alongside the process that sends the model request. The wor
 
 ## Check the shipping image locally
 
+For a first connection from a laptop, send the recorded exchange batch to a live receiver and check its coverage counters. [Connect your first workflow](docs/getting-started.md)
+
 From the checkout, run `make verify-image` with Make, Docker and Python 3.11 or later. This builds the repository Dockerfile. A second container shares the sidecar's network namespace, as two containers in a pod would. It sends the same synthetic inference span twice, checks that content capture is off, replaces the sidecar container on the same volume, and checks that exactly one span survived. With capture enabled on a separate synthetic database, the check also verifies that a declared conflict links back to the exported trace. A passing run ends with `PASS shipping image`. A failed assertion or command exits nonzero. The test creates and removes its own containers and volume.
 
 To test an image you have already built, run `python3 scripts/check_image.py --image YOUR_IMAGE`. To run the source and detector checks, use `make check`. [Contributor setup](CONTRIBUTING.md) · [Exporter interoperability and load tests](docs/validation.md)

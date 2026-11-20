@@ -16,6 +16,8 @@ demo = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(demo)
 
 saved = json.loads((EXAMPLE / "results.json").read_text())
+sample_batch = json.loads((EXAMPLE / "exchange.otlp.json").read_text())
+assert sample_batch == demo.capture_batch()
 pending = json.loads((EXAMPLE / "pending.json").read_text())
 pending_measurement = json.loads((EXAMPLE / "pending-measurement.json").read_text())
 for case in demo.SCENARIO["cases"]:
@@ -53,8 +55,15 @@ for key, approved in [("still_on_hold",False),("approved_after_request",True)]:
     assert row["current_approval"]["orders"][demo.PUZZLE["order_id"]] == ("exchange_requested" if approved else "delivered")
     for result in row.values():
         assert result["orders"][demo.BOOTS["order_id"]] == "exchange_requested"
+with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"first-workflow.sqlite") as base:
+    for _ in range(2):
+        send_traces(base, sample_batch)
+    health = get(base, "health")
+    assert not health["content_capture"]
+    assert health["coverage"] == {"traces":3, "inference_spans":3, "with_inputs":0, "with_request":0, "with_rules":0}
+    assert not get(base, "findings")["rows"]
 with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"exchange.sqlite","--capture-content") as base:
-    demo.export(base)
+    send_traces(base, sample_batch)
     scope = {"workflow":"exchange-agent"}
     impact = get(base,"impact",**scope)
     assert (impact["conversations"],impact["captured_conversations"],impact["evidence_counts"]["tested"]) == (2,3,2)

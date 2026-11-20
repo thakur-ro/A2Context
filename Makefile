@@ -5,8 +5,7 @@ SDK_OPTION = $(if $(SDK_PYTHON),--sdk-python "$(SDK_PYTHON)")
 .PHONY: demo check check-sidecar check-bundles check-release check-qa check-dispatch-study check-qwen-agent check-ui image verify-image
 
 demo:
-	cargo build --locked
-	$(PYTHON) examples/exchange-approval/demo.py
+	cargo run --locked -- demo
 
 check: check-qa check-dispatch-study check-sidecar
 	$(PYTHON) scripts/check_doc_links.py

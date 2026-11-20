@@ -2,11 +2,23 @@
 
 **Find which context edits change an LLM’s answer or tool call.**
 
-Ship NexusWeave as a small Rust service beside your LLM workflow. Open the recommendation cards and ask which instructions disagreed, where the problem recurred, or what a source edit changed. Each answer can open the underlying call or replay. [Use the chat canvas with your model](docs/chat-canvas.md)
+NexusWeave runs beside your LLM workflow. It flags conflicting instructions and missing sources, groups recurring problems across conversations, and shows what happened when someone tested an edit.
+
+## Try the demo
+
+A customer puts an exchange on hold, but the agent’s confirmation cache still says “approved.” Investigate this recorded case with Git and a stable Rust toolchain, including your platform’s C build tools. The demo needs no API key or model download. [Install Rust](https://rustup.rs/)
+
+```sh
+git clone https://github.com/thakur-ro/NexusWeave.git
+cd NexusWeave
+cargo run --locked -- demo
+```
+
+Open the address printed in the terminal. You’ll see **2 recommendations**. Choose **Which instructions disagreed?** to see the cached approval beside the customer’s hold. Then ask **What changed at dispatch?** to see which run actually submitted the exchange. Press Ctrl+C to stop.
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 
-A customer pauses the second of two exchanges. The agent still proposes it after its confirmation cache is refreshed. Ask which instructions disagreed. Then compare what the same proposal did with and without an approval check at dispatch. [Run the walkthrough](docs/demo.md) · [Download the recording](docs/media/exchange-approval.mp4)
+**Connect your application next.** Start a live sidecar, send one sample batch, and check that a trace arrived. Then point your workflow’s OpenTelemetry exporter at the same endpoint. [Connect your first workflow](docs/getting-started.md) · [Follow the exchange walkthrough](docs/demo.md) · [Play the full-resolution recording](docs/media/exchange-approval.mp4)
 
 ## What can I learn?
 
@@ -26,23 +38,8 @@ The workflow exports spans asynchronously over OTLP/HTTP. A bounded worker norma
 
 On this recorded answer, editing the returns policy had the largest measured effect on the return-window number. Editing the refund policy had the largest effect on the refund time. Each cell compares the probability of the same next token with the preceding output held fixed. Select a cell in the dashboard to see the edit and the two freely generated replies. [Explore the measurements](docs/research-preview.md#follow-a-source-through-a-workflow)
 
-## Try the demo
-
-From the checkout with stable Rust, Make and Python 3.11 or later:
-
-```sh
-make demo
-```
-
-Open the printed address. The walkthrough uses saved results from local model replays and a sandboxed order database. [Reproduce the measurements](docs/demo.md#what-the-test-covers)
-
 ## Ship it beside your service
 
-Send traces from your application's batch exporter or fan out from your existing OpenTelemetry Collector. Keep your existing observability backend. The sidecar listens on loopback within the workflow’s network namespace. Content capture is off by default. [Deployment and Kubernetes example](DEPLOYMENT.md)
+Build the container and verify that traces survive a restart with `make verify-image`. The deployment guide includes a Kubernetes example and a Collector setup for keeping your existing observability backend. [Deployment](DEPLOYMENT.md) · [Staging checks and resource measurements](docs/validation.md)
 
-```sh
-make check          # Exercise the source, UI scripts and detector fixtures
-make verify-image   # Build and test the actual container, including container replacement
-```
-
-[Full local release check](CONTRIBUTING.md#check-a-release-candidate-on-your-machine) · [Staging checks and resource measurements](docs/validation.md) · [Rust API](docs/rust-api.md) · [Research and dataset credits](CREDITS.md) · [Apache 2.0 license](LICENSE)
+[Contributor setup and release checks](CONTRIBUTING.md) · [Rust API](docs/rust-api.md) · [Connect a model to the dashboard](docs/chat-canvas.md) · [Research and dataset credits](CREDITS.md) · [Apache 2.0 license](LICENSE)

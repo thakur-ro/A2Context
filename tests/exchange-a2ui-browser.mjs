@@ -15,7 +15,9 @@ try {
     page.on("request", request => {
       if (new URL(request.url()).origin !== base.origin) externalRequests.push(request.url());
     });
-    await page.goto(new URL("/?workflow=exchange-agent", base).href);
+    const entry = new URL(base);
+    entry.searchParams.set("workflow","exchange-agent");
+    await page.goto(entry.href);
     await page.getByRole("heading",{name:"2 recommendations",exact:true}).waitFor();
     const cards = page.getByRole("region",{name:"Recommendation cards"});
     assert.equal(await cards.getByRole("article").count(),2);

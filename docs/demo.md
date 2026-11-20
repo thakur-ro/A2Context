@@ -6,10 +6,10 @@ A support agent verifies the customer, looks up two orders and a replacement pro
 
 ## Run the investigation
 
-From the checkout with stable Rust, Make, and Python 3.11 or later:
+From the checkout with stable Rust:
 
 ```sh
-make demo
+cargo run --locked -- demo
 ```
 
 Open the address it prints. The demo loads saved telemetry and measurements into a temporary SQLite database. It requires no API key.

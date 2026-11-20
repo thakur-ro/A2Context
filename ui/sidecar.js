@@ -2409,6 +2409,21 @@ async function render(refresh = false) {
       pagination(data.next_offset,{cards:1});
     } else if (!query.has("explore") && !pageOffset && location.hash !== "#proposal-coverage") {
       const [impact, cards] = await Promise.all([api("impact", scope), api("findings", scope)]);
+      if (!cards.rows.length && !Object.keys(scope).length) {
+        const health = await api("health");
+        const {traces, inference_spans: calls} = health.coverage;
+        byId("title").textContent = traces ? "Telemetry received" : "Connect your workflow";
+        const next = !traces ? "Send a batch from your workflow’s OpenTelemetry HTTP exporter to this endpoint." :
+          !calls ? "Set gen_ai.operation.name on a model span so the receiver can identify the inference." :
+          health.content_capture ? "Findings appear when captured sources disagree, repeat, or match another supported check." :
+          "This workspace retains metadata. To investigate a source conflict, use a separate capture-enabled database with redacted staging inputs.";
+        byId("content").replaceChildren(element("section",{className:"panel","aria-label":"Receiver setup"},
+          element("p",{text:next}), !traces && element("code",{text:health.otlp_http_endpoint}),
+          traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
+          element("p",{},link("Check receiver status","/api/sidecar/health"))));
+        byId("content").removeAttribute("data-signature");
+        return;
+      }
       const signature = JSON.stringify([impact,cards]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;

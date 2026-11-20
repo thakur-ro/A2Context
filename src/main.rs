@@ -43,6 +43,7 @@ const USAGE: &str = "Usage:
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] [evidence.json ...]
   nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
   nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
+  nexusweave demo
   nexusweave sidecar [--listen 127.0.0.1:8040] (--db path | --demo) [--capture-content] [--retain-days 7] [--metadata key]...
   nexusweave serve [--listen 127.0.0.1:8040] [--replay report.json] [--activation-report report.json] [--otlp-store directory] [evidence.json ...]";
 
@@ -375,6 +376,7 @@ fn run(args: Vec<String>) -> Result<()> {
                 .write_all(&inspection_json(&options, true)?)?;
             println!();
         }
+        ["demo"] => sidecar::exchange_demo()?,
         ["sidecar", args @ ..] => sidecar::serve(args)?,
         ["serve", args @ ..] => serve(inspection_options(args, true)?)?,
         _ => return Err(USAGE.into()),
