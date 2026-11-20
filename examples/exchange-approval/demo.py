@@ -160,12 +160,29 @@ def dispatch_receipt(report, comparison):
     }
 
 
-def capture_batch():
+def check_incomplete_capture(binary, request, case):
+    attrs = request["attributes"]
+    if not case["approved"]:
+        semantics = attrs["nexusweave.context.semantics"]
+        semantics["request_sources"] = [source for source in semantics["request_sources"]
+                                        if source["source_id"] != "latest-customer-message"]
+    example = json.loads((HERE / "pending.json").read_text())
+    attrs["nexusweave.required_sources"] = example["attributes"]["nexusweave.required_sources"]
+    report = json.loads(subprocess.check_output([binary, "preflight", "-"], input=json.dumps(request), text=True))
+    attrs.pop("nexusweave.required_sources")
+    attrs["nexusweave.preflight"] = report["receipt"]
+    attrs["nexusweave.user.id"] = "exchange-customer"
+
+
+def capture_batch(*, capture_gap_binary=None):
     saved = json.loads((HERE / "results.json").read_text())
     batches = []
     for index, case in enumerate(SCENARIO["cases"]):
         result = saved[case["id"]]
-        attrs = pending(case)["attributes"]
+        request = pending(case)
+        if capture_gap_binary is not None:
+            check_incomplete_capture(capture_gap_binary, request, case)
+        attrs = request["attributes"]
         baseline = result["trials"]["original"]
         part = ({"type":"tool_call","name":baseline["label"],"id":"second-exchange","arguments":baseline["outcome"]}
                 if baseline["kind"] == "tool_call" else {"type":"text","content":baseline["outcome"]})
@@ -176,7 +193,7 @@ def capture_batch():
                                      for m in json.loads(attrs["nexusweave.request.body"])["messages"][1:]],
             "gen_ai.output.messages":[{"role":"assistant","parts":[part]}],
         })
-        if result["shadow"]:
+        if result["shadow"] and capture_gap_binary is None:
             attrs["nexusweave.shadow_probes"] = [dict(result["shadow"],
                 sandbox_dispatch=dispatch_receipt(result["shadow"],result["sandbox"]["refreshed"]))]
 
@@ -212,8 +229,9 @@ def capture_batch():
     return {"resourceSpans":batches}
 
 
-def export(origin):
-    request = Request(origin+"/v1/traces",json.dumps(capture_batch()).encode(),{"Content-Type":"application/json"})
+def export(origin, *, capture_gap_binary=None):
+    batch = capture_batch(capture_gap_binary=capture_gap_binary)
+    request = Request(origin+"/v1/traces",json.dumps(batch).encode(),{"Content-Type":"application/json"})
     with urlopen(request,timeout=30) as response:
         response.read()
 
@@ -223,6 +241,8 @@ def main():
     parser.add_argument("--binary",type=Path,default=ROOT/"target/debug/nexusweave")
     parser.add_argument("--measure",type=Path,metavar="CHECKPOINT")
     parser.add_argument("--output",type=Path)
+    parser.add_argument("--capture-gap",action="store_true",
+                        help="Simulate the loss of the customer-message anchor on two resumed requests.")
     args = parser.parse_args()
     if args.measure:
         if not args.output or args.output.exists():
@@ -241,8 +261,9 @@ def main():
             if not startup.startswith("NexusWeave sidecar is listening at "):
                 raise RuntimeError(f"Sidecar did not start. {startup}")
             origin = startup.rsplit(" ",1)[1]
-            export(origin)
-            print(f"Open {origin}/?workflow=exchange-agent",flush=True)
+            export(origin, capture_gap_binary=args.binary if args.capture_gap else None)
+            filters = "&user=exchange-customer&kind=source_gap" if args.capture_gap else ""
+            print(f"Open {origin}/?workflow=exchange-agent{filters}",flush=True)
             raise SystemExit(sidecar.wait())
         except KeyboardInterrupt:
             pass

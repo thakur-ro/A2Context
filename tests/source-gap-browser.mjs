@@ -8,7 +8,7 @@ try {
     const page = await browser.newPage({viewport:{width,height:850}});
     const errors = [];
     page.on("pageerror", err => errors.push(err.message));
-    await page.goto(new URL("/?workflow=policy-workflow&user=pat", base).href);
+    await page.goto(new URL("/?workflow=exchange-agent&user=exchange-customer&kind=source_gap", base).href);
     const card = page.getByRole("region",{name:"Recommendation cards"}).getByRole("article");
     await card.getByRole("heading",{name:"Check sources for Exchange authorization"}).waitFor();
     await card.getByText(/2 conversations/).waitFor();
@@ -23,8 +23,14 @@ try {
     await map.getByText("No matching source anchor in this request",{exact:true}).last().waitFor();
     await map.getByRole("link",{name:"Inspect this evidence →"}).click();
     await page.getByText(/Still unconfirmed: latest-customer-message/).first().waitFor();
-    assert.equal(new URL(page.url()).searchParams.get("user"),"pat");
-    assert.ok(new URL(page.url()).searchParams.get("call"));
+    const selected = new URL(page.url()).searchParams;
+    assert.equal(selected.get("user"),"exchange-customer");
+    const response = await page.request.get(new URL("/api/sidecar/trace",base).href,{params:{id:selected.get("trace")}});
+    assert.ok(response.ok());
+    const {trace} = await response.json();
+    const call = trace.calls.find(row => row.id === selected.get("call"));
+    assert.ok(call.context.some(source => source.role === "user" && /hold the puzzle|don't swap the puzzle/.test(source.text)));
+    assert.ok(call.context.every(source => source.source_id !== "latest-customer-message"));
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors,[]);
     await page.close();

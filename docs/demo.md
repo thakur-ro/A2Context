@@ -22,6 +22,16 @@ The recording uses **Workspace evidence**. The source comparison reads the two d
 
 [MP4 for offline viewing](media/exchange-approval.mp4) · [Saved proposals and order states](../examples/exchange-approval/results.json)
 
+### Diagnose missing context capture
+
+After building the binary, run the same exchange workflow with a simulated instrumentation regression.
+
+```sh
+python3 examples/exchange-approval/demo.py --capture-gap
+```
+
+Open the printed address and choose **Show the context map**. The two resumed hold requests still contain the customer's instruction, but the workflow has lost its named fragment in both exports. The third request retains the customer anchor and satisfies the requirement. Select **Exchange authorization** on the map, then follow the hollow customer-message node to the exact request. Comparing its message with its source inventory tells the engineer where to repair capture.
+
 ## What the test covers
 
 The public τ²-Bench trajectory supplied the two orders, catalog result, payment method and original confirmation. Both exchanges were authorized in that trajectory. We added two alternative customer messages that put the second order on hold after the first exchange request. NexusWeave replays the next proposal on a compact reconstruction of that checkpoint. The separate sandbox evaluates the resulting database state. [Pinned trace data](https://huggingface.co/datasets/Exgentic/agent-llm-traces/blob/70036b93a04e61b0ea2706a68b962f4f26774587/README.md) · [Scenario and checkpoint IDs](../examples/exchange-approval/scenario.json)
