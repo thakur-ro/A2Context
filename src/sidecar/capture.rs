@@ -52,27 +52,41 @@ fn review_pair(call: &Call, report: &context_screening::Report) -> Option<Value>
         let source = &report.sources[index];
         sources.push(source_excerpt(call, source)?);
     }
-    let question = call
-        .context
+    Some(
+        json!({"last_user_text":last_user_text(call),"suggestion":pair.suggestion,"sources":sources,"scorer":scorer,
+        "left_to_right":left_to_right,"right_to_left":right_to_left,"flagged_pairs":count,"examined_pairs":report.pairs.len(),
+        "total_pairs":report.total_pairs,"decision":call.decisions.iter().find(|d| d.kind!="tool_execution" && !d.outcome.is_null()).map(|d| &d.id)}),
+    )
+}
+
+pub(super) fn last_user_text(call: &Call) -> Option<Value> {
+    call.context
         .iter()
         .filter(|item| {
-            item.role.as_deref() == Some("user")
-                && matches!(item.kind.as_str(), "message" | "text")
-                && item.evidence.message_index.is_some()
+            item.role.as_deref() == Some("user") && matches!(item.kind.as_str(), "message" | "text")
         })
-        .max_by_key(|item| (item.evidence.message_index, item.evidence.part_index))
+        .filter_map(|item| {
+            // LangSmith keeps the message position in the recorded field path.
+            let index = item.evidence.message_index.or_else(|| {
+                item.evidence
+                    .field
+                    .strip_prefix("inputs.messages[")?
+                    .split_once(']')?
+                    .0
+                    .parse()
+                    .ok()
+            })?;
+            Some(((index, item.evidence.part_index), item))
+        })
+        .max_by_key(|(position, _)| *position)
+        .map(|(_, item)| item)
         .filter(|item| item.availability == Availability::Included)
         .and_then(|item| item.text.as_deref())
         .map(|s| {
             let mut chars = s.chars();
             let text: String = chars.by_ref().take(200).collect();
             json!({"text":text,"truncated":chars.next().is_some()})
-        });
-    Some(
-        json!({"last_user_text":question,"suggestion":pair.suggestion,"sources":sources,"scorer":scorer,
-        "left_to_right":left_to_right,"right_to_left":right_to_left,"flagged_pairs":count,"examined_pairs":report.pairs.len(),
-        "total_pairs":report.total_pairs,"decision":call.decisions.iter().find(|d| d.kind!="tool_execution" && !d.outcome.is_null()).map(|d| &d.id)}),
-    )
+        })
 }
 
 fn semantic_relation(pair: &Pair) -> Option<&'static str> {
@@ -160,6 +174,7 @@ pub(super) fn replace(tx: &Transaction<'_>, id: &str, run: Option<&Run>) -> rusq
                     .and_then(|r| review_pair(call, r))
                     .map(|s| s.to_string())
             ])?;
+            super::target_patterns::index(tx, id, call)?;
             if let Some(report) = report {
                 index_pairs(tx, id, call, report)?;
             }

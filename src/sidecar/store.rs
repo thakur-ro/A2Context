@@ -59,6 +59,7 @@ impl Store {
              );",
         )?;
         db.execute_batch(super::capture::SCHEMA)?;
+        db.execute_batch(super::target_patterns::SCHEMA)?;
         db.execute_batch(super::screened::INDEX)?;
         Ok(Self(db))
     }
@@ -242,10 +243,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 18 {
+        if version == 19 {
             return Ok(());
         }
-        if !(0..18).contains(&version) {
+        if !(0..19).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -254,9 +255,11 @@ impl Store {
         let mut after = String::new();
         loop {
             let tx = self.0.transaction()?;
-            let mut stmt = tx.prepare(
-                "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL ORDER BY id LIMIT 16",
-            )?;
+            let mut stmt = tx.prepare(if version == 18 {
+                "SELECT id FROM traces WHERE id>?1 AND instr(run,'\"shadow_probes\"')>0 ORDER BY id LIMIT 16"
+            } else {
+                "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL ORDER BY id LIMIT 16"
+            })?;
             let ids = stmt
                 .query_map([&after], |r| r.get::<_, String>(0))?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -268,7 +271,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 18)?;
+        self.0.pragma_update(None, "user_version", 19)?;
         Ok(())
     }
 
@@ -575,6 +578,34 @@ impl Store {
         Ok(body.as_deref().map(serde_json::from_str).transpose()?)
     }
 
+    pub fn target_check(&self, fields: &BTreeMap<String, String>) -> Result<Option<Value>> {
+        let trace = super::required(fields, "trace")?;
+        let call_id = super::required(fields, "call")?;
+        let report = super::required(fields, "report")?;
+        // Both the indexed witness and its raw trials must come from the same capture.
+        let _snapshot = self.0.unchecked_transaction()?;
+        let examples = self.list("target-examples", fields)?;
+        let Some(example) = examples["rows"].get(0) else {
+            return Ok(None);
+        };
+        let Some(run) = self.trace(trace)? else {
+            return Ok(None);
+        };
+        let Some(call) = run.calls.iter().find(|call| call.id == call_id) else {
+            return Ok(None);
+        };
+        let probes = replay::shadow::recorded(trace, call);
+        let raw = call
+            .shadow_probes
+            .as_ref()
+            .and_then(|c| c.reports.as_ref())
+            .and_then(|reports| reports.iter().find(|r| r.id == report));
+        Ok(super::targets::checks(call, &probes).into_iter()
+            .find(|c| c["report_id"] == report).map(|check| json!({
+                "example":example,"check":check,"trials":raw,"question":super::capture::last_user_text(call)
+            })))
+    }
+
     pub fn list(&self, view: &str, filters: &BTreeMap<String, String>) -> Result<Value> {
         let mut sql = "WITH selected AS (SELECT t.id,t.start,t.org,t.user,t.thread,t.thread_key,t.workflow,t.source,t.calls,t.with_inputs,t.metadata FROM traces t WHERE t.run IS NOT NULL".to_owned();
         let mut args = Vec::new();
@@ -708,6 +739,15 @@ impl Store {
                 ")"
             });
         }
+        if matches!(view, "target-patterns" | "target-examples") {
+            sql.push_str(super::target_patterns::SCOPED);
+            if view == "target-examples" || filters.contains_key("design") {
+                sql.push_str(" AND x.design=?");
+                args.push(super::required(filters, "design")?.to_owned());
+            }
+            append_window(&mut sql, &mut args, "c.started", filters)?;
+            sql.push_str(super::target_patterns::CONVERSATIONS);
+        }
         let cohort = view == "outcome-factors"
             || (view == "conversation-outcomes" && filters.contains_key("level"));
         let edited = filters.get("by").is_some_and(|s| s == "edit");
@@ -732,6 +772,20 @@ impl Store {
             }
         }
         match view {
+            "target-patterns" => {
+                args.push(if filters.contains_key("design") {"0"} else {"2"}.into());
+                sql.push_str(super::target_patterns::GROUPS);
+            }
+            "target-examples" => {
+                sql.push_str(super::target_patterns::EXAMPLES);
+                for (key, column) in [("trace","r.trace_id"),("call","r.call_id"),("report","r.report")] {
+                    if let Some(value) = filters.get(key) {
+                        sql.push_str(&format!(" AND {column}=?"));
+                        args.push(value.clone());
+                    }
+                }
+                sql.push_str(super::target_patterns::EXAMPLE_ORDER);
+            }
             "screened-pairs" => sql.push_str(super::screened::GROUPS),
             "screened-pair-examples" => sql.push_str(super::screened::EXAMPLES),
             "conversations-without-findings" => sql.push_str(super::capture::PAGE),

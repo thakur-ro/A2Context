@@ -9,6 +9,7 @@ mod recommendations;
 mod replacement;
 mod screened;
 mod store;
+mod target_patterns;
 mod targets;
 mod variation;
 
@@ -330,6 +331,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/threads"
                 | "/api/sidecar/impact"
                 | "/api/sidecar/conversations-without-findings"
+                | "/api/sidecar/target-patterns"
+                | "/api/sidecar/target-examples"
                 | "/api/sidecar/screened-pairs"
                 | "/api/sidecar/screened-pair-examples"
                 | "/api/sidecar/outcome-factors"
@@ -343,6 +346,12 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 }
                 "/api/sidecar/token-path" if options.content || options.demo => {
                     store.token_path(&fields)?
+                }
+                "/api/sidecar/target-check" => {
+                    let Some(check) = store.target_check(&fields)? else {
+                        return Ok(None);
+                    };
+                    check
                 }
                 "/api/sidecar/position-results" => store.position_results(&fields)?,
                 "/api/sidecar/position-plan" => {
@@ -695,6 +704,36 @@ fn seed(store: &mut Store) -> Result<()> {
             "../../examples/context-screening/replay/report-policy.json"
         ))?,
     ]);
+    // Wrap the saved pending experiments as synthetic LangSmith captures. The
+    // proposals belong to the shadow runner. No production answer was recorded.
+    for (question, saved) in [
+        (
+            "first",
+            include_str!("../../examples/context-screening/replay/earlier-target.json"),
+        ),
+        (
+            "follow-up",
+            include_str!("../../examples/context-screening/replay/followup-target.json"),
+        ),
+        (
+            "unopened",
+            include_str!("../../examples/context-screening/replay/unopened-target.json"),
+        ),
+    ] {
+        let envelope: serde_json::Value = serde_json::from_str(saved)?;
+        let attrs = &envelope["request"]["attributes"];
+        let body = attrs["nexusweave.request.body"]
+            .as_str()
+            .ok_or("missing demo request")?;
+        let capture = json!({"id":format!("journal-window-{question}"),"run_type":"llm",
+            "name":"Journal return question","start_time":"2026-11-20T08:00:00Z",
+            "inputs":serde_json::from_str::<serde_json::Value>(body)?,"extra":{"metadata":{
+                "thread_id":format!("journal-window-{question}"),"organization_id":"journal-window-study",
+                "user_id":"support-17","nexusweave.span.id":format!("journal-window-{question}"),"ls_model_name":attrs["gen_ai.request.model"],
+                "nexusweave.request.body":body,"nexusweave.context.semantics":attrs["nexusweave.context.semantics"],
+                "nexusweave.shadow_probes":[envelope["shadow"]]}}});
+        runs.extend(nexusweave::langsmith::import(&capture)?);
+    }
     let pending = include_str!("../../examples/runtime-comparison/pending-routing/trace.json");
     runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
         pending,

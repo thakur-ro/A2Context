@@ -247,3 +247,8 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 .target-check th small { font-weight: 400; color: var(--muted); }
 .target-check [data-target-status="met"] td strong { color: var(--accent); }
 .target-check [data-target-status="missed"] td strong { color: #874721; }
+
+.target-counts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+.target-counts div { display:flex; flex-direction:column-reverse; background:var(--solid); padding:.75rem; }
+.target-counts dt { color:var(--muted); font-size:.875rem; }
+.target-counts dd { margin:0; font-size:1.6rem; font-weight:650; }

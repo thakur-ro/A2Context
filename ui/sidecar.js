@@ -12,6 +12,9 @@ const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
 const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
+const targetPatterns = query.get("targets") === "1";
+const targetDesign = query.get("design");
+const targetSelection = targetPatterns ? {targets:1, design:targetDesign} : {};
 const screenedPairs = query.get("screens") === "1";
 const screenedPattern = query.get("pattern");
 const screenedRelation = query.get("relation");
@@ -56,8 +59,9 @@ function url(params, filters = scope) {
   return search.size ? "?" + search : "/";
 }
 
-async function api(path, params = {}) {
+async function api(path, params = {}, allowMissing = false) {
   const response = await fetch("/api/sidecar/" + path + "?" + new URLSearchParams(params));
+  if (allowMissing && response.status === 404) return null;
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || "Evidence could not be loaded.");
   return response.json();
 }
@@ -1108,12 +1112,17 @@ function firstTokenPreview(probe, recorded = false, tested = false) {
       element("p", { className: "label", text: probe.model_id + " · " + probe.model_revision + " · " + probe.runtime })));
 }
 
+function targetCriterion(expected, rule) {
+  const value = expected.kind === "model_output" ? expected.outcome_preview : expected.label + " · " + expected.outcome_preview;
+  if (rule.kind === "kind_and_label") return expected.kind + " · " + expected.label + " · Match kind and label";
+  if (rule.kind === "outcome_fields") return value + " · Match fields " + rule.pointers.join(", ");
+  if (rule.kind === "text_capture") return value + " · Match captured text · " + rule.pattern;
+  return value + " · Exact match";
+}
+
 function declaredTarget(check, question) {
   const proposal = p => p.kind === "model_output" ? p.outcome_preview : p.label + " · " + p.outcome_preview;
   const totals = {met:"Met", missed:"Missed", mixed:"Mixed", incomplete:"Incomplete"};
-  const rule = check.match_rule;
-  const criterion = {exact:"Exact match", kind_and_label:"Match kind and label",
-    outcome_fields:"Match fields " + (rule.pointers || []).join(", "), text_capture:"Match captured text · " + (rule.pattern || "")};
   const rows = [check.baseline, ...check.edits, ...(check.joint ? [check.joint] : [])].map((a, i) => {
     const c = a.counts;
     const score = c.completed - (c.unscored || 0);
@@ -1132,11 +1141,68 @@ function declaredTarget(check, question) {
     element("span", {className:"label", text:"Test against the declared outcome"}),
     element("h2", {text:check.next}),
     question ? element("p", {text:question}) : null,
-    element("p", {}, "Target ", element("code", {text:proposal(check.expected)}), " · " + criterion[rule.kind]),
+    element("p", {}, "Target ", element("code", {text:targetCriterion(check.expected,check.match_rule)})),
     element("table", {}, element("thead", {}, element("tr", {},
       ...["Condition", "Proposal", "Target result"].map(text => element("th", {scope:"col", text})))),
       element("tbody", {}, ...rows)),
     element("small", {text:check.runner}));
+}
+
+function targetPatternRow(group) {
+  return rowLink("Every trial missed the target in " + plural(group.missed, "conversation"),
+    "Target " + targetCriterion(group.setup.expected, group.setup.rule) + " · " + group.setup.sources.join(" + ") +
+      " · " + plural(group.missed_inputs, "distinct request") + " among the misses",
+    url({targets:1, design:group.design}));
+}
+
+async function targetPatternView() {
+  const filters = {...scope, ...(targetDesign ? {design:targetDesign} : {})};
+  const back = link("Back to recommendations", url({}));
+  if (targetDesign && traceId) {
+    const result = await api("target-check", {...filters, trace:traceId, call:query.get("call"), report:query.get("report")}, true);
+    if (!result) {
+      pagination(null);
+      return panel("Experiment unavailable in this scope", link("Back to target results", url(targetSelection)));
+    }
+    byId("title").textContent = "Target result";
+    byId("summary").textContent = [result.example.thread, fullDate(result.example.started)].join(" · ");
+    const download = element("button", {type:"button", text:"Download recorded trials"});
+    download.addEventListener("click", () => downloadJson("target-trials.json", result.trials));
+    pagination(null);
+    return element("div", {className:"feed"}, link("Back to target results", url(targetSelection)),
+      declaredTarget(result.check, result.question && result.question.text + (result.question.truncated ? "…" : "")),
+      element("div", {className:"actions"}, download, link("Open the captured call", url({view:"traces",trace:traceId,call:result.example.call}))));
+  }
+  const groups = await api("target-patterns", {...filters, offset:targetDesign ? 0 : pageOffset});
+  byId("title").textContent = "Recurring target misses";
+  if (!targetDesign) {
+    byId("summary").textContent = "At least two identified conversations missed the declared target in every scored condition of the same experiment.";
+    pagination(groups.next_offset, targetSelection);
+    return element("div", {className:"feed"}, back, groups.rows.length ? listing(groups.rows, targetPatternRow) :
+      element("p", {className:"empty",text:"No recurring target misses in this scope."}));
+  }
+  const group = groups.rows[0];
+  if (!group) {
+    pagination(null);
+    return element("div", {className:"feed"},back,element("p",{className:"empty",text:"No recorded experiments for this design in the current scope."}));
+  }
+  const data = await api("target-examples", {...filters, offset:pageOffset});
+  const resultText = {missed:"Every trial missed",reached:"At least one trial reached the target",incomplete:"Incomplete trials"};
+  byId("title").textContent = group.setup.sources.join(" + ");
+  byId("summary").textContent = plural(group.conversations, "tested conversation") + " · " + group.setup.runner;
+  const counts = [[group.missed,"Missed in every trial"],[group.reached,"Reached in each experiment"],
+    [group.varied,"Varied across experiments"],[group.incomplete,"Incomplete"]];
+  const expected = group.setup.expected;
+  pagination(data.next_offset, targetSelection);
+  return element("div", {className:"feed"}, link("Back to recurring target misses", url({targets:1})),
+    panel("Did any condition reach the target?",
+      element("p", {}, "Target ", element("code", {text:targetCriterion(expected,group.setup.rule)})),
+      element("dl", {className:"target-counts"}, ...counts.map(([n,text]) =>
+        element("div", {}, element("dt",{text}), element("dd",{text:n})))),
+      element("p", {text:"Each identified conversation with verified trials counts once. Reached means at least one original or edited trial matched in each experiment. Any missing score makes the conversation incomplete."})),
+    element("section", {}, element("h2", {text:"Experiments"}), listing(data.rows, row => rowLink(row.question ? row.question.text + (row.question.truncated ? "…" : "") : row.thread,
+      [resultText[row.result],row.question && row.thread,row.user,fullDate(row.started)].filter(Boolean).join(" · "),
+      url({...targetSelection,trace:row.trace,call:row.call,report:row.report})))));
 }
 
 function pendingPreview() {
@@ -1310,7 +1376,9 @@ async function render(refresh = false) {
     body = data.rows.length ? traceRows(data.rows) : null;
     pagination(data.next_offset, { thread: threadId });
   } else if (view === "findings") {
-    if (recommendationId && jointSelection) {
+    if (targetPatterns) {
+      body = await targetPatternView();
+    } else if (recommendationId && jointSelection) {
       const selection = {recommendation:recommendationId, factor:factorId, ...jointSelection};
       const data = await api("occurrences", {...scope, group:recommendationId, factor:factorId, ...jointSelection, offset:pageOffset});
       byId("title").textContent = jointPatterns[jointSelection.joint_pattern] || "Joint edit comparisons";
@@ -1443,20 +1511,23 @@ async function render(refresh = false) {
         ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
       pagination(data.next_offset, { factor: factorId });
     } else {
-      const [impact, factors, screens] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset }),
-        pageOffset ? Promise.resolve({rows:[]}) : api("screened-pairs", scope)]);
-      const signature = JSON.stringify([impact, factors, screens]);
+      const [impact, factors, screens, targets] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset }),
+        pageOffset ? Promise.resolve({rows:[]}) : api("screened-pairs", scope),
+        pageOffset ? Promise.resolve({rows:[]}) : api("target-patterns", scope)]);
+      const signature = JSON.stringify([impact, factors, screens, targets]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
       const featured = !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
       body = element("div", {className:"overview"}, impactPanel(impact),
         featured ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}), factorRow(featured, true)) : null,
+        targets.rows.length ? element("section", {className:"factors"}, element("h2", {text:"Recurring target misses"}),
+          listing(targets.rows.slice(0,1), targetPatternRow), targets.rows.length > 1 ? link("Review all recurring misses",url({targets:1})) : null) : null,
         screens.rows.length ? element("section", {className:"factors"}, element("h2", {text:"Flagged source pairs"}),
           listing(screens.rows.slice(0,1), screenedRow), screens.rows.length > 1 ? link("Review all flagged pairs", url({screens:1})) : null) : null,
         remaining.length ? element("section", {className:"factors"}, element("h2", {text:featured ? "Other source factors" : "Source factors"}),
           listing(remaining, factor => factorRow(factor))) : null,
-        !factors.rows.length && !screens.rows.length ? element("p", {className:"empty", text:"No recommendations in this scope."}) : null);
+        !factors.rows.length && !screens.rows.length && !targets.rows.length ? element("p", {className:"empty", text:"No recommendations in this scope."}) : null);
       pagination(factors.next_offset);
     }
   } else {
@@ -1522,7 +1593,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...measuredExample }, values);
+      pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");
@@ -1569,7 +1640,7 @@ async function main() {
       row.focus();
     }
   }
-  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !outcomeCategory && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !targetPatterns && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!document.hidden && !byId("content").contains(document.activeElement)) {
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; });
     }

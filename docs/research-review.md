@@ -37,6 +37,10 @@ Longpre and colleagues substituted an answer entity in a passage to evaluate whe
 
 This matrix records capabilities described in the reviewed sources. The combination to test is a source-level queue of findings with exact evidence locations, bounded default processing, and a controlled follow-up. There is no measured head-to-head result against these systems in this review.
 
+### Comparing experiments that share a declared target
+
+On 20 November 2026 we checked CheckList and Langfuse’s experiment documentation for overlap with the target-miss feature. Ribeiro et al. organize behavioral tests by capability and test type. Langfuse already supports expected outputs, dataset items drawn from production traces, aggregate comparisons, and inspection of individual failures. Both are related work. NexusWeave uses a narrower unit for its recurring recommendation. Each experiment binds a set of verified edits to named context sources. The sidecar counts conversations where every tested condition missed, and links each count to the actual proposals. We have not compared the tools in a user study. [CheckList, ACL 2020](https://aclanthology.org/2020.acl-main.442/) · [Langfuse datasets](https://langfuse.com/docs/evaluation/experiments/datasets) · [Langfuse experiment comparisons](https://langfuse.com/docs/evaluation/experiments/compare-experiments)
+
 ## Tool selection under changes to context
 
 On 20 November 2026 we followed up with the search `Berkeley function calling leaderboard irrelevant function tools relevance detection BFCL` and checked the primary papers on tool-set changes and hidden-state probes returned by that search.

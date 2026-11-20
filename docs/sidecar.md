@@ -38,11 +38,23 @@ Expand **Answers or tool calls compared** on the overview or a source factor. Se
 
 Within that panel, **Scored replays** gives the separate match-rate counts in `impact.replay_outcomes`. Two different answers can pass the same scoring rule. A single trial per arm can also give equal rates. Open the recommendation for the complete proposal comparison and trial counts.
 
-![Fifteen of the 21 demo conversations have comparable proposals. The expanded panel links to changed, unchanged and missing evidence.](media/proposal-coverage.png)
+![Eighteen of the 24 demo conversations have comparable proposals. The expanded panel links to changed, unchanged and missing evidence.](media/proposal-coverage.png)
+
+### Investigate a recurring target miss
+
+Under **Recurring target misses**, open the 45-day return experiment. The group contains three synthetic conversations. In two, the original answer and every tested edit missed the target. In the third, editing the FAQ produced `45`. Open the unopened-journal question to see all four answers and download the runner’s trials. **Back to target results** keeps the current filters. [Open the scoped group list](http://127.0.0.1:8040/?targets=1&org=journal-window-study)
+
+![Three conversations tested the same changes to the journal FAQ and policy. The results list opens each experiment.](media/target-pattern.png)
+
+The overview surfaces a group after two identified conversations miss in every fully scored trial. Repeated requests can occur in different conversations, so the card also counts distinct request bodies among the misses. A conversation that contains both a wholly missed experiment and one that reached the target is **Varied**. Any unfinished or unscored trial makes its conversation **Incomplete**. The denominator covers verified experiments with the same design and named sources in the selected scope. A conversation without a verified experiment has no measured result.
+
+The design includes the model, runner, trial count, sampling design, declared target and scoring rule. Its source edits bind to names, versions, captured content digests, request locations, enclosing roles, control assignments and replacements. Joint and single-only tests form separate groups. Top-level settings and tools stay in the comparison key. Other messages can differ across requests. The group describes repeated behavior under these tests. It does not establish why a model chose an answer.
+
+An integration can read the same results with `GET /api/sidecar/target-patterns`, then pass a returned `design` to `GET /api/sidecar/target-examples`. Each example carries the trace, call and report IDs for `GET /api/sidecar/target-check`. Send the design and the same scope filters with those IDs to retrieve the verified baseline, edit and joint trials. List responses use `rows` and `next_offset`.
 
 ### Review a flagged pair before a replay exists
 
-The demo opens with findings in 21 of 22 captured conversations. Select **1 conversation without a finding**. In the remaining conversation, the policy and FAQ give different return windows. **Classifier and coverage** shows which model flagged the texts and how many pairs it examined. Open **Inspect the pair and its replay options** to prepare a test of those sources.
+The demo opens with findings in 24 of 25 captured conversations. Select **1 conversation without a finding**. In the remaining conversation, the policy and FAQ give different return windows. **Classifier and coverage** shows which model flagged the texts and how many pairs it examined. Open **Inspect the pair and its replay options** to prepare a test of those sources.
 
 ![The journal policy and FAQ give different return windows. The card shows the two excerpts and the classifier scores.](media/screened-conversation.png)
 
