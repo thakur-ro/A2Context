@@ -12,9 +12,9 @@ try {
   const endpoint = base + "/v1/traces";
   assert.equal(await setup.locator("code").innerText(),
     "export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\nexport OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + endpoint);
-  await setup.getByRole("link",{name:"Check a request before connecting"}).click();
-  await page.locator('input[type="file"]').setInputFiles("examples/exchange-approval/pending.json");
+  await setup.getByRole("link",{name:"Inspect a sample exchange request"}).click();
   await page.getByText(/captured inputs · 1 finding$/).waitFor();
+  await page.getByRole("link",{name:"Check another request"}).click();
   await page.locator('input[type="file"]').setInputFiles("examples/bfcl-transfer/mlx/tool-scope/preview.json");
   const catalog = page.getByRole("region",{name:"Tool catalog scope"});
   await catalog.getByRole("heading",{name:"Review tools outside the workflow scope"}).waitFor();

@@ -2426,7 +2426,7 @@ async function render(refresh = false) {
           element("p",{text:next}),
           !traces && element("pre",{},element("code",{text:"export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\n" +
             "export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + health.otlp_http_endpoint})),
-          !traces && link("Check a request before connecting",url({view:"preview"})),
+          !traces && link("Inspect a sample exchange request",url({view:"preview",scenario:"exchange-approval"})),
           traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
           traces > 0 && link("Threads",url({view:"threads"})),
           element("p",{},link("Check receiver status","/api/sidecar/health"))));

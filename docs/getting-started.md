@@ -2,13 +2,31 @@
 
 You can check one request before inference or run a receiver that finds patterns across conversations. Both paths use the exchange workflow from the demo. Start in the checkout with stable Rust and your platform’s C build tools. If the demo is still running, press Ctrl+C in its terminal. [Run the recorded demo](../README.md#try-the-demo)
 
+## Send the sample to a running sidecar
+
+From the checkout, start a receiver in a new directory or choose an unused database filename. The sample contains synthetic customer inputs, so you can enable content capture to see the conflicting source text.
+
+```sh
+cargo run --locked -- sidecar --db exchange-sample.sqlite --capture-content
+```
+
+In a second terminal, from the checkout, send the included OpenTelemetry batch with curl.
+
+```sh
+curl --fail --show-error -H 'Content-Type: application/json' \
+  --data-binary @examples/exchange-approval/exchange.otlp.json \
+  http://127.0.0.1:8040/v1/traces
+```
+
+Open the dashboard address printed by the receiver and reload after the batch arrives. You should see **2 recommendations**. Choose **Which instructions disagreed?** to compare the cached approval with the customer’s hold. Sending the same batch again reuses its trace and span IDs. To see the finding recur on a fresh conversation ID, use the [Python exporter walkthrough](#get-a-recommendation-from-a-live-span) with its own database. Stop the sample receiver with Ctrl+C before starting another on the same port.
+
 ## Check one request before inference
 
 ```sh
 cargo run --locked -- preflight examples/exchange-approval/pending.json
 ```
 
-Look for `exchange_authorization` in the JSON report. The cache declares `approved` and the customer declares `hold` for the same order. You can also load that file under **Before inference** in the demo dashboard. This check reads the assembled inputs and makes zero model calls.
+Look for `exchange_authorization` in the JSON report. The cache declares `approved` and the customer declares `hold` for the same order. From a new sidecar dashboard you can open **Inspect a sample exchange request** to see the same check. Choose **Check another request** to load your own file. This check reads the assembled inputs and makes zero model calls.
 
 To try your own request, pass the JSON your builder will send as `nexusweave.request.body`. For each source, supply its ID, version and location in that body. For a declared-rule check, give both sources the same rule key and scope and the value each supplied. Pipe the resulting versioned request to `cargo run --locked -- preflight -`. A conflict tells you the inputs disagree. A controlled edit and a measured outcome can tell you whether changing one affected the answer. [Example request](../examples/exchange-approval/pending.json) · [Source declarations](guide.md#declare-context-sources-and-decision-scope)
 

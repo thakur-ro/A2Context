@@ -20,7 +20,7 @@ Open the address printed in the terminal. You’ll see **2 recommendations**. Ch
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 
-**Try it with live telemetry.** Send a staging span with your own OpenTelemetry exporter or run the included Python sender. The first request produces one conflict. A second conversation shows how the same issue recurs. [Get your first live recommendation](docs/getting-started.md#get-a-recommendation-from-a-live-span)
+**Try the receiver.** Send the included exchange batch with curl and watch the two recommendations appear on an empty dashboard. Then connect your application’s exporter to the same endpoint. [Send the sample](docs/getting-started.md#send-the-sample-to-a-running-sidecar) · [Connect your application](docs/getting-started.md#instrument-your-application)
 
 ## What can I learn?
 
