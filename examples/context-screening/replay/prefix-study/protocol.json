@@ -1,0 +1,26 @@
+{
+  "question": "When the caller specifies the words before a numeric field, does scoring the two policy values after those words identify a source edit that changes the generated field?",
+  "reference": "../case.json",
+  "checkpoint": "Qwen/Qwen2.5-0.5B-Instruct",
+  "revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "weights_sha256": "fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe",
+  "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+  "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+  "max_tokens": 32,
+  "design": "Preserve both journal sources and the assistant acknowledgement. Change the final question. Score each original and each single neutral replacement at the empty prefix and at its supplied prefix, then generate one unconstrained greedy answer for each request. The supplied prefixes include one final ASCII space. Continuations are exactly the strings 30 and 60 with no leading or trailing space at both positions. Require the tokenizer to preserve every prefix boundary across both edits.",
+  "selector": "At each prefix, subtract log P(60) from log P(30). Select a source only when exactly one edit strictly reverses the sign relative to the original. Treat a zero as a tie. The other selectors always choose journal-policy and journal-faq respectively.",
+  "outcome": "Extract all standalone ASCII integers from each completed answer with the Python regular expression \\b[0-9]+\\b. Resolve the field only if there is exactly one integer and it equals 30 or 60. Also record whether each complete answer begins with its full supplied prefix, case and space sensitive. A generation that fails to stop within 32 tokens stays incomplete.",
+  "primary": "For each selector, count questions selected out of all eight, confirmed field switches out of all eight, switches out of resolved selections, and unresolved selections. A field switch requires both generated fields to resolve to different values. A formatting change by itself contributes zero. Report how many questions have at least one confirmed switch. Keep all questions regardless of prefix adherence.",
+  "secondary": "For each prefix compare preference reversal versus resolved field switch across all sixteen edits, including misses and false positives. Count all three generations' prefix adherence separately. These descriptions concern one model, one pair of sources and eight authored prompts.",
+  "demo": "Always export question 1 as the dashboard example. Use the supplied prefix in its candidate probe and freely generated text for its shadow comparison.",
+  "questions": [
+    {"question": "For the return slip, write the journal deadline on one line. Start with 'Return window:' then a space, the number and ' days'.", "prefix":"Return window: "},
+    {"question": "How late can I bring back my journal? Start your answer with 'You can return it within' followed by a space and the applicable number of days.", "prefix":"You can return it within "},
+    {"question": "The cashier needs a label for journal returns. Please output 'DAY LIMIT = ' followed immediately by the number, using digits.", "prefix":"DAY LIMIT = "},
+    {"question": "Complete this sentence for a journal buyer: 'Our journal policy allows ' then the deadline in digits and the word days.", "prefix":"Our journal policy allows "},
+    {"question": "I need a short message for my journal receipt. Begin 'Please return within ' and add the number in digits, followed by days.", "prefix":"Please return within "},
+    {"question": "Which return period applies to a journal? Write exactly one line starting 'Deadline (days): ' and finish it with digits.", "prefix":"Deadline (days): "},
+    {"question": "For the journal entry in my return log, start the reply 'Allowed days: ' and put the policy value in digits straight after it.", "prefix":"Allowed days: "},
+    {"question": "Fill the journal return field for customer support. Start with 'Time allowed is ' and follow it with the applicable period in digits and the unit days.", "prefix":"Time allowed is "}
+  ]
+}
