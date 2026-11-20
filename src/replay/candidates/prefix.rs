@@ -66,6 +66,7 @@ pub fn prefix_reviews(
             .as_ref()
             .map(|raw| reference_check(raw, measurement, &reversals, &runs));
         reviews.push(json!({"report":report.id, "reference":reference, "prefix":measurement.assistant_prefix,
+            "block_probe":super::blocks::review(report),
             "verdict":verdict, "scorer":measurement.scorer_id, "tokenizer_sha256":measurement.tokenizer_sha256,
             "labels":measurement.candidates.each_ref().map(|c| &c.id),
             "alternatives":measurement.candidates.each_ref().map(|c| &c.continuation), "model":measurement.model_id,

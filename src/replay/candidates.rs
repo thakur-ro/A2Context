@@ -4,6 +4,7 @@
 //! scores both candidates at the same assistant prefix for every condition.
 
 use super::{edited_requests, prepare_edits, sha256, Intervention};
+mod blocks;
 pub mod patterns;
 mod prefix;
 pub use prefix::{prefix_reviews, prefix_trial_case};
@@ -122,6 +123,9 @@ pub struct Report {
     /// When present, the final score belongs to both edits applied together.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub joint_request_sha256: Option<String>,
+    /// Optional runner-supplied interventions at the two positions before readout.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block_probe: Option<Value>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -243,6 +247,7 @@ pub fn execute(
         baseline_log_odds,
         effects,
         joint_request_sha256,
+        block_probe: None,
     })
 }
 

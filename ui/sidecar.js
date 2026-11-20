@@ -1807,7 +1807,8 @@ function pendingPreview() {
       output.replaceChildren(...[
         element("p", { className: "label", text: plural(report.captured_inputs, "captured input") +
           " · " + plural(report.total, "current-request finding") + (report.prefill ? " · First-token test attached" : "") }),
-        ...prefixReviews.map((r,i) => prefixReview(r,report.example_question,i === 0 ? followUp : null)),
+        ...prefixReviews.flatMap((r,i) => [prefixReview(r,report.example_question,i === 0 ? followUp : null),
+          blockInvestigation([{review:r,index:r.reversals[0] || 1}])]),
         opening && openingComparison(report.prefill, report.example_question),
         ...targets.map(check => opening || prefixTrials.has(check.report_id) ? element("details", {className:"panel"}, element("summary", {text:"Review the declared target"}),
           declaredTarget(check,report.example_question)) : declaredTarget(check, report.example_question)), ...standalone.map(paths => prefixReports.has(paths[0].report) ?

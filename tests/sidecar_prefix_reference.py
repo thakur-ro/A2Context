@@ -3,6 +3,7 @@ import argparse
 from collections import Counter
 from copy import deepcopy
 import json
+from math import isclose
 from pathlib import Path
 import re
 import sqlite3
@@ -11,8 +12,11 @@ from tempfile import TemporaryDirectory
 from urllib.parse import urlencode
 
 from sidecar_prefix_cohort import CASES, get, send, send_traces, server, span, trace_for
+from view_calendar_prefixes import BLOCKS
 
 ACTIVITIES = CASES.parent.parent / "prefix-indirect/cases.json"
+ACTIVITY_CASES = json.loads(ACTIVITIES.read_text())
+BLOCK_REPORTS = json.loads(BLOCKS.read_text())["reports"]
 
 
 def grade(trials, reference):
@@ -45,6 +49,19 @@ def check_reference_pairs(base, scope):
                          ref_set=pair["reference_set"], ref_edit=pair["edit"], pair_setup=pair["setup"],
                          edit_index=row["index"], edit_outcome=row["outcome"])
             checked = get(base, "prefix-check", **where)["review"]
+            case = ACTIVITY_CASES[int(row["thread"].split()[-1]) - 1]
+            study = BLOCK_REPORTS[case["id"]]
+            assert checked["block_probe"]["status"] == "matched"
+            probe = checked["block_probe"]["probe"]
+            assert probe["baseline"]["request_sha256"] == study["baseline"]["request_sha256"]
+            assert probe["blocks"] == study["blocks"] == 24
+            swap = probe["effects"][row["index"] - 1]["swaps"]
+            for key, values in swap.items():
+                expected_values = study["effects"][row["index"] - 1]["swaps"][key]
+                assert all(isclose(a, b, abs_tol=1e-12) for a, b in zip(values, expected_values, strict=True))
+            crossing = next(i for i, margin in enumerate(swap["last_prefix_token"]) if margin < 0)
+            assert crossing == {"Booking 3": 14, "Booking 4": 22, "Booking 13": 15, "Booking 14": 22}[row["thread"]]
+            assert all(margin > 0 for margin in swap["last_user_token"])
             assert checked["conditions"][row["index"]]["label"] == pair["source"]
             assert checked["reference"]["edits"][row["index"] - 1] == row["outcome"]
             trials = checked["runs"][0]["rows"]
@@ -119,7 +136,7 @@ def check(binary, folder, cases):
     org = "labeled-activities"
     with server(binary, db, "--capture-content") as base:
         for i, case in enumerate(cases,1):
-            trace = trace_for(case,i,org=org,reference=True)
+            trace = trace_for(case,i,org=org,reference=True,block_probe=BLOCK_REPORTS.get(case["id"]))
             send_traces(base,trace)
             send_traces(base,trace)
         group, = get(base,"prefix-groups",org=org)["rows"]
@@ -134,6 +151,7 @@ def check(binary, folder, cases):
             record = span(trace_for(case,i,org=org,reference=True))
             locator = dict(scope,trace="otlp:"+record["traceId"],call=record["spanId"],report="room-duration")
             detail = get(base,"prefix-check",**locator)["review"]
+            assert (detail["block_probe"] is not None) == (case["id"] in BLOCK_REPORTS)
             target = str(case["minutes"][case["requested"]])
             ref = detail["reference"]
             assert ref["continuation"] == target and ref["set"] == "original-booking-duration-v1"
@@ -192,7 +210,7 @@ def check(binary, folder, cases):
     with server(binary, db, "--capture-content") as base:
         check_reference_pairs(base, scope)
     with server(binary, folder / "redacted.sqlite") as base:
-        send_traces(base, trace_for(cases[0], 1, org=org, reference=True))
+        send_traces(base, trace_for(cases[2], 3, org=org, reference=True, block_probe=BLOCK_REPORTS[cases[2]["id"]]))
         assert get(base, "prefix-groups", org=org)["rows"] == []
         assert get(base, "prefix-references", **scope)["rows"] == []
     # Invalid or conflicting evaluation metadata cannot create a new model forecast.
@@ -201,6 +219,7 @@ def check(binary, folder, cases):
     def inspect():
         return json.loads(subprocess.check_output([binary,"inspect-pending","-"],input=json.dumps(envelope),text=True))["prefix_reviews"][0]
     original=inspect()
+    assert original["block_probe"] is None
     for target, result in [("60","restored"),("30","lost"),("unknown",None)]:
         candidate["reference_target"]={"set":"fixture","candidate_id":target}
         review=inspect()
@@ -209,6 +228,22 @@ def check(binary, folder, cases):
             assert review["reference"]["outcome"] == result
         else:
             assert "issue" in review["reference"] and "outcome" not in review["reference"]
+
+    envelope = deepcopy(cases[2]["envelope"])
+    candidate = envelope["candidate"]
+    baseline = inspect()
+    blocks = BLOCK_REPORTS[cases[2]["id"]]
+    for corrupted in [
+        dict(blocks, model_revision="another-revision"),
+        dict(blocks, baseline=dict(blocks["baseline"], rendered_prefix_sha256="0"*64)),
+        dict(blocks, self_swaps=dict(blocks["self_swaps"], last_user_token=[0]*24)),
+        dict(blocks, effects=[dict(blocks["effects"][0], donor=blocks["effects"][1]["donor"]), blocks["effects"][1]]),
+        [],
+    ]:
+        candidate["block_probe"] = corrupted
+        review = inspect()
+        assert review.pop("block_probe")["status"] == "unverified"
+        assert review == {key:value for key,value in baseline.items() if key != "block_probe"}
 
 
 def measure(binary, folder, cases):
@@ -234,5 +269,5 @@ if __name__ == "__main__":
     parser.add_argument("--measure",action="store_true")
     args=parser.parse_args()
     with TemporaryDirectory() as tmp:
-        (measure if args.measure else check)(args.binary.resolve(),Path(tmp),json.loads(ACTIVITIES.read_text()))
+        (measure if args.measure else check)(args.binary.resolve(),Path(tmp),ACTIVITY_CASES)
     print("Verified reference outcomes on labeled activity runs.")

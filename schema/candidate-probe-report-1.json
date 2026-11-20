@@ -15,6 +15,7 @@
     "assistant_prefix": { "type": "string" },
     "reference_target": { "$ref": "candidate-probe-1.json#/properties/reference_target" },
     "candidates": { "$ref": "candidate-probe-1.json#/properties/candidates" },
+    "block_probe": { "$ref": "candidate-block-probe-1.json" },
     "scores": { "$ref": "#/$defs/scores" },
     "joint_request_sha256": { "$ref": "#/$defs/digest" },
     "baseline_log_odds": { "type": "number" },

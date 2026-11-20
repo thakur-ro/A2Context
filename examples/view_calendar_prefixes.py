@@ -7,23 +7,26 @@ from urllib.request import Request, urlopen
 from uuid import NAMESPACE_URL, uuid5
 
 CASES = Path(__file__).parent / "context-screening/replay/prefix-transfer/cases.json"
+BLOCKS = CASES.parent.parent / "prefix-blocks/results.json"
 ORG = "calendar-prefix-study"
 
 
-def trace_for(case, index, *, org=ORG, scores_only=False, reference=False):
+def trace_for(case, index, *, org=ORG, scores_only=False, reference=False, block_probe=None):
     envelope = case["envelope"]
     fields = envelope["request"]["attributes"].copy()
     body = json.loads(fields["nexusweave.request.body"])
     fields.update({
         "gen_ai.operation.name": "chat", "gen_ai.conversation.id": "Booking " + str(index),
         "nexusweave.organization.id": org, "nexusweave.user.id": "calendar-evaluation",
-        "nexusweave.candidate_probes": [envelope["candidate"]],
         "gen_ai.input.messages": [{"role":m["role"],"parts":[{"type":"text","content":m["content"]}]} for m in body["messages"]],
     })
+    candidate = envelope["candidate"].copy()
+    if block_probe is not None:
+        candidate["block_probe"] = block_probe
     if reference:
-        candidate = dict(envelope["candidate"], reference_target={
-            "set":"original-booking-duration-v1", "candidate_id":str(case["minutes"][case["requested"]])})
-        fields["nexusweave.candidate_probes"] = [candidate]
+        candidate["reference_target"] = {
+            "set":"original-booking-duration-v1", "candidate_id":str(case["minutes"][case["requested"]])}
+    fields["nexusweave.candidate_probes"] = [candidate]
     if not scores_only:
         shadow = envelope["shadow"]
         fields["nexusweave.shadow_probes"] = [shadow]
@@ -52,8 +55,10 @@ if __name__ == "__main__":
         org += "-reference"
     path = CASES.parent.parent / "prefix-indirect/cases.json" if args.indirect else CASES
     cases = json.loads(path.read_text())
+    blocks = json.loads(BLOCKS.read_text())["reports"] if args.indirect else {}
     for i, case in enumerate(cases, 1):
-        trace = trace_for(case, i, org=org, scores_only=args.scores_only, reference=args.reference)
+        trace = trace_for(case, i, org=org, scores_only=args.scores_only, reference=args.reference,
+                          block_probe=blocks.get(case["id"]))
         request = Request(base + "/v1/traces", json.dumps(trace).encode(), {"Content-Type":"application/json"})
         with urlopen(request, timeout=30) as response:
             response.read()

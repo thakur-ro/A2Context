@@ -110,6 +110,104 @@ function prefixReferenceDetail(review, question, inspectedIndex) {
         element("th",{scope:"row",text:c.label}),element("td",{text:prefixOutcomes[outcome]}))))));
 }
 
+const blockSites = {
+  last_prefix_token: "End of the answer prefix",
+  last_user_token: "End of the user message"
+};
+
+function blockChart(margins, original, edited, extent, crossing) {
+  const svg = (tag, attributes, text) => {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+    if (text != null) node.textContent = text;
+    return node;
+  };
+  const chart = svg("svg", {viewBox:"0 0 360 154", "aria-hidden":"true"});
+  const x = block => 42 + block / (margins.length - 1) * 306;
+  const y = margin => 66 - margin / extent * 53;
+  const line = (margin, className) => svg("line", {x1:42, y1:y(margin), x2:348, y2:y(margin), class:className});
+  const tick = (value, at) => svg("text", {x:35, y:y(at) + 4, "text-anchor":"end"}, value);
+  const end = margins.length - 1;
+  chart.append(line(extent, "block-grid"), line(-extent, "block-grid"), line(0, "block-zero"),
+    line(original, "block-original"), line(edited, "block-edited"),
+    tick(signed(extent), extent), tick("0", 0), tick(signed(-extent), -extent),
+    svg("polyline", {class:"block-sweep", points:margins.map((v,i) => x(i) + "," + y(v)).join(" ")}),
+    svg("text", {x:x(0), y:140}, "0"),
+    svg("text", {x:196, y:140, "text-anchor":"middle"}, "Decoder block"),
+    svg("text", {x:x(end), y:140, "text-anchor":"end"}, end));
+  if (crossing >= 0) chart.append(svg("circle", {cx:x(crossing), cy:y(margins[crossing]), r:4, class:"block-crossing"}));
+  return chart;
+}
+
+function blockInvestigation(entries) {
+  const measured = entries.flatMap(({review, label, index}) => review?.block_probe?.status === "matched" ?
+    [{review, label, index, probe:review.block_probe.probe}] : []);
+  if (!measured.length) {
+    const issue = entries.find(({review}) => review?.block_probe?.status === "unverified");
+    return issue ? element("p", {className:"panel", text:issue.review.block_probe.issue}) : null;
+  }
+  const {review, probe} = measured[0];
+  if (measured.some(m => m.probe.blocks !== probe.blocks ||
+    String(m.probe.choice_token_ids) !== String(probe.choice_token_ids))) return null;
+  const site = element("select", {"aria-label":"Activation position"}, ...Object.entries(blockSites).map(([value,text]) =>
+    element("option", {value,text})));
+  const source = entries.length === 1 ? element("select", {"aria-label":"Source intervention"},
+    ...review.conditions.slice(1).map((c,i) => element("option", {value:i, text:c.label}))) : null;
+  if (source) source.value = String(measured[0].index - 1);
+  const plots = element("div", {className:"block-plots", "aria-live":"polite"});
+
+  function draw() {
+    const samples = measured.map(({label, index, probe}) => ({
+      label, baseline:probe.baseline, control:probe.self_swaps[site.value],
+      effect:probe.effects[source ? Number(source.value) : index - 1]
+    }));
+    const extent = Math.max(1, ...samples.flatMap(({baseline,effect}) =>
+      [baseline.margin, effect.donor.margin, ...effect.swaps[site.value]]).map(Math.abs));
+    plots.replaceChildren(...samples.map(({label, baseline, effect, control}) => {
+      const original = baseline.margin, edited = effect.donor.margin;
+      const margins = effect.swaps[site.value];
+      const crossing = margins.findIndex(m => Math.sign(original) !== 0 && Math.sign(m) === -Math.sign(original));
+      const heading = crossing < 0 ? "No strict reversal in the sweep" :
+        "First reversal at block " + crossing + (crossing === margins.length - 1 ? " (end control)" : "");
+      const [from,to] = [baseline,effect.donor].map(row => row.positions[site.value].index);
+      return element("article", {className:"block-plot"}, label && element("p", {className:"label",text:label}),
+        element("h3", {text:heading}), blockChart(margins,original,edited,extent,crossing),
+        element("div", {className:"block-legend"},
+          element("span", {className:"block-original",text:"Original " + signed(original)}),
+          element("span", {className:"block-edited",text:"Full edit " + signed(edited)}),
+          element("span", {className:"block-sweep",text:"One vector swapped"})),
+        crossing >= 0 && Math.sign(original) === Math.sign(edited) &&
+          element("p", {text:"The full source edit kept the original preference."}),
+        element("details", {}, element("summary", {text:"Read scores and controls"}),
+          element("p", {text:"The patch copies token position " + to + " of the full edit to position " + from +
+            " of the original request at the same block. Blocks and positions start at zero."}),
+          comparisonTable(["Block","Swap log odds","Self-swap"], margins.map((value,block) =>
+            element("tr", {}, element("th", {scope:"row",text:block}),
+              element("td", {text:String(value)}),element("td", {text:String(control[block])}))))));
+    }));
+  }
+  site.addEventListener("change",draw);
+  source?.addEventListener("change",draw);
+  draw();
+  return element("section", {className:"panel block-investigation", "aria-label":"Decoder-block intervention"},
+    element("h2", {text:"Where did the next-token preference change?"}),
+    element("p", {text:"In a separate model replay, each point copies one vector from the edited prompt into the original run. " +
+      "The supplied prefix stays fixed at " + JSON.stringify(review.prefix) + "."}),
+    element("div", {className:"block-options"}, element("label", {}, "Swap site ",site),
+      source && element("label", {}, "Source edited ",source)),
+    element("p", {className:"row-extra",text:"Positive log odds favor the first token of " + JSON.stringify(review.alternatives[0]) +
+      ". Negative log odds favor the first token of " + JSON.stringify(review.alternatives[1]) + "."}),
+    plots,
+    measured.length < entries.length && element("p", {text:"Available for " + measured.map(m => m.label).join(", ") +
+      ". The other question has no verified sweep."}),
+    element("details", {}, element("summary", {text:"How to read this experiment"}),
+      element("p", {text:"A reversal measures sensitivity to this swap. The model can carry the same signal at other positions or blocks. " +
+        "Use free-generation trials to judge the effect of the source edit on the complete answer."}),
+      element("p", {text:"Self-swaps preserved the original score within 0.0001. At the final block, the prefix swap reproduced the full edit’s score " +
+        "and the user-message swap preserved the original score."}),
+      element("p", {className:"row-extra",text:probe.model_id + " · " + probe.model_revision + " · " + probe.runtime})));
+}
+
 function prefixInvestigation(group, comparison) {
   const pending = !group.exceptions && group.needs_trial > 0;
   let filter = {}, headline, detail;
@@ -238,15 +336,16 @@ async function referenceComparisons(page, selection, offset) {
   const pair = page.rows[active];
   const locator = row => ({design:selection.design,ref_set:pair.reference_set,pair_setup:pair.setup,
     ref_edit:pair.edit,edit_outcome:row.outcome,edit_index:row.index,trace:row.trace,call:row.call,report:row.report});
-  const first = pair.examples[0];
-  const witness = await api("prefix-check",{...scope,...locator(first)},true);
+  const [first] = pair.examples;
+  const evidence = await Promise.all(pair.examples.map(row => api("prefix-check",{...scope,...locator(row)},true)));
+  const [witness] = evidence;
   if (!witness) return panel("The comparison changed. Reopen it from the recommendations.",link("Back to recommendations",url({})));
   const condition = witness.review.conditions[first.index];
   const pick = element("select",{"aria-label":"Matched source edits"},...page.rows.map((p,i) => element("option",
     {value:i,text:p.source + " · " + p.examples.map(r => r.thread).join(" / ")})));
   pick.value = String(active);
   pick.addEventListener("change",() => location.assign(url({...params,matched:id(page.rows[Number(pick.value)])})));
-  return element("section",{className:"panel prefix-contrast","aria-label":"Matched source edit"},
+  const comparison = element("section",{className:"panel prefix-contrast","aria-label":"Matched source edit"},
     element("h2",{text:"Editing " + pair.source}),page.rows.length > 1 && element("label",{},"Compare ",pick),
     condition.original != null && element("p",{},element("b",{text:"Captured source "}),condition.original),
     element("p",{},element("b",{text:"Tested edit "}),condition.edit.operation === "remove_json" ? "Remove the field." : condition.edit.replacement),
@@ -258,6 +357,8 @@ async function referenceComparisons(page, selection, offset) {
         element("p",{text:"Expected " + JSON.stringify(row.expected)}),
         link("Inspect this edit",url({...selection,compare_refs:1,matched:id(pair),...locator(row),from_offset:offset || null}))))),
     element("p",{className:"row-extra",text:"The final user question changed. The earlier request, source edits, runner, sampling settings and trial counts matched. Reference set · " + pair.reference_set}));
+  return element("div",{className:"feed"}, comparison, blockInvestigation(pair.examples.map((row,i) =>
+    ({review:evidence[i]?.review, label:row.thread, index:row.index}))));
 }
 
 async function prefixCohort() {
@@ -286,11 +387,15 @@ async function prefixCohort() {
     byId("title").textContent = data.example.thread;
     byId("summary").textContent = edit.ref_edit ? "Observed result for the source edit in the matched comparison." : data.matching_trial ? "An identical input and edit have trial results in this scope." : prefixVerdicts[data.review.verdict];
     const referenceDetail = data.review.reference?.set && data.review.verdict !== "untested";
+    const sourceIndex = Number(edit.edit_index) || data.review.reversals[0] || 1;
+    const blocks = blockInvestigation([{review:data.review,index:sourceIndex}]);
     return element("div",{className:"feed"},previous,
       referenceDetail && prefixReferenceDetail(data.review,data.example.question,Number(edit.edit_index)),
+      referenceDetail && blocks,
       data.review.verdict === "untested" ? prefixForecast(data.review,data.example.question,locator,data.capture_enabled,data.matching_trial) :
         referenceDetail ? element("details",{className:"panel"},element("summary",{text:"Inspect scores and all trial conditions"}),prefixReview(data.review,null)) :
           prefixReview(data.review,data.example.question),
+      !referenceDetail && blocks,
       link("Read this conversation",url({view:"threads",thread:data.example.thread_key,focus_trace:traceId,focus_call:data.example.call})));
   }
   if (query.has("compare_refs")) {

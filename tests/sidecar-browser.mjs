@@ -830,6 +830,9 @@ try {
   }
   if (process.env.PREFIX_REFERENCE_URL) {
     const origin = process.env.PREFIX_REFERENCE_URL;
+    const studyRoot = new URL("../examples/context-screening/replay/", import.meta.url);
+    const cases = JSON.parse(await readFile(new URL("prefix-indirect/cases.json",studyRoot),"utf8"));
+    const {reports} = JSON.parse(await readFile(new URL("prefix-blocks/results.json",studyRoot),"utf8"));
     for (const device of [page,mobile]) {
       await device.goto(origin + "/?org=activity-prefix-study-reference");
       await device.getByRole("link",{name:/Compare two questions where the same edit helped/}).click();
@@ -843,9 +846,24 @@ try {
       if (device === page && process.env.REFERENCE_PAIR_SCREENSHOT) await comparison.screenshot({path:process.env.REFERENCE_PAIR_SCREENSHOT});
       await pick.selectOption("1");
       await comparison.getByRole("heading",{name:"Editing atlas-calendar"}).waitFor();
+      const blocks = device.getByRole("region",{name:"Decoder-block intervention"});
+      await blocks.getByRole("heading",{name:"First reversal at block 14",exact:true}).waitFor();
+      await blocks.getByRole("heading",{name:"First reversal at block 22",exact:true}).waitFor();
+      assert.equal(await blocks.locator("svg polyline").count(),2);
+      if (device === page && process.env.PREFIX_BLOCK_SCREENSHOT) await blocks.screenshot({path:process.env.PREFIX_BLOCK_SCREENSHOT});
+      const position = blocks.getByRole("combobox",{name:"Activation position"});
+      await position.selectOption("last_user_token");
+      assert.equal(await blocks.getByRole("heading",{name:"No strict reversal in the sweep"}).count(),2);
+      await position.selectOption("last_prefix_token");
+      await blocks.getByText("Read scores and controls",{exact:true}).first().click();
+      await blocks.getByRole("columnheader",{name:"Self-swap"}).waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
       await comparison.locator("article").last().getByRole("link",{name:"Inspect this edit"}).click();
       await device.getByRole("heading",{name:"Booking 4",exact:true}).waitFor();
       await device.getByRole("region",{name:"Reference continuation check"}).getByRole("heading",{name:"Lost the expected continuation"}).waitFor();
+      await blocks.getByRole("heading",{name:"First reversal at block 22",exact:true}).waitFor();
+      await blocks.getByRole("combobox",{name:"Source intervention"}).selectOption({label:"birch-calendar"});
+      await blocks.getByRole("heading",{name:"No strict reversal in the sweep"}).waitFor();
       await device.locator("#filters > summary").click();
       await device.locator('#filter-form input[name="user"]').fill("calendar-evaluation");
       await device.locator('#filter-form button[type="submit"]').click();
@@ -881,6 +899,13 @@ try {
       await forecast.getByText("Expected continuation",{exact:true}).waitFor();
       assert.equal(await check.count(),0);
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      const booking = cases[2];
+      const {request, candidate} = booking.envelope;
+      await device.goto(origin + "/?view=preview");
+      await device.locator("input[type=file]").setInputFiles({name:"scored-booking.json",mimeType:"application/json",
+        buffer:Buffer.from(JSON.stringify({request,candidate:{...candidate,block_probe:reports[booking.id]}}))});
+      await blocks.getByRole("heading",{name:"First reversal at block 14",exact:true}).waitFor();
+      assert.equal(await device.getByRole("heading",{name:"What did the runner generate?"}).count(),0);
     }
   }
   assert.deepEqual(errors, []);
