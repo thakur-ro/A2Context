@@ -6,7 +6,7 @@ const view = ["traces", "threads", "preview"].includes(query.get("view")) ? quer
 const filterNames = { after: "From", before: "Before", org: "Organization", user: "User",
   workflow: "Workflow", meta_key: "Metadata key", meta_value: "Metadata value" };
 const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
-const kindLabels = { source_gap:"Source capture gap", prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
+const kindLabels = { baseline_check:"Replay baseline", source_gap:"Source capture gap", prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
@@ -255,6 +255,13 @@ function overlappingAnchors(report) {
 }
 
 function visual(kind, detail, rows = []) {
+  if (kind === "baseline_check") {
+    const {attempted,completed,unscored=0,matched} = detail.measurement.baseline;
+    return comparisonTable(["Original request","Trials"],[
+      ["Matched",matched],["Scored and differed",completed-unscored-matched],
+      ["Could not score",unscored],["Runner failed",attempted-completed]
+    ].map(([label,count]) => element("tr",{},element("th",{scope:"row",text:label}),element("td",{text:count}))));
+  }
   if (kind === "source_gap") return element("div",{},requiredSourceList(detail.coverage),sourceMismatchEvidence(detail));
   if (kind === "prefill") return firstTokenPreview(detail, true);
   if (kind === "source_mask") return maskComparison(detail.mask);
@@ -276,6 +283,11 @@ const jointPatterns = {
 };
 
 function findingTitle(kind, detail) {
+  if (kind === "baseline_check") return {
+    no_completion:"The replay runner returned no completed baseline",
+    no_score:"The scoring rule could not grade a baseline reply",
+    no_match:"The unchanged request missed the recorded outcome"
+  }[detail.reason];
   if (kind === "source_gap") return "Check sources for " + detail.coverage.name;
   if (kind === "source_mask") return "Mask " + detail.sources.map(sourceName).join(" and ") + " when the recorded tool was " + detail.mask.original.label;
   if (kind === "prefill") {
@@ -318,6 +330,11 @@ function findingTitle(kind, detail) {
 }
 
 function findingDetail(kind, detail) {
+  if (kind === "baseline_check") {
+    const {attempted,completed,unscored=0} = detail.measurement.baseline;
+    return [detail.runner, plural(attempted,"baseline attempt"), plural(completed-unscored,"scored reply"),
+      "Recorded "+detail.recorded.kind.replaceAll("_"," ")+" · "+detail.recorded.label].join(" · ");
+  }
   if (kind === "source_gap") return detail.coverage.text_mismatches?.length
     ? "Captured text differs from the expected value for " + detail.coverage.text_mismatches.join(", ") + "."
     : "No configured alternative had all its source fragments anchored in the request.";
@@ -526,11 +543,11 @@ function investigation(href, title, description, detail) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { source_gap:"Source capture gap", routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
+  const signals = { baseline_check:"Replay baseline", source_gap:"Source capture gap", routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
     token: "Token score shifted", source_mask: "Source masks tested", sandbox_dispatch: "Sandbox state preserved",
     sandbox_regression: "Expected state missed with check", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { source_gap:"Inspect unconfirmed source IDs", routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
+  const step = { baseline_check:"Inspect the unchanged-request trials", source_gap:"Inspect unconfirmed source IDs", routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer", source_mask: "Compare tool proposals after masking sources",
     sandbox_dispatch: "See what changed at dispatch",
@@ -541,7 +558,7 @@ function factorRow(factor, featured = false) {
   const test = factor.signal === "variation" && factor.position_test;
   const isolated = test && test.result.present.changed === 2 && test.result.replaced.compared === 2 && test.result.replaced.changed === 0;
   const headline = isolated ? "Moving this source changed both proposals" : "Review the source-position test";
-  const name = factorName(factor.sources) || "Configured sources";
+  const name = factorName(factor.sources) || (factor.signal === "baseline_check" ? "Unchanged request" : "Configured sources");
   const counts = [factor.org, plural(factor.conversations, "identified conversation"), plural(factor.requests, "request"),
     plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ");
   const disputed = factor.disputed_routing;
@@ -936,6 +953,7 @@ function advancedHref(trace, call, item) {
   if (decision) hash.set("decision", decision);
   if (m) {
     hash.set("replay", m.replay_id);
+    if (item.kind === "baseline_check") hash.set("baseline","1");
     if (m.context_id) hash.set("variant", m.context_id);
     if (m.control_context_id) hash.set("control", m.control_context_id);
   }
@@ -1151,6 +1169,7 @@ function recommendationDetail(kind, detail, action, rows = [], hasConflictTrial 
        shadow: "The supplied proposal trials have no estimated interval for this comparison.",
        candidate: "These scores compare two continuations. Free generation can choose a third answer.",
        token: "This comparison holds the output prefix fixed at each position.",
+       baseline_check: "The effect of a source edit on the recorded outcome is unavailable for this report.",
        source_gap: "Missing anchors can reflect incomplete capture even when the text was present.",
        conflict: hasConflictTrial ? "The declarations establish the disagreement. Each replay below measures one edit on this call." : "The disagreement is visible in the inputs. Its effect on the answer still needs a test.",
        duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
@@ -1164,6 +1183,7 @@ function recommendationDetail(kind, detail, action, rows = [], hasConflictTrial 
         shadow: "A model runner proposed answers or tool calls for the baseline and edited requests. The sidecar checked the request and recomputed the match rates.",
         token: "An instrumented model runner replaced a source and swapped decoder-block activations on a fixed output path. This view shows where the original token’s score moved under those interventions.",
         replay: "A runner replayed the original request and the specified edits. The sidecar checked the request digests and counted the returned answers or tool calls that matched the recorded outcome.",
+        baseline_check: "The sidecar verified the replay report and recomputed baseline matches using its declared match rule.",
         source_gap: "The sidecar verified the preflight receipt against the recorded request, source anchors and configured alternatives, then checked each alternative for complete coverage.",
         conflict: "The sidecar compared the rule key, scope and declared value on captured inputs. This check can run as soon as the workflow assembles a request.",
         duplicate: "The sidecar found the same text at separate input locations. This check can run before the workflow sends the request."
@@ -1389,7 +1409,7 @@ function findingReview(card, occurrences, dispatchSummary) {
   const evidence = element("details", { className: "panel" }, element("summary", { text: "Underlying evidence" }),
     link("Open original span", traceLink),
     ...(card.kind === "replacement" ? replacementLinks(detail, trace_id, call_id) : []),
-    card.kind === "replay" ? link("Open trial comparison", advancedHref({ id: trace_id }, { id: call_id }, { detail })) : null);
+    ["replay","baseline_check"].includes(card.kind) ? link(card.kind === "baseline_check" ? "Inspect unchanged-request trials" : "Open trial comparison", advancedHref({ id: trace_id }, { id: call_id }, { kind:card.kind, detail })) : null);
   return element("div", { className: "feed" },
     link("Back to source factor", url({ factor: factorId || detail.factor })),
     card.kind === "token" ? tokenPath(card) : null, sandboxDispatch(detail.sandbox_dispatch), dispatchCoverage(card,dispatchSummary),
@@ -2190,7 +2210,7 @@ function traceDetail({ trace, findings, activation_reports, prefill_issues = {},
   const evidence = detailItems.map((item) => panel(findingTitle(item.kind, item.detail),
     tag(item.kind), element("p", { text: findingDetail(item.kind, item.detail) }), visual(item.kind, item.detail),
     element("p", { className: "label", text: "Evidence at " + (call.span_id || call.id) }),
-    item.kind === "replay" ? link("Open trial comparison", advancedHref(trace, call, item), "action") :
+    ["replay","baseline_check"].includes(item.kind) ? link(item.kind === "baseline_check" ? "Inspect unchanged-request trials" : "Open trial comparison", advancedHref(trace, call, item), "action") :
       item.kind === "conflict" || item.kind === "duplicate" ? prepareEdit(trace, call, item) : null));
   const capture = call?.context.filter((item) => item.availability === "included") || [];
   const unavailable = call ? call.context.length - capture.length : 0;

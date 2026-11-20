@@ -82,7 +82,13 @@ Doubling the generation limit recovered three of the four truncated replies. Eac
 
 This changes the order of an investigation. To explain a specific historical action, first try the unchanged request with the proposed runner, parser and match rule. The replay CLI now supports a baseline-only check. On fresh workflow evaluations, record expected outcomes separately so that a different valid proposal can receive credit. Automatic edit selection remains opt-in. [Baseline check](guide.md#test-a-context-item-with-a-controlled-replay)
 
-The next transfer test needs either the original execution stack or a runner that first reproduces a recorded tool proposal on an unchanged request. For a fresh evaluation without historical mimicry, register the acceptable action and arguments with the workflow owner before testing edits. A separate usability test should ask an engineer to locate the substituted lookup and recover its original text from the source reference. The browser suite verifies the path. It supplies no independent measurement of how quickly a new user can follow it.
+## Did fixing the conflicting source fix the workflow?
+
+Four fresh exchange conversations put the latest customer instruction in conflict with a cached consent record. The original and repaired requests went through Qwen-Agent’s own tool prompt, model transport, parser, argument validator and an isolated two-order SQLite database. Refreshing only the cache cleared the preflight conflict on all four requests. One reply changed wording. None of the eight replies proposed a tool call, and both approved exchanges remained unsubmitted. The four unchanged baselines reproduced exactly in a fresh process. Passing a known valid write through the same callback confirmed that the sandbox could execute it.
+
+On the desk fan order, the assistant promised to submit the exchange in both conditions. The parser received text and the order stayed delivered. An engineer could correctly close the instruction-conflict finding and still need to investigate why no tool was invoked. [Frozen repair, expected outcomes, per-arm requests and execution receipts](../examples/exchange-approval/dispatch-study/prospective/README.md)
+
+The next test should compare how the tool interface is rendered while keeping the exchange request, consent, parser and expected arguments fixed. Score the generated tool name, argument validation and resulting order state separately. The independent usability check also remains open. A new engineer should be able to identify the affected source and follow its downstream outcome without a guided walkthrough.
 
 ## Release scope
 

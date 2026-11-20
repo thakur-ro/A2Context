@@ -123,7 +123,10 @@ function openDecision(runIndex, callIndex, decisionIndex = 0, reference) {
     const replay = [...element("decision-replays").querySelectorAll(".replay-evidence")].find(
       (item) => item.dataset.replayId === reference.replay_id
     );
-    if (reference.control_context_id !== undefined) {
+    if (reference.baseline) {
+      target = replay?.querySelector(".baseline-trials");
+      if (target) target.open = true;
+    } else if (reference.control_context_id !== undefined) {
       const comparison = replay?.querySelector(".replay-negative-control");
       if (comparison?.dataset.controlContextId === reference.control_context_id) target = comparison;
     } else {
@@ -218,6 +221,7 @@ function renderReplays(container, run, call, decision) {
       section.append(card);
     }
     const baseline = node("details");
+    baseline.classList.add("baseline-trials");
     baseline.append(
       node("summary", "Baseline trial outcomes"),
       node("small", "Request SHA-256 " + experiment.baseline_request_sha256, "anchor"),

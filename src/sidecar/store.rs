@@ -249,10 +249,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 33 {
+        if version == 34 {
             return Ok(());
         }
-        if !(0..33).contains(&version) {
+        if !(0..34).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -271,9 +271,11 @@ impl Store {
                 instr(t.run,'\"candidate_probes\"')>0 AS has_candidates,
                 (?2<31 AND EXISTS(SELECT 1 FROM reports p WHERE p.trace_id=t.id AND p.kind='activation-reports'
                     AND json_extract(p.body,'$.kind')='source_visibility' AND json_array_length(p.body,'$.continuations')>0)) AS has_masks,
-                instr(t.run,'\"sandbox_dispatch\"')>0 AS has_dispatch
+                instr(t.run,'\"sandbox_dispatch\"')>0 AS has_dispatch,
+                EXISTS(SELECT 1 FROM reports p WHERE p.trace_id=t.id AND p.kind='replay-reports'
+                    AND json_extract(p.body,'$.baseline_summary.matched')=0) AS has_unmatched_baseline
             FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR (?2<25 AND has_conflict_trials)
-                OR (?2<26 AND has_opening) OR (?2<30 AND has_candidates) OR has_masks OR has_dispatch)
+                OR (?2<26 AND has_opening) OR (?2<30 AND has_candidates) OR has_masks OR has_dispatch OR has_unmatched_baseline)
             ORDER BY t.id LIMIT 16",
             )?;
             let ids = stmt
@@ -286,6 +288,7 @@ impl Store {
                         r.get::<_, bool>(4)?,
                         r.get::<_, bool>(5)?,
                         r.get::<_, bool>(6)?,
+                        r.get::<_, bool>(7)?,
                     ))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -299,6 +302,7 @@ impl Store {
                 has_candidates,
                 has_masks,
                 has_dispatch,
+                has_unmatched_baseline,
             ) in &ids
             {
                 let run = load_run(&tx, id)?;
@@ -319,6 +323,7 @@ impl Store {
                         || (version < 26 && *has_opening)
                         || *has_masks
                         || *has_dispatch
+                        || *has_unmatched_baseline
                     {
                         refresh_findings(&tx, &run)?;
                     }
@@ -327,7 +332,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 33)?;
+        self.0.pragma_update(None, "user_version", 34)?;
         Ok(())
     }
 
@@ -1217,7 +1222,7 @@ impl Store {
                         WHEN json_extract(detail,'$.sandbox_dispatch.protected')=1 THEN 2.25
                         WHEN kind='source_mask' AND proposal_changed THEN 2.5 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
-                        WHEN kind='source_gap' THEN 4.5 WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
+                        WHEN kind='baseline_check' THEN 4.75 WHEN kind='source_gap' THEN 4.5 WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
@@ -1228,7 +1233,7 @@ impl Store {
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -6 THEN 'routing_repeats' WHEN -5 THEN 'routing' WHEN -4 THEN 'order' WHEN -3 THEN 'replacement' WHEN -2 THEN 'joint_proposal' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
-                        WHEN 4.5 THEN 'source_gap' WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
+                        WHEN 4.75 THEN 'baseline_check' WHEN 4.5 THEN 'source_gap' WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
                         WHEN 1.5 THEN 'sandbox_regression' WHEN 2.25 THEN 'sandbox_dispatch' WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
@@ -1265,9 +1270,9 @@ impl Store {
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check') THEN -2
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.protected'))=1 THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
-                             WHEN kind IN ('conflict','source_gap') AND count(DISTINCT trace_id)>1 THEN 0
+                             WHEN kind IN ('conflict','source_gap','baseline_check') AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
-                             WHEN kind IN ('conflict','source_gap') THEN 2
+                             WHEN kind IN ('conflict','source_gap','baseline_check') THEN 2
                              WHEN kind='duplicate' AND min(coalesce(json_extract(detail,'$.dialogue_only'),0))=1 THEN 5
                              WHEN kind='duplicate' THEN 3
                              ELSE 4 END AS priority
@@ -1618,7 +1623,7 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     let activations = load_reports(tx, &run.id)?;
     let observations = findings::derive(run, &reports, &activations)?;
     let workflow: Option<String> = if observations.iter().any(|o| {
-        o.kind == "source_gap"
+        matches!(o.kind, "source_gap" | "baseline_check")
             || (run.organization_id.is_some() && o.detail["sandbox_dispatch"].is_object())
     }) {
         tx.query_row("SELECT workflow FROM traces WHERE id=?", [&run.id], |row| {
@@ -1629,7 +1634,7 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     };
     let mut insert = tx.prepare("INSERT INTO observations VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
     for (index, mut observation) in observations.into_iter().enumerate() {
-        if observation.kind == "source_gap" {
+        if matches!(observation.kind, "source_gap" | "baseline_check") {
             observation.group = findings::digest(
                 json!([observation.group, workflow.as_deref().unwrap_or(&run.id)]).to_string(),
             );

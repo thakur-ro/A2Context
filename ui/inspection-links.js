@@ -65,7 +65,8 @@ function writeReference(params, reference, position) {
     params.set(kind, relationshipLocator(kind, item));
   } else if (reference.replay_id !== undefined) {
     params.set("replay", reference.replay_id);
-    if (reference.control_context_id !== undefined) params.set("control", reference.control_context_id);
+    if (reference.baseline) params.set("baseline", "1");
+    else if (reference.control_context_id !== undefined) params.set("control", reference.control_context_id);
     else if (reference.context_id !== undefined) params.set("variant", reference.context_id);
   } else if (reference.activation_id !== undefined) {
     params.set("activation", reference.activation_id);
@@ -120,6 +121,7 @@ function readReference(params, position) {
     };
   }
   if (params.has("replay")) {
+    if (params.get("baseline") === "1") return { replay_id: params.get("replay"), baseline:true };
     if (params.has("control")) return { replay_id: params.get("replay"), control_context_id: params.get("control") };
     return { replay_id: params.get("replay"), context_id: params.get("variant") ?? undefined };
   }

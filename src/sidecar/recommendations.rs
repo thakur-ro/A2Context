@@ -52,6 +52,21 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Vary the wording and the order of the sources on fresh requests. Keep the scoring rule fixed and check which result repeats before changing the workflow.",
             "Different match counts in comparable replay conditions",
         ),
+        "baseline_check" if detail["reason"] == "no_completion" => (
+            "Check why the baseline runner failed",
+            "Review the runner’s exit status and output limit. Repeat only the unchanged request until it returns a completed proposal.",
+            "Every unchanged-request trial failed to return a completed proposal",
+        ),
+        "baseline_check" if detail["reason"] == "no_score" => (
+            "Check the scoring rule on the original response",
+            "Inspect the completed outputs and the configured match rule. Check that the expected field or text can be scored before testing source edits.",
+            "The match rule could not score any completed unchanged-request trial",
+        ),
+        "baseline_check" => (
+            "Check whether the runner can reproduce the recorded outcome",
+            "Compare the original model, request template, tool parser and match rule. Run the unchanged request again before interpreting a source edit.",
+            "None of the scored unchanged-request trials matched the recorded outcome",
+        ),
         "source_gap" if detail["coverage"]["text_mismatches"].as_array().is_some_and(|ids| !ids.is_empty()) => (
             "Compare captured text with the upstream source",
             "Check the named fragment against the upstream value used to set its digest. Repeat preflight after correcting the fragment, its byte range or the expected value.",

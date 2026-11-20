@@ -60,7 +60,9 @@ function canvasRecord(card) {
     facts.observed = findingDetail(card.kind, detail);
   }
   if (map) facts.map = map;
-  return { facts, trend:card.trend, href:url({recommendation:card.id, factor:detail.factor, trace, call, report:detail.report_id}),
+  const baseline = card.kind === "baseline_check" ? detail.measurement : null;
+  return { facts, trend:card.trend, href:url({recommendation:card.id, factor:detail.factor, trace, call, report:detail.report_id,
+    replay:baseline?.replay_id, decision:baseline?.location.decision_id}),
     group:url({recommendation:card.id,factor:detail.factor}), dispatch:!!target };
 }
 

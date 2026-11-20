@@ -25,6 +25,12 @@ If every alternative has an unconfirmed source, the dashboard shows **Check sour
 
 `GET /api/sidecar/findings?kind=source_gap` returns these cards. Groups match the producer, organization, workflow, requirement name, required alternatives, unconfirmed IDs and observed source versions. Reordering alternatives keeps the group stable. A complete alternative produces no gap finding. The version-two fingerprint binds the earlier rule check, requirement and named fragment inventory. Version three also binds expected fragment digests. The worker groups repeated text mismatches by source ID so different per-customer expected values can share a finding. Each occurrence retains its own expected digest. An absent anchor and a text mismatch yield separate groups. The workflow supplies the timing. The receipt establishes consistency between the check and captured evidence.
 
+### When the replay misses the recorded outcome
+
+A verified replay whose baseline has zero matches generates a `baseline_check` recommendation. The card counts scored mismatches, completed proposals the match rule could not score, and failed runner calls. **Inspect unchanged-request trials** opens the original trial records for the selected replay. If one or more baseline trials matched, the normal replay comparison rules apply.
+
+Repeated reports are grouped by workflow, model, runner, recorded action kind and label, match rule, organization, producer and the reason for the gap. The representative card shows trial counts for one report. The conversation count shows how widely the issue recurred. Posting a full replay report supplies the evidence for this finding. Running `replay --baseline-only` gives a separate local check before investing in variants. [Baseline command](guide.md#test-a-context-item-with-a-controlled-replay)
+
 ### Read a conversation turn by turn
 
 Open **See this call in its conversation** on a recommendation. The selected call has a focus outline. Read the preceding question, the proposed tool and the recorded answer in order. When the exporter supplies a turn ID, adjacent calls in that turn appear together. Otherwise each call has its own entry. The latest captured user text can come from earlier in the conversation.

@@ -150,6 +150,42 @@ pub(super) fn source_gap(
     ))
 }
 
+fn baseline_check(run: &Run, report: &replay::Replay) -> Option<Observation> {
+    let summary = &report.baseline_summary;
+    if summary.matched != 0 {
+        return None;
+    }
+    let call = run
+        .calls
+        .iter()
+        .find(|call| call.id == report.location.call_id)?;
+    let reason = if summary.completed == 0 {
+        "no_completion"
+    } else if summary.completed == summary.unscored {
+        "no_score"
+    } else {
+        "no_match"
+    };
+    Some(occurrence(
+        "baseline_check",
+        json!([
+            "baseline_check",
+            run.source,
+            run.organization_id,
+            call.model,
+            report.runner_id,
+            report.match_rule,
+            report.recorded.kind,
+            report.recorded.label,
+            reason
+        ]),
+        call,
+        json!({"reason":reason, "runner":report.runner_id, "model":call.model, "sources":[],
+            "match_rule":report.match_rule, "recorded":super::outcomes::preview(&report.recorded),
+            "measurement":{"location":report.location, "replay_id":report.id, "baseline":summary}}),
+    ))
+}
+
 pub fn derive(
     run: &Run,
     reports: &[replay::Replay],
@@ -250,6 +286,11 @@ pub fn derive(
         }
     }
     let structural_count = findings.len();
+    findings.extend(
+        reports
+            .iter()
+            .filter_map(|report| baseline_check(run, report)),
+    );
     for call in &run.calls {
         super::recommendations::probes(run, call, reports, &mut findings);
     }

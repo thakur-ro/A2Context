@@ -40,6 +40,17 @@ try {
     assert.equal(await map.locator(".network-node.unconfirmed").count(),1);
     await map.getByRole("button",{name:"unconfirmed · verified-consent-event"}).waitFor();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    const baselines = await page.request.get(new URL("/api/sidecar/findings?kind=baseline_check",base).href);
+    const [baseline] = (await baselines.json()).rows;
+    await page.goto(new URL("/?recommendation="+baseline.id,base).href);
+    await page.getByRole("heading",{name:"The scoring rule could not grade a baseline reply"}).first().waitFor();
+    const table = page.locator("table").filter({hasText:"Scored and differed"}).first();
+    assert.equal(await table.getByRole("row",{name:"Could not score 1"}).count(),1);
+    await page.getByText("Underlying evidence",{exact:true}).click();
+    await page.getByRole("link",{name:"Inspect unchanged-request trials"}).first().click();
+    assert.equal(new URLSearchParams(new URL(page.url()).hash.slice(1)).get("replay"),"baseline-no_score");
+    const raw = page.locator('[data-replay-id="baseline-no_score"] details.baseline-trials[open]');
+    await raw.getByText(/unavailable/).waitFor();
     assert.deepEqual(errors,[]);
     await page.close();
   }
