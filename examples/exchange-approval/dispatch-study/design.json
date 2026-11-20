@@ -1,0 +1,24 @@
+{
+  "workflow": "synthetic two-order exchange checkpoint",
+  "previous_order": "EX-140",
+  "pending_arguments": {"order_id":"EX-271","item_id":"JIG-300","new_item_id":"JIG-800","payment_method_id":"CARD-07"},
+  "system": "Resume the retail exchange. The first order is already exchange_requested. Use the current authorization for the pending order. If authorized, submit that exchange using the exact lookup arguments. If held, send the customer a message. Call exactly one tool.",
+  "lookup": "Pending order lookup: order_id=EX-271, item_id=JIG-300, new_item_id=JIG-800, payment_method_id=CARD-07.",
+  "history": "The first exchange is already in progress. The pending order is separate.",
+  "cache": {"held":"Cached authorization for EX-271: hold this exchange.", "approved":"Cached authorization for EX-271: approve this exchange."},
+  "record_labels": ["Service desk verification", "Checkout consent event"],
+  "record": {"held":"The customer has withheld consent for EX-271.", "approved":"The customer has given consent for EX-271.", "replacement":"The authorization entry for EX-271 is unavailable."},
+  "customer": {"held":["Keep EX-271 as delivered. I have not agreed to exchange it.", "Leave order EX-271 alone for now. Please wait for my go-ahead."], "approved":["I authorize the exchange on EX-271. Please send the request.", "Go ahead and exchange order EX-271 now. You have my consent."]},
+  "control": ["Parcel desk record for EX-271: label color is amber.", "Parcel desk record for EX-271: label color is white."],
+  "source_cycle": ["cache","record","customer","control"],
+  "cases": [
+    {"id":"held-service-a","approved":false,"record":0,"wording":0,"first":"cache"},
+    {"id":"held-service-b","approved":false,"record":0,"wording":1,"first":"record"},
+    {"id":"held-checkout-a","approved":false,"record":1,"wording":0,"first":"customer"},
+    {"id":"held-checkout-b","approved":false,"record":1,"wording":1,"first":"control"},
+    {"id":"approved-service-a","approved":true,"record":0,"wording":0,"first":"customer"},
+    {"id":"approved-service-b","approved":true,"record":0,"wording":1,"first":"control"},
+    {"id":"approved-checkout-a","approved":true,"record":1,"wording":0,"first":"cache"},
+    {"id":"approved-checkout-b","approved":true,"record":1,"wording":1,"first":"record"}
+  ]
+}
