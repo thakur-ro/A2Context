@@ -131,6 +131,21 @@ For the baseline and each named edit, the instrumented runner reads the full nex
 
 The Rust sidecar ranks the tested edits by the adapter's reported divergence and retains their exact request digests. A separate replay can establish whether the generated answer or tool call changed. The public QA study compares this ranking with position and retrieval baselines, including a fixed fresh-question cohort. [Run the prefill probe](sidecar.md#measure-an-edit-before-the-first-output-token) · [Pilot](../examples/public-qa/README.md) · [Fresh-question protocol and results](../examples/public-qa/holdout.md)
 
+### Did the leading edit change the tool call?
+
+We measured the same two source edits on four synthetic routing requests with the pinned Qwen2.5-0.5B-Instruct CPU adapter. Editing `request-type` from stock to price produced the largest first-token shift on all four. Each proposal comparison below used the existing greedy shadow runner on the same baseline and edited request. The store-name edit preserved the original proposal on all four.
+
+| Workflow | Product ID | First-token shift after the request-type edit (bits) | Original → edited tool |
+| --- | ---: | ---: | --- |
+| North | 17 | 0.000177 | stock → price |
+| North | 88 | 0.0000581 | stock → price |
+| South | 52 | 0.000177 | stock → price |
+| South, stock only | 52 | 0.00119 | stock → stock |
+
+The stock-only request had the largest shift and retained its tool call. It offered one tool and carried different system instructions. Isolating the effect of either difference would require another intervention. The dashboard keeps this setup separate from the two-tool comparisons. The two North conversations share a card. [Measured first-token reports](../examples/runtime-comparison/pending-routing/prefill-cohort.json) · [Inputs and paired proposals](../examples/runtime-comparison/pending-routing/shadow-cohort.json)
+
+To repeat the prefill measurements, use `prefill_cohort.py --prepare /tmp/nexus-routing` to export one request and edit list for each case. Run each pair through `probe-prefill` with the Qwen adapter and checkpoint specified in the [sidecar guide](sidecar.md#measure-an-edit-before-the-first-output-token). The four saved rankings used twelve forward passes in total.
+
 ## Reproduction
 
 - Run the saved demo and follow the three [README journeys](../README.md#try-the-demo).

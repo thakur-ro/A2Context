@@ -43,6 +43,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Repeat the comparison at the same prefix and include an unrelated control edit. Check the full proposed answer or tool arguments before adopting the change.",
             "Measured preference at a fixed prefix",
         ),
+        "prefill" => (
+            "Compare the generated answer or tool call",
+            "Replay the original and edited requests on the same runner. Check whether the measured first-token shift carries through to a completed proposal.",
+            "Measured first-token distributions under named edits",
+        ),
         "shadow" => (
             "Verify the edited proposal",
             "Check the complete proposed answer or tool arguments on more representative inputs before adopting the edit.",
@@ -60,6 +65,44 @@ pub fn action(kind: &str, detail: &Value) -> Action {
         ),
     };
     Action { title, next, basis }
+}
+
+pub(super) fn prefill_action(card: &Value) -> Action {
+    let runners = card["prefill_followup"]
+        .as_array()
+        .expect("scoped proposal counts");
+    let ranks = card["prefill_counts"]
+        .as_array()
+        .expect("scoped first-token counts");
+    let eligible: u64 = ranks
+        .iter()
+        .filter(|r| r["leader"]["status"] == "unique")
+        .filter_map(|r| r["inputs"].as_u64())
+        .sum();
+    let (title,next) = match runners.as_slice() {
+        [] if eligible == 0 => ("Check the edits along the output", "These inputs have no consistent unique leader at the first token. Test the source edits at a later token or compare complete proposals."),
+        [] => ("Replay the leading edit", "Compare the full baseline and edited proposals under the same runner and settings."),
+        [one] => {
+            let changed = one["changed"].as_u64().unwrap_or(0);
+            let equal = one["equal"].as_u64().unwrap_or(0);
+            let mixed = one["mixed"].as_u64().unwrap_or(0);
+            if changed+equal+mixed < eligible {
+                ("Test the remaining inputs", "Some inputs have a leading edit and no completed proposal comparison for this runner. Start with one of those inputs.")
+            } else if mixed>0 || (changed>0 && equal>0) {
+                ("Compare where the edit mattered", "Check the captured instructions and tool inventories where the same edit led to different proposal effects.")
+            } else if equal>0 {
+                ("Check a later output token", "The leading edit shifted the first-token distribution while the completed proposals stayed the same. Inspect a later token or test another edit before changing the workflow.")
+            } else {
+                ("Repeat the leading edit on a fresh request", "The completed proposals changed on the tested inputs. Check the same edit on another conversation before revising the source.")
+            }
+        },
+        _ => ("Compare the proposal runners", "Inspect each runner’s paired outcomes before applying the recommendation across runtimes."),
+    };
+    Action {
+        title,
+        next,
+        basis: "First-token measurements and completed paired proposals in this scope",
+    }
 }
 
 pub fn preview(
@@ -184,7 +227,9 @@ pub fn probes(run: &Run, call: &Call, findings: &mut Vec<Observation>) {
             })));
         }
     }
-    for probe in replay::shadow::recorded(&run.id, call) {
+    let shadow = replay::shadow::recorded(&run.id, call);
+    findings.extend(super::prefill::observation(run, call, &shadow));
+    for probe in shadow {
         let replay::shadow::Verification::Matched { measurement } = probe.verification else {
             continue;
         };

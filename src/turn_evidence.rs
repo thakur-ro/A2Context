@@ -229,6 +229,12 @@ pub fn query<'a>(
         "original_request_captured": call.recorded_request.is_some(),
         "inspector_path": inspector_path(&run.id, &call.id, decision_id), "rows": rows, "next_offset": next,
     });
+    if let Some(measured) = crate::replay::prefill::recorded(call, include_excerpts) {
+        result["prefill"] = match measured {
+            Ok(probe) => json!({"status":"matched","measurement":probe}),
+            Err(issue) => json!({"status":"unverified","issue":issue}),
+        };
+    }
     if !candidate_summary.is_empty() {
         result["candidate_probes"] = json!(candidate_summary);
     }

@@ -613,6 +613,7 @@ fn serialize_inspection(
                     call.recorded_request.is_some()
                         || call.candidate_probes.is_some()
                         || call.shadow_probes.is_some()
+                        || call.prefill_probe.is_some()
                         || call.context_screening.is_some()
                 }) {
                     return Cow::Borrowed(run);
@@ -622,6 +623,7 @@ fn serialize_inspection(
                     call.recorded_request = None;
                     call.candidate_probes = None;
                     call.shadow_probes = None;
+                    call.prefill_probe = None;
                     call.context_screening = None;
                 }
                 Cow::Owned(run)

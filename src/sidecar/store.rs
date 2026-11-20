@@ -233,24 +233,44 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 8 {
+        if version == 9 {
             return Ok(());
         }
-        if !(0..8).contains(&version) {
+        if !(0..9).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         let mut after = String::new();
         loop {
             let ids = {
                 let mut stmt = self.0.prepare(
-                    "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL ORDER BY id LIMIT 16",
+                    "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL AND
+                      (?2<8 OR instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0))
+                      ORDER BY id LIMIT 16",
                 )?;
-                let rows = stmt.query_map([&after], |row| row.get::<_, String>(0))?;
+                let rows = stmt
+                    .query_map(params![after, version, replay::prefill::ATTRIBUTE], |row| {
+                        row.get::<_, String>(0)
+                    })?;
                 rows.collect::<rusqlite::Result<Vec<_>>>()?
             };
             let Some(last) = ids.last() else { break };
             let tx = self.0.transaction()?;
             for id in &ids {
+                // Older normalized calls omitted prefill reports even when the retained span had one.
+                let saved: Option<String> = tx.query_row(
+                    "SELECT CASE WHEN instr(raw,?2)>0 THEN raw END FROM traces WHERE id=?1",
+                    params![id, replay::prefill::ATTRIBUTE],
+                    |row| row.get(0),
+                )?;
+                if let (Some(raw), Some(trace_id)) = (saved, id.strip_prefix("otlp:")) {
+                    let stored: otlp::StoredTrace = serde_json::from_str(&raw)?;
+                    if let Some(run) = stored.normalize(trace_id)? {
+                        tx.execute(
+                            "UPDATE traces SET run=?1 WHERE id=?2",
+                            params![serde_json::to_string(&run)?, id],
+                        )?;
+                    }
+                }
                 if let Some(run) = load_run(&tx, id)? {
                     refresh_findings(&tx, &run)?;
                 }
@@ -258,7 +278,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(last);
         }
-        self.0.pragma_update(None, "user_version", 8)?;
+        self.0.pragma_update(None, "user_version", 9)?;
         Ok(())
     }
 
@@ -485,7 +505,7 @@ impl Store {
             "findings" | "factors" | "impact" | "occurrences" | "order-tests" | "replay-variations"
         ) {
             sql.push_str(", events AS (SELECT o.*,t.thread_key,t.thread,t.org,json_extract(o.detail,'$.factor') AS factor,
-                CASE WHEN o.kind IN ('candidate','token','shadow') OR
+                CASE WHEN o.kind IN ('candidate','token','shadow') OR (o.kind='prefill' AND json_extract(o.detail,'$.shifted')=1) OR
                     (o.kind='replay' AND json_extract(o.detail,'$.effect_pp') != 0) THEN 1 ELSE 0 END AS changed
                 FROM observations o JOIN selected t ON t.id=o.trace_id WHERE 1");
             for (key, field) in [
@@ -563,7 +583,7 @@ impl Store {
                     CASE WHEN factor IN (SELECT factor FROM pairs WHERE differs) THEN -3 ELSE
                     min(CASE WHEN kind='replacement' THEN -2 WHEN json_extract(detail,'$.joint_only')=1 THEN -1 WHEN kind='candidate' AND json_extract(detail,'$.baseline')*json_extract(detail,'$.edited')<0 THEN 0
                         WHEN kind='replay' AND changed=1 THEN 1 WHEN kind='shadow' THEN 2 WHEN kind='token' THEN 3
-                        WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 6 ELSE 7 END) END AS signal
+                        WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,
@@ -571,7 +591,7 @@ impl Store {
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -3 THEN 'order' WHEN -2 THEN 'replacement' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
-                        WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
+                        WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
             "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
@@ -585,7 +605,7 @@ impl Store {
                              WHEN kind='replacement' THEN -4
                              WHEN kind='candidate' AND min(json_extract(detail,'$.baseline')*json_extract(detail,'$.edited'))<0 THEN -3
                              WHEN kind IN ('shadow','token') THEN -2
-                             WHEN kind='candidate' THEN -1
+                             WHEN kind IN ('candidate','prefill') THEN -1
                              WHEN kind='conflict' AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
                              WHEN kind='conflict' THEN 2
@@ -595,8 +615,16 @@ impl Store {
                     FROM events GROUP BY group_id,kind
                     ORDER BY priority,threads DESC,traces DESC,latest DESC,group_id LIMIT ? OFFSET ?
                  )
-                 SELECT json_object('id',g.group_id,'kind',g.kind,'occurrences',g.hits,'traces',g.traces,
+                 ");
+                sql.push_str(super::prefill::SCOPED_COUNTS);
+                sql.push_str("                 SELECT json_object('id',g.group_id,'kind',g.kind,'occurrences',g.hits,'traces',g.traces,
                      'threads',g.threads,'latest',g.latest,'priority',g.priority,
+                     'prefill_followup',CASE WHEN g.kind='prefill' THEN json((SELECT json_group_array(json_object(
+                        'runner',runner,'changed',changed,'equal',equal,'mixed',mixed)) FROM
+                        (SELECT runner,sum(low=1) AS changed,sum(high=0) AS equal,sum(low!=high) AS mixed
+                         FROM prefill_replays WHERE group_id=g.group_id GROUP BY runner ORDER BY runner))) END,
+                     'prefill_counts',CASE WHEN g.kind='prefill' THEN json((SELECT json_group_array(json_object('leader',json(leader),'inputs',inputs)) FROM
+                       (SELECT leader,inputs FROM prefill_counts WHERE group_id=g.group_id ORDER BY inputs DESC,leader))) END,
                      'evidence',json((SELECT json_object('thread_key',e.thread_key,'thread',e.thread,'trace_id',e.trace_id,'call_id',e.call_id,'observed',e.observed,'detail',json(e.detail))
                        FROM events e WHERE e.group_id=g.group_id
                        ORDER BY CASE
@@ -636,10 +664,11 @@ impl Store {
         if view == "findings" {
             for row in &mut rows {
                 let kind = row["kind"].as_str().ok_or("finding kind missing")?;
-                row["action"] = serde_json::to_value(recommendations::action(
-                    kind,
-                    &row["evidence"]["detail"],
-                ))?;
+                row["action"] = serde_json::to_value(if kind == "prefill" {
+                    recommendations::prefill_action(row)
+                } else {
+                    recommendations::action(kind, &row["evidence"]["detail"])
+                })?;
             }
         }
         if view == "replay-variations" {

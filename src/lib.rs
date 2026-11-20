@@ -144,6 +144,8 @@ pub struct Call {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub candidate_probes: Option<replay::candidates::CapturedReports>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prefill_probe: Option<replay::prefill::Captured>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow_probes: Option<replay::shadow::CapturedReports>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_screening: Option<context_screening::CapturedReport>,

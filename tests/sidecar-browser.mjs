@@ -46,6 +46,7 @@ try {
   await variation.getByRole("link").click();
   const replacementPanel = page.locator(".panel").first();
   const changed = replacementPanel.locator("tr.different");
+  await changed.first().waitFor();
   assert.equal(await changed.count(), 1);
   assert.match(await changed.innerText(), /routing-note.*0 \/ 1.*1 \/ 1/s);
   assert.deepEqual(await changed.locator("code").allTextContents(), ['"UNKNOWN"', '"LARK"']);
@@ -185,6 +186,28 @@ try {
     }
     await device.getByRole("link", {name:"Compare the measured tool proposals"}).click();
     await device.getByRole("link", {name:"Check the same edits before the first token"}).waitFor();
+  }
+  if (process.env.PREFILL_COHORT_URL) {
+    for (const device of [page, mobile]) {
+      const study = process.env.PREFILL_COHORT_URL;
+      await device.goto(study + "/?org=retail-north");
+      await factor(device, "First-token sensitivity").click();
+      const changed = device.locator(".card").filter({hasText:"2 changed, 0 unchanged"});
+      await changed.getByRole("link", {name:"Review recommendation"}).click();
+      await device.getByText("request-type ranked first on 2 of 2 distinct inputs.", {exact:true}).waitFor();
+      await device.getByRole("heading", {name:"Repeat the leading edit on a fresh request"}).waitFor();
+      await device.getByText("Compare generated proposals", {exact:true}).first().click();
+      await device.getByRole("heading", {name:"request-type · proposal changed"}).first().waitFor();
+      if (device === page && process.env.COHORT_SCREENSHOT) await device.screenshot({path:process.env.COHORT_SCREENSHOT});
+      await device.goto(study + "/?org=retail-south");
+      await factor(device, "First-token sensitivity").click();
+      await device.locator(".card").filter({hasText:"0 changed, 1 unchanged"}).getByRole("link").click();
+      await device.getByRole("heading", {name:"Check a later output token"}).waitFor();
+      await device.getByText("Original request · 1 available tool · stock", {exact:true}).waitFor();
+      await device.getByText("Compare generated proposals", {exact:true}).first().click();
+      await device.getByRole("heading", {name:"request-type · same proposal"}).waitFor();
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
   }
   assert.deepEqual(errors, []);
   console.log("Verified recommendations, before-inference preview, measured choices and tokens, legacy links, and desktop and mobile layouts.");

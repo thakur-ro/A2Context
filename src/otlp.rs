@@ -116,6 +116,11 @@ impl Batch {
 }
 
 impl StoredTrace {
+    /// Rebuild the normalized evidence after an importer upgrade.
+    pub fn normalize(&self, trace_id: &str) -> Result<Option<Run>, String> {
+        normalize_trace(trace_id, &self.0, true)
+    }
+
     /// Whether the recorded operation supplies an inference coverage denominator.
     pub fn inference_span(&self, id: &str) -> bool {
         self.0.get(id).is_some_and(|(_, span)| {

@@ -2,6 +2,7 @@ mod findings;
 mod history;
 mod order;
 mod position_plan;
+mod prefill;
 mod recommendations;
 mod replacement;
 mod store;
@@ -342,10 +343,23 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                     let reports = store.replays(id)?;
                     let activations = store.activations(id)?;
                     let sources = findings::derive(&run, &reports, &activations)?;
+                    let mut prefill_issues = BTreeMap::new();
                     for call in &mut run.calls {
+                        if call.prefill_probe.is_some()
+                            && !sources
+                                .iter()
+                                .any(|obs| obs.kind == "prefill" && obs.call_id == call.id)
+                        {
+                            if let Some(Err(issue)) =
+                                nexusweave::replay::prefill::recorded(call, false)
+                            {
+                                prefill_issues.insert(call.id.clone(), issue);
+                            }
+                        }
+                        call.prefill_probe = None;
                         call.recorded_request = None;
                     }
-                    json!({"trace":run, "findings":sources, "activation_reports": activations.len(),
+                    json!({"trace":run, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
                         "replay_reports": reports.len()})
                 }
                 "/api/sidecar/preview-example" => {

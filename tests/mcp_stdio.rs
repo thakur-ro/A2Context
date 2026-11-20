@@ -1705,3 +1705,39 @@ fn lists_decisions_before_resolving_evidence_for_a_multi_decision_call() {
         "conflict"
     );
 }
+
+#[test]
+fn recorded_first_token_measurements_follow_mcp_excerpt_permissions() {
+    let mut records: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/shadow-cohort.json"
+    ))
+    .unwrap();
+    let probes: Value = serde_json::from_str(include_str!(
+        "../examples/runtime-comparison/pending-routing/prefill-cohort.json"
+    ))
+    .unwrap();
+    for record in records.as_array_mut().unwrap() {
+        let id = record["id"].as_str().unwrap().to_owned();
+        record["extra"]["metadata"][nexusweave::replay::prefill::ATTRIBUTE] = probes[&id].clone();
+    }
+    let runs = nexusweave::langsmith::import(&records).unwrap();
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder.path().join("evidence.json");
+    std::fs::write(&path, serde_json::to_vec(&runs).unwrap()).unwrap();
+    let location = json!({"run_id":runs[0].id,"call_id":runs[0].calls[0].id});
+    let mut client = Client::start(&[path.to_str().unwrap()], true);
+    let result = client.call("get_turn_evidence", location.clone());
+    let measured = &result["structuredContent"]["prefill"];
+    assert_eq!(measured["status"], "matched");
+    let top = &measured["measurement"]["ranked"][0];
+    assert_eq!(top["source"], "request-type");
+    assert!(top["js_bits"].as_f64().unwrap() > 0.0 && top.get("replacement").is_none());
+    let mut allowed = Client::start(&["--include-excerpts", path.to_str().unwrap()], true);
+    let mut with_text = location;
+    with_text["include_excerpts"] = json!(true);
+    let result = allowed.call("get_turn_evidence", with_text);
+    assert_eq!(
+        result["structuredContent"]["prefill"]["measurement"]["ranked"][0]["replacement"],
+        "Request type: price."
+    );
+}

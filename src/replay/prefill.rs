@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 pub const ATTRIBUTE: &str = "nexusweave.prefill.probe";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Scores {
     pub version: u32,
@@ -22,7 +22,7 @@ pub struct Scores {
     pub effects: Vec<Effect>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Effect {
     pub context_id: String,
@@ -32,10 +32,10 @@ pub struct Effect {
     pub js_bits: f64,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct Probe {
-    interventions: Vec<Intervention>,
+pub struct Probe {
+    pub interventions: Vec<Intervention>,
     scores: Scores,
 }
 
@@ -191,4 +191,28 @@ pub(crate) fn read(
             excerpts,
         )
         .map(Some)
+}
+
+/// A span may declare a report whose payload is truncated or unreadable.
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct Captured {
+    pub evidence: crate::Evidence,
+    pub report: Option<Probe>,
+}
+
+/// Recheck the current captured body and named edits before interpreting any scores.
+pub fn recorded(call: &Call, excerpts: bool) -> Option<Result<Value, String>> {
+    let capture = call.prefill_probe.as_ref()?;
+    Some((|| {
+        let probe = capture
+            .report
+            .as_ref()
+            .ok_or("The captured first-token report is unreadable.")?;
+        let body = call
+            .recorded_request
+            .as_ref()
+            .ok_or("The original request is unavailable for first-token verification.")?
+            .parse()?;
+        probe.checked(call, &body, excerpts)
+    })())
 }

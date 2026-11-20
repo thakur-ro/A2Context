@@ -1,0 +1,194 @@
+{
+  "routing-north-17": {
+    "interventions": [
+      {
+        "context_id": "request-source:request-type",
+        "pointer": "/messages/1/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 20
+        },
+        "replacement": "Request type: price."
+      },
+      {
+        "context_id": "request-source:store-name",
+        "pointer": "/messages/3/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 40
+        },
+        "replacement": "Background: the store\u2019s name is Rowan."
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "baseline_request_sha256": "6af408091c705c98a9bcbd841cf8ea9c0b4a6e77d6ecb1087f9e30c2fbfe5c1c",
+      "effects": [
+        {
+          "context_id": "request-source:request-type",
+          "source_id": "request-type",
+          "source_version": "v1",
+          "request_sha256": "53d075e3cf8da2b396235c2cbe885fc042422c94ce05acfefcee1be13521efc7",
+          "js_bits": 0.0001770207388738576
+        },
+        {
+          "context_id": "request-source:store-name",
+          "source_id": "store-name",
+          "source_version": "v1",
+          "request_sha256": "37bb180d5ca0b273425acc3f8f698c9bb79d2592174498ff660b0f43825b148f",
+          "js_bits": 5.183924424656671e-06
+        }
+      ]
+    }
+  },
+  "routing-north-88": {
+    "interventions": [
+      {
+        "context_id": "request-source:request-type",
+        "pointer": "/messages/1/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 20
+        },
+        "replacement": "Request type: price."
+      },
+      {
+        "context_id": "request-source:store-name",
+        "pointer": "/messages/3/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 40
+        },
+        "replacement": "Background: the store\u2019s name is Rowan."
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "baseline_request_sha256": "115409e13ee7514efc8d6f29758b01f0c4a97fa1b77337b890c36cd44f57cd18",
+      "effects": [
+        {
+          "context_id": "request-source:request-type",
+          "source_id": "request-type",
+          "source_version": "v1",
+          "request_sha256": "645218bfa56178cb2bc74088500b32d3d4b6d87eec6077561c54fef14b71dd12",
+          "js_bits": 5.814850029285623e-05
+        },
+        {
+          "context_id": "request-source:store-name",
+          "source_id": "store-name",
+          "source_version": "v1",
+          "request_sha256": "6e8a5cf22ca4d197c905c2a3eee4cf0dd022069f348378ccf89ec65138d33473",
+          "js_bits": 2.484824219901327e-06
+        }
+      ]
+    }
+  },
+  "routing-south-52": {
+    "interventions": [
+      {
+        "context_id": "request-source:request-type",
+        "pointer": "/messages/1/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 20
+        },
+        "replacement": "Request type: price."
+      },
+      {
+        "context_id": "request-source:store-name",
+        "pointer": "/messages/3/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 40
+        },
+        "replacement": "Background: the store\u2019s name is Rowan."
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "baseline_request_sha256": "42bf805adc4ed8be10b18690e69a965d4178075c6f1ceec8381604712ff2deda",
+      "effects": [
+        {
+          "context_id": "request-source:request-type",
+          "source_id": "request-type",
+          "source_version": "v1",
+          "request_sha256": "013fcff5797c9c047f40f52b68ba76b1f8648bef4aed2a706bc4fbc00bc47c91",
+          "js_bits": 0.00017744241744516363
+        },
+        {
+          "context_id": "request-source:store-name",
+          "source_id": "store-name",
+          "source_version": "v1",
+          "request_sha256": "e428410b9fd403a077f53f03a9c66de381f89a244acf46ef6b6ef58d9d63499e",
+          "js_bits": 6.177198567542305e-06
+        }
+      ]
+    }
+  },
+  "routing-south-stock-only": {
+    "interventions": [
+      {
+        "context_id": "request-source:request-type",
+        "pointer": "/messages/1/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 20
+        },
+        "replacement": "Request type: price."
+      },
+      {
+        "context_id": "request-source:store-name",
+        "pointer": "/messages/3/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 40
+        },
+        "replacement": "Background: the store\u2019s name is Rowan."
+      }
+    ],
+    "scores": {
+      "version": 1,
+      "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+      "runtime": "Transformers 4.57.6 / PyTorch 2.11.0 / CPU float32",
+      "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "baseline_request_sha256": "eb092ab6b64d7217b753e9ef47d646e6ed402398092513273758990d1b1a1592",
+      "effects": [
+        {
+          "context_id": "request-source:request-type",
+          "source_id": "request-type",
+          "source_version": "v1",
+          "request_sha256": "7cce9153561ca8227b3dec1ab981f73684bd1ae4c9bdcc70908cd0fa172f2249",
+          "js_bits": 0.0011901994368145826
+        },
+        {
+          "context_id": "request-source:store-name",
+          "source_id": "store-name",
+          "source_version": "v1",
+          "request_sha256": "0bc7e7c3e5a99fa1ea4b24f0e6a8ddf4a1d7e1cca71d608f6c3355479174180c",
+          "js_bits": 0.0003801778067880532
+        }
+      ]
+    }
+  }
+}

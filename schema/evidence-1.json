@@ -154,6 +154,14 @@
             }
           }
         },
+        "prefill_probe": {
+          "type": ["object", "null"],
+          "properties": {
+            "evidence": { "$ref": "#/$defs/evidence" },
+            "report": { "type": ["object", "null"] }
+          },
+          "required": ["evidence"]
+        },
         "candidate_probes": {
           "type": ["object", "null"],
           "required": ["evidence"],

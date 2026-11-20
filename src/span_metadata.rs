@@ -139,6 +139,17 @@ pub(crate) fn apply(call: &mut Call, metadata: &Value, field: impl Fn(&str) -> S
             reports: reports.ok(),
         });
     }
+    let prefill = crate::replay::prefill::ATTRIBUTE;
+    if let Some(value) = metadata.get(prefill) {
+        let report = match value {
+            Value::String(text) => serde_json::from_str(text),
+            value => crate::replay::prefill::Probe::deserialize(value),
+        };
+        call.prefill_probe = Some(crate::replay::prefill::Captured {
+            evidence: evidence(prefill),
+            report: report.ok(),
+        });
+    }
     if let Some(value) = metadata.get(SHADOW) {
         let reports = match value {
             Value::String(value) => serde_json::from_str(value),

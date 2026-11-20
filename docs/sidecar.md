@@ -52,6 +52,24 @@ Load the output file in **Before inference**, or pass `{"request": <file content
 
 Other model adapters can implement the same batch interface. On stdin, version 1 supplies `baseline`, its `baseline_request_sha256`, and 1–32 single `edits` with exact request bodies, source IDs, versions and digests. The adapter returns version 1, model ID and revision, runtime, tokenizer hash, baseline digest and one effect per edit in input order. Each effect echoes the context ID, source ID, version and request digest, and adds `js_bits` in [0, 1]. Declare byte ranges when equal text occurs in multiple fields. Full-vocabulary access is required by this metric. [Reference adapter](../scripts/score_qwen_prefill.py) · [Algorithm and interpretation](methods.md#which-source-would-you-test-without-candidate-answers)
 
+### Follow a first-token test across conversations
+
+Copy the measured request’s `nexusweave.prefill.probe` attribute to the inference span alongside the original request body and its source declarations. OTLP attributes can carry the probe as a JSON string. LangSmith imports accept the same key in run metadata. A sidecar with content capture enabled verifies the request and edit digests, source versions, and model identity when it indexes the span. With content capture disabled, the report is discarded with the request body.
+
+In **Recommendations**, open **First-token sensitivity**, then review a comparison. The card counts distinct captured request bodies. It keeps ties, all-zero measurements and disagreed repeat rankings separate. Opening a conversation shows the tested edit, its shift in bits and any completed paired proposals from an attached shadow report. One observed change applies to that input and runner.
+
+![First-token ranking on two inputs, with the original and edited routing proposals for one conversation.](media/prefill-conversations.png)
+
+To reproduce the routing example, send the four saved measurements to a sidecar with `--capture-content`. Select organization `retail-north` for the repeated result or `retail-south` to inspect the stock-only case.
+
+```sh
+python3 examples/runtime-comparison/pending-routing/prefill_cohort.py --endpoint http://127.0.0.1:8040/v1/traces
+```
+
+Agents can query `findings?kind=prefill` with the usual organization, workflow, user and date filters. Each row returns `prefill_counts` for ranked sources and `prefill_followup` for outcomes grouped by runner. A follow-up requires a consistent unique leader and one completed baseline and edited proposal in a verified shadow report for that source and exact edited request. The comparison uses the full proposal kind, label and outcome. The UI shortens long values. A missing pair contributes no outcome. Repeated paired checks that disagree contribute one mixed input.
+
+Each group holds the tested source identities, versions, original values, edit operations, replacements, locations, model revision, tokenizer, runtime and non-user request settings fixed. Plain user text may vary in `messages` and `input`; tool inventories and system instructions stay in the comparison key. Unnamed sources stay within their run. A retained raw span can recover a report omitted by an older importer during the archive upgrade. Unverifiable reports leave a reason on the span and produce no ranked finding. The MCP `get_turn_evidence` tool returns the verified ranking for the selected call. Source text and replacement excerpts require both host permission and an explicit request. [Measured examples and reproduction](methods.md#did-the-leading-edit-change-the-tool-call)
+
 ### Run the position test on a matched comparison
 
 **Download position test** prepares eight conditions. On each of the two captured backgrounds, it keeps the other named fragments in their relative order, puts the selected source at each tested position, and applies the original replacement at each slot. The download contains the full request bodies. Preparation makes zero model calls. **Attach completed trials** binds each returned proposal to its background, replay, source, slot, replacement state and request digest.

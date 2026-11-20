@@ -6,7 +6,7 @@ const view = ["traces", "threads", "preview"].includes(query.get("view")) ? quer
 const filterNames = { after: "From", before: "Before", org: "Organization", user: "User",
   workflow: "Workflow", meta_key: "Metadata key", meta_value: "Metadata value" };
 const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
-const kindLabels = { replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
+const kindLabels = { prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
@@ -164,6 +164,7 @@ function orderComparison({ forward, reverse, differs }) {
 }
 
 function visual(kind, detail, rows = []) {
+  if (kind === "prefill") return firstTokenPreview(detail, true);
   const [label, body] = kind === "replacement" ? ["Trials matching the recorded outcome", replacementVisual(detail)] :
     kind === "conflict" ? ["Captured declarations", sourceCells(detail.sources, detail.values)] :
     kind === "replay" || kind === "shadow" ? ["Matches by trial arm", replayTrials(detail)] :
@@ -174,6 +175,11 @@ function visual(kind, detail, rows = []) {
 }
 
 function findingTitle(kind, detail) {
+  if (kind === "prefill") {
+    if (detail.leader.status === "zero") return "The tested edits left the first-token distribution unchanged";
+    if (detail.leader.status === "tie") return "Several edits tied for the largest first-token shift";
+    return detail.leader.source + " produced the largest first-token shift";
+  }
   if (kind === "replacement") {
     const [left, right] = detail.conditions;
     const changed = left.edits.filter((edit, i) => edit.matched !== right.edits[i].matched);
@@ -206,6 +212,7 @@ function findingTitle(kind, detail) {
 }
 
 function findingDetail(kind, detail) {
+  if (kind === "prefill") return plural(detail.ranked.length, "source edit") + " · " + detail.model_id;
   if (kind === "replacement") return detail.outcome + " · " + detail.model + " · " + plural(detail.wordings, "tested wording");
   if (kind === "conflict") return detail.rule + " · " + detail.scope + " scope";
   if (kind === "duplicate") return "Captured input text matches exactly.";
@@ -266,10 +273,10 @@ function positionReadout(result) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
+  const signals = { prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
+  const step = { prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
@@ -424,11 +431,32 @@ function variationComparison(result) {
     result.position_pair ? positionExperiment(result) : null);
 }
 
+function prefillSummary(counts) {
+  const inputs = counts.reduce((total, row) => total + row.inputs, 0);
+  const descriptions = { zero: "All tested shifts were zero", tie: "Several edits tied for first", mixed: "Repeat rankings disagreed" };
+  return counts.map(({leader, inputs: n}) =>
+    (leader.status === "unique" ? leader.source + " ranked first" : descriptions[leader.status]) +
+    " on " + n + " of " + plural(inputs, "distinct input")).join(". ") + ".";
+}
+
+function prefillFollowup(card) {
+  const eligible = card.prefill_counts.filter((row) => row.leader.status === "unique").reduce((n, row) => n + row.inputs, 0);
+  if (!eligible) return element("p", { text: "A consistent, uniquely ranked edit is needed to compare follow-up proposals." });
+  if (!card.prefill_followup.length) return element("p", { text: "No paired proposals for the leading edit in this scope." });
+  return element("div", {}, ...card.prefill_followup.map((check) => {
+    const scored = check.changed + check.equal + check.mixed;
+    return element("p", { title: check.runner, text: "Leading edit · " + check.changed + " changed, " + check.equal + " unchanged" +
+      (check.mixed ? ", " + check.mixed + " mixed" : "") + " across " + plural(scored, "replayed input") +
+      (eligible > scored ? " · " + (eligible - scored) + " without a paired result on this runner" : "") +
+      (card.prefill_followup.length > 1 ? " · " + check.runner : "") });
+  }));
+}
+
 function findingCard(card) {
   const { kind, evidence: { detail } } = card;
   return element("article", { className: "card" },
-    element("div", {}, tag(kind), element("h2", { text: findingTitle(kind, detail) }),
-      element("p", { text: findingDetail(kind, detail) }),
+    element("div", {}, tag(kind), element("h2", { text: kind === "prefill" ? prefillSummary(card.prefill_counts) : findingTitle(kind, detail) }),
+      kind === "prefill" ? prefillFollowup(card) : element("p", { text: findingDetail(kind, detail) }),
       element("p", { className: "label", text: plural(card.occurrences, "observation") + " · " + plural(card.traces, "request") }),
       link("Review recommendation", url({ factor: factorId, recommendation: card.id }), "action")),
     element("div", { className: "suggestion" }, element("span", { className: "label", text: "Next experiment" }),
@@ -596,6 +624,17 @@ function review(card, occurrences) {
   const { trace_id, call_id, detail } = card.evidence;
   byId("title").textContent = "Recommendation";
   byId("summary").textContent = card.action.basis;
+  if (card.kind === "prefill") {
+    byId("title").textContent = "First-token sensitivity";
+    byId("summary").textContent = prefillSummary(card.prefill_counts);
+    return element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId || detail.factor })),
+      panel(card.action.title, prefillFollowup(card), element("p", {text:card.action.next})),
+      element("p", { text: "These calls share the tested edits, model, runtime and request settings. Other user text can differ." }),
+      ...occurrences.rows.map((row, i) => element("details", { className: "panel", ...(i === 0 && { open: "" }) },
+        element("summary", { text: (row.thread || "Request without a conversation ID") + " · " + findingTitle("prefill", row.detail) }),
+        firstTokenPreview(row.detail, true),
+        link("Open original span", url({ view: "traces", trace: row.trace, call: row.call, finding: card.id })))));
+  }
   const traceLink = url({ view: "traces", trace: trace_id, call: call_id, finding: card.id });
   const evidence = element("details", { className: "panel" }, element("summary", { text: "Underlying evidence" }),
     link("Open original span", traceLink),
@@ -643,7 +682,23 @@ function priorEdits(history, hasCurrentScores) {
       element("p", { className: "label", text: "Each count is a distinct earlier input. Mixed means repeat tests on that input disagreed about whether the match rate fell." })));
 }
 
-function firstTokenPreview(probe) {
+function proposalComparisons(probe) {
+  const checks = probe.proposal_checks;
+  const proposal = (p) => p.kind === "model_output" ? p.outcome_preview : p.label + " · " + p.outcome_preview;
+  if (!checks.length) return element("p", { text: "No completed single-trial proposal comparison is attached for these edits." });
+  return element("details", {}, element("summary", { text: "Compare generated proposals" }),
+    ...checks.map((check) => {
+      const edit = probe.ranked.find((row) => row.context_id === check.context_id);
+      return element("section", {}, element("h3", { text: (edit.source || edit.context_id) +
+        (check.changed ? " · proposal changed" : " · same proposal") }),
+        element("div", { className: "comparison" },
+          element("div", {}, element("strong", { text: "Original proposal" }), element("code", { text: proposal(check.original) })),
+          element("div", {}, element("strong", { text: "Edited proposal" }), element("code", { text: proposal(check.edited) }))),
+        element("p", { className: "label", text: "One completed proposal per condition · " + check.runner }));
+    }));
+}
+
+function firstTokenPreview(probe, recorded = false) {
   const [top] = probe.ranked;
   const tied = probe.ranked.filter((row) => row.js_bits === top.js_bits).length;
   const name = (row) => row.source || row.context_id;
@@ -653,14 +708,18 @@ function firstTokenPreview(probe) {
     element("td", {}, element("meter", { min: 0, max: top.js_bits || 1, value: row.js_bits, "aria-label": name(row) + " divergence" })),
     element("td", { text: bits(row.js_bits) })));
   return element("section", { className: "panel replacement" },
-    element("span", { className: "label", text: "Before the first output token" }),
+    element("span", { className: "label", text: recorded ? "Captured first-token measurement" : "Before the first output token" }),
     element("h2", { text: top.js_bits === 0 ? "The tested edits left the first-token distribution unchanged" :
-      tied === 1 ? "Test the edit to " + name(top) : plural(tied, "source edit") + " tied for the largest shift" }),
+      tied === 1 ? (recorded ? "Largest shift from editing " : "Test the edit to ") + name(top) : plural(tied, "source edit") + " tied for the largest shift" }),
     element("p", { text: "Largest shift across " + plural(rows.length, "tested edit") + " · " + bits(top.js_bits) +
-      " of Jensen–Shannon divergence. Replay the original and edited requests to see whether the answer or tool call changes." }),
+      " of Jensen–Shannon divergence." + (recorded ? "" : " Replay the original and edited requests to see whether the answer or tool call changes.") }),
     tied === 1 && top.before !== undefined ? element("div", { className: "comparison" },
       element("div", {}, element("strong", { text: "Original" }), element("code", { text: top.before })),
       element("div", {}, element("strong", { text: "Edited" }), element("code", { text: top.operation === "remove_json" ? "(Removed)" : top.replacement }))) : null,
+    recorded && probe.tool_count !== undefined ? element("p", { className: "label",
+      text: "Original request · " + plural(probe.tool_count, "available tool") +
+        (probe.tool_names.length ? " · " + probe.tool_names.join(", ") : "") }) : null,
+    recorded ? proposalComparisons(probe) : null,
     element("details", {}, element("summary", { text: "Compare source edits" }),
       element("table", {}, element("thead", {}, element("tr", {}, ...["Source", "Relative to largest shift", "Divergence"].map(
         (text) => element("th", { scope: "col", text })))), element("tbody", {}, ...rows)),
@@ -740,7 +799,7 @@ function pendingPreview() {
     element("div", { className: "actions" }, history, routing, policy)), output);
 }
 
-function traceDetail({ trace, findings, activation_reports }) {
+function traceDetail({ trace, findings, activation_reports, prefill_issues = {} }) {
   const selectedCall = query.get("call");
   const selectedSpan = query.get("span");
   const spans = new Map((trace.spans || []).map((span) => [span.id, span]));
@@ -788,6 +847,7 @@ function traceDetail({ trace, findings, activation_reports }) {
     element("p", { className: "label", text: span?.id || call?.id || "No recorded span selected" }),
     call ? element("p", { text: capture.length ? plural(capture.length, "captured input") : "Captured inputs unavailable" }) : null,
     unavailable ? element("p", { className: "label", text: plural(unavailable, "input") + " missing or redacted" }) : null,
+    call && prefill_issues[call.id] ? element("p", { text: "Unverified first-token report · " + prefill_issues[call.id] }) : null,
     ...inputs,
     ...(call?.decisions || []).map((decision) => element("details", {},
       element("summary", { text: decision.label }), element("pre", { text: JSON.stringify(decision.outcome, null, 2) }))),
