@@ -569,6 +569,20 @@ try {
       assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
   }
+  if (process.env.CONFLICT_PATTERN_URL) {
+    for (const device of [page, mobile]) {
+      await device.goto(process.env.CONFLICT_PATTERN_URL);
+      await device.getByRole("link",{name:/Compare questions where different source edits changed the proposal/}).click();
+      const followup = device.locator(".panel").filter({has:device.getByRole("heading",{name:"Return follow-up"})});
+      await followup.getByText("120",{exact:true}).waitFor();
+      assert.equal(await device.locator(".question-edits").count(),3);
+      assert.equal(await device.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+      if (device === page && process.env.CONFLICT_PATTERN_SCREENSHOT) await device.screenshot({path:process.env.CONFLICT_PATTERN_SCREENSHOT});
+      await followup.getByRole("link",{name:"Changed · inspect trials"}).click();
+      await device.locator("details.response-pair[open]").getByText("120", {exact:true}).waitFor();
+      assert.equal(new URL(device.url()).searchParams.get("replay"),"qwen-screened-journal-followup");
+    }
+  }
   if (process.env.CONFLICT_COVERAGE_URL) {
     for (const device of [page,mobile]) {
       await device.goto(process.env.CONFLICT_COVERAGE_URL);

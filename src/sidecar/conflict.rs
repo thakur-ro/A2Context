@@ -1,4 +1,5 @@
 //! Resolve the evidence and editable fields for one declared disagreement on one call.
+use super::findings::{digest, Observation};
 use crate::Result;
 use nexusweave::{replay, Availability, Call, Decision, Run};
 use rusqlite::{params, Connection};
@@ -14,18 +15,31 @@ fn eligible(decision: &Decision, detail: &Value) -> bool {
             .is_none_or(|s| detail["rule"] == s.key && detail["scope"] == s.scope)
 }
 
-/// Keep each report's two individual arms together. Separate reports may target
-/// different decisions, models or replacements even on the same call.
-pub(super) fn annotate(
-    run: &Run,
-    reports: &[replay::Replay],
-    findings: &mut [super::findings::Observation],
-) {
-    if reports.is_empty() || !findings.iter().any(|f| f.kind == "conflict") {
+// Only the last plain user message may vary. Keep all earlier dialogue, model
+// settings and tool definitions byte-for-byte equivalent after JSON normalization.
+fn question_setup(call: &Call) -> Option<String> {
+    let mut body: Value = serde_json::from_str(&call.recorded_request.as_ref()?.body).ok()?;
+    let last = body["messages"].as_array_mut()?.last_mut()?;
+    let user = super::capture::last_user_message(call)?;
+    let question = last["content"].as_str()?;
+    if last["role"] != "user"
+        || user.availability != Availability::Included
+        || user.text.as_deref() != Some(question)
+    {
+        return None;
+    }
+    last["content"] = Value::Null;
+    body.sort_all_objects();
+    Some(digest(body.to_string()))
+}
+
+/// Each source must have its own edit in the same decision and report.
+pub(super) fn annotate(run: &Run, structural: &mut [Observation], measurements: &[Observation]) {
+    if !structural.iter().any(|f| f.kind == "conflict") {
         return;
     }
     let mut measured = BTreeMap::new();
-    for finding in findings.iter().filter(|f| {
+    for (index, finding) in measurements.iter().enumerate().filter(|(_, f)| {
         f.kind == "replay"
             && f.detail["edit"] == "individual"
             && f.detail["response_pair"]["changed"].is_boolean()
@@ -37,18 +51,16 @@ pub(super) fn annotate(
             finding.detail["sources"][0]["id"].as_str(),
         ) {
             measured
-                .entry(finding.call_id.clone())
+                .entry(finding.call_id.as_str())
                 .or_insert_with(BTreeMap::new)
-                .entry((decision.to_owned(), report.to_owned()))
-                .or_insert_with(BTreeSet::new)
-                .insert(source.to_owned());
+                .entry((decision, report))
+                .or_insert_with(BTreeMap::new)
+                .insert(source, (structural.len() + index, finding));
         }
     }
-    if measured.is_empty() {
-        return;
-    }
-    for finding in findings.iter_mut().filter(|f| f.kind == "conflict") {
-        let Some(trials) = measured.get(&finding.call_id) else {
+    let mut setups = BTreeMap::new();
+    for finding in structural.iter_mut().filter(|f| f.kind == "conflict") {
+        let Some(trials) = measured.get(finding.call_id.as_str()) else {
             continue;
         };
         let Some(call) = run.calls.iter().find(|c| c.id == finding.call_id) else {
@@ -57,6 +69,7 @@ pub(super) fn annotate(
         let sources = &finding.detail["sources"];
         let mut individual = BTreeSet::new();
         let mut together = false;
+        let mut pairs = Vec::new();
         for ((decision, _), edits) in trials {
             if !call
                 .decisions
@@ -70,14 +83,38 @@ pub(super) fn annotate(
                 .into_iter()
                 .flatten()
                 .filter_map(|s| s["id"].as_str())
-                .filter(|id| edits.contains(*id))
+                .filter_map(|id| Some((id, edits.get(id)?)))
                 .collect();
-            together |= matched.len() == 2;
-            individual.extend(matched);
+            individual.extend(matched.iter().map(|(id, _)| *id));
+            let [(_, (a, left)), (_, (b, right))] = matched.as_slice() else {
+                continue;
+            };
+            together = true;
+            let setup = setups
+                .entry(call.id.as_str())
+                .or_insert_with(|| question_setup(call));
+            if let (Some(setup), Some(input), Some(ls), Some(rs)) = (
+                setup.as_ref(),
+                left.detail["input_digest"].as_str(),
+                left.detail["prior"]["setup"].as_str(),
+                right.detail["prior"]["setup"].as_str(),
+            ) {
+                let design = digest(json!([setup, left.group, right.group, ls, rs]).to_string());
+                let pattern = match (
+                    left.detail["response_pair"]["changed"] == true,
+                    right.detail["response_pair"]["changed"] == true,
+                ) {
+                    (true, false) => "left",
+                    (false, true) => "right",
+                    (true, true) => "both",
+                    (false, false) => "neither",
+                };
+                pairs.push(json!({"design":design,"input":input,"pattern":pattern,"arms":[a,b]}));
+            }
         }
         if !individual.is_empty() {
             finding.detail["conflict_trials"] =
-                json!({"sources":individual,"same_report":together});
+                json!({"sources":individual,"same_report":together,"pairs":pairs});
         }
     }
 }
@@ -190,3 +227,45 @@ pub(super) const CONVERSATIONS: &str = ", page AS (
     'sources',json_extract(o.detail,'$.sources'),'tested_sources',coalesce(json_extract(o.detail,'$.conflict_trials.sources'),json('[]')))
     FROM examples e JOIN observations o ON (o.trace_id,o.n)=(e.trace_id,e.n)
     WHERE example=1 ORDER BY e.latest DESC,e.thread_key";
+
+// Count unique requests. Opposite results on repeats of one request cannot
+// supply either side of a cross-question comparison.
+pub(super) const PATTERNS: &str = ", paired AS (
+    SELECT e.group_id,e.factor,e.trace_id,e.call_id,e.n,e.thread_key,e.thread,e.observed,
+        p.value->>'design' AS design,p.value->>'input' AS input,p.value->>'pattern' AS pattern,p.value->'arms' AS arms
+    FROM events e,json_each(e.detail,'$.conflict_trials.pairs') p
+    WHERE e.kind='conflict' AND e.thread_key IS NOT NULL
+), by_question AS (
+    SELECT group_id,factor,design,input,min(thread_key) AS first_thread,max(thread_key) AS last_thread,
+        CASE WHEN min(pattern)=max(pattern) THEN min(pattern) ELSE 'mixed' END AS pattern
+    FROM paired GROUP BY group_id,factor,design,input
+), contrasting AS (
+    SELECT group_id,factor,design,count(*) AS inputs,sum(pattern='left') AS left_count,sum(pattern='right') AS right_count
+    FROM by_question GROUP BY group_id,factor,design
+    HAVING left_count>0 AND right_count>0 AND min(first_thread) FILTER (WHERE pattern IN ('left','right')) <>
+        max(last_thread) FILTER (WHERE pattern IN ('left','right'))
+)";
+
+pub(super) const TOP_PATTERN: &str = "SELECT json_object('group',g.group_id,'factor',g.factor,'design',g.design,
+    'inputs',g.inputs,'left_count',g.left_count,'right_count',g.right_count,'sources',
+    (SELECT json_extract(e.detail,'$.sources') FROM events e WHERE (e.group_id,e.factor)=(g.group_id,g.factor) LIMIT 1))
+    FROM contrasting g ORDER BY min(left_count,right_count) DESC,left_count+right_count DESC,group_id,factor,design LIMIT 1";
+
+// Fetch proposal text only for the visible page. The ordinals refer to the
+// two observations written in the same transaction as the conflict.
+pub(super) const EXAMPLES: &str = ", candidates AS (
+    SELECT p.*,q.pattern AS result,row_number() OVER (PARTITION BY p.input ORDER BY p.observed DESC,p.trace_id,p.n,p.arms) AS sample
+    FROM paired p JOIN by_question q USING(group_id,factor,design,input)
+    WHERE p.design=?
+), examples AS (SELECT *,row_number() OVER (PARTITION BY result ORDER BY input) AS ordinal
+    FROM candidates WHERE sample=1
+), page AS (SELECT * FROM examples ORDER BY result NOT IN ('left','right'),ordinal,result,input LIMIT ? OFFSET ?)
+    SELECT json_object('pattern',p.result,'thread',p.thread,'trace',p.trace_id,'call',p.call_id,
+        'question',json_extract(c.preview,'$.user.text'),'runner',a.detail->>'runner',
+        'replay',a.detail->>'$.measurement.replay_id','decision',a.detail->>'$.measurement.location.decision_id',
+        'arms',json_array(json_object('group',a.group_id,'source',a.detail->'$.sources[0]','pair',a.detail->'response_pair','replacement',a.detail->>'$.prior.replacement'),
+                          json_object('group',b.group_id,'source',b.detail->'$.sources[0]','pair',b.detail->'response_pair','replacement',b.detail->>'$.prior.replacement')))
+    FROM page p JOIN conversation_calls c USING(trace_id,call_id)
+    JOIN observations a ON (a.trace_id,a.n)=(p.trace_id,p.arms->>0)
+    JOIN observations b ON (b.trace_id,b.n)=(p.trace_id,p.arms->>1)
+    ORDER BY p.result NOT IN ('left','right'),p.ordinal,p.result,p.input";

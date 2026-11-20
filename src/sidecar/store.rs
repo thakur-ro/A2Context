@@ -244,10 +244,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 24 {
+        if version == 25 {
             return Ok(());
         }
-        if !(0..24).contains(&version) {
+        if !(0..25).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -291,7 +291,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 24)?;
+        self.0.pragma_update(None, "user_version", 25)?;
         Ok(())
     }
 
@@ -651,6 +651,7 @@ impl Store {
                 | "factors"
                 | "impact"
                 | "conversations-without-findings"
+                | "conflict-examples"
                 | "conflict-conversations"
                 | "conflict-coverage"
                 | "outcome-factors"
@@ -721,6 +722,9 @@ impl Store {
             "conflict-coverage" | "conflict-conversations" | "impact"
         ) {
             sql.push_str(super::conflict::COVERAGE);
+        }
+        if matches!(view, "impact" | "conflict-examples") {
+            sql.push_str(super::conflict::PATTERNS);
         }
         if matches!(view, "order-tests" | "factors") {
             sql.push_str(super::order::MATCHED);
@@ -920,6 +924,13 @@ impl Store {
                     FROM page p JOIN observations o ON o.trace_id=p.trace_id AND o.n=p.n
                     JOIN traces t ON t.id=p.trace_id ORDER BY p.level,p.observed DESC,p.thread_key");
             }
+            "conflict-examples" => {
+                for key in ["group", "factor", "design"] {
+                    if super::required(filters,key)?.is_empty() { return Err(format!("missing {key}").into()); }
+                }
+                args.push(filters["design"].clone());
+                sql.push_str(super::conflict::EXAMPLES);
+            }
             "conflict-coverage" | "conflict-conversations" => {
                 for key in ["group","factor"] {
                     if super::required(filters,key)?.is_empty() { return Err(format!("missing {key}").into()); }
@@ -940,7 +951,9 @@ impl Store {
                 'forward',json(forward),'reverse',json(reverse)) FROM pairs
                 ORDER BY differs DESC,factor,design LIMIT ? OFFSET ?"),
             "impact" => {
-                sql.push_str(" SELECT json_object('conflict_gap',json((");
+                sql.push_str(" SELECT json_object('conflict_pattern',json((");
+                sql.push_str(super::conflict::TOP_PATTERN);
+                sql.push_str(")),'conflict_gap',json((");
                 sql.push_str(super::conflict::SUMMARY);
                 sql.push_str(" WHERE conversations>=2 AND (complete+partial)>0 AND (untested+partial)>0
                     ORDER BY untested DESC,partial DESC,conversations DESC,latest DESC,group_id,factor LIMIT 1)),

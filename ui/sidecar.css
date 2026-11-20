@@ -67,6 +67,8 @@ input, select { display: block; width: 100%; min-width: 0; margin-top: 4px; bord
 .visual > .label { display: block; margin-bottom: 7px; }
 .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .comparison > div { padding: 9px; background: var(--solid); border: 1px solid var(--line); border-radius: 5px; overflow-wrap: anywhere; }
+.comparison.question-edits .changed-edit { background: #edf6f1; border-left: 3px solid var(--accent); }
+.comparison.question-edits code { display: block; font-size: 16px; margin-block: 6px; }
 .comparison strong { display: block; line-height: 1.35; }
 .comparison code { white-space: pre-wrap; font-size: 12px; }
 .trend { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }

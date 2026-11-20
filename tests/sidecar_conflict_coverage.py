@@ -87,9 +87,55 @@ def check(binary, folder):
         assert get(base, "impact")["conflict_gap"] is None
 
 
+    # A pre-upgrade store must recover the comparison directly from the saved reports.
+    with sqlite3.connect(db) as sql:
+        sql.execute("UPDATE observations SET detail=json_remove(detail,'$.conflict_trials.pairs') WHERE kind='conflict'")
+        sql.execute("PRAGMA user_version=24")
+    with server(binary, db, "--capture-content") as base:
+        pattern = get(base, "impact")["conflict_pattern"]
+        assert (pattern["inputs"], pattern["left_count"], pattern["right_count"]) == (3, 2, 1)
+        design = {**selection, "design":pattern["design"]}
+        rows = get(base, "conflict-examples", **design)["rows"]
+        assert {r["pattern"] for r in rows[:2]} == {"left","right"}
+        assert len(rows) == 3
+        for row in rows:
+            followup = row["thread"] == third[0]
+            assert row["question"] and row["runner"] == first[2]["runner_id"]
+            assert [a["source"]["source"] for a in row["arms"]] == ["journal-faq","journal-policy"]
+            for arm, edited in zip(row["arms"], ["30","120" if followup else "60"]):
+                pair = arm["pair"]
+                assert pair["original"]["outcome_preview"] == ("30" if followup else "60")
+                assert pair["edited"]["outcome_preview"] == edited
+                exact, = get(base,"findings",group=arm["group"],trace=row["trace"],call=row["call"],
+                             decision=row["decision"],context=arm["source"]["id"],replay=row["replay"])["rows"]
+                assert exact["evidence"]["detail"]["response_pair"] == pair
+        assert get(base, "impact", user="support-17")["conflict_pattern"] is None
+        assert not get(base, "conflict-examples", org="outside", **design)["rows"]
+        assert not get(base, "conflict-examples", **{**design,"design":"other"})["rows"]
+
+        # Synthetic negative controls. A changed runner must stay in a separate
+        # design. Disagreement between runs of the same input cannot establish a switch.
+        other = deepcopy(third[2])
+        other["id"] += "-control"
+        other.pop("pair", None)
+        first_arm, second_arm = other["variants"]
+        for field in ("trials","summary","difference_pp"):
+            first_arm[field], second_arm[field] = second_arm[field], first_arm[field]
+        other["runner_id"] += "-other"
+        attach(base, other)
+        assert get(base, "impact")["conflict_pattern"] == pattern
+        other["id"] += "-repeat"
+        other["runner_id"] = third[2]["runner_id"]
+        attach(base, other)
+        assert get(base, "impact")["conflict_pattern"] is None
+        mixed, = [r for r in get(base, "conflict-examples", **design)["rows"] if r["pattern"] == "mixed"]
+        assert mixed["thread"] == third[0]
+
+
 def measure(binary, folder):
     """Repeat three saved input bodies in 384 distinct synthetic conversations."""
     templates = list(sessions())
+    withheld = []
     with server(binary, folder / "cost.sqlite", "--capture-content") as base:
         for index in range(384):
             _, trace, report = deepcopy(templates[index % 3])
@@ -101,8 +147,10 @@ def measure(binary, folder):
             report["location"]["run_id"] = "otlp:" + span["traceId"]
             if index % 3 == 0:
                 attach(base, report)
-            elif index % 3 == 1:
-                attach(base, individual(report, 0))
+            else:
+                withheld.append(report)
+                if index % 3 == 1:
+                    attach(base, individual(report, 0))
         gap = get(base, "impact")["conflict_gap"]
         selection = {key:gap[key] for key in ("group","factor")}
         assert counts(base, selection) == (128, 128, 128, 384)
@@ -116,14 +164,24 @@ def measure(binary, folder):
         assert len(names) == len(set(names)) == 128
         for route, params in [("impact",{}), ("conflict-coverage",selection),
                               ("conflict-conversations",{**selection,"coverage":"untested"})]:
-            timings = []
-            get(base,route,**params)
-            for _ in range(30):
-                start = perf_counter()
-                get(base,route,**params)
-                timings.append(1000 * (perf_counter() - start))
-            print(json.dumps({"route":route, "requests":len(timings), "median_ms":round(median(timings),2),
-                              "p95_ms":round(sorted(timings)[28],2)}))
+            time_reads(base, route, params)
+        for report in withheld:
+            attach(base, report)
+        pattern = get(base,"impact")["conflict_pattern"]
+        assert (pattern["inputs"],pattern["left_count"],pattern["right_count"]) == (3,2,1)
+        time_reads(base,"impact",{})
+        time_reads(base,"conflict-examples",{**selection,"design":pattern["design"]})
+
+
+def time_reads(base, route, params):
+    timings = []
+    get(base,route,**params)
+    for _ in range(30):
+        start = perf_counter()
+        get(base,route,**params)
+        timings.append(1000 * (perf_counter() - start))
+    print(json.dumps({"route":route, "requests":len(timings), "median_ms":round(median(timings),2),
+                      "p95_ms":round(sorted(timings)[28],2)}))
 
 
 if __name__ == "__main__":
@@ -136,4 +194,4 @@ if __name__ == "__main__":
             measure(args.binary, Path(tmp))
         else:
             check(args.binary, Path(tmp))
-            print("Verified conflict coverage, separate reports, late calls, scope and v23 recovery.")
+            print("Verified coverage, source-specific proposal changes, exact replay links, mixed repeats, and v23/v24 recovery.")

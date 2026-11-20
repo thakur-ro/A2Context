@@ -10,6 +10,7 @@ const kindLabels = { prefill: "First-token test", replacement: "Replacement comp
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements" };
 const recommendationId = query.get("recommendation");
 const factorId = query.get("factor");
+const conflictDesign = query.get("conflict_design");
 const conflictCoverage = query.get("conflict_coverage");
 const comparisonResult = query.get("proposal_result");
 const comparisonScope = query.get("coverage_factor");
@@ -1001,6 +1002,47 @@ function jointRecurrence(card) {
 
 const coverageNames = {untested:"No comparable replay", partial:"Partially tested", complete:"Both sources compared on every call"};
 
+async function conflictExamplesView() {
+  const selection = {recommendation:recommendationId, factor:factorId, conflict_design:conflictDesign};
+  const data = await api("conflict-examples", {...scope, group:recommendationId, factor:factorId, design:conflictDesign, offset:pageOffset});
+  byId("title").textContent = "Which source edit changed the proposal?";
+  byId("summary").textContent = "Only the final user message varies across these requests. Each comparison edits one source at a time.";
+  pagination(data.next_offset, selection);
+  return element("div", {className:"feed"}, link("Back to recommendations", url({})),
+    data.rows.length && element("details", {className:"panel"}, element("summary", {text:"Test conditions"}),
+      element("p", {text:data.rows[0].runner}),
+      ...data.rows[0].arms.map(arm => element("p", {}, element("strong", {text:sourceName(arm.source) + " replacement · "}),
+        arm.replacement + (Array.from(arm.replacement).length === 160 ? " [first 160 characters shown]" : "")))),
+    ...data.rows.map(row => {
+      const pair = row.arms[0].pair;
+      const arms = row.arms.map(arm => {
+        const result = arm.pair;
+        const target = url({recommendation:arm.group, trace:row.trace, call:row.call, decision:row.decision,
+          replay:row.replay, context:arm.source.id}) + "#proposal-pair";
+        return element("div", {className:result.changed ? "changed-edit" : "held-edit"}, element("strong", {text:"Edit " + sourceName(arm.source)}),
+          element("code", {text:proposalLabel(result.edited, result)}),
+          link(result.changed ? "Changed · inspect trials" : "Held · inspect trials", target));
+      });
+      return panel(row.thread, element("blockquote", {text:row.question || "Question unavailable"}),
+        element("p", {}, "Original proposal ", element("code", {text:proposalLabel(pair.original, pair)})),
+        element("div", {className:"comparison question-edits"}, ...arms),
+        element("p", {className:"row-extra", text:plural(pair.baseline_trials,"original trial") +
+          " · " + row.arms.map(arm => plural(arm.pair.edited_trials,"edited trial") + " for " + sourceName(arm.source)).join(", ")}),
+        row.pattern === "mixed" && element("p", {text:"Repeated reports on this request disagreed. One report is shown."}));
+    }),
+    !data.rows.length && element("p", {className:"empty", text:"No comparable questions in this scope."}));
+}
+
+function conflictPatternCard(pattern) {
+  const [left, right] = pattern.sources.map(sourceName);
+  return element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}),
+    element("a", {className:"featured", href:url({recommendation:pattern.group, factor:pattern.factor, conflict_design:pattern.design})},
+      element("div", {}, element("h3", {text:"Compare questions where different source edits changed the proposal"}),
+        element("p", {text:"Only the " + left + " edit changed the proposal on " + plural(pattern.left_count,"request") +
+          ". Only the " + right + " edit changed it on " + plural(pattern.right_count,"request") + ". " +
+          plural(pattern.inputs,"distinct request") + " tested."}))));
+}
+
 async function conflictCoverageView() {
   const filters = {...scope,group:recommendationId,factor:factorId};
   const selection = {recommendation:recommendationId,factor:factorId};
@@ -1789,7 +1831,9 @@ async function render(refresh = false) {
   } else if (view === "threads" && threadId) {
     body = await conversationView();
   } else if (view === "findings") {
-    if (conflictCoverage && recommendationId && factorId) {
+    if (conflictDesign && recommendationId && factorId) {
+      body = await conflictExamplesView();
+    } else if (conflictCoverage && recommendationId && factorId) {
       body = await conflictCoverageView();
     } else if (ranking && !recommendationId) {
       body = await rankingView();
@@ -1945,8 +1989,9 @@ async function render(refresh = false) {
       byId("content").dataset.signature = signature;
       const losses = !pageOffset && impact.ranked_reference_losses;
       const lower = !pageOffset && impact.lower_edit_changes;
+      const pattern = !pageOffset && impact.conflict_pattern;
       const gap = !pageOffset && impact.conflict_gap;
-      const featured = !losses && !lower && !gap && !pageOffset && factors.rows[0];
+      const featured = !losses && !lower && !pattern && !gap && !pageOffset && factors.rows[0];
       const remaining = featured ? factors.rows.slice(1) : factors.rows;
       body = element("div", {className:"overview"}, impactPanel(impact),
         losses ? element("section", {className:"investigation"}, element("h2", {text:"Recommended investigation"}),
@@ -1957,6 +2002,7 @@ async function render(refresh = false) {
           element("a",{className:"featured",href:url({ranking:"all",review:"lower_changed"})},element("div",{},
             element("h3",{text:"Inspect " + plural(lower,"call") + " where a lower-ranked edit changed the proposal"}),
             element("p",{text:plural(impact.lower_edit_conversations,"linked conversation") + ". The edit with the largest first-token shift kept the original proposal."})))) :
+        pattern ? conflictPatternCard(pattern) :
         gap ? element("section",{className:"investigation"},element("h2",{text:"Recommended investigation"}),
           element("a",{className:"featured",href:url({recommendation:gap.group,factor:gap.factor,conflict_coverage:gap.untested ? "untested" : "partial"})},
             element("div",{},element("h3",{text:"Compare the conflicting sources in " + plural(gap.untested+gap.partial,"conversation")}),
@@ -2035,7 +2081,7 @@ async function main() {
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
-      ranking, quality, review, conflict_coverage:conflictCoverage,from_coverage:query.get("from_coverage"),pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
+      ranking, quality, review, conflict_design:conflictDesign, conflict_coverage:conflictCoverage,from_coverage:query.get("from_coverage"),pair: positionPair, ...positionDesign, ...jointSelection, recommendation: recommendationId, by:query.get("by"), level:outcomeCategory && outcomeLevel, cohort_factor:cohortFactor, proposal_result:comparisonResult, coverage_factor:comparisonScope, coverage:withoutFindings ? "without-findings" : null, ...screenSelection, ...targetSelection, ...(targetPatterns && traceId ? {report:query.get("report")} : {}), ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

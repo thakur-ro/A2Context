@@ -71,19 +71,35 @@ cargo run --locked -- sidecar --db ./journal-coverage.sqlite --capture-content -
 python3 examples/view_conflict_coverage.py --url http://127.0.0.1:8043
 ```
 
-Run the sender again with `--finish` to attach the remaining saved trials. All three conversations then have both sources tested on every conflicting call. Refresh the overview to see the recommendation clear. The sender reuses the same span IDs and makes no model calls.
+Run the sender again with `--finish` to attach the remaining saved trials. All three conversations then have both sources tested on every conflicting call. Refresh the overview to see which source edit changed each answer. The sender reuses the same span IDs and makes no model calls.
+
+#### When the same edit changes different answers
+
+The completed journal example opens a recommendation to compare the three questions. The FAQ and policy disagree in all three requests. The model, preceding dialogue, and two source replacements stayed the same. Each cell shows the answer from one saved greedy Qwen run.
+
+| Question | Original | Edit only the FAQ | Edit only the policy |
+| --- | ---: | ---: | ---: |
+| Standard return | 60 | **30** | 60 |
+| Policy question | 60 | **30** | 60 |
+| Return follow-up | 30 | 30 | **120** |
+
+On the follow-up, replacing the policy produced an answer that neither source declared. Each edited answer opens the exact replay report. These three requests establish where the output changed under the tested replacement. Predicting the outcome on a new question requires another test. [Comparison method](methods.md#which-conflicting-source-edit-changed-the-proposal)
+
+![Two journal questions alongside their original answers and the results of editing the FAQ or policy separately](media/conflicting-source-edits.png)
 
 #### Cost on the journal fixture
 
-The release binary handled 384 synthetic conversations built from the three saved request bodies, with 128 conversations per coverage category. With one Linux CPU and a 512 MiB cgroup limit, 30 warm loopback reads gave these timings. The harness followed all nine pages of partially tested conversations and verified all 128 conversation IDs.
+The release binary handled 384 synthetic conversations built from the three saved request bodies. The first pass had 128 conversations in each coverage category. The second attached both source edits to every conversation. Repetitions of the same three requests counted once per question. Each timing uses 30 warm loopback reads with one Linux CPU and a 512 MiB cgroup limit.
 
 | Read | Median | 95th percentile |
 | --- | ---: | ---: |
-| Overview with recommended investigation | 6.27 ms | 7.42 ms |
-| Conflict coverage counts | 0.97 ms | 1.07 ms |
-| First page of conversations awaiting a comparison | 1.25 ms | 1.43 ms |
+| Overview with remaining test gaps | 7.02 ms | 7.08 ms |
+| Conflict coverage counts | 0.84 ms | 0.90 ms |
+| First page of conversations awaiting a comparison | 1.07 ms | 1.13 ms |
+| Overview after both source edits arrived for every conversation | 13.74 ms | 14.20 ms |
+| Three distinct questions with source-specific replay evidence | 3.76 ms | 4.01 ms |
 
-Peak cgroup memory for the sidecar and Python harness together was 38.1 MiB. These timings cover dashboard reads on repeated inputs. Inference-path latency needs a separate measurement with a live exporter. Reproduce the fixture after building the release binary.
+Peak cgroup memory for the sidecar and Python harness together was 60.3 MiB. These timings cover dashboard reads on repeated inputs. Inference-path latency needs a separate measurement with a live exporter. Reproduce the fixture after building the release binary.
 
 ```sh
 python3 tests/sidecar_conflict_coverage.py target/release/nexusweave --measure
@@ -98,6 +114,7 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 | `thread-calls?thread=…` | Read 15 calls in order using the opaque thread key from `threads` or an evidence link. Add `focus_trace` and `focus_call` to open the page containing that call. The response includes the effective `offset`, captured dialogue previews and call-specific finding links. |
 | `impact` | Compare identified conversations with findings (`conversations`) against all identified conversations with a normalized call in scope (`captured_conversations`). Read `evidence_counts` for the strongest finding per conversation. |
 | `conflict-coverage?group=…&factor=…` | Count identified conversations with a declared conflict by `untested`, `partial` and `complete`. On the overview, `impact.conflict_gap` identifies one recurring group with existing tests and remaining gaps. |
+| `conflict-examples?group=…&factor=…&design=…` | Open a comparison from `impact.conflict_pattern`. Each row represents one distinct request and links both source edits to the same decision and report. |
 | `conflict-conversations?group=…&factor=…&coverage=partial` | Page through one category. Each row includes the selected trace and call, its two sources, and the IDs with a completed individual comparison. |
 | `conversations-without-findings` | Page through the remainder. Each row identifies a call and counts how many calls in scope include input text. The optional `screen` contains a classifier suggestion with excerpts, source digests and scores in both directions. |
 | `proposal-conversations?result=both` | List conversations with changed and matching complete proposals. Other values are `changed_only`, `held_only` and `no_pair`. Each row returns one recent evidence link per represented outcome, or one finding for a conversation without a pair. Accepts the same scope, factor and date filters as `impact`. |

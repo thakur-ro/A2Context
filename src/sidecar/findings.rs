@@ -173,6 +173,7 @@ pub fn derive(
                 json!({"sources": [source(entries[0]), source(entries[1])], "copies": entries.len(), "dialogue_only": dialogue_only})));
         }
     }
+    let structural_count = findings.len();
     for call in &run.calls {
         super::recommendations::probes(run, call, reports, &mut findings);
     }
@@ -290,7 +291,10 @@ pub fn derive(
             ));
         }
     }
-    super::conflict::annotate(run, reports, &mut findings);
+    if !reports.is_empty() {
+        let (structural, measurements) = findings.split_at_mut(structural_count);
+        super::conflict::annotate(run, structural, measurements);
+    }
     super::replacement::compare(run, reports, &mut findings);
     Ok(findings)
 }

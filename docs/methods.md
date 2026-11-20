@@ -26,6 +26,14 @@ The freely generated output shows what the runner produced once it could choose 
 
 The optional block view uses a different intervention. It swaps recorded activations at a specified decoder block and reports the change from the original token score. Both measurements require an instrumented runner. Ordinary OTLP sends the observed request and response. [Instrumentation and controls](inference-attribution-plan.md)
 
+### Which conflicting source edit changed the proposal?
+
+For a declared conflict, the sidecar compares the full proposed answer or tool call under two separate edits. Each edit keeps the other source in place. Both edits must belong to one report on one eligible decision. Each arm, including the baseline, must complete and agree across its trials. The baseline must also reproduce the recorded outcome under the report’s scoring rule.
+
+Across reports, the grouping holds the normalized request fixed except for the final plain user message. It also matches the versioned sources, original text, edit locations, replacements, model, runner, decision kind and label, scoring rule, sampling design and trial counts. It counts each distinct request once. If eligible repeats disagree about which edit changed the proposal, that request appears as mixed. Reports without two comparable arms can still contribute evidence about [test coverage](sidecar.md#find-the-next-conversation-to-test).
+
+The recommendation requires one question where only the first edit changed the proposal and a different question where only the second edit changed it, with examples across at least two identified conversations. Candidate groups rank first by the smaller of those two counts, then by their sum. The result describes sensitivity to those replacements. It leaves open how the model computed the answer. [Reproduce the three journal questions](sidecar.md#when-the-same-edit-changes-different-answers)
+
 ## What changed in a conversation?
 
 The overview assigns each conversation to the first category supported by a finding in the current scope.

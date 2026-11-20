@@ -45,6 +45,12 @@ def main():
     with urlopen(base + "/api/sidecar/findings?" + urlencode({"kind":"conflict","trace":location["run_id"]})) as response:
         card, = json.load(response)["rows"]
     params = {"recommendation":card["id"],"factor":card["evidence"]["detail"]["factor"],"conflict_coverage":"all"}
+    if args.finish:
+        with urlopen(base + "/api/sidecar/impact?org=journal-coverage-lab") as response:
+            pattern = json.load(response)["conflict_pattern"]
+        if pattern and pattern["group"] == card["id"] and pattern["factor"] == params["factor"]:
+            params.pop("conflict_coverage")
+            params.update(conflict_design=pattern["design"], org="journal-coverage-lab")
     print(base + "/?" + urlencode(params))
 
 
