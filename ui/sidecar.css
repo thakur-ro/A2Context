@@ -165,3 +165,9 @@ meter { width: 100%; height: 12px; accent-color: var(--accent); }
 .featured .source-names { margin-top: 4px; font-size: 15px; }
 
 .arm-answer { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85em; }
+
+.variation-examples { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,310px),1fr)); gap: 16px; margin-block: 18px; }
+.variation-example { background: var(--mist); padding: 16px; border-radius: 8px; }
+.variation-example .comparison { margin-block: 12px; }
+.variation-example h3 { margin: 0; }
+.order-evidence { border-inline-start: 3px solid var(--accent); padding-inline-start: 12px; margin-top: 12px; }

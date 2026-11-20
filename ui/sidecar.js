@@ -249,10 +249,10 @@ function impactPanel(impact) {
 }
 
 function factorRow(factor, featured = false) {
-  const signals = { order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
+  const signals = { variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal rate shifted",
     token: "Token score shifted", score: "Preference shifted", conflict: "Conflicting rules",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
-  const step = { order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
+  const step = { variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
     shadow: "Check the proposed answers or tool calls", token: "Locate the shift along the answer",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
@@ -262,7 +262,7 @@ function factorRow(factor, featured = false) {
   const counts = [factor.org, plural(factor.conversations, "identified conversation"), plural(factor.requests, "request"),
     plural(factor.recommendations, "recommendation")].filter(Boolean).join(" · ");
   return element("a", { className: featured ? "factor-row featured" : "factor-row",
-    href: url({ factor: factor.id, ...(factor.signal === "order" && { order: 1 }) }) },
+    href: url({ factor: factor.id, ...(factor.signal === "order" && { order: 1 }), ...(factor.signal === "variation" && { variation: 1 }) }) },
     element("div", {},
       featured ? element("span", { className: "first-step", text: "Recommended next step" }) : null,
       element("strong", { text: featured ? step[factor.signal] : name }),
@@ -271,6 +271,34 @@ function factorRow(factor, featured = false) {
     element("span", { className: ["conflict", "duplicate", "dialogue"].includes(factor.signal) ? "basis" : "basis measured",
       text: signals[factor.signal] }),
     element("span", { className: "arrow", "aria-hidden": "true", text: "→" }));
+}
+
+function variationComparison(result) {
+  const first = result.changed_example.fragment_order, second = result.equal_example.fragment_order;
+  const permutation = result.matched_fragment_order;
+  function example(label, detail) {
+    const m = detail.measurement;
+    const target = { factor: result.factor, recommendation: result.group, trace: m.location.run_id,
+      call: m.location.call_id, replay: m.replay_id, context: m.context_id };
+    return element("section", { className: "variation-example" },
+      element("h3", { text: label }),
+      m.conversation_id ? element("p", { className: "label", text: m.conversation_id }) : null,
+      detail.fragment_order ? element("p", { text: "Position " + detail.fragment_order.position + " of " +
+        detail.fragment_order.total + " named sources in this field", title: detail.fragment_order.pointer }) : null,
+      replayTrials(detail), link("Inspect this replay", url(target), "action"));
+  }
+  return element("section", { className: "panel variation" },
+    element("h2", { text: sourceName(result.changed_example.sources[0]) }),
+    element("p", { text: "The match rate changed on " + plural(result.changed_inputs, "distinct input") +
+      " and held steady on " + plural(result.equal_inputs, "other input") + "." }),
+    result.mixed_inputs ? element("p", { text: "Repeated tests gave both results on " +
+      plural(result.mixed_inputs, "additional input") + "." }) : null,
+    permutation ? element("p", { className: "order-evidence", text: "The two captured requests differ only in the order of named fragments. The edited source moved from position " +
+      first.position + " to " + second.position + "." }) : null,
+    element("div", { className: "variation-examples" },
+      example("Match rate changed", result.changed_example), example("Match rate held steady", result.equal_example)),
+    element("h3", { text: "What to test next" }),
+    element("p", { text: permutation ? "Move this source alone and keep the remaining sources in their relative order. Replay both conditions." : "Keep the edit fixed and vary one surrounding input at a time. Compare the answers under the same decoding settings." }));
 }
 
 function findingCard(card) {
@@ -638,6 +666,14 @@ async function render(refresh = false) {
         api("occurrences", { ...filters, offset: pageOffset })]);
       if (cards.rows.length) body = review(cards.rows[0], occurrences);
       pagination(occurrences.next_offset, { recommendation: recommendationId, factor: factorId, ...measuredExample });
+    } else if (factorId && query.has("variation")) {
+      const data = await api("replay-variations", { ...scope, factor: factorId, offset: pageOffset });
+      byId("title").textContent = "When does the edit matter?";
+      byId("summary").textContent = "The same source edit had different effects on distinct requests. Each replay scored its own recorded outcome.";
+      body = element("div", { className: "feed" }, link("Back to source factor", url({ factor: factorId })),
+        ...data.rows.map(variationComparison),
+        !data.rows.length ? element("p", { className: "empty", text: "No contrasting replay results in this scope." }) : null);
+      pagination(data.next_offset, { factor: factorId, variation: 1 });
     } else if (factorId && query.has("order")) {
       const data = await api("order-tests", { ...scope, factor: factorId, offset: pageOffset });
       const result = data.rows[0];
@@ -650,11 +686,13 @@ async function render(refresh = false) {
       pagination(data.next_offset, { factor: factorId, order: 1 });
     } else if (factorId) {
       const filters = { ...scope, factor: factorId };
-      const [data, impact, orders] = await Promise.all([api("findings", { ...filters, offset: pageOffset }), api("impact", filters), api("order-tests", filters)]);
+      const [data, impact, orders, variations] = await Promise.all([api("findings", { ...filters, offset: pageOffset }),
+        api("impact", filters), api("order-tests", filters), api("replay-variations", filters)]);
       byId("title").textContent = data.rows.length ? factorName(data.rows[0].evidence.detail.sources) : "Source factor";
       byId("summary").textContent = "Each recommendation below uses its own comparison and outcome.";
       body = element("div", { className: "feed" }, link("All source factors", url({})),
         data.rows.length ? replayCoverage(impact) : null,
+        variations.rows.length ? link("Compare where the edit mattered", url({ factor: factorId, variation: 1 }), "action") : null,
         orders.rows.length ? link("Compare the two source orders", url({ factor: factorId, order: 1 }), "action") : null,
         ...data.rows.map(findingCard), !data.rows.length ? element("p", { className: "empty", text: "No evidence in this scope." }) : null);
       pagination(data.next_offset, { factor: factorId });
@@ -731,7 +769,7 @@ async function main() {
       delete values.meta_value;
     }
     location.href = url({ view, trace: traceId, thread: threadId, call: query.get("call"),
-      span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), recommendation: recommendationId, ...measuredExample }, values);
+      span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"), recommendation: recommendationId, ...measuredExample }, values);
   });
   const health = await status();
   const meta = form.elements.namedItem("meta_key");

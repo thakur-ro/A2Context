@@ -178,6 +178,7 @@ pub fn derive(
         .map(|report| ((&report.location, report.id.as_str()), report))
         .collect();
     let mut layouts = BTreeMap::new();
+    let mut captured_inputs = BTreeMap::new();
     for group in replay_effects::group(&[run], reports)? {
         for item in &group.occurrences {
             let Some(effect) = item.difference_pp else {
@@ -234,6 +235,16 @@ pub fn derive(
                     .iter()
                     .find(|v| v.intervention.context_id == *context_id)
                 {
+                    if let Some(captured) = &call.recorded_request {
+                        use std::collections::btree_map::Entry;
+                        let input = match captured_inputs.entry(call.id.as_str()) {
+                            Entry::Occupied(entry) => entry.into_mut(),
+                            Entry::Vacant(entry) => {
+                                entry.insert(super::variation::Input::new(call, captured)?)
+                            }
+                        };
+                        input.annotate(&mut detail, &variant.intervention);
+                    }
                     detail["baseline_answer"] =
                         json!(super::replacement::consistent_answer(&report.baseline));
                     detail["edited_answer"] =

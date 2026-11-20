@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
+from hashlib import sha256
 import json
 from pathlib import Path
 import re
@@ -277,6 +278,63 @@ def check_replay_representative(base):
     assert outcomes == {"mixed": 1, "changed_only": 0, "equal_only": 1, "unmeasured": 0}, outcomes
     outcomes = get(base, "impact", factor=card["evidence"]["detail"]["factor"])["replay_outcomes"]
     assert outcomes == {"mixed": 0, "changed_only": 1, "equal_only": 1, "unmeasured": 0}, outcomes
+
+
+def check_replay_variation(base):
+    # These synthetic trial outcomes exercise grouping, not model performance.
+    from send_otlp_replay import prepare
+
+    def record(question, shifted, *, reorder_keys=False, samples=1):
+        trace, report = prepare("variation-fixture")
+        span = trace["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
+        fields = {row["key"]: row["value"] for row in span["attributes"]}
+        fields["nexusweave.organization.id"]["stringValue"] = "variation-fixture"
+        raw = fields["nexusweave.request.body"]
+        body = json.loads(raw["stringValue"])
+        body["messages"][-1]["content"] = question
+        if reorder_keys:
+            body = dict(reversed(list(body.items())))
+        raw["stringValue"] = json.dumps(body, separators=(",", ":"))
+        report["baseline_request_sha256"] = sha256(raw["stringValue"].encode()).hexdigest()
+        messages = json.loads(fields["gen_ai.input.messages"]["stringValue"])
+        messages[-1]["parts"][0]["content"] = question
+        fields["gen_ai.input.messages"]["stringValue"] = json.dumps(messages)
+        report.pop("pair", None)
+        arm = report["variants"][1]
+        report["variants"] = [arm]
+        if not shifted:
+            arm["trials"] = deepcopy(report["baseline"])
+            arm["summary"] = deepcopy(report["baseline_summary"])
+            arm["difference_pp"] = 0
+        for trials, summary in [(report["baseline"], report["baseline_summary"]), (arm["trials"], arm["summary"])]:
+            trials *= samples
+            for key in ("attempted", "completed", "matched"):
+                summary[key] *= samples
+        send_traces(base, trace)
+        send(base, "/api/replay-reports", report, expected=201)
+        return report
+
+    def patterns(**scope):
+        return get(base, "replay-variations", org="variation-fixture", **scope)["rows"]
+
+    changed = record("Question A", True)
+    record("Question A", True, reorder_keys=True)
+    record("Question B", False, samples=2)
+    assert not patterns(), "Different trial counts cannot form a comparison."
+    equal = record("Question B", False)
+    pattern, = patterns()
+    assert (pattern["changed_inputs"], pattern["equal_inputs"], pattern["mixed_inputs"]) == (1, 1, 0)
+    assert not pattern["matched_fragment_order"]
+    assert pattern["equal_example"]["measurement"]["location"] == equal["location"]
+    assert pattern["changed_example"]["measurement"]["replay_id"] == changed["id"]
+    assert pattern["changed_example"]["effect_pp"] != 0 and pattern["equal_example"]["effect_pp"] == 0
+    assert get(base, "factors", org="variation-fixture")["rows"][0]["signal"] == "variation"
+    assert not patterns(user="absent") and not patterns(trace=equal["location"]["run_id"])
+    record("Question A", False)
+    assert not patterns(), "Inconsistent repeats cannot supply either representative input."
+    record("Question C", True)
+    pattern, = patterns()
+    assert (pattern["changed_inputs"], pattern["equal_inputs"], pattern["mixed_inputs"]) == (1, 1, 1)
 
 
 def check_order_tests(base):
@@ -620,6 +678,7 @@ def main():
         with server(args.binary, representative, "--capture-content") as base:
             check_replay_representative(base)
             check_replacement_comparison(base)
+            check_replay_variation(base)
             check_order_tests(base)
             pairs = get(base, "order-tests", org="order-check")
         with sqlite3.connect(representative) as sql:

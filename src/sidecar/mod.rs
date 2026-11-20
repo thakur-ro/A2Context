@@ -4,6 +4,7 @@ mod order;
 mod recommendations;
 mod replacement;
 mod store;
+mod variation;
 
 use crate::{
     browser_asset, context_http, evidence_http, header, otlp_http, replay_http,
@@ -320,6 +321,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/impact"
                 | "/api/sidecar/factors"
                 | "/api/sidecar/order-tests"
+                | "/api/sidecar/replay-variations"
                 | "/api/sidecar/occurrences" => {
                     store.list(path.rsplit('/').next().expect("view path"), &fields)?
                 }

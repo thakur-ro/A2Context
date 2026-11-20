@@ -20,10 +20,17 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 | `impact` | Read the number of distinct identified conversations with findings, the subset with a measured change, the number of requests without conversation IDs, and the number of source factors. |
 | `factors` | List versioned source sets, the strongest signal associated with each set (including differing results across comparable replacement texts), and the counts in scope. Select the opaque `id` of a factor. |
 | `order-tests?factor=…` | Compare single-edit match counts across paired source orders for a factor. Both requests must pass the current filters. Each row links to both original reports and includes the total number of matched comparisons and how many differed. |
+| `replay-variations?factor=…` | Compare single-source edits across distinct captured inputs. Each row gives counts, one changed and one equal example, their exact replay locations and whether only fragment order differs between those two requests. |
 | `findings?factor=…` | Get the recommendations for that factor. Each includes an action, comparison details and an example occurrence. Use `group` to select a recommendation by ID. |
 | `occurrences?factor=…&group=…` | Page through the individual observations behind the recommendation. Each row carries its own measurement, request and call IDs, and conversation key when available. |
 
 Expand **Scored replays** on the overview or a source factor to see how many conversations had changed match rates, equal rates, both results across comparisons, or no scored replay. The four counts in `impact.replay_outcomes` add up to the identified conversations with findings in that scope. Probe scores contribute to the broader measured-change count. Only replay comparisons contribute to this breakdown. Two equal match rates can come from as little as one trial per arm. Open the recommendation to check the trial counts and scoring rule.
+
+### Find an edit whose effect varies across inputs
+
+**Edit effects varied across inputs** opens two examples where the same edit produced different match-rate results. The sidecar groups the source identity, version and text, operation and replacement, model, runner, decision kind and label, match rule, sampling design and trial counts within one source factor. Each distinct captured JSON request counts once. Object keys are sorted for this count and arrays keep their order. An input with both results across repeats is counted separately. The recommendation requires at least one consistently changed input and one consistently equal input. Unscored edits supply neither example.
+
+For named fragments in a string field, the sidecar checks the captured UTF-8 bytes and excludes overlapping or ambiguous inventories from the order comparison. It fingerprints the surrounding request, the gaps between fragments, and a sorted inventory of each eligible field's source identities, versions and contents. A matching fingerprint and different positions of the edited source establish that the displayed requests differ only in fragment order. Several sources can move together. Sampling can also affect replay results. Each example links to its own trial. With more than two eligible inputs, the view uses a deterministic example from each group. [Public QA comparison](../examples/public-qa/README.md#compare-an-edit-across-inputs)
 
 ### Preview an assembled request
 

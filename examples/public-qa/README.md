@@ -57,6 +57,18 @@ python3 examples/public-qa/view_passage_edits.py /tmp/nexus-qa.jsonl.gz \
   --results examples/public-qa/rotated-results.json
 ```
 
+## Compare an edit across inputs
+
+After loading both studies, open **Edit effects varied across inputs**. For *Catch Me If You Can (1989 film)*, Qwen answered “1989” in both original requests. With the film passage in slot 1, editing it changed the answer to “September 4, 2012.” With it in slot 6, the same edit left the answer at “1989.” All ten passages moved together, so the effect of moving this passage alone is still an open question.
+
+![Two replays show where the film passage appeared, the original and edited answers, and links to both trials.](../../docs/media/passage-order-comparison.png)
+
+Across the 100 passages, 37 had a complete edit in both orders with changed text in one order and equal text in the other. Verify every dashboard comparison against the saved positions and generations.
+
+```sh
+python3 examples/public-qa/compare_orders.py --url http://127.0.0.1:8040
+```
+
 ## Repeat the model measurements
 
 We used Qwen2.5-0.5B-Instruct with Transformers 4.57.6, PyTorch 2.11.0, eager attention, CPU float32 and four PyTorch threads. The runner loads local files only. It saves the runtime identity and tokenizer hash. The measured weights had SHA-256 `fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe`. [Pinned Qwen checkpoint](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/tree/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2)
