@@ -29,6 +29,8 @@ To run both browser suites from a built checkout, set `PLAYWRIGHT_MODULE` and `C
 
 The checks cover recommendations, the request preview before inference, cross-user recurrence with filter persistence, the original span and replay links, and horizontal layout at widths of 1280 and 390 pixels. With `make demo` running, pass the printed origin to `node tests/exchange-a2ui-browser.mjs SIDECAR_URL` to check the A2UI cards, keyboard navigation to the exact sandbox replay, and same-origin loading at desktop and mobile widths.
 
+The source-history check sends 257 calls with the same conflict, including two calls in one trace and a retried batch. A single grouped card represents 126 identified conversations plus four calls without a thread ID. The test reads every page, separates users who chose the same conversation name, and opens each unthreaded call by trace. The exchange browser journey follows a named source to a conversation and opens its exact turn on desktop and mobile. [Source-history fixture](../tests/sidecar_source_history.py)
+
 The context-map journey pages through 43 fixture findings and checks that the node picker covers the loaded graph. The exchange journey follows a named source to an outcome and the exact replay. It also checks both activation positions and keyboard selection of individual blocks.
 
 On macOS, Chrome intermittently stalled loading deferred scripts when following an evidence link. The dashboard and detailed evidence page now each request one script. The dashboard passed 72 fresh browser-context loads across six sidecars. The evidence page opened the replay form in 36 fresh contexts across three sidecars at desktop and mobile widths.

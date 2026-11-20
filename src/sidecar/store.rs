@@ -980,6 +980,45 @@ impl Store {
             }
         }
         match view {
+            "source-history" => {
+                // The graph identifies a named source by producer, organization, workflow, ID, revision and role.
+                let key = super::required(filters, "source_key")?;
+                let parts: [Option<String>; 6] = serde_json::from_str(key)?;
+                if parts[3].as_deref().is_none_or(str::is_empty) {
+                    return Err("source history requires a named source".into());
+                }
+                args.push(key.to_owned());
+                sql.push_str(", identity AS (SELECT ? AS k), calls AS (
+                    SELECT o.trace_id,o.call_id,t.thread_key,t.thread,t.user,c.started,
+                        count(*) AS observations,json_group_array(DISTINCT o.kind ORDER BY o.kind) AS kinds FROM identity JOIN selected t
+                        ON t.source IS json_extract(k,'$[0]') AND t.org IS json_extract(k,'$[1]')
+                        AND t.workflow IS json_extract(k,'$[2]')
+                    JOIN observations o ON o.trace_id=t.id
+                    JOIN captured_calls c ON c.trace_id=o.trace_id AND c.call_id=o.call_id
+                    WHERE EXISTS (SELECT 1 FROM json_each(o.detail,'$.sources') s
+                        WHERE s.value->>'source'=json_extract(k,'$[3]')
+                        AND s.value->>'version' IS json_extract(k,'$[4]') AND s.value->>'role' IS json_extract(k,'$[5]'))");
+                append_window(&mut sql, &mut args, "o.observed", filters)?;
+                if let Some(trace) = filters.get("unthreaded_trace") {
+                    sql.push_str(" AND t.thread_key IS NULL AND t.id=?");
+                    args.push(trace.clone());
+                }
+                sql.push_str(" GROUP BY o.trace_id,o.call_id)");
+                if filters.get("thread").is_some_and(|s| !s.is_empty()) || filters.contains_key("unthreaded_trace") {
+                    sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,'user',user,'turn',json_extract(d.preview,'$.turn'),
+                        'started',started,'observations',observations,'kinds',json(kinds)) FROM calls
+                        LEFT JOIN conversation_calls d USING(trace_id,call_id)
+                        ORDER BY started IS NULL,started,d.nanos,trace_id,d.ordinal,call_id LIMIT ? OFFSET ?");
+                } else {
+                    sql.push_str(", conversations AS (SELECT thread_key,thread,user,
+                        CASE WHEN thread_key IS NULL THEN trace_id END AS unthreaded_trace,
+                        count(*) AS calls,max(started) AS latest FROM calls GROUP BY thread_key,unthreaded_trace)
+                        SELECT json_object('thread_key',thread_key,'thread',thread,'user',user,'unthreaded_trace',unthreaded_trace,
+                        'calls',calls,'total_calls',sum(calls) OVER (),'total_threads',count(thread_key) OVER (),
+                        'unthreaded_calls',sum(CASE WHEN thread_key IS NULL THEN calls ELSE 0 END) OVER ())
+                        FROM conversations ORDER BY calls DESC,latest DESC,thread_key,unthreaded_trace LIMIT ? OFFSET ?");
+                }
+            }
             "ranking-results" => sql.push_str(" SELECT json_object('result',result,'calls',count(*),
                 'same_edit',sum(same_edit)) FROM rankings GROUP BY result ORDER BY result LIMIT ? OFFSET ?"),
             "ranking-review" => sql.push_str(" SELECT json_object('review',review,'calls',count(*)) FROM rankings

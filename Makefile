@@ -25,6 +25,7 @@ check-sidecar:
 	$(PYTHON) tests/check_exchange_demo.py target/debug/nexusweave
 	$(PYTHON) tests/sidecar_baseline.py target/debug/nexusweave
 	$(PYTHON) tests/sidecar_source_gaps.py target/debug/nexusweave
+	$(PYTHON) tests/sidecar_source_history.py target/debug/nexusweave
 	$(PYTHON) tests/sidecar_prefix_experiment.py target/debug/nexusweave
 	$(PYTHON) tests/sidecar_prefix_cohort.py target/debug/nexusweave $(SDK_OPTION)
 	$(PYTHON) tests/sidecar_opening_study.py target/debug/nexusweave

@@ -75,6 +75,23 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     assert factor["signal"] == "sandbox_dispatch" and factor["sandbox_conversations"] == 2
     cards = {card["kind"]:card for card in get(base,"findings",**scope)["rows"]}
     assert cards["conflict"]["threads"] == cards["shadow"]["threads"] == 2
+    evidence = cards["shadow"]["evidence"]
+    cache = next(source for source in evidence["detail"]["sources"] if source["source"] == "confirmation-cache")
+    identity = [evidence[key] for key in ("producer","organization","workflow")]
+    identity.extend(cache[key] for key in ("source","version","role"))
+    source_key = json.dumps(identity)
+    histories = get(base,"source-history",source_key=source_key,**scope)["rows"]
+    assert len(histories) == 2
+    for row in histories:
+        assert (row["calls"],row["total_calls"],row["total_threads"],row["unthreaded_calls"]) == (1,2,2,0)
+        call, = get(base,"source-history",source_key=source_key,thread=row["thread_key"])["rows"]
+        assert call["observations"] == 2 and call["thread"] == row["thread"]
+        assert call["kinds"] == ["conflict","shadow"] and call["turn"] == "Decide the second exchange", call
+    for index in range(len(identity)):
+        changed = identity.copy()
+        changed[index] = "other"
+        assert not get(base,"source-history",source_key=json.dumps(changed))["rows"]
+    assert not get(base,"source-history",source_key=source_key,user="unrelated")["rows"]
     by_source = get(base,"findings",terms="latest-customer-message",**scope)["rows"]
     assert [(row["id"],row["threads"]) for row in by_source] == [(cards["conflict"]["id"],2)]
     assert get(base,"findings",terms="latest-customer-message",workflow="unrelated")["rows"] == []

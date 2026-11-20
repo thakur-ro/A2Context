@@ -384,6 +384,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 }),
                 "/api/sidecar/findings"
                 | "/api/sidecar/traces"
+                | "/api/sidecar/source-history"
                 | "/api/sidecar/threads"
                 | "/api/sidecar/thread-calls"
                 | "/api/sidecar/impact"

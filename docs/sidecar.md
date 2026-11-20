@@ -138,6 +138,7 @@ The following routes return JSON. Pass the same `org`, `user`, `workflow`, UTC d
 
 | GET route under `/api/sidecar/` | Use |
 | --- | --- |
+| `source-history?source_key=…` | Follow a named source through retained findings. The URL-encoded JSON array contains producer, organization, workflow, source ID, revision and role. Preserve null fields. The first page groups distinct calls by thread, with an entry per trace for calls missing a thread ID. Pass the returned `thread_key` as `thread` or pass `unthreaded_trace` to list matching calls, turn labels and finding types. |
 | `thread-calls?thread=…` | Read 15 calls in order using the opaque thread key from `threads` or an evidence link. Add `focus_trace` and `focus_call` to open the page containing that call. The response includes the effective `offset`, captured dialogue previews and call-specific finding links. |
 | `impact` | Compare identified conversations with findings (`conversations`) against all identified conversations with a normalized call in scope (`captured_conversations`). Read `evidence_counts` for the strongest finding per conversation. |
 | `conflict-coverage?group=…&factor=…` | Count identified conversations with a declared conflict by `untested`, `partial` and `complete`. On the overview, `impact.conflict_gap` identifies one recurring group with existing tests and remaining gaps. |

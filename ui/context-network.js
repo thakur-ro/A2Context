@@ -33,7 +33,7 @@ function makeContextNetwork(rows) {
       const {producer, organization, workflow, trace_id, call_id} = card.evidence;
       const identity = [producer, organization, workflow, source.source ?? [trace_id,call_id,source.id],
         source.version ?? null,source.role ?? null];
-      const id = add("source:"+JSON.stringify(identity),{type:"source",name,caption:[source.role,source.version].filter(Boolean).join(" · "),
+      const id = add("source:"+JSON.stringify(identity),{type:"source",name,sourceKey:source.source ? JSON.stringify(identity) : null,caption:[source.role,source.version].filter(Boolean).join(" · "),
         description:[workflow,source.role,source.version && "Version "+source.version].filter(Boolean).join(" · ") || "Version and role unavailable"});
       connect(id,finding,coverage?.text_mismatches?.includes(source.source) ? "text differs from expected digest" : "named in evidence");
     }
@@ -352,7 +352,8 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
     body.replaceChildren(drawing,element("div",{className:"network-readout"},
       element("strong",{text:node.name}),element("span",{text:node.description}),
       element("small",{text:plural(neighbors.length,"connection")+" · "+relations}),
-      node.href && link("Inspect this evidence →",node.href)));
+      node.href && link("Inspect this evidence →",node.href),
+      node.sourceKey && link("Follow this source across conversations",url({source_key:node.sourceKey}))));
     const parent = hierarchy.parents.get(id);
     if (parent) {
       const group = hierarchy.nodes.get(parent);
@@ -384,4 +385,39 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
   root.append(element("div",{className:"network-heading"},element("h2",{text:"Context map"}),legend),controls,body);
   show(graph.nodes.has(focusId) || hierarchy.nodes.has(focusId) ? focusId : large ? "workflows" : "");
   return root;
+}
+
+// Pages come from retained observations, including calls other than the example on a card.
+async function sourceHistory() {
+  const selection = {source_key:sourceHistoryKey};
+  if (threadId) selection.thread = threadId;
+  if (query.get("unthreaded_trace")) selection.unthreaded_trace = query.get("unthreaded_trace");
+  const calls = Boolean(selection.thread || selection.unthreaded_trace);
+  const {rows,next_offset} = await api("source-history",{...scope,...selection,offset:pageOffset});
+  const [,org,workflow,name,revision,role] = JSON.parse(sourceHistoryKey);
+  const sample = rows[0];
+  byId("title").textContent = name;
+  byId("summary").textContent = [workflow,org,revision && "Version "+revision,role].filter(Boolean).join(" · ");
+  pagination(next_offset,selection);
+  const back = calls ? link("Back to source conversations",url({source_key:sourceHistoryKey})) : link("Recommendations",url({}));
+  if (!sample) return element("div",{className:"feed"},back,element("p",{className:"empty",text:"No matching source evidence on this page."}));
+  const caption = calls ? "Ordered by recorded start time" : plural(sample.total_calls,"call")+" · "+plural(sample.total_threads,"identified conversation");
+  const origin = calls ? sample.thread || "Trace without a conversation ID" : name;
+  const branches = element("ul",{className:"source-destinations"});
+  const paths = networkSvg("svg",{viewBox:"0 0 100 100",preserveAspectRatio:"none","aria-hidden":"true"});
+  for (const [index,row] of rows.entries()) {
+    const y = (index+.5)*100/rows.length;
+    paths.append(networkSvg("path",{d:`M0 50 C45 50 55 ${y} 100 ${y}`,"vector-effect":"non-scaling-stroke"}));
+    const label = calls ? row.turn || row.call : row.thread || "Trace without a conversation ID";
+    const detail = calls ? [fullDate(row.started),row.kinds.map(kind => kindLabels[kind] || kind).join(" · ")] :
+      [row.user,row.unthreaded_trace,plural(row.calls,"call")];
+    const dest = calls ? (threadId ? {view:"threads",thread:threadId,focus_trace:row.trace,focus_call:row.call} :
+      {view:"traces",trace:row.trace,call:row.call}) : {...selection,thread:row.thread_key,unthreaded_trace:row.unthreaded_trace};
+    branches.append(element("li",{},rowLink(label,detail.filter(Boolean).join(" · "),url(dest))));
+  }
+  return element("section",{className:"source-history","aria-label":"Source evidence map"},back,
+    element("h2",{text:calls ? "Calls citing this source" : "Conversations citing this source"}),
+    element("p",{text:caption+(sample.unthreaded_calls ? " · "+plural(sample.unthreaded_calls,"call")+" without a conversation ID" : "")}),
+    element("div",{className:"source-branches"},element("strong",{text:origin}),element("div",{className:"source-wires"},paths),branches),
+    element("small",{className:"network-key",text:"Counts include calls with a retained finding that cites this source."}));
 }

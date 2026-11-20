@@ -188,7 +188,7 @@ def capture_batch(*, capture_gap_binary=None):
                 if baseline["kind"] == "tool_call" else {"type":"text","content":baseline["outcome"]})
         attrs.update({
             "gen_ai.operation.name":"chat","gen_ai.conversation.id":case["title"],
-            "gen_ai.turn.id":"Decide the second exchange",
+            "nexusweave.turn.id":"Decide the second exchange",
             "gen_ai.input.messages":[{"role":m["role"],"parts":[{"type":"text","content":m["content"]}]}
                                      for m in json.loads(attrs["nexusweave.request.body"])["messages"][1:]],
             "gen_ai.output.messages":[{"role":"assistant","parts":[part]}],

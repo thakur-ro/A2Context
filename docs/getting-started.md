@@ -34,7 +34,7 @@ export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf
 export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:8040/v1/traces
 ```
 
-On the span around a chat request, set `gen_ai.operation.name` to `chat` and `gen_ai.request.model` to your model identifier. A stable `gen_ai.conversation.id` groups turns in a thread. Run one inference, open **Threads**, and find your conversation. If your exporter already feeds LangSmith or another backend, add NexusWeave as a second destination in the Collector. [Collector fan-out](sidecar.md#fan-out-without-changing-observability-platforms) · [OpenTelemetry exporter settings](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/)
+On the span around a chat request, set `gen_ai.operation.name` to `chat` and `gen_ai.request.model` to your model identifier. A stable `gen_ai.conversation.id` groups turns in a thread. Run one inference, then choose **Threads** under **Telemetry received** or **Capture coverage** and find your conversation. If your exporter already feeds LangSmith or another backend, add NexusWeave as a second destination in the Collector. [Collector fan-out](sidecar.md#fan-out-without-changing-observability-platforms) · [OpenTelemetry exporter settings](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/)
 
 **Starting without an instrumented app?** This Python example sends a tool choice, an inventory lookup and an answer through the real SDK. It uses synthetic data and makes no model calls. With the receiver from step 1 running, try:
 

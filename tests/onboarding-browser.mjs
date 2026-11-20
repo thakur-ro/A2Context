@@ -20,6 +20,9 @@ try {
   const href = await setup.getByRole("link",{name:"Check receiver status"}).getAttribute("href");
   const health = await page.request.get(new URL(href,base).href);
   assert.equal((await health.json()).content_capture,false);
+  await setup.getByRole("link",{name:"Threads"}).click();
+  await page.getByRole("heading",{name:"Threads",exact:true}).waitFor();
+  await page.getByRole("link",{name:/Wait on the second exchange/}).waitFor();
   await page.goto(base+"/?workflow=unrelated");
   await page.getByText("No recommendations match these filters.").waitFor();
   assert.equal(await setup.count(),0);

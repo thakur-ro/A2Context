@@ -9,6 +9,7 @@ const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.
 const kindLabels = { baseline_check:"Replay baseline", source_gap:"Source capture gap", prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
+const sourceHistoryKey = query.get("source_key");
 const factorId = query.get("factor");
 const dispatchOverview = query.get("dispatches") === "1";
 const dispatchSelection = query.has("dispatch_design") && query.has("dispatch_outcome") ? {
@@ -2241,7 +2242,9 @@ async function render(refresh = false) {
   } else if (view === "threads" && threadId) {
     body = await conversationView();
   } else if (view === "findings") {
-    if (prefixCohorts) {
+    if (sourceHistoryKey) {
+      body = await sourceHistory();
+    } else if (prefixCohorts) {
       body = await prefixCohort();
     } else if (openingStudy && recommendationId && factorId && !traceId) {
       body = await openingCoverageView();
@@ -2420,6 +2423,7 @@ async function render(refresh = false) {
         byId("content").replaceChildren(element("section",{className:"panel","aria-label":"Receiver setup"},
           element("p",{text:next}), !traces && element("code",{text:health.otlp_http_endpoint}),
           traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
+          traces > 0 && link("Threads",url({view:"threads"})),
           element("p",{},link("Check receiver status","/api/sidecar/health"))));
         byId("content").removeAttribute("data-signature");
         return;
@@ -2505,6 +2509,7 @@ async function status() {
     coverage.with_request + "/" + coverage.inference_spans + " with replayable request captured",
     health.queue_drops ? plural(health.queue_drops, "queue drop") : null,
   ].filter(Boolean).join(" · ");
+  if (coverage.traces) byId("status").append(" · ",link("Threads",url({view:"threads"})));
   return health;
 }
 
@@ -2545,7 +2550,7 @@ async function main() {
       delete values.meta_key;
       delete values.meta_value;
     }
-    location.href = url({ view, explore:query.get("explore"), cards:query.get("cards"), trace: traceId, thread: threadId, call: query.get("call"),
+    location.href = url({ view, source_key:sourceHistoryKey, unthreaded_trace:query.get("unthreaded_trace"), explore:query.get("explore"), cards:query.get("cards"), trace: traceId, thread: threadId, call: query.get("call"),
       span: query.get("span"), finding: query.get("finding"), factor: factorId, order: query.get("order"), variation: query.get("variation"),
       dispatches:dispatchOverview ? 1 : null,
       ...dispatchSelection,
@@ -2603,7 +2608,7 @@ async function main() {
     }
   }
   let refreshing = false;
-  if (view === "findings" && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !prefixCohorts && !targetPatterns && !ranking && !outcomeCategory && !health.demo) window.setInterval(() => {
+  if (view === "findings" && !sourceHistoryKey && !factorId && !recommendationId && !comparisonResult && !withoutFindings && !screenedPairs && !prefixCohorts && !targetPatterns && !ranking && !outcomeCategory && !health.demo) window.setInterval(() => {
     if (!refreshing && !document.hidden && !byId("content").contains(document.activeElement)) {
       refreshing = true;
       Promise.all([status(), render(true)]).catch((error) => { byId("error").textContent = error.message; })

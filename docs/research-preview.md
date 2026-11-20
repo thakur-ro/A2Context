@@ -10,6 +10,10 @@ Choose **Show the context map**. For up to 120 loaded nodes, the overview draws 
 
 Select a source to see other findings that cite it. Matching a source uses its producer, organization, workflow, identifier, revision and role. Unnamed items stay tied to their call. Declared values come from captured instructions. Trial outcomes come from attached comparisons.
 
+Choose a named source, then **Follow this source across conversations**. In the exchange demo, the confirmation cache appears in findings on two calls. Open either conversation to see which turn cited it, which checks ran, and the captured conversation at that call. This view queries retained observations, including examples behind grouped cards. A call with both a conflict and a proposal comparison counts once.
+
+![The confirmation cache connects to two conversations whose findings cite it](media/source-conversations.png)
+
 Select a first-token finding to compare the source edits before generation. For a candidate-score finding, the two branches show log odds at a fixed prefix. A token finding shows the original token’s probability before and after the named edit. In the example below, editing the refund policy reduced the probability assigned to the token `4` at output position 14 from 99.97% to about 0.0011%. The bar chart shows nearby token positions. The decoder-block swap is a separate measurement on the same output path.
 
 ![Context map showing the original and edited probabilities for the token 4 and the measured decoder-block swap](media/context-token.png)
@@ -115,3 +119,12 @@ A source preview can ship the deterministic checks, trace adapters, UI and repro
 Inference accuracy and deployment cost require separate evidence on the target workflow. [Validation and resource measurements](validation.md) · [Dataset and software credits](../CREDITS.md)
 
 The remaining usability check requires an engineer who has never used NexusWeave. Give them the saved exchange demo and ask, “Did refreshing consent fix the order? Show what happened to the pending order and where you found it.” Record their first action, whether they find both the conflicting sources and the SQLite receipt, and where they need help. Desktop and mobile scripts exercise those controls. We have yet to observe an unfamiliar engineer complete this task.
+
+
+## What to learn from the first preview
+
+| Question | Next check | Decision |
+| --- | --- | --- |
+| Can a new contributor follow a source beyond the first card? | Give an unfamiliar engineer the exchange task above. Record whether they find both conversations and open the right turn without help. | Revise the first step where they lose the evidence. The source-history regression already follows one grouped card through 257 calls, including four without a thread ID. [Regression](../tests/sidecar_source_history.py) |
+| Can we recommend an edit before deployment? | Qualify a second tool-capable runner on the six frozen BFCL travel cases. Record baseline action, arguments, return value and final state. | Run source-selection comparisons only on baseline-qualified cases. A final state alone missed a skipped fare lookup. [Frozen eligibility rule](../examples/bfcl-transfer/protocol.md) |
+| What would justify calling this a general context-gap alert? | On a new workflow, test a proposed alert against held-out omissions and intact controls with independent labels for whether the remaining context is sufficient. | Keep the default alert scoped to explicit source contracts until a semantic detector demonstrates useful recall and a tolerable false-positive rate on independent workflows. [Earlier omission results](../examples/public-qa/annotation-gap.md) |
