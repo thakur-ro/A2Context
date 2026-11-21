@@ -21,6 +21,8 @@ The sidecar already captures supported spans, indexes source references and grou
 
 ## How we will measure the recommendations
 
+Two implemented checks arose from the first field test. One checks whether an English first reply reports a tool limitation while its captured chat request offers a schema or catalog discovery function with no declared arguments. If another request in scope contains a matching invocation and result, the sidecar links that example. The developer still needs to verify which data and permissions were available. The other check looks for parenthetical citation keys in the reply that occur in an explicitly headed citation example and have no corresponding source label in the captured text. It records byte offsets on both sides. This check requires at least two passage labels of the same identifier format. A controlled rename separately tested whether the examples influenced the citations. Both checks leave unsupported request formats unassessed. [Pilot results and evidence](../examples/ordinary-usage/README.md#what-the-revised-feed-found)
+
 | Question | Pilot measure |
 | --- | --- |
 | Did it help the engineer? | For the first five distinct suggestions per workflow, record how many the engineer confirms identified a concrete issue worth acting on. Show useful, dismissed and unreviewed counts and the number actually shown. Record whether the proposed action helped separately. |

@@ -19,6 +19,20 @@ function canvasRecord(card, filters = scope) {
     ] };
     facts.observed = "Without the check, " + target.key + " ended in “" + state(target.without_guard) + "”. With the check, it " +
       (target.before === target.with_guard ? "stayed" : "ended") + " in “" + state(target.with_guard) + "”.";
+  } else if (card.kind === "example_citation") {
+    facts.observed = findingDetail(card.kind,detail);
+    map = {root:"Citations in this call",arms:[
+      {label:"Reply citation",value:detail.citation},
+      {label:"Passage labels",value:detail.label_examples.join(", ")},
+    ]};
+  } else if (card.kind === "capability_claim") {
+    map = {root:"Same model call",arms:[
+      {label:"Tool in request",value:detail.tool,detail:detail.pointer + " · " + detail.description},
+      {label:"Reply excerpt",value:detail.reply,detail:detail.decision},
+    ]};
+    facts.observed = card.discovery_example
+      ? "The captured reply proposed no tool. Another request with the same catalog contains a result for " + detail.tool + "."
+      : "The captured reply proposed no tool. Whether the connected resource could answer the question needs verification.";
   } else if (card.kind === "source_gap") {
     facts.unconfirmed_sources = [...new Set(detail.coverage.alternatives.flatMap(group => group.unconfirmed))];
     facts.observed = detail.coverage.text_mismatches?.length
@@ -63,6 +77,8 @@ function canvasRecord(card, filters = scope) {
   if (map) facts.map = map;
   return { facts, filters, trend:card.trend, capture:{trace,call,workflow:card.evidence.workflow,thread:card.evidence.thread_key,sources:detail.sources.map(source => source.id)},
     dispatch:!!target, receipt:target ? dispatch : null, report:detail.report_id,
+    capability:card.kind === "capability_claim" ? {claim:detail,example:card.discovery_example} : null,
+    citation:card.kind === "example_citation" ? detail : null,
     proposal:detail.response_pair?.original && detail.response_pair.edited ? detail.response_pair : null,
     tokenCard:card.kind === "token" ? card : null,
     duplicate:card.kind === "duplicate" ? {trace,call,sources:detail.sources.map(source => source.id)} : null };
@@ -634,6 +650,18 @@ function investigationCanvas(impact, page, models) {
     }));
     if (lines.length) sections.unshift({title:"Captured activity",lines});
     const issue = captured?.tool_reference_issue;
+    const citation = captured?.findings.find(row => row.call_id === call && row.kind === "example_citation")?.detail;
+    if (citation) sections.unshift({title:"Citation from the formatting example",lines:[
+      citation.citation, citation.pointer + " · UTF-8 bytes " + citation.input_bytes.join("–"),
+      citation.decision + " · UTF-8 bytes " + citation.output_bytes.join("–"),
+    ]});
+    if (ref.row.invocation && ref.row.result) sections.unshift({title:"Recorded invocation and result",lines:[
+      ref.row.invocation, ref.row.result,
+    ]});
+    const claim = captured?.findings.find(row => row.call_id === call && row.kind === "capability_claim")?.detail;
+    if (claim) sections.unshift({title:"Reported tool limitation",lines:[
+      claim.reply, claim.tool + " · " + claim.description, claim.pointer, claim.decision,
+    ]});
     if (issue) sections.unshift({title:"Tool-result reference", lines:[issue.pointer,issue.has_invocation_id ?
       "Earlier assistant invocations with this ID: " + issue.matching_prior_calls : "The message has no usable tool_call_id.",
       "Inspect how the application assembles this tool message and its preceding assistant call."]});
@@ -810,6 +838,38 @@ function investigationCanvas(impact, page, models) {
         description:records.length ? "I couldn’t match that question to captured evidence. Try naming a source, tool, or finding." :
           "This scope has no matching findings. Ask to see recorded activity."}));
       suggest(records.length ? ["What needs attention first?"] : []);
+      return;
+    }
+    if (record.citation && (view === "evidence" || view === "sources")) {
+      const c = record.citation;
+      visibleCalls = [{row:{trace:record.capture.trace,call:record.capture.call,thread:facts.example},number:1,filters:record.filters}];
+      evidenceSections("example-citation",facts.title,facts.observed,[
+        {title:"Formatting example",lines:[c.key, c.pointer + " · UTF-8 bytes " + c.input_bytes.join("–")]},
+        {title:"Model reply",lines:[c.citation,c.decision + " · UTF-8 bytes " + c.output_bytes.join("–")]},
+        {title:plural(c.label_count,"matching-format passage label"),lines:[c.label_examples.join(", "),facts.next],
+          action:"Inspect this call",onAction:() => ask("Show call 1")},
+      ]);
+      suggest(["Where else did that repeat?","What should I test next?"]);
+      return;
+    }
+    if (record.capability && (view === "evidence" || view === "sources")) {
+      const {claim,example} = record.capability;
+      const ref = {trace:record.capture.trace, call:record.capture.call, thread:facts.example};
+      visibleCalls = [{row:ref,number:1,filters:record.filters}];
+      const sections = [
+        {title:"User request",lines:[claim.question,claim.question_pointer].filter(Boolean)},
+        {title:"Reply excerpt",lines:[claim.reply,claim.decision]},
+        {title:"Tool listed in this request",lines:[claim.tool,claim.description,claim.pointer],
+          action:"Inspect this call",onAction:() => ask("Show call 1")},
+      ];
+      if (example) {
+        visibleCalls.push({row:example,number:2,filters:record.filters});
+        sections.push({title:"Comparison call",lines:[claim.tool + " has a recorded result in another trace with the same model and tool catalog.",
+          example.invocation + " → " + example.result, "The two requests may have different permissions or data."],
+          action:"Inspect comparison call",onAction:() => ask("Show call 2")});
+      }
+      evidenceSections("capability-claim",facts.title,plural(facts.conversations,"conversation") + " · " + facts.next,sections);
+      suggest(["Where else did that repeat?","What should I test next?"]);
       return;
     }
     const count = plural(facts.conversations,"conversation") + " · " + plural(facts.observations,"observation");

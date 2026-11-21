@@ -18,6 +18,7 @@ from send_otlp_replay import prepare as prepare_replay
 
 def main():
     binary = ROOT / "target/debug/a2context"
+    subprocess.run([sys.executable, ROOT / "tests/sidecar_context_claims.py", binary, "--browser"], check=True)
     with TemporaryDirectory() as directory, server(binary, Path(directory) / "first-workflow.sqlite") as base:
         subprocess.run(["node", "tests/onboarding-browser.mjs", base], cwd=ROOT, check=True)
         subprocess.run(["node", "tests/tool-catalog-browser.mjs", base], cwd=ROOT, check=True)

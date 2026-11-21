@@ -97,6 +97,16 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Inspect the unconfirmed IDs for one alternative. Verify that the builder included those inputs and exported their named fragments, then repeat preflight.",
             "No configured alternative had all its required source fragments",
         ),
+        "example_citation" => (
+            "Check where this citation points",
+            "Compare the cited key with the labeled passages. Check whether the application displays or removes it, then test a citation example drawn from the current passages.",
+            "The same key appeared in a citation-format example and a parenthetical in the model output, with no matching passage label in the captured messages.",
+        ),
+        "capability_claim" => (
+            "Check what the discovery tool could have shown",
+            "Compare the user's request with the quoted tool description. Check what the connected resource and its permissions allowed at that time.",
+            "A recorded reply described a tool limitation. The request advertised a discovery function and the captured output contains only text.",
+        ),
         "tool_reference" => (
             "Inspect how the application builds the tool history",
             "Compare the tool message at the recorded position with the preceding assistant invocations. Check where the application sets and preserves the invocation ID.",

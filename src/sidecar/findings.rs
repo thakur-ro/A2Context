@@ -193,6 +193,8 @@ pub fn derive(
 ) -> Result<Vec<Observation>, String> {
     let mut findings = Vec::new();
     for call in &run.calls {
+        findings.extend(super::capability::finding(run, call));
+        findings.extend(super::citation::finding(run, call));
         if let Some(issue) = super::tool_reference_score::witness(call) {
             let reason = match issue["matching_prior_calls"].as_u64() {
                 None => "missing_id",

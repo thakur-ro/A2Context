@@ -1,5 +1,7 @@
 mod activity_search;
+mod capability;
 mod capture;
+mod citation;
 mod conflict;
 mod conversation;
 mod dispatch;

@@ -15,7 +15,7 @@ const MAX_TRACE_BYTES: usize = 2 * 1024 * 1024;
 const MAX_LOAD_BYTES: usize = 16 * 1024 * 1024;
 const MAX_REPORT_BYTES_PER_TRACE: usize = 4 * 1024 * 1024;
 const PAGE: usize = 15;
-const DATABASE_VERSION: i64 = 36;
+const DATABASE_VERSION: i64 = 37;
 
 pub struct Store(Connection);
 type Rejected = (u16, String);
@@ -97,6 +97,7 @@ impl Store {
              );",
         )?;
         db.execute_batch(super::tool_reference_score::SCHEMA)?;
+        db.execute_batch(super::capability::SCHEMA)?;
         db.execute_batch(super::capture::SCHEMA)?;
         db.execute_batch(super::conversation::SCHEMA)?;
         db.execute_batch(super::activity_search::SCHEMA)?;
@@ -366,10 +367,43 @@ impl Store {
         if version < 35 {
             self.upgrade_previous_indexes(version)?;
         }
-        super::tool_reference_score::backfill(&mut self.0)?;
+        if version < 36 {
+            super::tool_reference_score::backfill(&mut self.0)?;
+        }
+        self.backfill_context_claims()?;
         self.0
             .pragma_update(None, "user_version", DATABASE_VERSION)?;
         Ok(())
+    }
+
+    fn backfill_context_claims(&mut self) -> Result<()> {
+        let mut after = String::new();
+        loop {
+            let tx = self.0.transaction()?;
+            let mut select = tx.prepare(
+                "SELECT id,run FROM traces WHERE id>? AND with_request>0 AND run IS NOT NULL ORDER BY id LIMIT 16",
+            )?;
+            let mut rows = select.query([&after])?;
+            let mut visited = false;
+            while let Some(row) = rows.next()? {
+                after = row.get(0)?;
+                let run: Run = serde_json::from_str(row.get_ref(1)?.as_str()?)?;
+                super::capability::index(&tx, &run)?;
+                if run.calls.iter().any(|c| {
+                    super::capability::finding(&run, c).is_some()
+                        || super::citation::finding(&run, c).is_some()
+                }) {
+                    refresh_findings(&tx, &run)?;
+                }
+                visited = true;
+            }
+            drop(rows);
+            drop(select);
+            tx.commit()?;
+            if !visited {
+                return Ok(());
+            }
+        }
     }
 
     fn upgrade_previous_indexes(&mut self, version: i64) -> Result<()> {
@@ -1439,7 +1473,7 @@ impl Store {
                         WHEN json_extract(detail,'$.sandbox_dispatch.protected')=1 THEN 2.25
                         WHEN kind='source_mask' AND proposal_changed THEN 2.5 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
-                        WHEN kind='baseline_check' THEN 4.75 WHEN kind='source_gap' THEN 4.5 WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
+                        WHEN kind='capability_claim' THEN 6.75 WHEN kind='example_citation' THEN 4.25 WHEN kind='baseline_check' THEN 4.75 WHEN kind='source_gap' THEN 4.5 WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
@@ -1450,7 +1484,7 @@ impl Store {
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -6 THEN 'routing_repeats' WHEN -5 THEN 'routing' WHEN -4 THEN 'order' WHEN -3 THEN 'replacement' WHEN -2 THEN 'joint_proposal' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
-                        WHEN 4.75 THEN 'baseline_check' WHEN 4.5 THEN 'source_gap' WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
+                        WHEN 6.75 THEN 'capability_claim' WHEN 4.25 THEN 'example_citation' WHEN 4.75 THEN 'baseline_check' WHEN 4.5 THEN 'source_gap' WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
                         WHEN 1.5 THEN 'sandbox_regression' WHEN 2.25 THEN 'sandbox_dispatch' WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
@@ -1513,9 +1547,10 @@ impl Store {
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check') THEN -2
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.protected'))=1 THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
-                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference') AND count(DISTINCT trace_id)>1 THEN 0
+                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference','example_citation') AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
-                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference') THEN 2
+                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference','example_citation') THEN 2
+                             WHEN kind='capability_claim' AND count(DISTINCT thread_key)>1 THEN 3
                              WHEN kind='duplicate' AND min(coalesce(json_extract(detail,'$.dialogue_only'),0))=1 THEN 5
                              WHEN kind='duplicate' THEN 3
                              ELSE 4 END AS priority
@@ -1658,6 +1693,10 @@ impl Store {
         rows.truncate(page_size);
         if view == "findings" {
             for row in &mut rows {
+                if row["kind"] == "capability_claim" {
+                    row["discovery_example"] =
+                        json!(super::capability::comparison(&self.0, row, filters)?);
+                }
                 if filters
                     .get("group")
                     .is_some_and(|group| row["id"] == group.as_str())
@@ -1869,8 +1908,10 @@ fn save_trace(
                 serde_json::to_string(metadata)?, raw.map(|(_, stored)| stored), run.map(serde_json::to_string).transpose()?, calls, with_inputs, with_request, with_rules])?;
     if let Some(run) = run {
         super::tool_reference_score::index(tx, run, calls)?;
+        super::capability::index(tx, run)?;
     } else {
         tx.execute("DELETE FROM tool_reference_scores WHERE trace_id=?1", [id])?;
+        tx.execute("DELETE FROM discovery_uses WHERE trace_id=?1", [id])?;
     }
     super::capture::replace(tx, id, run)?;
     tx.execute("DELETE FROM metadata WHERE trace_id=?1", [id])?;
@@ -1924,8 +1965,14 @@ pub(super) fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     let activations = load_reports(tx, &run.id)?;
     let observations = findings::derive(run, &reports, &activations)?;
     let workflow: Option<String> = if observations.iter().any(|o| {
-        matches!(o.kind, "source_gap" | "baseline_check" | "tool_reference")
-            || (run.organization_id.is_some() && o.detail["sandbox_dispatch"].is_object())
+        matches!(
+            o.kind,
+            "source_gap"
+                | "baseline_check"
+                | "tool_reference"
+                | "capability_claim"
+                | "example_citation"
+        ) || (run.organization_id.is_some() && o.detail["sandbox_dispatch"].is_object())
     }) {
         tx.query_row("SELECT workflow FROM traces WHERE id=?", [&run.id], |row| {
             row.get(0)
@@ -1937,7 +1984,11 @@ pub(super) fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     for (index, mut observation) in observations.into_iter().enumerate() {
         if matches!(
             observation.kind,
-            "source_gap" | "baseline_check" | "tool_reference"
+            "source_gap"
+                | "baseline_check"
+                | "tool_reference"
+                | "capability_claim"
+                | "example_citation"
         ) {
             observation.group = findings::digest(
                 json!([observation.group, workflow.as_deref().unwrap_or(&run.id)]).to_string(),
