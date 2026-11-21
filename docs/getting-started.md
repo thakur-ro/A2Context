@@ -87,11 +87,3 @@ In metadata-only mode, **Telemetry received** confirms delivery and links to **T
 | **Connect your workflow** after sending a span | The endpoint must include `/v1/traces`. Check the exporter’s error output. Flush or shut down the exporter before a short-lived process exits. In a container, loopback belongs to that container’s network namespace. |
 | **Telemetry received**, zero inference spans | Set `gen_ai.operation.name` on the model span. |
 | Inference spans arrive, no conflict appears | Check `content_capture` and `coverage.with_rules` in receiver health. Use a fresh database when switching capture policy. Compare the two source anchors, rule keys, scopes and values. |
-
-## Upgrade an existing installation
-
-If you installed NexusWeave, point your checkout at the renamed repository with `git remote set-url origin https://github.com/thakur-ro/A2Context.git`. Build with `cargo build --release --locked`. The Rust package, executable, and Rust import are now `a2context`. Update the executable path in your service or MCP configuration.
-
-Keep the same SQLite file when restarting the sidecar. For Kubernetes, keep the existing volume claim in `claimName`. New exporters can write `a2context.*` attributes. The receiver still reads `nexusweave.*` from OTLP and LangSmith, including stored traces. When both spellings appear on one span, the current spelling takes precedence. Evidence links retain the field name that supplied the value. Existing replay fingerprints and demo trace IDs stay valid.
-
-The optional chat gateway reads `A2CONTEXT_CHAT_KEY` and falls back to `NEXUSWEAVE_CHAT_KEY`.
