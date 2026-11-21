@@ -15,7 +15,7 @@ const MAX_TRACE_BYTES: usize = 2 * 1024 * 1024;
 const MAX_LOAD_BYTES: usize = 16 * 1024 * 1024;
 const MAX_REPORT_BYTES_PER_TRACE: usize = 4 * 1024 * 1024;
 const PAGE: usize = 15;
-const DATABASE_VERSION: i64 = 35;
+const DATABASE_VERSION: i64 = 36;
 
 pub struct Store(Connection);
 type Rejected = (u16, String);
@@ -96,6 +96,7 @@ impl Store {
                  PRIMARY KEY(trace_id,kind,call_id,decision_id,id)
              );",
         )?;
+        db.execute_batch(super::tool_reference_score::SCHEMA)?;
         db.execute_batch(super::capture::SCHEMA)?;
         db.execute_batch(super::conversation::SCHEMA)?;
         db.execute_batch(super::activity_search::SCHEMA)?;
@@ -103,6 +104,10 @@ impl Store {
         db.execute_batch(super::prefix_patterns::SCHEMA)?;
         db.execute_batch(super::screened::INDEX)?;
         Ok(Self(db))
+    }
+
+    pub fn tool_reference_score(&self, filters: &BTreeMap<String, String>) -> Result<Value> {
+        super::tool_reference_score::score(&self.0, filters)
     }
 
     pub fn bind_policy(&self, capture: bool, keys: &BTreeSet<String>) -> Result<()> {
@@ -358,6 +363,16 @@ impl Store {
         if version < 16 {
             self.upgrade_legacy_observations(version)?;
         }
+        if version < 35 {
+            self.upgrade_previous_indexes(version)?;
+        }
+        super::tool_reference_score::backfill(&mut self.0)?;
+        self.0
+            .pragma_update(None, "user_version", DATABASE_VERSION)?;
+        Ok(())
+    }
+
+    fn upgrade_previous_indexes(&mut self, version: i64) -> Result<()> {
         let mut after = String::new();
         loop {
             let tx = self.0.transaction()?;
@@ -437,8 +452,6 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0
-            .pragma_update(None, "user_version", DATABASE_VERSION)?;
         Ok(())
     }
 
@@ -1500,9 +1513,9 @@ impl Store {
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check') THEN -2
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.protected'))=1 THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
-                             WHEN kind IN ('conflict','source_gap','baseline_check') AND count(DISTINCT trace_id)>1 THEN 0
+                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference') AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
-                             WHEN kind IN ('conflict','source_gap','baseline_check') THEN 2
+                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference') THEN 2
                              WHEN kind='duplicate' AND min(coalesce(json_extract(detail,'$.dialogue_only'),0))=1 THEN 5
                              WHEN kind='duplicate' THEN 3
                              ELSE 4 END AS priority
@@ -1854,6 +1867,11 @@ fn save_trace(
         params![id, seen, start, run.and_then(|run| run.organization_id.as_deref()), run.and_then(|run| run.user_id.as_deref()),
                 run.and_then(|run| run.conversation_id.as_deref()), key, metadata.get("service.name"), run.map(|run| &run.source),
                 serde_json::to_string(metadata)?, raw.map(|(_, stored)| stored), run.map(serde_json::to_string).transpose()?, calls, with_inputs, with_request, with_rules])?;
+    if let Some(run) = run {
+        super::tool_reference_score::index(tx, run, calls)?;
+    } else {
+        tx.execute("DELETE FROM tool_reference_scores WHERE trace_id=?1", [id])?;
+    }
     super::capture::replace(tx, id, run)?;
     tx.execute("DELETE FROM metadata WHERE trace_id=?1", [id])?;
     for (key, value) in metadata {
@@ -1900,13 +1918,13 @@ fn load_reports<T: Report>(db: &Connection, id: &str) -> Result<Vec<T>> {
     rows.map(|row| Ok(serde_json::from_str(&row?)?)).collect()
 }
 
-fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
+pub(super) fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     tx.execute("DELETE FROM observations WHERE trace_id=?1", [&run.id])?;
     let reports = load_reports(tx, &run.id)?;
     let activations = load_reports(tx, &run.id)?;
     let observations = findings::derive(run, &reports, &activations)?;
     let workflow: Option<String> = if observations.iter().any(|o| {
-        matches!(o.kind, "source_gap" | "baseline_check")
+        matches!(o.kind, "source_gap" | "baseline_check" | "tool_reference")
             || (run.organization_id.is_some() && o.detail["sandbox_dispatch"].is_object())
     }) {
         tx.query_row("SELECT workflow FROM traces WHERE id=?", [&run.id], |row| {
@@ -1917,7 +1935,10 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
     };
     let mut insert = tx.prepare("INSERT INTO observations VALUES (?1,?2,?3,?4,?5,?6,?7)")?;
     for (index, mut observation) in observations.into_iter().enumerate() {
-        if matches!(observation.kind, "source_gap" | "baseline_check") {
+        if matches!(
+            observation.kind,
+            "source_gap" | "baseline_check" | "tool_reference"
+        ) {
             observation.group = findings::digest(
                 json!([observation.group, workflow.as_deref().unwrap_or(&run.id)]).to_string(),
             );

@@ -596,6 +596,31 @@ function investigationCanvas(impact, page, models) {
     return true;
   }
 
+  async function showToolReferenceScore(question, filters, signal) {
+    const score = await api("tool-reference-score", filters);
+    if (signal.aborted) return;
+    const percent = value => value.toLocaleString(undefined,{maximumFractionDigits:1}) + "%";
+    const assessed = score.clear + score.affected;
+    const known = assessed + score.unresolved;
+    const headline = assessed ? percent(score.pass_pct) + " of assessable traces passed" : "Insufficient evidence";
+    const coverage = known ? percent(score.coverage_pct) + " of known eligible traces assessed" : "No known eligible traces";
+    const sections = [{title:coverage,lines:[
+      score.clear + " passed · " + score.affected + " affected · " + score.unresolved + " unresolved",
+      score.unknown_applicability + " traces with unknown eligibility · " + score.outside + " outside this check",
+      ...(known ? ["Pass rate across all known eligible traces, allowing for missing evidence: " +
+        percent(score.lower_pct) + " to " + percent(score.upper_pct)] : []),
+    ]}];
+    previous = activity = comparison = null;
+    visibleCalls = score.examples.map((row,i) => ({row,number:i+1,filters}));
+    for (const {row,number} of visibleCalls) sections.push({title:"Call " + number,lines:[
+      "Inspect the tool-result reference at " + row.pointer,
+    ],action:"Inspect call",onAction:() => ask("Show call " + number)});
+    evidenceSections("tool-reference-score",headline,
+      "Tool-result references · Each tool message in the captured chat request needs one earlier assistant invocation with the same ID. Each recorded trace counts once.",sections);
+    remember(question,null,"tool-reference-score",headline);
+    suggest(visibleCalls.length ? ["Show call 1"] : ["Show recorded activity"]);
+  }
+
   async function showCall(ref, signal) {
     const {trace,call,dialogue,thread} = ref.row;
     const captured = await api("trace",{id:trace,call},true);
@@ -608,6 +633,10 @@ function investigationCanvas(impact, page, models) {
       title:sourceName(item),lines:[item.role,item.evidence.field,boundedExcerpt(item.text,360)].filter(Boolean),
     }));
     if (lines.length) sections.unshift({title:"Captured activity",lines});
+    const issue = captured?.tool_reference_issue;
+    if (issue) sections.unshift({title:"Tool-result reference", lines:[issue.pointer,issue.has_invocation_id ?
+      "Earlier assistant invocations with this ID: " + issue.matching_prior_calls : "The message has no usable tool_call_id.",
+      "Inspect how the application assembles this tool message and its preceding assistant call."]});
     const coverage = inputs.length ? `Showing ${Math.min(5,inputs.length)} of ${inputs.length} inputs with captured text.` : "Input text is unavailable for this call.";
     evidenceSections("captured-call","Captured call " + ref.number,[thread,evidence?.model,coverage].filter(Boolean).join(" · "),sections);
     const reference = element("details",{className:"canvas-reference","data-trace":trace,"data-call":call},
@@ -947,6 +976,11 @@ function investigationCanvas(impact, page, models) {
       const names = knownWorkflows === workspaceWorkflows ? workspaceWorkflows : [...new Set([...knownWorkflows,...workspaceWorkflows])];
       const mentions = selected ? [] : workflowsInQuestion(question,names);
       const named = mentions.length === 1 && mentions[0] !== scope.workflow ? mentions[0] : null;
+      if (!selected && /\btool[- ](?:result[- ]?)?reference score\b/i.test(question)) {
+        await showToolReferenceScore(displayQuestion,named ? {...scope,workflow:named} : scope,signal);
+        if (!signal.aborted) status.textContent = "";
+        return;
+      }
       const focus = !selected && /^(?:focus on|switch to|investigate workflow)\s+(.+)$/i.exec(question.trim().replace(/[?.!]+$/, ""));
       const allWorkflows = !selected && /^(?:show |switch to )?all workflows$/.test(normalize(question));
       if (focus || allWorkflows) {

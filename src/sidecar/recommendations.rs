@@ -97,6 +97,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Inspect the unconfirmed IDs for one alternative. Verify that the builder included those inputs and exported their named fragments, then repeat preflight.",
             "No configured alternative had all its required source fragments",
         ),
+        "tool_reference" => (
+            "Inspect how the application builds the tool history",
+            "Compare the tool message at the recorded position with the preceding assistant invocations. Check where the application sets and preserves the invocation ID.",
+            "Recorded tool message without a unique earlier invocation ID in this request",
+        ),
         "conflict" => (
             "Resolve the competing rules",
             "Confirm which source should govern this scope. Test changing only the other declaration against the answer or tool choice you expect.",

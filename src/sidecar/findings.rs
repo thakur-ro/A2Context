@@ -193,6 +193,24 @@ pub fn derive(
 ) -> Result<Vec<Observation>, String> {
     let mut findings = Vec::new();
     for call in &run.calls {
+        if let Some(issue) = super::tool_reference_score::witness(call) {
+            let reason = match issue["matching_prior_calls"].as_u64() {
+                None => "missing_id",
+                Some(0) => "missing_invocation",
+                Some(_) => "ambiguous_invocation",
+            };
+            findings.push(occurrence(
+                "tool_reference",
+                json!([
+                    "chat-tool-result-reference-v1",
+                    run.source,
+                    run.organization_id,
+                    reason
+                ]),
+                call,
+                json!({"reason":reason,"reference":issue,"sources":[]}),
+            ));
+        }
         if let Some(coverage) = a2context::preflight::verified_source_coverage(call) {
             findings.extend(source_gap(run, call, &coverage));
         }

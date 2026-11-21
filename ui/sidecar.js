@@ -7,7 +7,7 @@ const filterNames = { after: "From", before: "Before", org: "Organization", user
   workflow: "Workflow", meta_key: "Metadata key", meta_value: "Metadata value" };
 let scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
 const interview = view === "findings" && [...query.keys()].every(key => key === "view" || Object.hasOwn(filterNames, key));
-const kindLabels = { baseline_check:"Replay baseline", source_gap:"Source capture gap", prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
+const kindLabels = { tool_reference:"Tool-result reference", baseline_check:"Replay baseline", source_gap:"Source capture gap", prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
 const sourceHistoryKey = query.get("source_key");
@@ -313,6 +313,9 @@ const jointPatterns = {
 };
 
 function findingTitle(kind, detail) {
+  if (kind === "tool_reference") return {missing_id:"A tool result is missing its invocation ID",
+    missing_invocation:"A tool result refers to an invocation missing from the request",
+    ambiguous_invocation:"A tool result refers to more than one invocation"}[detail.reason];
   if (kind === "baseline_check") return {
     no_completion:"The replay runner returned no completed baseline",
     no_score:"The scoring rule could not grade a baseline reply",
@@ -360,6 +363,9 @@ function findingTitle(kind, detail) {
 }
 
 function findingDetail(kind, detail) {
+  if (kind === "tool_reference") return detail.reference.pointer + (detail.reference.has_invocation_id ?
+    " · Earlier assistant invocations with the same ID: " + detail.reference.matching_prior_calls :
+    " · The tool message has no usable tool_call_id.");
   if (kind === "baseline_check") {
     const {attempted,completed,unscored=0} = detail.measurement.baseline;
     return [detail.runner, plural(attempted,"baseline attempt"), plural(completed-unscored,"scored reply"),

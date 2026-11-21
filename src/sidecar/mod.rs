@@ -18,6 +18,7 @@ mod store;
 mod target_patterns;
 mod targets;
 mod tool_handoffs;
+mod tool_reference_score;
 mod variation;
 
 use crate::{
@@ -392,6 +393,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
             let value = match path {
                 "/api/sidecar/chat-config" => json!({"models":[]}),
                 "/api/sidecar/workflows" => json!({"workflows":store.workflows(&fields)?}),
+                "/api/sidecar/tool-reference-score" => store.tool_reference_score(&fields)?,
                 "/api/sidecar/activity-search" => store.search_activity(&fields)?,
                 "/api/sidecar/recent-tool-names" => store.recent_tool_names(&fields)?,
                 "/api/sidecar/health" => json!({
@@ -480,6 +482,14 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                     let mut prefill_issues = BTreeMap::new();
                     let mut target_checks = BTreeMap::new();
                     let mut prefix_reviews = BTreeMap::new();
+                    let tool_reference_issue = fields
+                        .get("call")
+                        .and_then(|id| {
+                            run.calls
+                                .iter()
+                                .find(|c| c.id == *id || c.span_id.as_ref() == Some(id))
+                        })
+                        .and_then(tool_reference_score::witness);
                     for call in &mut run.calls {
                         if call.prefill_probe.is_some()
                             && !sources
@@ -519,7 +529,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                     let received_results = selected
                         .map(|call| tool_handoffs::received_by(&run, call))
                         .unwrap_or_default();
-                    json!({"trace":run, "received_tool_results":received_results, "prefix_reviews":prefix_reviews, "target_checks":target_checks, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
+                    json!({"trace":run, "tool_reference_issue":tool_reference_issue, "received_tool_results":received_results, "prefix_reviews":prefix_reviews, "target_checks":target_checks, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
                         "replay_reports": reports.len()})
                 }
                 "/api/sidecar/preview-example" => {

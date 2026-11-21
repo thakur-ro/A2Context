@@ -41,6 +41,7 @@ def main():
         send_traces(base, trace)
         send(base, "/api/replay-reports", baseline_report(report, "no_score"), expected=201)
         subprocess.run(["node", "tests/source-gap-browser.mjs", base], cwd=ROOT, check=True)
+        subprocess.run(["node", "tests/tool-reference-browser.mjs", base], cwd=ROOT, check=True)
 
 
 if __name__ == "__main__":

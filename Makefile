@@ -24,6 +24,7 @@ check-sidecar:
 	$(PYTHON) tests/sidecar_tool_masks.py target/debug/a2context
 	$(PYTHON) tests/check_exchange_demo.py target/debug/a2context
 	$(PYTHON) tests/sidecar_baseline.py target/debug/a2context
+	$(PYTHON) tests/sidecar_tool_reference_score.py target/debug/a2context
 	$(PYTHON) tests/sidecar_source_gaps.py target/debug/a2context
 	$(PYTHON) tests/sidecar_source_history.py target/debug/a2context
 	$(PYTHON) tests/sidecar_prefix_experiment.py target/debug/a2context

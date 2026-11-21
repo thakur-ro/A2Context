@@ -24,6 +24,8 @@ You can also name the user in your first question. Try **Which patterns repeat a
 
 Ask **Which four conversations?** Both candidate scores and proposal trials appear in four conversations, so the interview asks which theme you mean. Answer **Candidate scores**. **Show more conversations** retrieves the next three or fewer. **Open the first one** opens the first conversation on the page you just saw, at the call where the evidence was recorded. You can also ask **Which conversations had candidate scores?** directly.
 
+Ask **Show the tool reference score** for a scoped count of recorded traces whose tool-result messages point to earlier assistant invocations. The answer shows how much evidence was available. Type **Show call 1** when an affected example is listed to see its request location and how many earlier invocations matched. [Score definition and limits](foundational-algorithms.md#a-score-for-the-monitored-workflow)
+
 ## Connect a model
 
 **Workspace evidence** uses the local sidecar to retrieve findings and recorded excerpts. To interpret the retrieved evidence in plain language, run the optional Python gateway on the same host as the sidecar. It accepts a model server’s Chat Completions endpoint. This example assumes a model already served on loopback. Substitute the sidecar origin printed by the demo and a model ID your server accepts.
