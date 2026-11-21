@@ -45,7 +45,21 @@ try {
   await page.goto(base+"/?workflow=unrelated");
   await page.getByText("No recommendations match these filters.").waitFor();
   assert.equal(await setup.count(),0);
-  console.log("Verified first-run guidance, sample OTLP delivery, metadata-only coverage and filtered empty results.");
+  const attribute = (key, stringValue) => ({key,value:{stringValue}});
+  const toolOnly = {resourceSpans:[{
+    resource:{attributes:[attribute("service.name","tool-observations")]},
+    scopeSpans:[{spans:[{traceId:"c9f482b0390ef6cca6de2d5c08cfff8d",spanId:"a98605bfdcc72819",
+      attributes:[attribute("gen_ai.operation.name","execute_tool"),attribute("gen_ai.tool.name","lookup_order"),
+        attribute("gen_ai.conversation.id","Order observation")]}]}],
+  }]};
+  assert.ok((await page.request.post(endpoint,{data:toolOnly})).ok());
+  await page.goto(base+"/?workflow=tool-observations");
+  await page.getByRole("heading",{name:"Captured activity",exact:true}).waitFor();
+  await page.getByText(/1 conversation with recorded spans/).waitFor();
+  await page.getByRole("link",{name:"Browse conversations",exact:true}).click();
+  assert.equal(new URL(page.url()).searchParams.get("workflow"),"tool-observations");
+  await page.getByRole("link",{name:/Order observation/}).waitFor();
+  console.log("Verified setup, metadata-only coverage, filtered empty results, and navigation from tool-only activity.");
 } finally {
   await browser.close();
 }

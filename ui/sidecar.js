@@ -2448,25 +2448,38 @@ async function render(refresh = false) {
       pagination(data.next_offset,{cards:1});
     } else if (!query.has("explore") && !pageOffset && location.hash !== "#proposal-coverage") {
       const [cards, impact] = await Promise.all([api("findings", scope), api("summary", scope)]);
-      if (!cards.rows.length && !Object.keys(scope).length) {
-        const health = await api("health");
+      const unfiltered = !Object.keys(scope).length;
+      if (!cards.rows.length && (unfiltered || impact.captured_conversations)) {
+        const health = await api("health", scope);
         const {traces, inference_spans: calls} = health.coverage;
-        byId("title").textContent = traces ? "Telemetry received" : "Connect your workflow";
-        const next = !traces ? "Configure your workflow’s OpenTelemetry batch exporter, then send one model request." :
-          !calls ? "Set gen_ai.operation.name on a model span so the receiver can identify the inference." :
-          health.content_capture ? "Findings appear when captured sources disagree, repeat, or match another supported check." :
-          "This workspace retains metadata. To investigate a source conflict, use a separate capture-enabled database with redacted staging inputs.";
-        byId("content").replaceChildren(element("section",{className:"panel","aria-label":"Receiver setup"},
-          element("p",{text:next}),
-          !traces && element("pre",{},element("code",{text:"export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\n" +
-            "export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + health.otlp_http_endpoint})),
-          !traces && link("Inspect a sample exchange request",url({view:"preview",scenario:"exchange-approval"})),
-          traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
-          traces > 0 && link("Threads",url({view:"threads"})),
-          element("p",{},link("Check receiver status","/api/sidecar/health"))));
-        byId("content").removeAttribute("data-signature");
-        return;
+        if (!calls && impact.captured_conversations) {
+          byId("title").textContent = "Captured activity";
+          byId("content").replaceChildren(panel("Browse recorded activity",
+            element("p", {text:plural(impact.captured_conversations, "conversation") +
+              " with recorded spans. Recommendations appear when supported inference evidence arrives."}),
+            link("Browse conversations", url({view:"threads"}), "action")));
+          byId("content").removeAttribute("data-signature");
+          return;
+        }
+        if (unfiltered) {
+          byId("title").textContent = traces ? "Telemetry received" : "Connect your workflow";
+          const next = !traces ? "Configure your workflow’s OpenTelemetry batch exporter, then send one model request." :
+            !calls ? "Set gen_ai.operation.name on a model span so the receiver can identify the inference." :
+            health.content_capture ? "Findings appear when captured sources disagree, repeat, or match another supported check." :
+            "This workspace retains metadata. To investigate a source conflict, use a separate capture-enabled database with redacted staging inputs.";
+          byId("content").replaceChildren(element("section",{className:"panel","aria-label":"Receiver setup"},
+            element("p",{text:next}),
+            !traces && element("pre",{},element("code",{text:"export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\n" +
+              "export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + health.otlp_http_endpoint})),
+            !traces && link("Inspect a sample exchange request",url({view:"preview",scenario:"exchange-approval"})),
+            traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
+            traces > 0 && link("Threads",url({view:"threads"})),
+            element("p",{},link("Check receiver status","/api/sidecar/health"))));
+          byId("content").removeAttribute("data-signature");
+          return;
+        }
       }
+      byId("title").textContent = "Recommendations";
       const signature = JSON.stringify([impact,cards]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
