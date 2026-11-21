@@ -31,6 +31,11 @@ def timestamp(value):
     return str((delta // timedelta(microseconds=1)) * 1_000)
 
 
+def imported_trace_id(row, source):
+    trace_key = f'{REVISION}:{row["benchmark"]}:{row["session_id"]}:{source["trace_id"]}:{source["span_id"]}'
+    return hashlib.sha256(trace_key.encode()).hexdigest()[:32]
+
+
 def convert(row, source, keep_content):
     attributes = {
         key: value
@@ -44,9 +49,8 @@ def convert(row, source, keep_content):
         "benchmark.success": str(row["success"]).lower() if row["success"] is not None else "unknown",
         "benchmark.original_trace_id": source["trace_id"],
     })
-    trace_key = f'{REVISION}:{row["benchmark"]}:{row["session_id"]}:{source["trace_id"]}:{source["span_id"]}'
     span = {
-        "traceId": hashlib.sha256(trace_key.encode()).hexdigest()[:32],
+        "traceId": imported_trace_id(row, source),
         "spanId": source["span_id"],
         "name": source["name"],
         "startTimeUnixNano": timestamp(source["start_time"]),

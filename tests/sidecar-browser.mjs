@@ -98,7 +98,8 @@ try {
   assert.equal(await page.locator(".impact-number").innerText(), "25");
   assert.deepEqual(await page.locator(".impact-outcome strong").allTextContents(), ["17", "2", "6"]);
   assert.ok(await page.locator(".brand img").evaluate(img => img.complete && img.naturalWidth > 0));
-  assert.equal(await page.locator("#navigation a").count(), 2);
+  const navigation = page.getByRole("navigation", {name:"Workspace"});
+  assert.deepEqual(await navigation.getByRole("link").allTextContents(), ["Recommendations", "Threads", "Before inference"]);
   await factor(page, "Choice flipped").waitFor();
   await page.locator(".featured").getByRole("heading", { name:"The proposed tool changed in 2 of 4 completed runs" }).waitFor();
   await page.locator(".featured").getByText(/edit to request-type/).waitFor();

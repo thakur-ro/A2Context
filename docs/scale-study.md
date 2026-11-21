@@ -96,3 +96,15 @@ The adapter joins the request rows to anonymized accounts and harness names. The
 The updated build passed 12 exact-evidence journeys, one on desktop and one on mobile per workload. On this Mac the opening recommendation view took 0.82–4.34 seconds across the 12 checks. Evidence drilldown took 0.12–0.15 seconds and retained the workflow and call in the URL. The updated coverage query took 2–8 ms in these runs. An earlier baseline AppWorld desktop run took about 60 seconds under concurrent disk reads, and its mobile run exceeded the 60-second wait. Cache state and competing work differed between the runs. Treat the timings as observations from this machine rather than a controlled speedup estimate.
 
 The opening page now requests a compact summary instead of calculating the detailed impact view up front. When all groups in the scope are exact repeats, it leads with a repeat review and the exact examples. A recurrence view chooses distinct conversations on the server, so one long conversation cannot use every example slot. [Recommendation improvement loop](recommendation-loop.md)
+
+## Million-call operational run
+
+The receiver imported the processed request and session tables for all 16 weeks of the pinned FreeInference release. The stored totals were 1,222,199 inference calls, 14,036 reconstructed session keys, 267 anonymized accounts and 14 harness names. The processed tables flatten nested sessions, so these counts include rows outside the dataset card's top-level session and request totals. The receiver reported zero rejected batches and queue drops during the bulk import. Reopening the database with the updated binary preserved all 1,222,199 calls. The resulting database occupied about 4 GiB on the test Mac.
+
+The earlier build's unfiltered Threads query took a median of about 13 seconds over five local reads on a 1.03-million-call snapshot. It read trace rows to build the list. The updated query reads thread keys and timestamps from an index for unfiltered browsing. **Threads** is now in workspace navigation.
+
+On the full database, desktop and mobile each opened the unfiltered list, applied a workflow filter, paged forward, opened a session, and used a link that focused the exact call. The unfiltered list opened in 2.85 and 3.33 seconds. Applying the `codex` workflow filter took 125 and 116 ms, opening the next page took 102 and 114 ms, and opening a session took 118 and 99 ms. Those are two runs on one machine. They measure browser journeys on recorded metadata. Throughput budgets for a live inference deployment require a separate workload test.
+
+```sh
+node scripts/check_large_threads.mjs http://127.0.0.1:18055 codex
+```

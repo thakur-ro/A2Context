@@ -65,3 +65,40 @@ The trial makes zero paid model calls. The AgentRx and TRAIL dataset cards and p
 Gemma 3 4B in MLX scored 1 of 14 development cases with the direct prompt and 6 of 14 with the evidence guide. The guide was selected on development data. On 16 cases from the three held-out workflows it scored 4 of 16, with 7 responses that failed the structured contract. The exact-name baseline scored 10 of 16. This pilot uses a deliberately balanced sample, so these figures do not estimate production accuracy.
 
 The model did not meet the promotion gate. Retain the simple catalog check as the baseline for exact facts. The next research pass should test recommendations about a decision that spans calls, where a model can add value by relating a tool result to a later proposal. Compare successful and failed controls with matched task context, require the actual tool-call and result IDs, and record whether the proposed test changes a verified outcome. Keep that new task’s holdout separate from these catalog cases.
+
+## Second pass: follow a tool result into a later decision
+
+The catalog pilot showed that a model adds little to an exact comparison. The second pass checked a temporal hypothesis across all 241,473 Exgentic calls. If an agent proposes the same tool with the same arguments after its earlier result has disappeared, keeping that result in context might prevent another lookup.
+
+The detector requires an earlier recorded proposal, its result in a subsequent captured request, and a later proposal in the same trace and conversation lane. It checks the new request for the result by invocation ID and then by exact payload. It records the later result independently when another captured request contains it. Calls without the required evidence fall outside the comparison.
+
+| Workflow | Same tool and arguments proposed again | Earlier result ID present | Same payload under another ID | Neither found among captured tool results |
+| --- | ---: | ---: | ---: | ---: |
+| AppWorld | 2,629 | 2,610 | 3 | 16 |
+| BrowseCompPlus | 416 | 412 | 0 | 4 |
+| SWE-bench | 3,675 | 3,662 | 2 | 11 |
+| Airline | 323 | 323 | 0 | 0 |
+| Retail | 191 | 191 | 0 | 0 |
+| Telecom | 165 | 162 | 0 | 3 |
+| **Total** | **7,399** | **7,360** | **5** | **34** |
+
+These counts are proposals with evidence, so one session can contribute several. The result may also be represented in other context fields or in runtime state outside capture. “Same payload” compares the normalized JSON value, preserving the contents of strings. Tool names beginning with words such as `get`, `show`, or `read` provide a convenient sample of lookup-like calls. The prefix carries no guarantee about tool behavior.
+
+### Test whether the earlier result helps
+
+The replay verified exact trace, call, invocation, and payload identifiers against the sidecar. It used excerpts from the recorded inputs to reconstruct a local lookup decision for Gemma 3 4B. The model chose between requesting the lookup and reusing a result. Each case had three arms: baseline, restoration of the earlier matching result, and an unrelated recorded-result control. The runner emitted only those choices. The original benchmark models, full request templates, and tools were outside this experiment.
+
+Of seven non-coding candidate episodes with no earlier payload in the later captured tool history, six had both a user request and a control result. The two cases with equal captured results still chose the lookup after restoration. Three telecom cases switched from lookup to reuse, even though the repeated lookup returned changed data. Two observed changes were to bill status and one was to the `data_refueling_gb` plan field. Across three runs with identical input digests, the restoration arm made the same choice in all six cases. The baseline varied in one AppWorld case, and the unrelated-result control varied in one telecom case. The control prompted reuse in two or three cases per run. The model's output alone would make a poor guard for a cached result.
+
+A fixed retrieval corpus also has failure modes. BrowseCompPlus recorded 23 repeat calls whose matching results both contained an explicit error field. Five other repeat calls returned a result without that field after a prior error, and seven did the reverse. A fixed corpus makes a good setting to test a cached document, provided that both the document and the retriever revision are verified. [BrowseCompPlus benchmark](https://github.com/texttron/BrowseComp-Plus)
+
+The replay rejects automatic reuse based on this signal. In a real workflow, a cached result needs freshness evidence appropriate to the tool and request. The next positive test needs two comparable cohorts: a versioned read with evidence that the underlying state is still current, and a mutable read with a verified state change. The first can test saved lookups while the second tests whether the workflow still refreshes state when it should.
+
+```sh
+python scripts/study_tool_result_retention.py \
+  --report data/scale/tool-result-retention.json data/scale/exgentic-v2/*.parquet
+
+python scripts/replay_tool_result_retention.py \
+  --sidecar http://127.0.0.1:18058 --endpoint http://127.0.0.1:18059/v1/chat/completions \
+  --cases data/scale/tool-result-retention.json --report data/scale/tool-result-replay.json
+```

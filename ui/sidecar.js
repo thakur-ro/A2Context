@@ -2543,7 +2543,9 @@ async function main() {
     return;
   }
   const views = { findings: "Recommendations", preview: "Before inference", traces: "Traces", threads: "Threads" };
-  byId("navigation").replaceChildren(...Object.entries(views).filter(([key]) => ["findings", "preview"].includes(key)).map(([key, label]) => link(label, url({ view: key }), null, view === key || (key === "findings" && view !== "preview"))));
+  const activeView = view === "traces" ? "findings" : view;
+  byId("navigation").replaceChildren(...["findings", "threads", "preview"].map(key =>
+    link(views[key], url({view:key}), null, activeView === key)));
   byId("title").textContent = views[view];
   byId("summary").textContent = { findings: "",
     preview: "Check an assembled request and any supplied tests before committing a decision.",

@@ -700,7 +700,20 @@ impl Store {
             && filters.get("group").is_some_and(|id| !id.is_empty()))
         .then(|| self.0.unchecked_transaction())
         .transpose()?;
-        let mut sql = "WITH selected AS (SELECT t.id,t.start,t.org,t.user,t.thread,t.thread_key,t.workflow,t.source,t.calls,t.with_inputs,t.metadata FROM traces t WHERE t.run IS NOT NULL".to_owned();
+        let mut sql = if view == "threads" {
+            // A thread key exists only for a normalized run. The unscoped list can
+            // group keys and timestamps in the index without reading the trace body.
+            let scope_needs_columns = ["org", "user", "workflow", "meta_key"]
+                .iter()
+                .any(|key| filters.get(*key).is_some_and(|value| !value.is_empty()));
+            let mut selected = "WITH selected AS (SELECT t.thread_key,t.start FROM traces t WHERE t.thread_key IS NOT NULL".to_owned();
+            if scope_needs_columns {
+                selected.push_str(" AND t.run IS NOT NULL");
+            }
+            selected
+        } else {
+            "WITH selected AS (SELECT t.id,t.start,t.org,t.user,t.thread,t.thread_key,t.workflow,t.source,t.calls,t.with_inputs,t.metadata FROM traces t WHERE t.run IS NOT NULL".to_owned()
+        };
         let mut args = Vec::new();
         append_scope(&mut sql, &mut args, filters)?;
         if matches!(view, "traces" | "threads") {
@@ -1451,8 +1464,9 @@ impl Store {
                     " ORDER BY start DESC,id LIMIT ? OFFSET ?"
                 });
             }
-            "threads" => sql.push_str(" SELECT json_object('id',thread_key,'thread',thread,'org',org,'user',user,
-                      'start',max(start),'trace_count',count(*)) FROM selected WHERE thread_key IS NOT NULL
+            "threads" => sql.push_str(" SELECT json_object('id',thread_key,'thread',json_extract(thread_key,'$[3]'),
+                      'org',json_extract(thread_key,'$[1]'),'user',json_extract(thread_key,'$[2]'),
+                      'start',max(start),'trace_count',count(*)) FROM selected
                       GROUP BY thread_key ORDER BY max(start) DESC,thread_key LIMIT ? OFFSET ?"),
             _ => return Err("unknown view".into()),
         }
