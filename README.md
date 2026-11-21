@@ -34,7 +34,7 @@ Open the address printed in the terminal. Start with **Check current approval be
 | Which source should I test before answering? | Check the assembled request. If your scorer supplies probabilities, compare candidate continuations before and after a named source edit at the same answer prefix. |
 | Would this edit fix the answer elsewhere? | Compare original and edited generations against a supplied reference. The dashboard surfaces matched questions where the same edit had opposite effects on correctness. |
 
-The workflow exports spans asynchronously over OTLP/HTTP. A bounded worker normalizes them and stores findings in SQLite. The Rust binary serves the dashboard. Default analysis makes zero model calls. You can attach replay results or measurements from an instrumented model when you need stronger evidence. A trace records the observable request and response. Internal activation claims require a model intervention. [Sidecar architecture](docs/architecture.md#sidecar-architecture) · [Algorithms and limits](docs/methods.md) · [Research and related systems](docs/research-review.md) · [What the experiments support](docs/research-preview.md)
+[Algorithms and limits](docs/methods.md) · [Research and related systems](docs/research-review.md) · [What the experiments support](docs/research-preview.md)
 
 ## Which source mattered at this word?
 
@@ -43,6 +43,39 @@ The workflow exports spans asynchronously over OTLP/HTTP. A bounded worker norma
 On this recorded answer, editing the returns policy had the largest measured effect on the return-window number. Editing the refund policy had the largest effect on the refund time. Each cell compares the probability of the same next token with the preceding output held fixed. Select a cell in the dashboard to see the edit and the two freely generated replies. [Explore the measurements](docs/research-preview.md#follow-a-source-through-a-workflow)
 
 ## Ship it beside your service
+
+NexusWeave turns workflow telemetry into recurring findings with evidence and a suggested next step. You can also check a pending request before calling the model and attach experiments that measure what changed after a source edit.
+
+```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 24
+    rankSpacing: 36
+    padding: 12
+---
+flowchart TB
+    accTitle: How NexusWeave runs beside inference
+    accDescr: The application assembles requests, calls the model, and runs tools. It exports telemetry asynchronously to NexusWeave. The sidecar also returns checks on demand and accepts reports from separate experiment runners. SQLite backs the recommendations dashboard.
+
+    App("Your LLM application<br/>Runs inference and tools")
+    Runner("Experiment runner<br/>Replay or model probes")
+    Sidecar("NexusWeave Rust sidecar<br/>Checks pending requests<br/>and analyzes captured calls")
+    Store[("SQLite evidence store")]
+    Dashboard("Dashboard<br/>Recommendations and evidence")
+
+    App -->|"Async OTLP/HTTP"| Sidecar
+    App <-.->|"Optional preview"| Sidecar
+    Runner -.->|"Optional reports"| Sidecar
+    Sidecar --> Store --> Dashboard
+
+    classDef service fill:#e9eff8,stroke:#6b83a5,color:#182c45
+    classDef evidence fill:#f0f3f7,stroke:#8b9bb0,color:#253448
+    class Sidecar,Dashboard service
+    class App,Runner,Store evidence
+```
+
+Your application controls inference and tool execution. The sidecar makes zero model calls by default, and an OpenTelemetry Collector can send the same spans to your existing observability backend. [Request paths and evidence limits](docs/architecture.md#sidecar-architecture)
 
 Build the container and verify that traces survive a restart with `make verify-image`. The deployment guide includes a Kubernetes example and a Collector setup for keeping your existing observability backend. [Deployment](DEPLOYMENT.md) · [Staging checks and resource measurements](docs/validation.md)
 
