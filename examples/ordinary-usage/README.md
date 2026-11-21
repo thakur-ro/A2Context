@@ -30,6 +30,8 @@ The automatic checks used zero model calls. Both were developed after reviewing 
 
 Resending all 28 spans to an empty database surfaced the SQLite finding after the first span and the citation finding after the twelfth (PaperQA’s fourth call). Both evidence links resolved to the recorded model call. We checked the printed PaperQA answers as well. Seven example-only citations became empty parentheses across the five answers. The feed still missed the off-topic budget answer and the incorrect explanation of how missing capture affects the score. [Displayed citations](displayed-citations.json) · [Quiet-session review](quiet-review.md)
 
+We then froze the revised detector and connected two different workflow implementations. It again showed zero recommendations. Four LangChain sessions ended with a rejected tool proposal. One LlamaIndex answer copied an irrelevant topic from a prompt example. [Transfer pilot and review of the quiet sessions](transfer/README.md)
+
 ## Reproduce
 
 Use the current pilot scripts and build the sidecar binary from the revision pinned in the protocol. Start a loopback MLX server with `lmstudio-community/LFM2.5-1.2B-Instruct-MLX-8bit` loaded as its default model. The original run used a 512-token server default. The capture listener forwards only chat completions to that local port. It records model traffic and application exits. Tool execution inside the SQLite plugin and PaperQA’s local search operations have no execution spans in this setup.

@@ -88,7 +88,30 @@ def main(log_directory=None):
                 prefix = match["prefix"].encode()
                 offset = match["application_log_utf8_offset"]
                 assert content[offset-len(prefix):offset+2] == prefix + b"()"
-    print("Verified ten sessions, six quiet review references, 24 blinded outcomes, 60 proposal trials and 45 citation replies.")
+    transfer = read("transfer/outcomes.json")
+    for workflow, count in (("sql",20), ("citations",5)):
+        outcome = transfer[workflow]
+        assert outcome["distinct_findings"] == 0 and not outcome["capture_errors"]
+        runs = outcome["sessions"]
+        assert len(runs) == 5 and sum(len(s["calls"]) for s in runs) == count
+        assert all(c["http"] == 200 and c["output_captured"] and not c["new_findings"] for s in runs for c in s["calls"])
+        assert sum(s["exit"] != 0 for s in runs) == (4 if workflow == "sql" else 0)
+        sample = sorted(runs,key=lambda s: sha256(s["trace"].encode()).digest())[:3]
+        assert outcome["quiet_sample"] == [s["session"] for s in sample]
+    rows = [json.loads(line) for line in (HERE / "transfer/example-edit-results.jsonl").read_text().splitlines()]
+    assert Counter((r["session"],r["seed"]) for r in rows) == {
+        (s["session"],seed): 1 for s in transfer["citations"]["sessions"] for seed in (11,29,47)}
+    old_pairs, new_pairs = set(), set()
+    for r in rows:
+        assert all(r[a]["http"] == 200 for a in ("original","repeat","edit"))
+        original, repeat, edit = (set(r[a]["terms"]) for a in ("original","repeat","edit"))
+        assert original == repeat and original <= {"water","sky"} and edit <= {"wax","lamp"}
+        if original:
+            old_pairs.add((r["session"], r["seed"]))
+        if edit:
+            new_pairs.add((r["session"], r["seed"]))
+    assert len(old_pairs) == len(new_pairs) == 2 and old_pairs.isdisjoint(new_pairs)
+    print("Verified both ten-session pilots, their quiet samples, and the published replay counts.")
 
 
 if __name__ == "__main__":
