@@ -14,7 +14,7 @@ The frozen sidecar produced **zero recommendations** on ten development sessions
 
 **What the retrieval application exposed.** One question asked which measurements support the operating budget. The answer referred to decoder blocks and edit substitutions. The frozen feed had no suggestion for this answer. The reviewer can inspect the retrieved text passed to each model call to distinguish inadequate retrieval from a weak final answer. Empty recommendation lists leave precision undefined and time to the first useful recommendation unobserved.
 
-The project owner volunteered to review the quiet-session sample. These observations are the implementer’s reading of the outputs. Independent dispositions are pending. This pilot uses a small local model, project material and one person’s engineering questions. [Per-request record and application output digests](first-pass.json)
+The project owner delegated validation to Codex. Review against the attached database and frozen source documents found concrete issues in five of the six sampled quiet sessions. Codex also implemented the pilot. This was a developer review on one small local model and one person’s engineering questions. [Six dispositions and supporting evidence](quiet-review.md) · [Per-request record and application output digests](first-pass.json)
 
 We tested one possible explanation after the pilot. One tool description referred to an unavailable tool. Correcting the description produced fewer first-step tool proposals on the same inputs. [Controlled edit, including unchanged repeats](catalog-edit.md)
 
