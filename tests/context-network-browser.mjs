@@ -6,7 +6,7 @@ try {
   for (const width of [1280,390]) {
     const page = await browser.newPage({viewport:{width,height:850}});
     await page.goto(process.argv[2]);
-    await page.getByRole("button",{name:"Show the context map"}).waitFor();
+    await page.getByRole("heading",{name:"What would you like to investigate?"}).waitFor();
     await page.evaluate(async () => {
       const result = await api("findings",{kind:"conflict"});
       const template = result.rows.find(card => card.kind === "conflict");

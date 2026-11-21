@@ -6,6 +6,7 @@ const view = ["traces", "threads", "preview"].includes(query.get("view")) ? quer
 const filterNames = { after: "From", before: "Before", org: "Organization", user: "User",
   workflow: "Workflow", meta_key: "Metadata key", meta_value: "Metadata value" };
 const scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
+const interview = view === "findings" && [...query.keys()].every(key => key === "view" || Object.hasOwn(filterNames, key));
 const kindLabels = { baseline_check:"Replay baseline", source_gap:"Source capture gap", prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
   candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
@@ -72,6 +73,19 @@ function url(params, filters = scope) {
     else search.set(key, value);
   }
   return search.size ? "?" + search : "/";
+}
+
+function workflowName(id) {
+  const value = id.replace(/[-_]+/g, " ");
+  return value.slice(0,1).toUpperCase() + value.slice(1);
+}
+
+let workspaceWorkflows = [];
+function workflowNavigation(selected) {
+  const nav = byId("workflow-navigation");
+  byId("workflow-sidebar").hidden = !interview || !workspaceWorkflows.length;
+  nav.replaceChildren(element("h2",{text:"Workflows"}),link("All workflows",url({},{}),null,!selected),
+    ...workspaceWorkflows.map(id => link(workflowName(id),url({workflow:id},{}),null,selected === id)));
 }
 
 // The sidecar serves dashboard queries from one SQLite reader. Issue one read at
@@ -2210,7 +2224,7 @@ function pendingPreview() {
     element("div", { className: "actions" }, ...(exchange ? [exchange] : [history, routing, policy]))), output);
 }
 
-function traceDetail({ trace, findings, activation_reports, prefill_issues = {}, target_checks = {}, prefix_reviews = {} }) {
+function traceDetail({ trace, findings, activation_reports, received_tool_results = [], prefill_issues = {}, target_checks = {}, prefix_reviews = {} }) {
   const selectedCall = query.get("call");
   const selectedSpan = query.get("span");
   const spans = new Map((trace.spans || []).map((span) => [span.id, span]));
@@ -2251,14 +2265,30 @@ function traceDetail({ trace, findings, activation_reports, prefill_issues = {},
       item.kind === "conflict" || item.kind === "duplicate" ? prepareEdit(trace, call, item) : null));
   const capture = call?.context.filter((item) => item.availability === "included") || [];
   const unavailable = call ? call.context.length - capture.length : 0;
-  const inputs = (call?.context || []).map((item) => element("details", {}, element("summary", { text: sourceName(item) + version(item.source_version) }),
-    element("p", { className: "label", text: item.evidence.field + (item.evidence.message_index == null ? "" : " · message " + item.evidence.message_index) }),
-    item.text == null ? element("p", { text: item.availability === "redacted" ? "Input was redacted" : "Input text unavailable" }) : element("pre", { text: item.text })));
+  const handoffs = new Map(received_tool_results.map(result => [result.context, result]));
+  const inputs = [];
+  const toolInputs = [];
+  for (const item of call?.context || []) {
+    const result = handoffs.get(item.id);
+    const {field, message_index, part_index} = item.evidence;
+    const location = [field, message_index == null ? null : "message " + message_index,
+      part_index == null ? null : "part " + part_index].filter(Boolean).join(" · ");
+    const entry = element("details", {},
+      element("summary", {text:result ? (result.tool || "Tool result") + " · " + result.invocation : sourceName(item) + version(item.source_version)}),
+      element("p", {className:"label",text:location}),
+      result?.execution ? element("p", {}, link("Open recorded execution", url({view:"traces",trace:trace.id,call:result.execution})),
+        result.exact_payload_match === true ? " · Exact payload matches" :
+          result.exact_payload_match === false ? " · Recorded representations differ" : " · Payload comparison unavailable") :
+        result ? element("p",{className:"label",text:"Execution evidence unavailable in this trace."}) : null,
+      item.text == null ? element("p", {text:item.availability === "redacted" ? "Input was redacted" : "Input text unavailable"}) : element("pre", {text:item.text}));
+    (result ? toolInputs : inputs).push(entry);
+  }
   const detail = panel(call?.model || span?.name || (call ? "Inference span" : "Span"),
     element("p", { className: "label", text: span?.id || call?.id || "No recorded span selected" }),
     call ? element("p", { text: capture.length ? plural(capture.length, "captured input") : "Captured inputs unavailable" }) : null,
     unavailable ? element("p", { className: "label", text: plural(unavailable, "input") + " missing or redacted" }) : null,
     call && prefill_issues[call.id] ? element("p", { text: "Unverified first-token report · " + prefill_issues[call.id] }) : null,
+    toolInputs.length ? element("details",{},element("summary",{text:"Tool results in this request (" + toolInputs.length + ")"}),...toolInputs) : null,
     ...inputs,
     ...(call?.decisions || []).map((decision) => element("details", {},
       element("summary", { text: decision.label }), element("pre", { text: JSON.stringify(decision.outcome, null, 2) }))),
@@ -2274,7 +2304,8 @@ function traceDetail({ trace, findings, activation_reports, prefill_issues = {},
 async function render(refresh = false) {
   let body;
   if (view === "traces" && traceId) {
-    body = traceDetail(await api("trace", { id: traceId }));
+    const call = query.get("call") || query.get("span");
+    body = traceDetail(await api("trace", {id:traceId, ...(call && {call})}));
   } else if (view === "threads" && threadId) {
     body = await conversationView();
   } else if (view === "findings") {
@@ -2449,47 +2480,57 @@ async function render(refresh = false) {
     } else if (!query.has("explore") && !pageOffset && location.hash !== "#proposal-coverage") {
       const [cards, impact] = await Promise.all([api("findings", scope), api("summary", scope)]);
       const unfiltered = !Object.keys(scope).length;
+      let guidance;
       if (!cards.rows.length && (unfiltered || impact.captured_conversations)) {
         const health = await api("health", scope);
         const {traces, inference_spans: calls} = health.coverage;
         if (!calls && impact.captured_conversations) {
-          byId("title").textContent = "Captured activity";
-          byId("content").replaceChildren(panel("Browse recorded activity",
+          guidance = panel("Captured activity",
             element("p", {text:plural(impact.captured_conversations, "conversation") +
               " with recorded spans. Recommendations appear when supported inference evidence arrives."}),
-            link("Browse conversations", url({view:"threads"}), "action")));
-          byId("content").removeAttribute("data-signature");
-          return;
-        }
-        if (unfiltered) {
-          byId("title").textContent = traces ? "Telemetry received" : "Connect your workflow";
+            link("Browse conversations", url({view:"threads"}), "action"));
+        } else if (unfiltered) {
+          const heading = traces ? "Telemetry received" : "Connect your workflow";
           const next = !traces ? "Configure your workflow’s OpenTelemetry batch exporter, then send one model request." :
             !calls ? "Set gen_ai.operation.name on a model span so the receiver can identify the inference." :
             health.content_capture ? "Findings appear when captured sources disagree, repeat, or match another supported check." :
             "This workspace retains metadata. To investigate a source conflict, use a separate capture-enabled database with redacted staging inputs.";
-          byId("content").replaceChildren(element("section",{className:"panel","aria-label":"Receiver setup"},
+          guidance = element("section",{className:"panel","aria-label":"Receiver setup"},
+            element("h2",{text:heading}),
             element("p",{text:next}),
             !traces && element("pre",{},element("code",{text:"export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\n" +
               "export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + health.otlp_http_endpoint})),
             !traces && link("Inspect a sample exchange request",url({view:"preview",scenario:"exchange-approval"})),
             traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
             traces > 0 && link("Threads",url({view:"threads"})),
-            element("p",{},link("Check receiver status","/api/sidecar/health"))));
-          byId("content").removeAttribute("data-signature");
-          return;
+            element("p",{},link("Check receiver status","/api/sidecar/health")));
+          if (!impact.captured_conversations) {
+            byId("title").textContent = "Welcome to NexusWeave";
+            byId("content").replaceChildren(guidance);
+            byId("content").removeAttribute("data-signature");
+            return;
+          }
         }
       }
-      byId("title").textContent = "Recommendations";
+      if (!cards.rows.length && !impact.captured_conversations) {
+        byId("title").textContent = "Recommendations";
+        byId("content").replaceChildren(element("p",{className:"empty",text:"No recommendations match these filters."}),
+          link("Open the workspace briefing",url({},{})));
+        byId("content").removeAttribute("data-signature");
+        return;
+      }
       const signature = JSON.stringify([impact,cards]);
       if (refresh && byId("content").dataset.signature === signature) return;
       byId("content").dataset.signature = signature;
       const existing = byId("content").querySelector(".canvas-home");
       if (existing) {
         existing.updateEvidence(impact, cards);
+        existing.nextElementSibling?.remove();
+        if (guidance) existing.after(guidance);
         return;
       }
       const partners = await api("chat-config");
-      body = investigationCanvas(impact, cards, partners.models);
+      body = element("div",{className:"interview-page"},investigationCanvas(impact, cards, partners.models),guidance);
     } else {
       const [impact, factors, screens, targets, prefixes] = await Promise.all([api("impact", scope), api("factors", { ...scope, offset: pageOffset }),
         pageOffset ? Promise.resolve({rows:[]}) : api("screened-pairs", scope),
@@ -2579,6 +2620,29 @@ async function main() {
     return;
   }
   const views = { findings: "Recommendations", preview: "Before inference", traces: "Traces", threads: "Threads" };
+  const appearance = byId("appearance");
+  const systemTheme = matchMedia("(prefers-color-scheme: dark)");
+  let theme;
+  try { theme = localStorage.getItem("nexusweave-theme"); } catch { /* Follow the system preference. */ }
+  function applyTheme() {
+    const dark = theme === "dark" || (theme !== "light" && systemTheme.matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    appearance.textContent = dark ? "Light mode" : "Dark mode";
+    appearance.setAttribute("aria-label", "Switch to " + (dark ? "light" : "dark") + " mode");
+  }
+  appearance.hidden = false;
+  appearance.addEventListener("click", () => {
+    theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    try { localStorage.setItem("nexusweave-theme", theme); } catch { /* Apply for the current page. */ }
+    applyTheme();
+  });
+  systemTheme.addEventListener("change", applyTheme);
+  applyTheme();
+  if (interview) {
+    document.body.dataset.workspace = "interview";
+    byId("navigation").hidden = true;
+    byId("filters").hidden = true;
+  }
   const activeView = view === "traces" ? "findings" : view;
   byId("navigation").replaceChildren(...["findings", "threads", "preview"].map(key =>
     link(views[key], url({view:key}), null, activeView === key)));
@@ -2619,6 +2683,11 @@ async function main() {
   if (scope.meta_key && !health.metadata_keys.includes(scope.meta_key)) meta.add(element("option", { value: scope.meta_key, text: scope.meta_key }));
   for (const [key, value] of Object.entries(scope)) form.elements.namedItem(key).value = value;
   await render();
+  if (interview) {
+    const {workflows} = await api("workflows");
+    workspaceWorkflows = workflows;
+    workflowNavigation(new URLSearchParams(location.search).get("workflow"));
+  }
   if (location.hash === "#proposal-coverage") {
     const coverage = byId("content").querySelector(".proposal-coverage");
     if (coverage) { coverage.open = true; coverage.querySelector("summary").focus(); }

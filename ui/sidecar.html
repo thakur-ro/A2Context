@@ -12,10 +12,12 @@
   <header class="header">
     <div class="shell masthead">
       <a class="brand" href="/"><img src="/nexusweave.svg" width="25" height="25" alt=""> NexusWeave</a>
-      <span id="environment"></span>
+      <div class="workspace-controls"><span id="environment"></span><button id="appearance" type="button" hidden></button></div>
     </div>
     <nav id="navigation" class="shell" aria-label="Workspace"></nav>
   </header>
+  <div class="workspace-layout">
+  <aside id="workflow-sidebar" hidden><nav aria-label="Workflows" id="workflow-navigation"></nav></aside>
   <main class="shell" id="workspace">
     <div class="heading">
       <div><h1 id="title">Recommendations</h1><p id="summary"></p></div>
@@ -40,5 +42,6 @@
     <details id="capture"><summary>Capture coverage</summary><p id="status" role="status"></p></details>
     <p id="error" role="alert"></p>
   </main>
+  </div>
 </body>
 </html>

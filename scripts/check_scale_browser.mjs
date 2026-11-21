@@ -7,6 +7,16 @@ if (!origin || !workflows.length) throw new Error("Usage: node scripts/check_sca
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({ executablePath: process.env.CHROME_BINARY });
 try {
+  const landing = await browser.newPage({viewport:{width:1152,height:850}});
+  await landing.goto(origin);
+  await landing.getByRole("heading",{name:"Welcome to NexusWeave"}).waitFor({timeout:60000});
+  const sidebar = landing.getByRole("navigation",{name:"Workflows"});
+  await sidebar.getByRole("link",{name:"All workflows",exact:true}).waitFor();
+  const entries = await sidebar.getByRole("link").evaluateAll(links => links.map(link => new URL(link.href).searchParams.get("workflow")));
+  assert.ok(workflows.every(workflow => entries.includes(workflow)));
+  assert.equal(await landing.locator("#filters").isVisible(),false);
+  console.log(JSON.stringify({workspace:true,workflows:entries.filter(Boolean)}));
+  await landing.close();
   for (const workflow of workflows) {
     for (const width of [1152, 390]) {
       const page = await browser.newPage({ viewport:{width,height:850}, reducedMotion:"reduce" });
@@ -24,14 +34,14 @@ try {
       await page.locator(".canvas-lead h2").waitFor({timeout:60000});
       const readyMs = Math.round(performance.now() - start);
       const openingApi = {...api};
-      const browse = page.getByText(/^Browse \d+ (?:recommendations?|repeat groups?)$/);
+      const ask = page.getByRole("textbox",{name:"Question about workflow evidence"});
       let evidenceMs = null;
       let matchingLocations = false;
       let neighboringMessages = null;
-      if (await browse.isVisible()) {
-        await browse.click();
+      if (await ask.isVisible()) {
         const open = performance.now();
-        await page.getByRole("region",{name:"Recommendation cards"}).getByRole("button",{name:"Inspect",exact:true}).first().click();
+        await ask.fill("Which inputs were repeated?");
+        await ask.press("Enter");
         const evidence = page.getByRole("link",{name:"Open exact evidence →"});
         await evidence.waitFor();
         matchingLocations = await page.getByText("Two matching locations in this request",{exact:true}).isVisible();

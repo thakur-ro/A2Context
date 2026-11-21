@@ -16,6 +16,7 @@ mod screened;
 mod store;
 mod target_patterns;
 mod targets;
+mod tool_handoffs;
 mod variation;
 
 use crate::{
@@ -194,7 +195,7 @@ fn start(mut options: Options) -> Result<()> {
             )
         })?;
     if matches!(options.demo, Some(Demo::Exchange)) {
-        println!("Open http://{address}/?workflow=exchange-agent");
+        println!("Open http://{address}/");
     } else {
         println!("NexusWeave sidecar is listening at http://{address}");
     }
@@ -373,6 +374,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
         if request.method() == &Method::Get {
             let value = match path {
                 "/api/sidecar/chat-config" => json!({"models":[]}),
+                "/api/sidecar/workflows" => json!({"workflows":store.workflows()?}),
                 "/api/sidecar/health" => json!({
                     "demo": demo, "content_capture": options.content || demo,
                     "otlp_http_endpoint": format!("http://{}/v1/traces", options.address),
@@ -488,7 +490,17 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                         call.prefill_probe = None;
                         call.recorded_request = None;
                     }
-                    json!({"trace":run, "prefix_reviews":prefix_reviews, "target_checks":target_checks, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
+                    let selected = match fields.get("call") {
+                        Some(id) => run
+                            .calls
+                            .iter()
+                            .find(|call| call.id == *id || call.span_id.as_ref() == Some(id)),
+                        None => run.calls.first(),
+                    };
+                    let received_results = selected
+                        .map(|call| tool_handoffs::received_by(&run, call))
+                        .unwrap_or_default();
+                    json!({"trace":run, "received_tool_results":received_results, "prefix_reviews":prefix_reviews, "target_checks":target_checks, "prefill_issues":prefill_issues, "findings":sources, "activation_reports": activations.len(),
                         "replay_reports": reports.len()})
                 }
                 "/api/sidecar/preview-example" => {

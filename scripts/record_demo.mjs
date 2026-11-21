@@ -11,7 +11,7 @@ const viewport = { width: 1280, height: 720 };
 let pointer = { x: 943, y: 150 };
 
 try {
-  const page = await browser.newPage({ viewport, deviceScaleFactor: 2, reducedMotion: "no-preference" });
+  const page = await browser.newPage({ viewport, deviceScaleFactor: 2, reducedMotion: "no-preference", colorScheme:"light" });
   page.setDefaultTimeout(model ? 60000 : 8000);
   // A browser screenshot does not include the system pointer. Draw one at the real click coordinates.
   await page.addInitScript(() => {
@@ -42,8 +42,8 @@ try {
       };
     });
   });
-  await page.goto(new URL("/?workflow=exchange-agent", base).href);
-  await page.getByRole("heading",{name:"Check current approval before dispatch",exact:true}).waitFor();
+  await page.goto(new URL("/", base).href);
+  await page.getByRole("heading",{name:"What would you like to investigate?",exact:true}).waitFor();
 
   const encoder = spawn(process.env.FFMPEG || "ffmpeg", [
     "-hide_banner", "-loglevel", "error", "-n", "-f", "image2pipe", "-framerate", String(fps),
@@ -104,8 +104,22 @@ try {
     await frame(Math.round(seconds * fps));
   }
 
+  async function typeQuestion(text) {
+    const input = page.getByRole("textbox",{name:"Question about workflow evidence"});
+    await focus(input);
+    await input.focus();
+    for (let end = 4; end < text.length + 4; end += 4) {
+      await input.fill(text.slice(0,end));
+      await frame(3);
+    }
+    await input.press("Enter");
+  }
+
   try {
-    await read("One exchange was approved. Then the customer put the second order on hold.", 3.8);
+    await read("The workspace briefing shows the conversations and what keeps coming up.", 3.3);
+    await click(page.getByRole("navigation",{name:"Workflows"}).getByRole("link",{name:"Exchange agent",exact:true}));
+    await page.getByRole("heading",{name:"Exchange agent",exact:true}).waitFor();
+    await read("A customer approved one exchange, then put the second order on hold.", 2.2);
     if (model) {
       const picker = page.getByLabel("Analysis partner");
       await click(picker);
@@ -115,20 +129,20 @@ try {
     }
     const canvas = page.getByRole("region",{name:"Answer canvas"});
     caption = "";
-    await click(page.getByRole("button",{name:"Which instructions disagreed?"}));
+    await typeQuestion("Which instructions disagreed?");
     for (let i = 0; i < 15; i++) await frame();
     await canvas.getByText('"hold"',{exact:true}).waitFor();
     await click(canvas.getByRole("button",{name:/latest-customer-message/}));
     await canvas.getByText("latest-customer-message · Role: user · Version: v1",{exact:true}).waitFor();
     await read("The cache still authorized the exchange. The customer’s message said hold.", 3, canvas, 60);
-    await click(page.getByText("Other questions",{exact:true}));
     caption = "";
-    await click(page.getByRole("button",{name:"What changed at dispatch?"}));
+    await typeQuestion("What changed at dispatch?");
     for (let i = 0; i < 15; i++) await frame();
     await canvas.getByText("exchange requested",{exact:true}).waitFor();
     await read("The same proposal reached dispatch twice. Checking current approval prevented the write.", 3.5, canvas, 60);
     caption = "";
-    await click(canvas.getByRole("button",{name:"Where else did that repeat?"}));
+    await click(page.getByRole("button",{name:"Switch to dark mode"}));
+    await typeQuestion("Where else did that repeat?");
     await canvas.getByRole("link",{name:"Wait on the second exchange"}).waitFor();
     await read("Two conversations had this finding. Each links back to the affected request.", 3, canvas, 60);
     await click(canvas.getByRole("link",{name:"See affected requests →"}));

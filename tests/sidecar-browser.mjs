@@ -18,7 +18,9 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 950 } });
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
-  await page.getByRole("button",{name:"Show the context map"}).click();
+  const question = page.getByLabel("Question about workflow evidence");
+  const ask = async text => { await question.fill(text); await question.press("Enter"); };
+  await ask("Show the context map");
   const map = page.getByRole("region",{name:"Context map"});
   await map.getByRole("button",{name:"Load more findings"}).waitFor();
   while (await map.getByRole("button",{name:"Load more findings"}).count()) {
@@ -86,12 +88,10 @@ try {
   assert.equal(page.url(),graphUrl);
   await focus.selectOption("workflows");
   assert.equal(await map.locator(".selected-token").count(),0);
-  const question = page.getByLabel("Question about workflow evidence");
   await question.fill("What changed when product-id was edited?");
   await question.press("Enter");
   await page.getByRole("region",{name:"Answer canvas"}).getByRole("heading",{name:/product-id/}).waitFor();
-  await page.getByText("Other questions",{exact:true}).click();
-  await page.getByRole("button",{name:"Show the context map"}).click();
+  await ask("Show the context map");
   await map.locator(".network-readout strong").filter({hasText:"product-id"}).waitFor();
   await page.goto(base + "/?explore=1");
   await page.getByRole("heading", { name: "Conversations with findings" }).waitFor();
@@ -177,13 +177,11 @@ try {
   await fourArmReports.last().click();
   await page.getByText(/Joint interaction: -100 percentage points/).waitFor();
   assert.equal(new URL(page.url()).searchParams.get("decision"), "bay");
-  await page.getByRole("link", { name: "Recommendations", exact: true }).click();
+  await page.goto(base + "/?explore=1");
   await page.locator("#filters summary").click();
   await page.getByLabel("Organization").fill("demo-retail");
   await page.getByLabel("User", { exact: true }).fill("user-042");
   await page.getByRole("button", { name: "Apply filters" }).click();
-  await page.getByText(/^Browse \d+ (?:recommendations?|repeat groups?)$/).click();
-  await page.getByRole("link",{name:"Explore evidence by source"}).click();
   await factor(page, "Conflicting rules").click();
   await conflictCard(page).getByRole("link", { name: "Review recommendation" }).click();
   await page.getByRole("heading", { name: "Recommendation", exact: true }).waitFor();
@@ -517,9 +515,7 @@ try {
   await mobile.locator(".card").filter({ hasText: "Replacement comparison" }).getByRole("link").click();
   await mobile.locator(".panel").first().locator("tr.different").waitFor();
   assert.equal(await mobile.evaluate(() => document.body.scrollWidth <= innerWidth), true);
-  await mobile.getByRole("link", { name: "Recommendations", exact: true }).click();
-  await mobile.getByText(/^Browse \d+ (?:recommendations?|repeat groups?)$/).click();
-  await mobile.getByRole("link",{name:"Explore evidence by source"}).click();
+  await mobile.goto(base + "/?explore=1");
   await factor(mobile, "Conflicting rules").click();
   await conflictCard(mobile).getByRole("link", { name: "Review recommendation" }).click();
   await mobile.getByRole("heading", { name: "Recommendation", exact: true }).waitFor();

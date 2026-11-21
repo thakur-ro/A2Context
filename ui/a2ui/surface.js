@@ -90,6 +90,27 @@ export function questions(labels, ask) {
   return view;
 }
 
+export function briefing({ metrics, themes }) {
+  const children = ["metrics"];
+  const components = [
+    {id:"root", component:"Column", children},
+    {id:"metrics", component:"Row", children:metrics.map((_, i) => "metric" + i)},
+    ...metrics.flatMap(({value,label}, i) => [
+      {id:"metric" + i, component:"Column", children:["number" + i,"metricLabel" + i]},
+      {id:"number" + i, component:"Text", text:"### " + value},
+      {id:"metricLabel" + i, component:"Text", text:literal(label), variant:"caption"},
+    ]),
+  ];
+  if (themes.length) {
+    children.push("themes", ...themes.map((_, i) => "theme" + i));
+    components.push({id:"themes", component:"Text", text:"### Recurring themes"}, ...themes.map((text, i) => (
+      {id:"theme" + i, component:"Text", text:literal(text)})));
+  }
+  children.push("question");
+  components.push({id:"question", component:"Text", text:"## What would you like to investigate?"});
+  return surface("briefing", components, new Map());
+}
+
 function create(surfaceId, handleAction) {
   const processor = new MessageProcessor([basicCatalog], handleAction);
   processor.processMessages([{ version: "1.0", createSurface: { surfaceId, catalogId: basicCatalog.id } }]);

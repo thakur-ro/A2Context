@@ -20,6 +20,16 @@ pub struct Store(Connection);
 type Rejected = (u16, String);
 
 impl Store {
+    pub(super) fn workflows(&self) -> Result<Vec<String>> {
+        let mut stmt = self.0.prepare(
+            "SELECT DISTINCT workflow FROM traces WHERE run IS NOT NULL AND workflow > '' ORDER BY workflow",
+        )?;
+        let workflows = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(workflows)
+    }
+
     pub fn open(path: &Path) -> Result<Self> {
         let db = Connection::open(path)?;
         super::position_plan::register_pair_id(&db)?;
@@ -1211,6 +1221,9 @@ impl Store {
                 sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
                     'recommendations',count(DISTINCT group_id),'factors',count(DISTINCT factor),
                     'repeat_groups',count(DISTINCT group_id) FILTER (WHERE kind='duplicate'),
+                    'themes',json((SELECT json_group_array(json_object('kind',kind,'conversations',conversations,'groups',groups))
+                        FROM (SELECT kind,count(DISTINCT thread_key) AS conversations,count(DISTINCT group_id) AS groups
+                            FROM events GROUP BY kind ORDER BY conversations DESC,groups DESC,kind LIMIT 3))),
                     'captured_conversations',(SELECT count(DISTINCT t.thread_key)
                         FROM selected t JOIN captured_calls c ON c.trace_id=t.id WHERE t.thread_key IS NOT NULL");
                 for (key, column) in [("trace", "c.trace_id"), ("call", "c.call_id")] {

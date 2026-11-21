@@ -252,6 +252,39 @@ def check_thread_calls(binary, folder):
         assert "Order write rejected" not in json.dumps(tool_row)
 
 
+def check_tool_handoffs(binary, db):
+    receiver = case_span("handoff", "undeclared")
+    start = CLOCK * 10**9
+    cases = ["same", "different", "missing", "duplicate", "late", "unknown"]
+    receiver["attributes"] = [field for field in receiver["attributes"]
+                              if field["key"] not in {"gen_ai.input.messages", "nexusweave.context.semantics"}]
+    receiver["attributes"] += attrs({"gen_ai.input.messages": json.dumps([{
+        "role": "tool", "parts": [{"type": "tool_call_response", "id": key, "response": "shown"} for key in cases],
+    }])})
+    executions = []
+    for i, key in enumerate(["same", "different", "duplicate", "duplicate", "late", "unknown"], 1):
+        attributes = {"gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": "read_record",
+                      "gen_ai.tool.call.id": key}
+        if key != "unknown":
+            attributes["gen_ai.tool.call.result"] = "earlier" if key == "different" else "shown"
+        executions.append({"traceId": receiver["traceId"], "spanId": f"{i:016x}",
+                           "startTimeUnixNano": str(start - 2000),
+                           "endTimeUnixNano": str(start + (1000 if key == "late" else -1000)),
+                           "attributes": attrs(attributes)})
+    with server(binary, db, "--capture-content") as base:
+        send_traces(base, export(receiver, *reversed(executions)))
+        details = get(base, "trace", id="otlp:" + receiver["traceId"], call=receiver["spanId"])
+        results = {result["invocation"]: result for result in details["received_tool_results"]}
+        assert set(results) == set(cases)
+        for key, expected in [("same", True), ("different", False), ("unknown", None)]:
+            assert results[key]["execution"]
+            assert results[key]["tool"] == "read_record"
+            assert results[key]["exact_payload_match"] is expected
+        for key in ("missing", "duplicate", "late"):
+            assert results[key]["execution"] is None and results[key]["exact_payload_match"] is None
+        assert [results[key]["context"] for key in cases] == [f"input:0:{i}" for i in range(len(cases))]
+
+
 def check_conversation_population(binary, db):
     org = "population"
     early = case_span("clear", "undeclared", org=org)
@@ -1507,6 +1540,7 @@ def main():
         check_screen_suggestions(args.binary, folder)
         check_conversation_population(args.binary, folder / "population.sqlite")
         check_thread_calls(args.binary, folder)
+        check_tool_handoffs(args.binary, folder / "tool-handoffs.sqlite")
         check_declared_conflict_replays(args.binary, folder)
         check_external_batch(args.binary, folder)
         check_current_history_test(args.binary)

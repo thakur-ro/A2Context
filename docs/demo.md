@@ -14,9 +14,9 @@ cargo run --locked -- demo
 
 Open the address it prints. The demo loads saved telemetry and measurements into a temporary SQLite database. It requires no API key.
 
-1. The opening recommendation is **Check current approval before dispatch**. Choose **Which instructions disagreed?** to compare the cached approval with the customer’s hold.
-2. Open **Other questions** and choose **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
-3. Choose **Where else did that repeat?** inside the answer. Two conversations contributed to this finding. **See affected requests** opens the evidence. The state table shows that the earlier boots exchange stayed in place under both conditions.
+1. The welcome page shows the workspace totals and recurring themes. Choose **Exchange agent** in the sidebar for its own briefing. Ask **Which instructions disagreed?** to compare the cached approval with the customer’s hold.
+2. Type **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
+3. Type **Where else did that repeat?** Two conversations contributed to this finding. **See affected requests** opens the evidence. The state table shows that the earlier boots exchange stayed in place under both conditions.
 
 The recording uses **Workspace evidence**. The source comparison reads the two declarations, and the dispatch comparison reads the sandbox receipt. The exchange agent’s saved proposals came from Qwen. You can run the walkthrough without installing a model. [Connect a model](chat-canvas.md)
 
@@ -30,7 +30,7 @@ After building the binary, run the same exchange workflow with a simulated instr
 python3 examples/exchange-approval/demo.py --capture-gap
 ```
 
-Open the printed address and choose **Show the context map**. The two resumed hold requests still contain the customer's instruction, but the workflow has lost its named fragment in both exports. The third request retains the customer anchor and satisfies the requirement. Select **Exchange authorization** on the map, then follow the hollow customer-message node to the exact request. Comparing its message with its source inventory tells the engineer where to repair capture.
+Open the printed address and ask **Show the context map**. The two resumed hold requests still contain the customer's instruction, but the workflow has lost its named fragment in both exports. The third request retains the customer anchor and satisfies the requirement. Select **Exchange authorization** on the map, then follow the hollow customer-message node to the exact request. Comparing its message with its source inventory tells the engineer where to repair capture.
 
 ## What the test covers
 

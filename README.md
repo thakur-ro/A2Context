@@ -16,7 +16,7 @@ cd NexusWeave
 cargo run --locked -- demo
 ```
 
-Open the address printed in the terminal. Start with **Check current approval before dispatch**. Choose **Which instructions disagreed?** to see the cached approval beside the customer’s hold. Open **Other questions** and choose **What changed at dispatch?** to compare the two sandbox runs. Choose **Where else did that repeat?** to open the affected conversations. Press Ctrl+C to stop.
+Open the address printed in the terminal. The workspace briefing shows how much evidence was captured and which issues recur. Start with **Which instructions disagreed?**, then type **What changed at dispatch?** and **Where else did that repeat?** to follow the same case. Choose **Exchange agent** in the sidebar for its own briefing. Press Ctrl+C to stop.
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 
@@ -44,39 +44,40 @@ On this recorded answer, editing the returns policy had the largest measured eff
 
 ## Ship it beside your service
 
-NexusWeave turns workflow telemetry into recurring findings with evidence and a suggested next step. You can also check a pending request before calling the model and attach experiments that measure what changed after a source edit.
+Run the Rust sidecar beside your LLM application. It turns captured inputs into findings you can follow across conversations. It can also check an assembled request before inference and use experiment results to recommend what to test next.
 
 ```mermaid
 ---
 config:
   flowchart:
-    nodeSpacing: 24
-    rankSpacing: 36
-    padding: 12
+    nodeSpacing: 22
+    rankSpacing: 28
+    padding: 10
 ---
 flowchart TB
-    accTitle: How NexusWeave runs beside inference
-    accDescr: The application assembles requests, calls the model, and runs tools. It exports telemetry asynchronously to NexusWeave. The sidecar also returns checks on demand and accepts reports from separate experiment runners. SQLite backs the recommendations dashboard.
+    accTitle: NexusWeave sidecar and inference paths
+    accDescr: The application owns inference and tool execution. It exports captured traces asynchronously and can request a synchronous preview. The sidecar checks captured context and verifies reports from a separate experiment runner. SQLite backs the recommendations dashboard, where an engineer can prepare another test.
 
-    App("Your LLM application<br/>Runs inference and tools")
-    Runner("Experiment runner<br/>Replay or model probes")
-    Sidecar("NexusWeave Rust sidecar<br/>Checks pending requests<br/>and analyzes captured calls")
-    Store[("SQLite evidence store")]
-    Dashboard("Dashboard<br/>Recommendations and evidence")
+    App["LLM application<br/>Runs inference and tools"]
+    Runner["Experiment runner<br/>Tests a source edit"]
+    Worker["NexusWeave sidecar<br/>Context and report checks"]
+    Store[("SQLite<br/>Evidence and findings")]
+    Dashboard["Recommendations<br/>Dashboard and API"]
 
-    App -->|"Async OTLP/HTTP"| Sidecar
-    App <-.->|"Optional preview"| Sidecar
-    Runner -.->|"Optional reports"| Sidecar
-    Sidecar --> Store --> Dashboard
+    App -->|"Async OTLP/HTTP"| Worker
+    App <-.->|"Optional preview"| Worker
+    Runner -.->|"Replay or probe report"| Worker
+    Worker --> Store --> Dashboard
+    Dashboard -.->|"Engineer prepares a test"| Runner
 
-    classDef service fill:#e9eff8,stroke:#6b83a5,color:#182c45
-    classDef evidence fill:#f0f3f7,stroke:#8b9bb0,color:#253448
-    class Sidecar,Dashboard service
-    class App,Runner,Store evidence
+    classDef workflow fill:#f0f3f7,stroke:#8293ab,color:#253448
+    classDef analysis fill:#e9eff8,stroke:#6b83a5,color:#182c45
+    class App,Runner workflow
+    class Worker,Store,Dashboard analysis
 ```
 
-Your application controls inference and tool execution. The sidecar makes zero model calls by default, and an OpenTelemetry Collector can send the same spans to your existing observability backend. [Request paths and evidence limits](docs/architecture.md#sidecar-architecture)
+Your application controls inference, authorization, and tool execution. Background analysis makes zero model calls. A preview can flag a missing or conflicting source before dispatch. To measure which source changed a proposed answer or tool call, run a controlled edit separately and attach the report. [Request paths and evidence limits](docs/architecture.md#sidecar-architecture)
 
-Build the container and verify that traces survive a restart with `make verify-image`. The deployment guide includes a Kubernetes example and a Collector setup for keeping your existing observability backend. [Deployment](DEPLOYMENT.md) · [Staging checks and resource measurements](docs/validation.md)
+Build the container and verify that traces survive a restart with `make verify-image`. A local OpenTelemetry Collector can send the same spans to NexusWeave and your existing observability backend. [Deployment](DEPLOYMENT.md) · [Collector setup](docs/sidecar.md#fan-out-without-changing-observability-platforms) · [Staging checks and resource measurements](docs/validation.md)
 
 [Study recommendations across six workloads](docs/scale-study.md) · [Contributor setup and release checks](CONTRIBUTING.md) · [Rust API](docs/rust-api.md) · [Connect a model to the dashboard](docs/chat-canvas.md) · [Research and dataset credits](CREDITS.md) · [Apache 2.0 license](LICENSE)

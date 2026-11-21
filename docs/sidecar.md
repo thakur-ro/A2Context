@@ -2,7 +2,7 @@
 
 [Watch the embedded walkthrough](demo.md) · [Build and verify the shipping image](../DEPLOYMENT.md)
 
-The sidecar receives [OTLP/HTTP](https://opentelemetry.io/docs/specs/otlp/) trace exports and writes normalized evidence to embedded SQLite. The dashboard opens on **Recommendations**. It counts distinct identified conversations with findings, and groups them by what the captured evidence shows. Select a count to see which source groups contributed that level of evidence, then open a conversation and its measurement. Select a source factor to see where its findings recur. Each occurrence links to its original conversation and span. URL filters carry across those layers.
+The sidecar receives OTLP/HTTP trace exports and writes normalized evidence to embedded SQLite. The workspace opens with captured conversation totals and recurring findings. Ask a question across the workspace, or choose a workflow in the sidebar for its own briefing. Answers can open a captured source, affected conversations, or a measured comparison. Each occurrence links to its original conversation and span. [Investigation interview](chat-canvas.md) · [OTLP specification](https://opentelemetry.io/docs/specs/otlp/)
 
 ```sh
 cargo build --release --locked

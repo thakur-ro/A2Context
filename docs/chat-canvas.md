@@ -1,8 +1,8 @@
 # Ask about a workflow
 
-Open the sidecar dashboard and select a workflow or user under **Filters**. The opening screen shows the highest-ranked recommendation in that scope. Pick a suggested question or type your own. **Browse recommendations** opens the ranked list and coverage totals. A conversation can contribute to several groups.
+Open the sidecar dashboard to see the workspace briefing. It shows captured conversations, affected conversations, and recurring themes. Pick a suggested question or type your own. Choose a workflow in the sidebar for its briefing, or type **Focus on** followed by its name. Type **Show all workflows** to return to the workspace. A conversation can contribute to several finding groups.
 
-Ask “Which instructions disagreed?” to compare the values declared by two sources. Ask “Where else did that repeat?” to keep the selected recommendation and see its conversation count and dated observations. A sandbox receipt opens as a diagram with the same proposal on both branches. **Open exact evidence** takes you to the recorded call. Inside **Browse recommendations**, **Explore evidence by source** opens detailed investigations.
+Ask “Which instructions disagreed?” to compare the values declared by two sources. Ask “Show the exact inputs” for the captured excerpts behind that answer, or “Where else did that repeat?” for counts and representative conversations. A sandbox receipt opens as a diagram with the same proposal on both branches. **Open exact evidence** takes you to the recorded call. The appearance control switches between light and dark and remembers the setting on that origin. [Interview design](interview-design.md)
 
 ## Connect a model
 
@@ -15,7 +15,7 @@ python3 examples/chat-partner/serve.py \
   --model YOUR_MODEL_ID
 ```
 
-Open the gateway address, select your model beside the question field, and ask a question. Repeat `--model` to offer several models at one endpoint. For a hosted endpoint, use HTTPS and supply its bearer credential through `NEXUSWEAVE_CHAT_KEY` in the gateway process environment. The browser never receives the key. Send telemetry and experiment uploads directly to the Rust sidecar.
+Open the gateway address and ask a question. The first configured model is selected automatically. Repeat `--model` to offer several models at one endpoint. For a hosted endpoint, use HTTPS and supply its bearer credential through `NEXUSWEAVE_CHAT_KEY` in the gateway process environment. The browser never receives the key. Send telemetry and experiment uploads directly to the Rust sidecar.
 
 A question sent to a partner makes one request. A direct question about a uniquely matched dispatch comparison reads the sandbox receipt and makes zero model calls. An open-ended partner request includes the current question, up to six recent turns, and the first 15 ranked findings. When the scope is larger, the sidecar also searches source names, rules, tool names, finding types and conversation names using up to eight terms from the question. It supplies up to 15 matching groups and retains the previous finding for follow-ups. Summaries can include source names, declared values, state fields and proposal previews. Choose a provider approved for that data. The gateway caps the response at 450 tokens and allows two concurrent partner requests. Workspace evidence, background analysis and opening cards make zero model calls.
 

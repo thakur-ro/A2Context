@@ -55,7 +55,12 @@ try {
   assert.ok((await page.request.post(endpoint,{data:toolOnly})).ok());
   await page.goto(base+"/?workflow=tool-observations");
   await page.getByRole("heading",{name:"Captured activity",exact:true}).waitFor();
+  await page.getByRole("heading",{name:"What would you like to investigate?",exact:true}).waitFor();
   await page.getByText(/1 conversation with recorded spans/).waitFor();
+  const question = page.getByLabel("Question about workflow evidence");
+  await question.fill("Show recorded activity");
+  await question.press("Enter");
+  await page.getByRole("button",{name:"Order observation",exact:true}).waitFor();
   await page.getByRole("link",{name:"Browse conversations",exact:true}).click();
   assert.equal(new URL(page.url()).searchParams.get("workflow"),"tool-observations");
   await page.getByRole("link",{name:/Order observation/}).waitFor();

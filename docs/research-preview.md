@@ -6,7 +6,7 @@ A workflow engineer can check that the pending request contains a declared rule,
 
 ![The returns workflow branches into 12 replay findings, three replacement comparisons and two exact repetitions](media/context-workflows.png)
 
-Choose **Show the context map**. For up to 120 loaded nodes, the overview draws the relationships between sources, findings and outcomes. Larger maps open by workflow. Each branch counts every loaded finding once, using the workflow of the card’s representative evidence. Follow a workflow to a finding type, select a finding, then open the exact call. Loading another page updates counts in the current filter scope.
+Ask **Show the context map**. For up to 120 loaded nodes, the overview draws the relationships between sources, findings and outcomes. Larger maps open by workflow. Each branch counts every loaded finding once, using the workflow of the card’s representative evidence. Follow a workflow to a finding type, select a finding, then open the exact call. Loading another page updates counts in the current scope.
 
 Select a source to see other findings that cite it. Matching a source uses its producer, organization, workflow, identifier, revision and role. Unnamed items stay tied to their call. Declared values come from captured instructions. Trial outcomes come from attached comparisons.
 
