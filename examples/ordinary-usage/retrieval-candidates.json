@@ -1,0 +1,88 @@
+[
+  {
+    "session": "papers-1",
+    "retrieved": [
+      "foundational-algorithms chunk 1",
+      "foundational-algorithms chunk 2",
+      "research-review chunk 3"
+    ],
+    "available_earlier_alternatives": 0,
+    "candidate": null
+  },
+  {
+    "session": "papers-2",
+    "retrieved": [
+      "methods chunk 2",
+      "methods chunk 6",
+      "methods chunk 9"
+    ],
+    "available_earlier_alternatives": 3,
+    "candidate": {
+      "session": "papers-1",
+      "trace": "otlp:e6727903bcb6484e9fe3e1187eb1a2b2",
+      "call": "35f4d7d41b1e49df",
+      "pointer": "/messages/1/content",
+      "source": "foundational-algorithms chunk 2",
+      "offset_chars": 4981,
+      "length_chars": 5424,
+      "sha256": "a0eaeeb2cf49adcde94dc5d4ed8b81820e823a941f92c0837bfa767f86284799"
+    }
+  },
+  {
+    "session": "papers-3",
+    "retrieved": [
+      "methods chunk 10",
+      "methods chunk 5",
+      "methods chunk 9"
+    ],
+    "available_earlier_alternatives": 5,
+    "candidate": {
+      "session": "papers-1",
+      "trace": "otlp:e6727903bcb6484e9fe3e1187eb1a2b2",
+      "call": "38b7e1f4fb804786",
+      "pointer": "/messages/1/content",
+      "source": "foundational-algorithms chunk 1",
+      "offset_chars": 0,
+      "length_chars": 5464,
+      "sha256": "75b6ed0f803d73bb4a26643328448e116f9f4e72b04146008d12b36cf101c15c"
+    }
+  },
+  {
+    "session": "papers-4",
+    "retrieved": [
+      "foundational-algorithms chunk 1",
+      "methods chunk 10",
+      "methods chunk 2"
+    ],
+    "available_earlier_alternatives": 5,
+    "candidate": {
+      "session": "papers-1",
+      "trace": "otlp:e6727903bcb6484e9fe3e1187eb1a2b2",
+      "call": "35f4d7d41b1e49df",
+      "pointer": "/messages/1/content",
+      "source": "foundational-algorithms chunk 2",
+      "offset_chars": 4981,
+      "length_chars": 5424,
+      "sha256": "a0eaeeb2cf49adcde94dc5d4ed8b81820e823a941f92c0837bfa767f86284799"
+    }
+  },
+  {
+    "session": "papers-5",
+    "retrieved": [
+      "research-review chunk 1",
+      "research-review chunk 2",
+      "research-review chunk 4"
+    ],
+    "available_earlier_alternatives": 8,
+    "candidate": {
+      "session": "papers-1",
+      "trace": "otlp:e6727903bcb6484e9fe3e1187eb1a2b2",
+      "call": "35f4d7d41b1e49df",
+      "pointer": "/messages/1/content",
+      "source": "foundational-algorithms chunk 2",
+      "offset_chars": 4981,
+      "length_chars": 5424,
+      "sha256": "a0eaeeb2cf49adcde94dc5d4ed8b81820e823a941f92c0837bfa767f86284799"
+    }
+  }
+]
