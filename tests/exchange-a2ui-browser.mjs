@@ -37,6 +37,15 @@ try {
     if (process.env.CANVAS_CAPTURE) await page.screenshot({path:process.env.CANVAS_CAPTURE+"-home-"+viewport.width+".png"});
     const homeInput = page.getByLabel("Question about workflow evidence");
     const mixed = page.getByRole("region",{name:"Answer canvas"});
+    const example = await page.request.get(new URL("/api/sidecar/findings?kind=conflict&limit=1",base).href).then(r => r.json());
+    await conflicts.getByRole("button").focus();
+    await conflicts.getByRole("button").press("Enter");
+    await mixed.locator(`[data-group="${example.rows[0].id}"]`).waitFor();
+    assert.equal(await mixed.locator("[data-group]").getAttribute("data-trace"),example.rows[0].evidence.trace_id);
+    assert.equal(page.url(),base.href);
+    await homeInput.fill("Show an example of Token measurements in Returns demo");
+    await homeInput.press("Enter");
+    await mixed.getByRole("table",{name:"Measured source edits by output token"}).waitFor();
     await homeInput.fill("What did the customer ask for, and did the approval check change the outcome?");
     await homeInput.press("Enter");
     const message = mixed.locator('[data-view="message"]');

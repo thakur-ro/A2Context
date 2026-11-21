@@ -391,7 +391,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
         if request.method() == &Method::Get {
             let value = match path {
                 "/api/sidecar/chat-config" => json!({"models":[]}),
-                "/api/sidecar/workflows" => json!({"workflows":store.workflows()?}),
+                "/api/sidecar/workflows" => json!({"workflows":store.workflows(&fields)?}),
                 "/api/sidecar/activity-search" => store.search_activity(&fields)?,
                 "/api/sidecar/recent-tool-names" => store.recent_tool_names(&fields)?,
                 "/api/sidecar/health" => json!({

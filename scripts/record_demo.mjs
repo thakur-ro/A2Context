@@ -117,10 +117,16 @@ try {
   }
 
   try {
-    await read("The workspace briefing shows the conversations and what keeps coming up.", 3.3);
+    await read("Two of four conversations contain a rule conflict. Open one example.", 3.3);
+    caption = "";
+    const canvas = page.getByRole("region",{name:"Answer canvas"});
+    await click(page.getByRole("region",{name:"Recurring themes"}).getByRole("button",{name:/Rule conflict/}));
+    await canvas.getByText('"hold"',{exact:true}).waitFor();
+    await click(canvas.getByRole("button",{name:/latest-customer-message/}));
+    await canvas.getByText("latest-customer-message · Role: user · Version: v1",{exact:true}).waitFor();
+    await read("The cache still authorized the exchange. The customer’s message said hold.", 3, canvas, 60);
     caption = "";
     await typeQuestion(model ? "Was the shopper’s identity confirmed?" : "What did verify_customer return?");
-    const canvas = page.getByRole("region",{name:"Answer canvas"});
     await canvas.getByRole("heading",{name:"Matching recorded activity"}).waitFor();
     await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
     await read("The verification tool recorded a successful check.", 2.4, canvas, 66);
@@ -134,13 +140,6 @@ try {
     await page.getByRole("heading",{name:"Exchange agent",exact:true}).waitFor();
     await read("The exchange workflow has its own stats and a recommended investigation.", 2.6);
     if (model) await page.getByLabel("Analysis partner").selectOption(model);
-    caption = "";
-    await typeQuestion("Which instructions disagreed?");
-    for (let i = 0; i < 15; i++) await frame();
-    await canvas.getByText('"hold"',{exact:true}).waitFor();
-    await click(canvas.getByRole("button",{name:/latest-customer-message/}));
-    await canvas.getByText("latest-customer-message · Role: user · Version: v1",{exact:true}).waitFor();
-    await read("The cache still authorized the exchange. The customer’s message said hold.", 3, canvas, 60);
     caption = "";
     await typeQuestion("What did the customer ask for, and did the approval check change the outcome?");
     for (let i = 0; i < 15; i++) await frame();

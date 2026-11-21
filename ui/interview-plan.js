@@ -1,4 +1,41 @@
 // The model selects a read or a view. Only the host can resolve the scoped records and draw them.
+function interviewUserRequest(question) {
+  const text = question.trim().replace(/[?!]+$/, "").trim();
+  // Keep positions in the original string while excluding quoted search terms from scope matching.
+  const syntax = text.replace(/"[^"]*"|“[^”]*”|(?<![\p{L}\p{N}])'[^']*'(?![\p{L}\p{N}])/gu, span => "~".repeat(span.length));
+  if (/^(?:show|switch to|focus on) all users\.?$/i.test(syntax)) return {user:null,question:""};
+  const everyone = /\s+for all users\.?$/i.exec(syntax);
+  if (everyone) return {user:null,question:text.slice(0,everyone.index)};
+  const current = /\b(?:for (?:this|that|the same) user\b|(?:this|that) user['’]s(?= (?:conversations?|sessions?)\b))/i.exec(syntax);
+  if (current) return {current:true,question:(text.slice(0,current.index) + text.slice(current.index+current[0].length)).trim()};
+  const possessive = /\b(?:across|in|from) (?:user )?([\p{L}\p{N}_@.-]+(?: [\p{L}\p{N}_@.-]+){0,3})['’]s (conversations?|sessions?)\b/iu.exec(syntax);
+  if (possessive) return {user:possessive[1],question:text.slice(0,possessive.index) + "across " + possessive[2] + text.slice(possessive.index+possessive[0].length)};
+  const cue = /^(?:focus on|switch to) (?:the )?user(?: id)?\b\s*|\bfor (?:the )?user(?: id)?\b\s*/i.exec(syntax);
+  if (!cue) return null;
+  const prefix = text.slice(0,cue.index);
+  if (/^(?:search|look)\s*$/i.test(prefix)) return null;
+  const value = text.slice(cue.index+cue[0].length);
+  const match = /^(?:"([^"]+)"|“([^”]+)”|'([^']+)'|([^,"“”']+?))(?=\s+(?:in|across|during|since|within)\b|,|$)/iu.exec(value);
+  if (!match) return {needsId:true,question:prefix.trim()};
+  const user = match[1] ?? match[2] ?? match[3] ?? match[4]?.trim().replace(/\.$/, "");
+  const rest = value.slice(match[0].length).trim().replace(/^,\s*/, "");
+  if (!user || user.length > 256 || (match[4] && /\b(?:and|versus|vs\.?) (?:the )?user\b/i.test(user))) {
+    return {needsId:true,question:prefix.trim()};
+  }
+  return {user,question:[prefix.trim(),rest].filter(Boolean).join(" ")};
+}
+
+function replyUserId(question) {
+  const value = question.trim();
+  const quoted = /^(?:"([^"]+)"|“([^”]+)”|'([^']+)')$/u.exec(value);
+  if (quoted) {
+    const id = quoted[1] ?? quoted[2] ?? quoted[3];
+    return id.length <= 256 ? id : null;
+  }
+  if (!value || value.length > 256 || /[?]/.test(value) || /^(?:what|who|which|why|when|where|how|show|find|search|compare|focus|switch|read|open)\b/i.test(value)) return null;
+  return value;
+}
+
 function asksForSeveralReads(question) {
   return /\b(and|alongside|together|as well as|next to|side by side|both|versus)\b|[?].+\?/i.test(question);
 }

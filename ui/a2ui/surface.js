@@ -104,8 +104,14 @@ export function briefing({metrics}) {
   return surface("briefing",[{id:"root",component:"Column",children:["metrics"]},...metricComponents(metrics)],new Map());
 }
 
-export function themeFrequency(total,themes) {
-  return surface("theme-frequency",[{id:"root",catalogId:evidenceCatalog.id,component:"ThemeFrequency",total,themes}],new Map());
+export function themeFrequency(total,themes,onExample) {
+  const {view,update} = create("theme-frequency",({name,sourceComponentId,context}) => {
+    if (name === "inspectTheme" && sourceComponentId === "root" && Number.isInteger(context.index) && themes[context.index]) {
+      onExample(themes[context.index].label);
+    }
+  });
+  update([{id:"root",catalogId:evidenceCatalog.id,component:"ThemeFrequency",total,themes}]);
+  return view;
 }
 
 export function workflowBriefing({metrics,recommendation}, investigate) {
@@ -113,7 +119,7 @@ export function workflowBriefing({metrics,recommendation}, investigate) {
   const components = [{id:"root",component:"Column",children},...metricComponents(metrics)];
   const actions = new Map();
   if (recommendation) {
-    children.push("recommendation");
+    children.unshift("recommendation");
     components.push({id:"recommendation",component:"Card",child:"recommendationBody"},
       {id:"recommendationBody",component:"Column",children:["recommendationLabel","recommendationTitle","recommendationSummary","investigate"]},
       {id:"recommendationLabel",component:"Text",text:"Recommended investigation",variant:"caption"},

@@ -22,6 +22,7 @@ def main():
         subprocess.run(["node", "tests/onboarding-browser.mjs", base], cwd=ROOT, check=True)
         subprocess.run(["node", "tests/tool-catalog-browser.mjs", base], cwd=ROOT, check=True)
     with server(binary, None) as base:
+        subprocess.run(["node", "tests/interview-user-browser.mjs", base], cwd=ROOT, check=True)
         subprocess.run(["node", "tests/sidecar-browser.mjs"], cwd=ROOT, check=True,
                        env={**os.environ, "SIDECAR_URL": base})
         subprocess.run(["node", "tests/context-network-browser.mjs", base], cwd=ROOT, check=True)

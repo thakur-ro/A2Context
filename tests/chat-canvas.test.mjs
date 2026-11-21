@@ -25,6 +25,26 @@ function context(reply, checkPacket = packet => {
   return env;
 }
 
+test("user scope preserves exact identifiers, the remaining question and quoted search text", () => {
+  const {interviewUserRequest:read,replyUserId} = context();
+  const check = (text,value) => assert.deepEqual(JSON.parse(JSON.stringify(read(text))),value);
+  check('Which issues keep coming up for user "Customer 042"?',{user:"Customer 042",question:"Which issues keep coming up"});
+  check("Show recent conversations for user Customer 042 in Returns demo",{user:"Customer 042",question:"Show recent conversations in Returns demo"});
+  check("Which patterns repeat across support-17’s conversations?",{user:"support-17",question:"Which patterns repeat across conversations"});
+  check("Focus on user ID Case.Owner+2@example.org",{user:"Case.Owner+2@example.org",question:""});
+  check("Which issues keep coming up for this user?",{current:true,question:"Which issues keep coming up"});
+  check("Which issues recur for all users?",{user:null,question:"Which issues recur"});
+  check("Show recorded activity for user",{needsId:true,question:"Show recorded activity"});
+  check('Search for "timeout for user name"',null);
+  check('Search for "problems for this user"',null);
+  check("Find conversation “An issue in support-17’s conversations”",null);
+  check('Search for "for user A" for user B',{user:"B",question:'Search for "for user A"'});
+  check('Focus on user "Ops, A/B"',{user:"Ops, A/B",question:""});
+  check('Show conversations for user A and user B',{needsId:true,question:"Show conversations"});
+  assert.equal(replyUserId("Customer 042"),"Customer 042");
+  assert.equal(replyUserId("Show recorded activity"),null);
+});
+
 test("a model can name a finding in its own language and the canvas still shows the measured evidence", async () => {
   const env = context({id:"R2",view:"conflict",answer:"Check the approval values."});
   const result = await env.partnerAnswer("my-model","Which approval changed?",records,[{id:"first",question:"First?"}]);

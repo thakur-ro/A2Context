@@ -10,7 +10,7 @@ From the checkout, start a receiver in a new directory or choose an unused datab
 cargo run --locked -- sidecar --db exchange-sample.sqlite --capture-content
 ```
 
-In a second terminal, from the checkout, send the included OpenTelemetry batch with curl.
+Open the printed dashboard address and ask **How do I connect my workflow?** The answer shows the receiver’s exporter settings and current capture counts. In a second terminal, from the checkout, send the included OpenTelemetry batch with curl.
 
 ```sh
 curl --fail --show-error -H 'Content-Type: application/json' \

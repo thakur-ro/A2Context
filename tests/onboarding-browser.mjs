@@ -10,6 +10,15 @@ try {
   const setup = page.getByRole("region",{name:"Receiver setup"});
   await page.getByRole("heading",{name:"Connect your workflow"}).waitFor();
   const endpoint = base + "/v1/traces";
+  const firstQuestion = page.getByRole("textbox",{name:"Question about workflow evidence"});
+  await firstQuestion.fill("How do I connect my workflow?");
+  await firstQuestion.press("Enter");
+  const firstAnswer = page.getByRole("region",{name:"Answer canvas"});
+  await firstAnswer.getByRole("heading",{name:"OTLP/HTTP exporter"}).waitFor();
+  await firstAnswer.getByText("export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="+endpoint,{exact:true}).waitFor();
+  await firstAnswer.getByText("0 traces · 0 inference spans",{exact:true}).waitFor();
+  await firstQuestion.fill("Show overview");
+  await firstQuestion.press("Enter");
   assert.equal(await setup.locator("code").innerText(),
     "export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\nexport OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + endpoint);
   await setup.getByRole("link",{name:"Inspect a sample exchange request"}).click();

@@ -1,6 +1,6 @@
 # Ask about a workflow
 
-Open the sidecar dashboard to see workspace totals and recurring themes. Pick a suggested question or type your own. Choose a workflow in the sidebar for its stats and recommended investigation, or type **Focus on** followed by its name. Type **Show all workflows** to return to the workspace. A conversation can contribute to several finding groups.
+Open the dashboard and ask a question. Below the composer, **Recurring themes** shows how many captured conversations contain each kind of evidence. Choose a row to see its highest-ranked example in the interview. You can also type **Show an example of Rule conflict**. One conversation can appear in several rows. Choose a workflow in the sidebar for its own recommendation, or type **Focus on** followed by its name. Type **Show all workflows** to return to the workspace.
 
 ![A2Context workspace with a question field and a chart showing rule conflicts in two of four captured conversations](media/workspace-interview.png)
 
@@ -13,6 +13,14 @@ From the workspace briefing, type **Compare** followed by two workflow names. Th
 Ask **Show recent conversations in** followed by a workflow name to find activity from the workspace homepage. Type **Find conversation** followed by part of its recorded name. A unique match opens up to three captured calls in the interview, including recorded tool results when available. Type **What happened next?** to read the next calls or ask **What did the tool return?** for the visible results. This works for conversations without a finding. When a model is connected, it can interpret the calls in view and cite them. Ask for a call by number to see the stored record.
 
 When you don’t know the conversation name, ask about a recorded phrase, entity, or tool. In the exchange demo, try **What did verify_customer return?** from the workspace homepage. Ask **Show call 1** to see the supporting record inline. **Search for** followed by a few words searches captured activity. Add a workflow name after **in** to narrow the search.
+
+## Find patterns for one user
+
+Start the gallery with `cargo run --locked -- sidecar --demo --listen 127.0.0.1:0` and open the printed address. Ask **Which issues keep coming up for this user?** When the interview asks for the recorded user ID, enter **support-17**. The gallery has 26 captured conversations. Six belong to this user, and four of those six have candidate scores. Select that row to inspect a measured example, then ask **Show the exact inputs**. The sidebar and follow-up answers keep the same user.
+
+![The answer for support-17 shows candidate scores and proposal trials in four of six conversations, and verified replays in two of six.](media/user-recurrence.png)
+
+You can also name the user in your first question. Try **Which patterns repeat across support-17’s conversations?** IDs come from recorded metadata and can include spaces. An ID with no captured conversations gets a different answer from a user with recorded conversations and zero findings. **Show all users** clears the user while keeping the workflow and other active filters.
 
 ## Connect a model
 

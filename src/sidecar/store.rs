@@ -20,12 +20,21 @@ pub struct Store(Connection);
 type Rejected = (u16, String);
 
 impl Store {
-    pub(super) fn workflows(&self) -> Result<Vec<String>> {
-        let mut stmt = self.0.prepare(
-            "SELECT DISTINCT workflow FROM traces WHERE run IS NOT NULL AND workflow > '' ORDER BY workflow",
-        )?;
+    pub(super) fn workflows(&self, filters: &BTreeMap<String, String>) -> Result<Vec<String>> {
+        let mut sql =
+            "SELECT DISTINCT t.workflow FROM traces t WHERE t.run IS NOT NULL AND t.workflow > ''"
+                .to_owned();
+        let mut args = Vec::new();
+        append_scope(&mut sql, &mut args, filters)?;
+        if filters.contains_key("after") || filters.contains_key("before") {
+            sql.push_str(" AND EXISTS (SELECT 1 FROM captured_calls c WHERE c.trace_id=t.id");
+            append_window(&mut sql, &mut args, "c.started", filters)?;
+            sql.push(')');
+        }
+        sql.push_str(" ORDER BY t.workflow");
+        let mut stmt = self.0.prepare(&sql)?;
         let workflows = stmt
-            .query_map([], |row| row.get(0))?
+            .query_map(params_from_iter(args), |row| row.get(0))?
             .collect::<rusqlite::Result<_>>()?;
         Ok(workflows)
     }

@@ -4,6 +4,8 @@ Welcome the user to an all-workflows briefing. Show how many conversations were 
 
 The workspace homepage helps an engineer decide which workflow or problem to investigate. Each workflow homepage shows its own capture stats and one recommended investigation grounded in its highest-ranked finding. Users can start there or type a different question. The workspace can investigate across scopes, including a named workflow.
 
+Put the question first on the workspace homepage. Each recurrence row is a keyboard-accessible action in the A2UI evidence catalog. Selecting a row and typing the same example request retrieve the top-ranked finding of that kind under the active filters. The host reads the finding and its evidence from SQLite. These interactions make zero model calls. A named user carries through follow-ups, workflow links and reloads. The gallery browser check compares those answers with scoped API records and distinguishes a user with zero findings from an ID with no recorded conversations. [User walkthrough](chat-canvas.md#find-patterns-for-one-user) · [Browser check](../tests/interview-user-browser.mjs)
+
 ## How the interview works
 
 | User intent | What appears in the conversation | Evidence it uses |
@@ -25,6 +27,8 @@ The composer stays available through the investigation. Follow-up questions can 
 A numbered search result identifies an example. Its number can differ from the call’s position in the recording. When someone asks what came before or after an example, the interview locates its trace and call IDs and reads the neighbor in the same database snapshot. It asks which call to use when several are visible. If a conversation ID is missing, it can follow calls within the same trace. Missing or tied timestamps are labeled. Recorded order alone cannot establish that an earlier event caused a later decision.
 
 ## Evidence and presentation
+
+A2Context ships the A2UI 1.0 protocol with the Lit renderer and web core pinned to 0.15.0. The protocol describes each surface. The host chooses the layout, type, color and keyboard behavior. The recurrence chart is a custom catalog component with a bounded action that selects a recorded finding. Its counts describe kinds of evidence. For example, a proposal trial records a comparison, and a rule conflict records a disagreement in the inputs. [A2UI 1.0 release](https://developers.googleblog.com/a2ui-10-build-delightful-fast-reliable-agentic-experiences/) · [Renderer package pins](../ui/a2ui/package.json)
 
 The Rust sidecar keeps counts and evidence references authoritative. Without a model, the browser answers a bounded set of question types using those records. A configured model can interpret open-ended questions and choose evidence and views. It works with a bounded catalog of references and cannot supply arbitrary links or overwrite measured values. The A2UI Lit renderer receives the components for each answer. Inferences about source influence need measured evidence under the tested conditions. [A2UI messages](https://a2ui.org/reference/messages/) · [A2UI Basic Catalog](https://a2ui.org/concepts/catalogs/)
 

@@ -274,11 +274,13 @@ function investigationCanvas(impact, page, models) {
   const status = element("p",{className:"canvas-status",role:"status"});
   const invitation = element("h2",{className:"canvas-invitation",text:"What would you like to investigate?"});
   const themes = element("div",{className:"canvas-themes"});
-  home.append(lead,past,output,invitation,form,suggestions,status,themes);
+  const userLabel = element("p",{className:"canvas-scope-name"});
+  home.append(userLabel,lead,past,output,invitation,form,suggestions,status,themes);
   let loadedPage = page, currentTotal = impact.recommendations;
-  let activeScope = {...scope}, currentImpact = impact;
+  let currentImpact = impact;
   let records = [], history = [], previous, active, moreEvidence = false;
   let activity, comparison, measurements, experiments, nearby, visibleCalls = [];
+  let userQuestion;
   const corrections = new Map();
   const normalize = q => q.trim().toLowerCase().replace(/[?.!]+$/, "");
   past.hidden = true;
@@ -287,28 +289,65 @@ function investigationCanvas(impact, page, models) {
     suggestions.replaceChildren(...(labels.length ? [A2ContextA2UI.questions(labels, ask)] : []));
   }
 
-  function themeChart(summary) {
+  function themeChart(summary,workflow) {
     return A2ContextA2UI.themeFrequency(summary.captured_conversations,summary.themes.map(({kind,conversations,groups}) =>
-      ({label:kindLabels[kind] || kind,conversations,groups})));
+      ({label:kindLabels[kind] || kind,conversations,groups})),label =>
+        ask("Show an example of " + label + (workflow ? " in " + workflowName(workflow) : "")));
+  }
+
+  function labelUser() {
+    userLabel.hidden = !scope.user;
+    userLabel.textContent = scope.user ? "User · " + scope.user : "";
+  }
+
+  async function changeScope(filters,signal,requireWorkflow = false) {
+    const [total,next,names,health] = await Promise.all([api("summary",filters),api("findings",filters),
+      filters.user === scope.user ? null : readWorkflowNames(filters),api("health",filters)]);
+    if (signal.aborted) return false;
+    if (requireWorkflow && !health.coverage.traces && !next.rows.length) {
+      evidenceSections("missing-workflow","No recorded conversations for this workflow",filters.workflow);
+      suggest(["Show all workflows"]);
+      return false;
+    }
+    scope = filters;
+    renderCoverage(health);
+    if (names) workspaceWorkflows = names.workflows;
+    window.history.replaceState(null,"",url({},scope));
+    workflowNavigation(scope.workflow);
+    home.nextElementSibling?.remove();
+    labelUser();
+    previous = activity = comparison = nearby = measurements = experiments = null;
+    visibleCalls = [];
+    history = [];
+    past.hidden = true;
+    corrections.clear();
+    applyEvidence(total,next);
+    return true;
   }
 
   async function showThemes(question,named,signal) {
-    const summary = named ? await api("summary",{...activeScope,workflow:named}) : currentImpact;
+    const summary = named ? await api("summary",{...scope,workflow:named}) : currentImpact;
     if (signal.aborted) return;
-    const title = named || activeScope.workflow ? workflowName(named || activeScope.workflow) : "All workflows";
+    const title = named || scope.workflow ? workflowName(named || scope.workflow) : "All workflows";
     if (summary.themes?.length) {
-      output.append(element("p",{className:"canvas-scope-name",text:title}),themeChart(summary));
-    } else evidenceSections("no-themes",title,"No finding groups were recorded in this scope.");
+      const coverage = plural(summary.captured_conversations,"captured conversation") + (named ? " in " + title : "");
+      output.append(element("p",{text:coverage + ". A conversation can appear in several rows."}),themeChart(summary,named));
+    } else if (scope.user && !summary.captured_conversations) {
+      evidenceSections("no-themes","No recorded conversations for this user",title + " · No captured conversation in this scope has the requested user ID.");
+    } else evidenceSections("no-themes",title,plural(summary.captured_conversations,"captured conversation") + " in this scope. No finding groups were recorded.");
+    if (scope.user) suggest(["Show recorded activity","Show all users"]);
     previous = activity = comparison = null;
     visibleCalls = [];
     remember(question,null,"themes","Checked recurring finding types for " + title + ".");
   }
 
   function showBriefing() {
-    const workflow = activeScope.workflow;
+    labelUser();
+    const workflow = scope.workflow;
     heading.textContent = workflow ? workflowName(workflow) : "Welcome to A2Context";
     input.placeholder = workflow ? "Ask about " + workflowName(workflow) + "…" : "Ask about any recorded workflow…";
     home.classList.toggle("workflow-home",Boolean(workflow));
+    home.insertBefore(lead,workflow ? past : themes);
     const metrics = [{value:currentImpact.captured_conversations.toLocaleString(),label:"Conversations captured"},
         {value:currentImpact.conversations.toLocaleString(),label:"With findings"},
         {value:currentImpact.recommendations.toLocaleString(),label:"Finding groups"}];
@@ -325,9 +364,11 @@ function investigationCanvas(impact, page, models) {
     if (records.some(record => record.facts.kind === kindLabels.conflict) && !(workflow && recommended?.facts.kind === kindLabels.conflict)) questions.push("Which instructions disagreed?");
     if (records.some(record => record.dispatch) && !(workflow && recommended?.dispatch)) questions.push("What changed at dispatch?");
     if (!questions.length && records.some(record => record.duplicate)) questions.push("Which inputs were repeated?");
-    if (!activeScope.workflow && workspaceWorkflows.length > 1) questions.push("Compare all workflows");
+    if (!scope.workflow && workspaceWorkflows.length > 1) questions.push("Compare all workflows");
     if (!workflow && records.length) questions.push("What should I test next?");
     else if (currentImpact.captured_conversations) questions.push("Show recorded activity");
+    if (scope.user && !questions.length) questions.push("Show all users");
+    if (!questions.length) questions.push("How do I connect my workflow?");
     suggest(questions.slice(0,3));
   }
 
@@ -351,7 +392,7 @@ function investigationCanvas(impact, page, models) {
   }
 
   async function compareWorkflows(ids, kind, signal) {
-    const filters = {...activeScope};
+    const filters = {...scope};
     const selected = ids.slice(0,6);
     const totals = await Promise.all(selected.map(workflow => api("summary",{...filters,workflow,...(kind && {kind})})));
     if (signal.aborted) return;
@@ -492,7 +533,7 @@ function investigationCanvas(impact, page, models) {
     const row = example?.row;
     if (repeatedResult) suggestions.push("What supports that?");
     else if (row?.thread && !row.thread.includes('"') && row.thread.length <= 120) {
-      suggestions.push('Read conversation "' + row.thread + '"' + (!activeScope.workflow && row.workflow ? " in " + workflowName(row.workflow) : ""));
+      suggestions.push('Read conversation "' + row.thread + '"' + (!scope.workflow && row.workflow ? " in " + workflowName(row.workflow) : ""));
     }
     suggest(suggestions);
     return true;
@@ -752,22 +793,53 @@ function investigationCanvas(impact, page, models) {
     active = new AbortController();
     const {signal} = active;
     const model = picker.value;
+    let displayQuestion = question;
+    const knownWorkflows = workspaceWorkflows;
     lead.hidden = true;
     home.classList.add("has-answer");
-    heading.textContent = activeScope.workflow ? workflowName(activeScope.workflow) : "All workflows";
+    heading.textContent = scope.workflow ? workflowName(scope.workflow) : "All workflows";
     suggest([]);
     output.replaceChildren(element("div",{className:"canvas-question",text:question}));
     output.setAttribute("aria-busy","true");
     input.value = "";
     input.focus({preventScroll:true});
     status.textContent = "Looking up evidence…";
-    const choices = measurements;
-    const replayChoices = experiments;
-    const related = nearby;
+    let choices = measurements, replayChoices = experiments, related = nearby;
+    const awaitingUser = userQuestion;
+    userQuestion = null;
     measurements = null;
     experiments = null;
     nearby = null;
     try {
+      let owner = !selected && !selectedConversation && interviewUserRequest(question);
+      const id = awaitingUser && !owner && !selected && !selectedConversation && replyUserId(question);
+      if (id) {
+        owner = {user:id,question:awaitingUser.query};
+        displayQuestion = awaitingUser.original;
+        output.replaceChildren(element("div",{className:"canvas-question",text:displayQuestion}));
+      }
+      if (owner) {
+        if (owner.needsId || (owner.current && !scope.user)) {
+          userQuestion = {original:displayQuestion,query:owner.question};
+          evidenceSections("which-user","Which user ID?","Enter the exact user ID recorded by your workflow. You can include spaces.");
+          status.textContent = "";
+          return;
+        }
+        if (!owner.current && owner.user !== (scope.user ?? null)) {
+          const filters = {...scope};
+          if (owner.user === null) delete filters.user;
+          else filters.user = owner.user;
+          if (!await changeScope(filters,signal)) return;
+          choices = replayChoices = related = null;
+        }
+        if (!owner.question) {
+          output.replaceChildren();
+          showBriefing();
+          status.textContent = "";
+          return;
+        }
+        question = owner.question;
+      }
       if (replayChoices && !selected && !selectedConversation) {
         const {plan,offset} = replayChoices;
         const choice = /^(?:(?:use|show|read) )?(?:experiment )?(\d+)$/.exec(normalize(question));
@@ -808,37 +880,34 @@ function investigationCanvas(impact, page, models) {
         status.textContent = "";
         return;
       }
-      const mentions = selected ? [] : workflowsInQuestion(question,workspaceWorkflows);
-      const named = !activeScope.workflow && mentions.length === 1 ? mentions[0] : null;
+      const names = knownWorkflows === workspaceWorkflows ? workspaceWorkflows : [...new Set([...knownWorkflows,...workspaceWorkflows])];
+      const mentions = selected ? [] : workflowsInQuestion(question,names);
+      const named = mentions.length === 1 && mentions[0] !== scope.workflow ? mentions[0] : null;
       const focus = !selected && /^(?:focus on|switch to|investigate workflow)\s+(.+)$/i.exec(question.trim().replace(/[?.!]+$/, ""));
       const allWorkflows = !selected && /^(?:show |switch to )?all workflows$/.test(normalize(question));
       if (focus || allWorkflows) {
-        const filters = {...activeScope};
+        const filters = {...scope};
         if (allWorkflows) delete filters.workflow;
         else {
           const name = focus[1].trim();
           filters.workflow = workspaceWorkflows.find(id => [id,workflowName(id)].some(value => value.toLowerCase() === name.toLowerCase())) || name;
         }
-        const [total, next] = await Promise.all([api("summary", filters), api("findings", filters)]);
-        if (signal.aborted) return;
-        if (!total.captured_conversations && !next.rows.length && !allWorkflows) {
-          output.append(element("p",{text:"No captured conversations for “" + filters.workflow + "”. Try the workflow ID from your telemetry."}));
-          suggest(["Show all workflows"]);
-        } else {
-          activeScope = filters;
-          window.history.replaceState(null,"",url({},activeScope));
-          workflowNavigation(activeScope.workflow);
-          previous = null;
-          activity = null;
-          comparison = null;
-          visibleCalls = [];
-          history = [];
-          past.hidden = true;
-          corrections.clear();
-          applyEvidence(total,next);
+        if (await changeScope(filters,signal,!allWorkflows)) {
           output.replaceChildren();
           showBriefing();
         }
+        if (!signal.aborted) status.textContent = "";
+        return;
+      }
+      if (!selected && /^(?:how (?:do|can|should) (?:i|we) (?:connect|instrument) (?:my|our|a|the) workflow|(?:show|check)(?: the)? receiver (?:setup|status)|where (?:do|can|should) (?:i|we) send (?:my |our )?(?:traces|telemetry))$/.test(normalize(question))) {
+        const health = await api("health",scope);
+        if (signal.aborted) return;
+        const {heading,next,exporter,counts} = receiverSetup(health);
+        evidenceSections("connect-workflow",heading,next,[{title:"OTLP/HTTP exporter",lines:exporter},{title:"Capture in this scope",lines:[counts]}]);
+        previous = activity = comparison = null;
+        visibleCalls = [];
+        remember(displayQuestion,null,"receiver",counts);
+        suggest(["Show receiver status","Show recorded activity"]);
         status.textContent = "";
         return;
       }
@@ -848,13 +917,39 @@ function investigationCanvas(impact, page, models) {
         status.textContent = "";
         return;
       }
+      const example = !selected && /^show (?:me )?an example of (.+)$/i.exec(normalize(question));
+      if (example) {
+        const workflow = mentions.length === 1 ? mentions[0] : null;
+        const suffix = workflow && [workflow,workflowName(workflow)].map(name => " in " + name.toLowerCase())
+          .find(ending => example[1].endsWith(ending));
+        const label = suffix ? example[1].slice(0,-suffix.length) : example[1];
+        const kind = Object.keys(kindLabels).find(key => kindLabels[key].toLowerCase() === label);
+        if (kind) {
+          const filters = workflow ? {...scope,workflow} : scope;
+          const page = await api("findings",{...filters,kind,limit:1});
+          if (signal.aborted) return;
+          previous = page.rows[0] ? canvasRecord(page.rows[0],filters) : null;
+          activity = comparison = null;
+          visibleCalls = [];
+          if (!previous) {
+            evidenceSections("no-example","No recorded example in this scope",kindLabels[kind]);
+            suggest(["Show recorded activity"]);
+          } else if (previous.tokenCard) await showTokenEvidence(displayQuestion,filters,previous,signal);
+          else {
+            await inspect(previous,"evidence",displayQuestion,null,null,signal);
+            if (!signal.aborted) remember(displayQuestion,previous.facts.id,"evidence",previous.facts.observed);
+          }
+          if (!signal.aborted) status.textContent = "";
+          return;
+        }
+      }
       const adjacent = !selected && !named && visibleCalls.length && adjacentCallRequest(question);
       if (adjacent && !(adjacent.next && activity && visibleCalls.length > 1)) {
         await showAdjacent(question,adjacent.direction,adjacent.number,signal);
         if (!signal.aborted) status.textContent = "";
         return;
       }
-      if (!selected && /\b(?:recurring (?:themes|issues|problems)|(?:issues|themes|problems) (?:keep (?:coming up|recurring)|recur most))\b/i.test(question)) {
+      if (!selected && /\b(?:recurring (?:themes|issues|problems|patterns)|(?:issues|themes|problems|patterns) (?:keep (?:coming up|recurring)|repeat|recur(?: most)?)|what (?:keeps recurring|(?:repeats|recurs) across\s+conversations))\b/i.test(question)) {
         await showThemes(question,named,signal);
         if (signal.aborted) return;
         status.textContent = "";
@@ -884,7 +979,7 @@ function investigationCanvas(impact, page, models) {
       const tokenNumber = /\b(?:output token|token|position)\s+#?(\d{1,9})\b/i.exec(question);
       if (!selected && (wordMeasurement || (tokenNumber && (previous?.tokenCard || /\btoken\b/i.test(question))) ||
           /\b(token[- ](?:position|level|map|chart|diagram)|source edits (?:across|along) (?:the|this) answer|which source mattered at this (?:word|token))\b/i.test(question))) {
-        const filters = named ? {...activeScope,workflow:named} : (previous?.tokenCard ? previous.filters : activeScope);
+        const filters = named ? {...scope,workflow:named} : (previous?.tokenCard ? previous.filters : scope);
         await showTokenEvidence(question,filters,named ? null : previous,signal,tokenNumber && Number(tokenNumber[1]));
         if (!signal.aborted) status.textContent = "";
         return;
@@ -922,7 +1017,7 @@ function investigationCanvas(impact, page, models) {
       const suffix = named && [named,workflowName(named)].flatMap(name => [" in "," for "].map(prefix => prefix + name.toLowerCase()))
         .find(ending => query.toLowerCase().endsWith(ending));
       const activityQuestion = suffix ? query.slice(0,-suffix.length) : query;
-      const activityScope = named ? {...activeScope,workflow:named} : activeScope;
+      const activityScope = named ? {...scope,workflow:named} : scope;
       let conversation = !selected && conversationQuestion(activityQuestion);
       if (conversation) {
         conversation = conversation.replace(/^["'“]|["'”]$/g, "").trim();
@@ -958,14 +1053,14 @@ function investigationCanvas(impact, page, models) {
       if (!selected && /^(?:(?:show|open|draw)(?: me)? (?:the |a )?)?(?:context|evidence) (?:map|graph|network)$/i.test(normalize(question))) {
         let rows = loadedPage.rows, offset = loadedPage.next_offset;
         if (previous && !rows.some(row => row.id === previous.facts.id)) {
-          const selected = await api("findings",{...activeScope,group:previous.facts.id});
+          const selected = await api("findings",{...scope,group:previous.facts.id});
           if (signal.aborted) return;
           rows = [...rows,...selected.rows];
         }
         const host = element("div",{});
         function draw(focusId) {
-          host.replaceChildren(contextNetwork(rows,{focusId,total:currentTotal,filters:activeScope,onNext:offset == null ? null : async id => {
-            const result = await api("findings",{...activeScope,offset});
+          host.replaceChildren(contextNetwork(rows,{focusId,total:currentTotal,filters:scope,onNext:offset == null ? null : async id => {
+            const result = await api("findings",{...scope,offset});
             if (signal.aborted) return;
             rows = [...new Map([...rows,...result.rows].map(row=>[row.id,row])).values()];
             offset = result.next_offset;
@@ -987,15 +1082,15 @@ function investigationCanvas(impact, page, models) {
       let subject = previous;
       const terms = canvasTerms(question);
       if (named) {
-        const filters = {...activeScope,workflow:named};
+        const filters = {...scope,workflow:named};
         const matches = await api("findings",{...filters,...(terms.length && {terms:terms.join(" ")})});
         if (signal.aborted) return;
         candidates = matches.rows.map(card => canvasRecord(card,filters));
         if (subject?.filters.workflow !== named) subject = null;
       } else if (moreEvidence && terms.length && !selected) {
-        const matches = await api("findings",{...activeScope,terms:terms.join(" ")});
+        const matches = await api("findings",{...scope,terms:terms.join(" ")});
         if (signal.aborted) return;
-        const unique = new Map([...matches.rows.map(card => canvasRecord(card,activeScope)), ...records].map(r => [r.facts.id,r]));
+        const unique = new Map([...matches.rows.map(card => canvasRecord(card,scope)), ...records].map(r => [r.facts.id,r]));
         if (previous && !unique.has(previous.facts.id)) {
           const saved = await api("findings",{...previous.filters,group:previous.facts.id});
           if (signal.aborted) return;
@@ -1078,7 +1173,7 @@ function investigationCanvas(impact, page, models) {
         comparison = null;
       }
       visibleCalls = [];
-      await inspect(answer.record,answer.view,question,answer.text,answer.author || model,signal);
+      await inspect(answer.record,answer.view,displayQuestion,answer.text,answer.author || model,signal);
       if (signal.aborted) return;
       remember(question,answer.record?.facts.id || null,answer.view,
         answer.text || (answer.record ? (answer.view === "action" ? answer.record.facts.next :
@@ -1107,13 +1202,12 @@ function investigationCanvas(impact, page, models) {
     loadedPage = page;
     currentTotal = impact.recommendations;
     moreEvidence = page.next_offset != null;
-    records = page.rows.map(card => canvasRecord(card,activeScope));
-    if (previous?.filters.workflow === activeScope.workflow) {
+    records = page.rows.map(card => canvasRecord(card,scope));
+    if (previous?.filters.workflow === scope.workflow) {
       previous = records.find(r => r.facts.id === previous?.facts.id) || (moreEvidence ? previous : null);
     }
   }
   home.updateEvidence = (impact, page) => {
-    if (activeScope.workflow !== scope.workflow) return;
     applyEvidence(impact,page);
     if (!lead.hidden) showBriefing();
   };

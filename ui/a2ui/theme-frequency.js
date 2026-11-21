@@ -17,11 +17,14 @@ class ThemeFrequency extends A2uiLitElement {
     const {themes,total} = this.controller.props;
     return html`<section class="frequency" aria-label="Recurring themes">
       <header><h2>Recurring themes</h2><span>Conversations</span></header>
-      <ul>${themes.map(({label,conversations,groups}) => html`<li>
+      <ul>${themes.map(({label,conversations,groups},index) => html`<li><button type="button"
+        title=${"Show an example of " + label}
+        @click=${() => this.context.dispatchAction({event:{name:"inspectTheme",context:{index}}})}>
         <span class="frequency-name">${label}</span>
         ${total && conversations ? html`<progress class="frequency-track" aria-hidden="true" value=${conversations} max=${total}></progress>` : html`<span></span>`}
         <span class="frequency-count">${conversations || !groups ? conversations + " of " + total : groups + (groups === 1 ? " group" : " groups") + " · conversation unknown"}</span>
-      </li>`)}</ul>
+        <span class="frequency-open" aria-hidden="true">›</span>
+      </button></li>`)}</ul>
     </section>`;
   }
 }
