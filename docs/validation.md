@@ -2,6 +2,8 @@
 
 From the checkout, `make check` runs source checks and `make verify-image` builds and exercises the container with a sibling OTLP producer. Use the [deployment guide](../DEPLOYMENT.md) to verify your own exporter in staging. The tests below cover specific interfaces, evidence claims, and load conditions.
 
+In a prospective test on two public development workflows, the frozen sidecar captured all 28 model requests across ten sessions and produced zero recommendations. The SQLite agent and PaperQA exposed gaps that the earlier fixture-based rankings did not measure. [Pilot results and exact scope](../examples/ordinary-usage/README.md)
+
 The evaluation uses synthetic trace labels and saved local and hosted model trials. The labels describe which cards an engineer should investigate. This is a test of the initial design and its failure modes. It makes no estimate of production accuracy.
 
 ## Reproduce the checks
