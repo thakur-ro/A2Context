@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-const ATTRIBUTE: &str = "nexusweave.required_sources";
+const ATTRIBUTE: &str = "a2context.required_sources";
 
 /// One alternative must contain every required anchor and match its optional expected text.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -39,7 +39,7 @@ pub struct Alternative {
 impl RequiredSources {
     /// Remove the optional check from the surrounding attributes before input normalization.
     pub fn take(attributes: &mut Map<String, Value>) -> Result<Option<Self>, String> {
-        let Some(raw) = attributes.remove(ATTRIBUTE) else {
+        let Some(raw) = crate::span_metadata::take_attribute(attributes, ATTRIBUTE) else {
             return Ok(None);
         };
         let parsed = match raw {

@@ -29,7 +29,7 @@ def design(tokenizer):
             if ((pair["case"], pair["consent_arm"]) != (case["id"], consent)
                     or pair["nous"]["generation"]["output_ids"] != original["output_ids"]):
                 raise ValueError("Previous native baselines disagree.")
-            boundary = json.loads(arm["pending_request"]["attributes"]["nexusweave.request.body"])
+            boundary = json.loads(arm["pending_request"]["attributes"]["a2context.request.body"])
             prompt = tokenizer.apply_chat_template(boundary["messages"], tools=None, tokenize=False,
                                                   add_generation_prompt=True)
             plain = tokenizer.encode(prompt, add_special_tokens=False)

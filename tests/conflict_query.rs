@@ -1,4 +1,4 @@
-use nexusweave::{conflict_query, langsmith, preflight, Run};
+use a2context::{conflict_query, langsmith, preflight, Run};
 use serde_json::{json, Value};
 
 fn runs(source: &str) -> Vec<Run> {
@@ -62,7 +62,7 @@ fn de_duplicates_pairs_and_returns_only_contributing_decisions_for_a_source() {
     missing.id = "policy-unavailable".into();
     missing.source_id = Some("Archived policy".into());
     missing.text = None;
-    missing.availability = nexusweave::Availability::Redacted;
+    missing.availability = a2context::Availability::Redacted;
     missing.rule.as_mut().unwrap().value = None;
     context.push(missing);
     let spec = json!({
@@ -213,7 +213,7 @@ fn counts_each_checked_rule_scope_and_does_not_mix_known_values_across_scopes() 
         serde_json::from_str(include_str!("../examples/preflight-returns.json")).unwrap();
     let mut raw: Value =
         serde_json::from_str(include_str!("../examples/preflight-returns-langsmith.json")).unwrap();
-    let declarations = "nexusweave.context.semantics";
+    let declarations = "a2context.context.semantics";
     input["scope"] = Value::Null;
     let sources = &mut input["attributes"][declarations]["request_sources"];
     let mut holiday = sources[0].clone();
@@ -223,7 +223,7 @@ fn counts_each_checked_rule_scope_and_does_not_mix_known_values_across_scopes() 
     let metadata = &mut raw["extra"]["metadata"];
     metadata[declarations]["request_sources"] = sources.clone();
     let request = serde_json::from_value(input).unwrap();
-    metadata["nexusweave.preflight"] =
+    metadata["a2context.preflight"] =
         serde_json::to_value(preflight::check(request).unwrap().receipt).unwrap();
     let recorded = langsmith::import(&raw).unwrap();
     let result = query(

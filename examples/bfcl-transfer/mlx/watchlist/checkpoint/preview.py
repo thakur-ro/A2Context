@@ -30,8 +30,8 @@ def build(args):
         declarations.append({"id": name, "source_id": name, "source_version": "full-history", "request_fragment": span})
         edits.append({"context_id": "request-source:" + name, "operation": "replace_text_fragment",
                       **span, "replacement": histories["scoped"][i]["content"]})
-    request = {"version": 1, "attributes": {"gen_ai.request.model": MODEL, "nexusweave.request.body": json.dumps(body),
-               "nexusweave.context.semantics": {"version": 1, "request_sources": declarations}}}
+    request = {"version": 1, "attributes": {"gen_ai.request.model": MODEL, "a2context.request.body": json.dumps(body),
+               "a2context.context.semantics": {"version": 1, "request_sources": declarations}}}
     spec = {"version": 1, "id": "watchlist-132-" + args.catalog, "runner_id": "lfm2.5-1.2b-mlx-8bit-greedy",
             "expected": {"kind": "tool_call", "label": "get_watchlist", "outcome": {}}, "samples": 1,
             "interventions": edits, "test_pair": True}

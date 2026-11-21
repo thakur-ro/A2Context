@@ -18,7 +18,7 @@
 
 Fixed-candidate scores compare two declared continuations from the same prefix. They can establish that an edit shifted or reversed the preference between those alternatives under the tested conditions. A proposal test measures whether a particular answer or tool proposal appeared under each edit. For an instrumented output path, the card selects the source and token with the largest absolute change in log probability after a source edit. Selecting a token ranks the tested source edits at that position. The decoder-block measurements open separately. These comparisons are conditional on the chosen request, model, prefix, alternatives, or intervention. [Activation patching guide](https://arxiv.org/abs/2404.15255)
 
-Generated reasoning text can omit factors that determine a prediction. Circuit tracing studies model mechanisms using instrumented activations and follow-up perturbations. NexusWeave summarizes measured effects of specific interventions. The report producer supplies the measurements and timing. [Turpin et al., NeurIPS 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/ed3fea9033a80fea1376299fa7863f4a-Abstract-Conference.html) · [Lindsey et al., 2025](https://transformer-circuits.pub/2025/attribution-graphs/biology.html)
+Generated reasoning text can omit factors that determine a prediction. Circuit tracing studies model mechanisms using instrumented activations and follow-up perturbations. A2Context summarizes measured effects of specific interventions. The report producer supplies the measurements and timing. [Turpin et al., NeurIPS 2023](https://proceedings.neurips.cc/paper_files/paper/2023/hash/ed3fea9033a80fea1376299fa7863f4a-Abstract-Conference.html) · [Lindsey et al., 2025](https://transformer-circuits.pub/2025/attribution-graphs/biology.html)
 
 The pending exchange compares tool-name probabilities with free proposals on the original request, two individual edits, and their combination. Matching request hashes bind every displayed trial to the scored condition. A decoder-block sweep measures how each single edit changes the first-token score when its activation is transplanted into the original run. A stable preference can coexist with a change in the emitted arguments. The separate sandbox comparison tests execution with one of those proposals held fixed. [Exchange study](demo.md#see-what-the-model-did-on-the-pending-request)
 
@@ -105,10 +105,10 @@ The recommendation compares the complete proposal in each condition with the ori
 As a check, we rescored the four saved neutral-wording trials using only the proposal kind and label. All four matched under that rule, including `UNKNOWN`. The complete answers still show the joint-only change. This uses the same generated trials twice. To reproduce from the checkout, use a built binary.
 
 ```sh
-printf '%s\n' '{"kind":"kind_and_label"}' > /tmp/nexus-dispatch-rule.json
-target/debug/nexusweave rescore-replay examples/redundant-routing/measured/evidence.json \
-  examples/redundant-routing/measured/neutral-report.json /tmp/nexus-dispatch-rule.json \
-  dispatch-label-control /tmp/nexus-dispatch-labels.json
+printf '%s\n' '{"kind":"kind_and_label"}' > /tmp/a2context-dispatch-rule.json
+target/debug/a2context rescore-replay examples/redundant-routing/measured/evidence.json \
+  examples/redundant-routing/measured/neutral-report.json /tmp/a2context-dispatch-rule.json \
+  dispatch-label-control /tmp/a2context-dispatch-labels.json
 ```
 
 On the saved local Qwen runs, the neutral wording gave a joint-only change in both source orders for Cedar. On Birch a single edit also changed the answer. Each condition has one trial. The reports establish what these runs produced under the selected edits. An internal explanation or a production failure rate would need further evidence. [Local order experiment](../examples/redundant-routing/measured/local-order.json)
@@ -116,7 +116,7 @@ On the saved local Qwen runs, the neutral wording gave a joint-only change in bo
 The capture and eight replay trials used 569 input tokens and 15 output tokens. To reproduce with your own `OPENAI_API_KEY`, run the command below from the checkout. It makes nine hosted requests, each capped at 16 output tokens. Opening the demo reads the saved reports offline.
 
 ```sh
-python3 examples/redundant-routing/run.py --binary target/debug/nexusweave --output data/dispatch-replication
+python3 examples/redundant-routing/run.py --binary target/debug/a2context --output data/dispatch-replication
 ```
 
 ### When another wording changes the recommendation
@@ -152,7 +152,7 @@ To repeat offline, supply the local Qwen snapshot used by the [Transformers expe
 ```sh
 python3 examples/redundant-routing/replicate_local.py /path/to/qwen/snapshot \
   --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2
-python3 examples/redundant-routing/package_order_replays.py target/debug/nexusweave \
+python3 examples/redundant-routing/package_order_replays.py target/debug/a2context \
   examples/redundant-routing/local-order-results.json /tmp/order-replays.json
 ```
 
@@ -184,7 +184,7 @@ python3 examples/redundant-routing/check_prior_edits.py --url http://127.0.0.1:8
 
 ### Can the opening token identify which conflicting source to test?
 
-We fixed eight new journal-return questions and four rules for choosing an edit before running Qwen. Each request retained the two conflicting sources, preceding dialogue, neutral replacements and 12-token output limit of the three development examples. Only the final user message varied. We scored the original and both edits before generating any answer for that question, then ran one greedy generation per condition. The original, policy edit and FAQ edit all finished on five questions. All three reached the generation limit on the other three. [Frozen protocol](https://github.com/thakur-ro/NexusWeave/blob/9a877e101d04a7343d948a2f1648374b54d1e1ac/examples/context-screening/replay/question-holdout.json) · [Pinned Qwen weights](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2/model.safetensors)
+We fixed eight new journal-return questions and four rules for choosing an edit before running Qwen. Each request retained the two conflicting sources, preceding dialogue, neutral replacements and 12-token output limit of the three development examples. Only the final user message varied. We scored the original and both edits before generating any answer for that question, then ran one greedy generation per condition. The original, policy edit and FAQ edit all finished on five questions. All three reached the generation limit on the other three. [Frozen protocol](https://github.com/thakur-ro/A2Context/blob/9a877e101d04a7343d948a2f1648374b54d1e1ac/examples/context-screening/replay/question-holdout.json) · [Pinned Qwen weights](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2/model.safetensors)
 
 | Rule applied before generation | Selected an edit | Selected edit changed the answer | Selected outcome unresolved |
 | --- | ---: | ---: | ---: |
@@ -243,11 +243,11 @@ The dashboard resource check reused those eight request bodies across 128 synthe
 | Source breakdown | 1.44 ms | 2.50 ms |
 | First page of affected conversations | 1.93 ms | 3.03 ms |
 
-Run `python3 tests/sidecar_opening_study.py target/release/nexusweave --measure` with a release build under the same CPU and memory limits. [Benchmark driver](../tests/sidecar_opening_study.py)
+Run `python3 tests/sidecar_opening_study.py target/release/a2context --measure` with a release build under the same CPU and memory limits. [Benchmark driver](../tests/sidecar_opening_study.py)
 
 ### Can a supplied answer prefix identify a source worth testing?
 
-Eight fresh receipt and support questions specified how the journal answer should begin. We froze the questions, the two candidate strings (`30`, `60`), the source edits, the 32-token generation limit and the scoring rule before measuring. For each question we scored both strings at the answer boundary and after the requested prefix, under the original request and each edit. We then let Qwen generate three complete answers from the answer boundary. The field evaluator accepted an answer only when it contained exactly one standalone integer and that integer was 30 or 60. [Frozen protocol](https://github.com/thakur-ro/NexusWeave/blob/5c59b6d0ca5ab2b5452b4bdbc90d2a03e109b65a/examples/context-screening/replay/prefix-study/protocol.json) · [All scores and answers](../examples/context-screening/replay/prefix-study/results.json)
+Eight fresh receipt and support questions specified how the journal answer should begin. We froze the questions, the two candidate strings (`30`, `60`), the source edits, the 32-token generation limit and the scoring rule before measuring. For each question we scored both strings at the answer boundary and after the requested prefix, under the original request and each edit. We then let Qwen generate three complete answers from the answer boundary. The field evaluator accepted an answer only when it contained exactly one standalone integer and that integer was 30 or 60. [Frozen protocol](https://github.com/thakur-ro/A2Context/blob/5c59b6d0ca5ab2b5452b4bdbc90d2a03e109b65a/examples/context-screening/replay/prefix-study/protocol.json) · [All scores and answers](../examples/context-screening/replay/prefix-study/results.json)
 
 For each condition, the preference margin is the difference between the two sequence log probabilities. A positive margin favors the first candidate. A negative margin favors the second. The selector recommends testing a source when it is the only single edit that strictly reverses the original preference. A tie supplies no reversal. All four rules selected on all eight questions, and all selected comparisons had a resolved field.
 
@@ -276,7 +276,7 @@ cmp "$study/example.json" /tmp/prefix-example.json
 
 ### Does the suggested edit follow the question when source order changes?
 
-Atlas and Birch calendars gave different durations for the same meeting. We varied which calendar appeared first, which one said 30 minutes, and which one the question named. Both entries occupied the same system message. This gave four matched pairs of questions on one Qwen2.5-0.5B-Instruct checkpoint. Within a pair, only the calendar named in the final question changed. We froze all eight conditions and the selectors before scoring. Position was an explicit control because Liu et al. found position effects on retrieval and multi-document QA tasks with longer inputs. [Frozen protocol](https://github.com/thakur-ro/NexusWeave/blob/acbdff958c30703842c0d7081a63806b64d70197/examples/context-screening/replay/prefix-transfer/protocol.json) · [Liu et al., TACL 2024](https://aclanthology.org/2024.tacl-1.9/)
+Atlas and Birch calendars gave different durations for the same meeting. We varied which calendar appeared first, which one said 30 minutes, and which one the question named. Both entries occupied the same system message. This gave four matched pairs of questions on one Qwen2.5-0.5B-Instruct checkpoint. Within a pair, only the calendar named in the final question changed. We froze all eight conditions and the selectors before scoring. Position was an explicit control because Liu et al. found position effects on retrieval and multi-document QA tasks with longer inputs. [Frozen protocol](https://github.com/thakur-ro/A2Context/blob/acbdff958c30703842c0d7081a63806b64d70197/examples/context-screening/replay/prefix-transfer/protocol.json) · [Liu et al., TACL 2024](https://aclanthology.org/2024.tacl-1.9/)
 
 We scored `30` and `60` on the original request and after replacing each calendar entry with a statement that its duration was unavailable. The forecast selected an edit only if it alone switched the preferred number. A separate greedy generation started from the answer boundary for every condition. We extracted the meeting length from that text.
 
@@ -305,7 +305,7 @@ cmp "$study/cases.json" /tmp/new-calendar-cases.json
 
 ### What if the user never names the source?
 
-In the activity follow-up, the user described tropical plants or practicing for a concert. Atlas and Birch listed a greenhouse tour and an orchestra rehearsal. Across 16 questions we crossed the paraphrase, the activity assigned to each name, the durations and the source order. The simple name-matching and word-overlap rules both abstained throughout. A task-specific lookup identified the intended activity in every question. Its source edit changed the generated number on seven, preserved it on four and produced an outside-set answer on five. [Frozen protocol](https://github.com/thakur-ro/NexusWeave/blob/c390e759470b95a6c5589465e493fede82b5b764/examples/context-screening/replay/prefix-indirect/protocol.json)
+In the activity follow-up, the user described tropical plants or practicing for a concert. Atlas and Birch listed a greenhouse tour and an orchestra rehearsal. Across 16 questions we crossed the paraphrase, the activity assigned to each name, the durations and the source order. The simple name-matching and word-overlap rules both abstained throughout. A task-specific lookup identified the intended activity in every question. Its source edit changed the generated number on seven, preserved it on four and produced an outside-set answer on five. [Frozen protocol](https://github.com/thakur-ro/A2Context/blob/c390e759470b95a6c5589465e493fede82b5b764/examples/context-screening/replay/prefix-indirect/protocol.json)
 
 The model's supplied-prefix preference identified a single edit on 11/16 questions. All 11 changed the number. Four corrected a wrong original answer by blanking the other activity’s duration. Seven removed the original correct value. Only one of eight matched question pairs switched which edit was uniquely selected and confirmed. These counts describe the two paraphrases and checkpoint tested. A result with no single selection needs separate investigation even when an individual edit reverses a score. [All baselines, unmatched outcomes and reproducible results](../examples/context-screening/replay/prefix-indirect/README.md) · [Try a forecast and attach a measured result](sidecar.md#test-a-suggested-source-before-seeing-the-answer)
 
@@ -351,7 +351,7 @@ We measured the same two source edits on four synthetic routing requests with th
 
 The stock-only request had the largest shift and retained its tool call. It offered one tool and carried different system instructions. The follow-up below varies those two settings independently. The dashboard keeps this setup separate from the two-tool comparisons. The two North conversations share a card. [Measured first-token reports](../examples/runtime-comparison/pending-routing/prefill-cohort.json) · [Inputs and paired proposals](../examples/runtime-comparison/pending-routing/shadow-cohort.json)
 
-To repeat the prefill measurements, use `prefill_cohort.py --prepare /tmp/nexus-routing` to export one request and edit list for each case. Run each pair through `probe-prefill` with the Qwen adapter and checkpoint specified in the [sidecar guide](sidecar.md#measure-an-edit-before-the-first-output-token). The four saved rankings used twelve forward passes in total.
+To repeat the prefill measurements, use `prefill_cohort.py --prepare /tmp/a2context-routing` to export one request and edit list for each case. Run each pair through `probe-prefill` with the Qwen adapter and checkpoint specified in the [sidecar guide](sidecar.md#measure-an-edit-before-the-first-output-token). The four saved rankings used twelve forward passes in total.
 
 ### Did the instruction or the available tools matter?
 
@@ -370,7 +370,7 @@ Adding the price tool changed the effect of the user edit under both instruction
 
 ### Does the tool-inventory result repeat on fresh requests?
 
-Before scoring, we fixed four new product IDs, the final user messages and a prediction for all four setups. We kept both instruction texts, both inventories, both named source edits and the greedy runner from the development example. The prediction was that editing the request type changes the complete proposal in both two-tool setups and in neither stock-only setup. The four fresh inputs are the entire evaluation set. [Frozen specification](https://github.com/thakur-ro/NexusWeave/blob/f6c3f24/examples/runtime-comparison/pending-routing/routing-holdout.json)
+Before scoring, we fixed four new product IDs, the final user messages and a prediction for all four setups. We kept both instruction texts, both inventories, both named source edits and the greedy runner from the development example. The prediction was that editing the request type changes the complete proposal in both two-tool setups and in neither stock-only setup. The four fresh inputs are the entire evaluation set. [Frozen specification](https://github.com/thakur-ro/A2Context/blob/f6c3f24/examples/runtime-comparison/pending-routing/routing-holdout.json)
 
 | Product | Final user request | Where the full proposal changed | Where the proposed tool changed |
 | --- | --- | --- | --- |

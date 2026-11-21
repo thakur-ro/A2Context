@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave context screening pattern query",
+  "title": "A2Context context screening pattern query",
   "type": "object",
   "additionalProperties": false,
   "required": ["version"],

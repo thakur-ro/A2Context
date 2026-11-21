@@ -28,7 +28,7 @@ cargo run --locked -- preflight examples/exchange-approval/pending.json
 
 Look for `exchange_authorization` in the JSON report. The cache declares `approved` and the customer declares `hold` for the same order. From a new sidecar dashboard you can open **Inspect a sample exchange request** to see the same check. Choose **Check another request** to load your own file. This check reads the assembled inputs and makes zero model calls.
 
-To try your own request, pass the JSON your builder will send as `nexusweave.request.body`. For each source, supply its ID, version and location in that body. For a declared-rule check, give both sources the same rule key and scope and the value each supplied. Pipe the resulting versioned request to `cargo run --locked -- preflight -`. A conflict tells you the inputs disagree. A controlled edit and a measured outcome can tell you whether changing one affected the answer. [Example request](../examples/exchange-approval/pending.json) · [Source declarations](guide.md#declare-context-sources-and-decision-scope)
+To try your own request, pass the JSON your builder will send as `a2context.request.body`. For each source, supply its ID, version and location in that body. For a declared-rule check, give both sources the same rule key and scope and the value each supplied. Pipe the resulting versioned request to `cargo run --locked -- preflight -`. A conflict tells you the inputs disagree. A controlled edit and a measured outcome can tell you whether changing one affected the answer. [Example request](../examples/exchange-approval/pending.json) · [Source declarations](guide.md#declare-context-sources-and-decision-scope)
 
 ## Get a recommendation from a live span
 
@@ -76,7 +76,7 @@ cargo run --locked -- sidecar --db first-workflow.sqlite
    ```
 
 2. **Identify the call.** On the model span, set `gen_ai.operation.name` (for example, `chat`), `gen_ai.request.model` and a stable `gen_ai.conversation.id`. Send one staging request, then check `coverage.inference_spans` at `/api/sidecar/health`.
-3. **Name the inputs you want to compare.** For this step, use the capture-enabled staging receiver above with a separate database and redacted inputs. At request assembly, record the messages and attach `nexusweave.context.semantics` to that span. In the example, `approval_inputs` takes the two structured values the workflow already has and anchors each declaration to the message part it generated. Replace those inputs with yours. Check that `coverage.with_rules` increases and open the resulting recommendation when the two known values disagree. [Working instrumentation](../examples/exchange-approval/first_span.py) · [Adapter reference](guide.md#declare-context-sources-and-decision-scope)
+3. **Name the inputs you want to compare.** For this step, use the capture-enabled staging receiver above with a separate database and redacted inputs. At request assembly, record the messages and attach `a2context.context.semantics` to that span. In the example, `approval_inputs` takes the two structured values the workflow already has and anchors each declaration to the message part it generated. Replace those inputs with yours. Check that `coverage.with_rules` increases and open the resulting recommendation when the two known values disagree. [Working instrumentation](../examples/exchange-approval/first_span.py) · [Adapter reference](guide.md#declare-context-sources-and-decision-scope)
 
 In metadata-only mode, **Telemetry received** confirms delivery and links to **Threads**. To check the container, storage and exporter before shipping, run the deployment checks. [Verify the shipping image](../DEPLOYMENT.md#check-the-shipping-image-locally)
 
@@ -87,3 +87,11 @@ In metadata-only mode, **Telemetry received** confirms delivery and links to **T
 | **Connect your workflow** after sending a span | The endpoint must include `/v1/traces`. Check the exporter’s error output. Flush or shut down the exporter before a short-lived process exits. In a container, loopback belongs to that container’s network namespace. |
 | **Telemetry received**, zero inference spans | Set `gen_ai.operation.name` on the model span. |
 | Inference spans arrive, no conflict appears | Check `content_capture` and `coverage.with_rules` in receiver health. Use a fresh database when switching capture policy. Compare the two source anchors, rule keys, scopes and values. |
+
+## Upgrade an existing installation
+
+If you installed NexusWeave, point your checkout at the renamed repository with `git remote set-url origin https://github.com/thakur-ro/A2Context.git`. Build with `cargo build --release --locked`. The Rust package, executable, and Rust import are now `a2context`. Update the executable path in your service or MCP configuration.
+
+Keep the same SQLite file when restarting the sidecar. For Kubernetes, keep the existing volume claim in `claimName`. New exporters can write `a2context.*` attributes. The receiver still reads `nexusweave.*` from OTLP and LangSmith, including stored traces. When both spellings appear on one span, the current spelling takes precedence. Evidence links retain the field name that supplied the value. Existing replay fingerprints and demo trace IDs stay valid.
+
+The optional chat gateway reads `A2CONTEXT_CHAT_KEY` and falls back to `NEXUSWEAVE_CHAT_KEY`.

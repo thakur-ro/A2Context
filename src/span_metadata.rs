@@ -5,15 +5,41 @@ use crate::{
     RecordedRequest, Relationship, RequestFragment, Rule,
 };
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-const SEMANTICS: &str = "nexusweave.context.semantics";
-const PREFLIGHT: &str = "nexusweave.preflight";
-const CANDIDATES: &str = "nexusweave.candidate_probes";
-const SHADOW: &str = "nexusweave.shadow_probes";
-const SCREENING: &str = "nexusweave.context_screening";
-pub(crate) const REQUEST: &str = "nexusweave.request.body";
+const SEMANTICS: &str = "a2context.context.semantics";
+const PREFLIGHT: &str = "a2context.preflight";
+const CANDIDATES: &str = "a2context.candidate_probes";
+const SHADOW: &str = "a2context.shadow_probes";
+const SCREENING: &str = "a2context.context_screening";
+pub(crate) const REQUEST: &str = "a2context.request.body";
+
+// Look up the spelling the producer actually sent so evidence links survive a rename.
+fn legacy_key(key: &str) -> Option<String> {
+    key.strip_prefix("a2context.")
+        .map(|suffix| format!("nexusweave.{suffix}"))
+}
+
+pub(crate) fn attribute<'a>(
+    attrs: &'a Map<String, Value>,
+    key: &str,
+) -> Option<(&'a str, &'a Value)> {
+    attrs
+        .get_key_value(key)
+        .or_else(|| attrs.get_key_value(&legacy_key(key)?))
+        .map(|(key, value)| (key.as_str(), value))
+}
+
+pub(crate) fn string<'a>(metadata: &'a Value, key: &str) -> Option<&'a str> {
+    attribute(metadata.as_object()?, key)?.1.as_str()
+}
+
+pub(crate) fn take_attribute(attrs: &mut Map<String, Value>, key: &str) -> Option<Value> {
+    attrs
+        .remove(key)
+        .or_else(|| attrs.remove(&legacy_key(key)?))
+}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -90,6 +116,9 @@ struct RequestSourceAnchor {
 }
 
 pub(crate) fn apply(call: &mut Call, metadata: &Value, field: impl Fn(&str) -> String) {
+    let Some(attrs) = metadata.as_object() else {
+        return;
+    };
     let span = call.span_id.clone();
     let evidence = |key: &str| Evidence {
         span_id: span.clone(),
@@ -97,18 +126,18 @@ pub(crate) fn apply(call: &mut Call, metadata: &Value, field: impl Fn(&str) -> S
         message_index: None,
         part_index: None,
     };
-    if let Some(body) = metadata.get(REQUEST).and_then(Value::as_str) {
+    if let Some((key, Value::String(body))) = attribute(attrs, REQUEST) {
         let captured = RecordedRequest {
             body: body.to_owned(),
-            evidence: evidence(REQUEST),
+            evidence: evidence(key),
         };
         // A truncated capture still leaves the trace usable.
         if captured.parse().is_ok() {
             call.recorded_request = Some(captured);
         }
     }
-    if let Some(value) = metadata.get(SEMANTICS) {
-        let evidence = evidence(SEMANTICS);
+    if let Some((key, value)) = attribute(attrs, SEMANTICS) {
+        let evidence = evidence(key);
         let parsed = match value {
             Value::String(value) => serde_json::from_str::<Declarations>(value),
             value => Declarations::deserialize(value),
@@ -119,54 +148,54 @@ pub(crate) fn apply(call: &mut Call, metadata: &Value, field: impl Fn(&str) -> S
             .err();
         call.context_metadata = Some(ContextMetadata { evidence, issue });
     }
-    if let Some(value) = metadata.get(PREFLIGHT) {
+    if let Some((key, value)) = attribute(attrs, PREFLIGHT) {
         let receipt = match value {
             Value::String(value) => serde_json::from_str(value),
             value => crate::preflight::Receipt::deserialize(value),
         };
         call.preflight_receipt = Some(crate::preflight::CapturedReceipt {
-            evidence: evidence(PREFLIGHT),
+            evidence: evidence(key),
             receipt: receipt.ok(),
         });
     }
-    if let Some(value) = metadata.get(CANDIDATES) {
+    if let Some((key, value)) = attribute(attrs, CANDIDATES) {
         let reports = match value {
             Value::String(value) => serde_json::from_str(value),
             value => Vec::<crate::replay::candidates::Report>::deserialize(value),
         };
         call.candidate_probes = Some(crate::replay::candidates::CapturedReports {
-            evidence: evidence(CANDIDATES),
+            evidence: evidence(key),
             reports: reports.ok(),
         });
     }
     let prefill = crate::replay::prefill::ATTRIBUTE;
-    if let Some(value) = metadata.get(prefill) {
+    if let Some((key, value)) = attribute(attrs, prefill) {
         let report = match value {
             Value::String(text) => serde_json::from_str(text),
             value => crate::replay::prefill::Probe::deserialize(value),
         };
         call.prefill_probe = Some(crate::replay::prefill::Captured {
-            evidence: evidence(prefill),
+            evidence: evidence(key),
             report: report.ok(),
         });
     }
-    if let Some(value) = metadata.get(SHADOW) {
+    if let Some((key, value)) = attribute(attrs, SHADOW) {
         let reports = match value {
             Value::String(value) => serde_json::from_str(value),
             value => Vec::<crate::replay::shadow::Report>::deserialize(value),
         };
         call.shadow_probes = Some(crate::replay::shadow::CapturedReports {
-            evidence: evidence(SHADOW),
+            evidence: evidence(key),
             reports: reports.ok(),
         });
     }
-    if let Some(value) = metadata.get(SCREENING) {
+    if let Some((key, value)) = attribute(attrs, SCREENING) {
         let report = match value {
             Value::String(value) => serde_json::from_str(value),
             value => crate::context_screening::Report::deserialize(value),
         };
         call.context_screening = Some(crate::context_screening::CapturedReport {
-            evidence: evidence(SCREENING),
+            evidence: evidence(key),
             report: report.ok(),
         });
     }

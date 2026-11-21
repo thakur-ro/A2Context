@@ -46,11 +46,11 @@ def envelope(case, messages, arm):
     if content.count(value) != 1:
         raise ValueError("Expected unique payment field in the model-facing system message.")
     start = len(content[:content.index(value)].encode())
-    req["attributes"]["nexusweave.context.semantics"]["request_sources"].append({
+    req["attributes"]["a2context.context.semantics"]["request_sources"].append({
         "id": "payment-lookup", "source_id": "payment-lookup", "source_version": "captured",
         "role": "system", "request_fragment": demo.fragment("/messages/0/content", value, start)
     })
-    req["attributes"]["nexusweave.required_sources"] = {
+    req["attributes"]["a2context.required_sources"] = {
         "name": "Authorized payment method", "any_of": [["payment-lookup"]],
         "expected_text_sha256": {"payment-lookup": digest(case["pending_arguments"]["payment_method_id"])}
     }
@@ -67,7 +67,7 @@ def prepare(tokenizer):
     rows = []
     for case, saved in zip(DESIGN, cases, strict=True):
         parent = saved["arms"]["repair"]
-        history = json.loads(parent["pending_request"]["attributes"]["nexusweave.request.body"])["messages"]
+        history = json.loads(parent["pending_request"]["attributes"]["a2context.request.body"])["messages"]
         value = case["pending_arguments"]["payment_method_id"]
         old_prompt = parent["generation"]["rendered_prompt"] + PREFIX
         if old_prompt.count(value) != 1 or alternative(value) in old_prompt or not old_prompt.isascii():
@@ -79,7 +79,7 @@ def prepare(tokenizer):
         for arm in ARMS:
             msgs = edited_history(history, case, arm)
             req = envelope(case, msgs, arm)
-            key = "nexusweave.context.semantics"
+            key = "a2context.context.semantics"
             fragment = req["attributes"][key]["request_sources"][-1]["request_fragment"]
             plain = tokenizer.apply_chat_template(msgs, tools=None, tokenize=False, add_generation_prompt=True)
             prompt = plain + PREFIX

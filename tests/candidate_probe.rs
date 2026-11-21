@@ -1,11 +1,11 @@
-use nexusweave::{inspect, langsmith, otlp, preflight, replay::candidates, turn_evidence, Run};
+use a2context::{inspect, langsmith, otlp, preflight, replay::candidates, turn_evidence, Run};
 use serde_json::{json, Value};
 
 const INPUT: &str = include_str!("../examples/runtime-comparison/pending-returns/request.json");
 const CASE: &str = include_str!("../examples/runtime-comparison/pending-returns/case.json");
 const ROUTING_TRACE: &str =
     include_str!("../examples/runtime-comparison/pending-routing/trace.json");
-const PROBES: &str = "nexusweave.candidate_probes";
+const PROBES: &str = "a2context.candidate_probes";
 
 fn setup() -> (preflight::Request, candidates::Case) {
     (
@@ -65,9 +65,7 @@ fn reference_labels_stay_out_of_the_scorer_input() {
 #[test]
 fn scores_fixed_candidates_in_one_batch_without_a_recorded_output() {
     let (input, case) = setup();
-    let body = input.attributes["nexusweave.request.body"]
-        .as_str()
-        .unwrap();
+    let body = input.attributes["a2context.request.body"].as_str().unwrap();
     let original: Value = serde_json::from_str(body).unwrap();
     let report = candidates::execute(input, &case, |work| {
         assert_eq!(work.assistant_prefix, "The return window is");
@@ -99,7 +97,7 @@ fn scores_fixed_candidates_in_one_batch_without_a_recorded_output() {
         report.effects[0].source_id.as_deref(),
         Some("retail/returns-policy")
     );
-    assert_eq!(report.effects[0].evidence.field, "nexusweave.request.body");
+    assert_eq!(report.effects[0].evidence.field, "a2context.request.body");
     assert_eq!(report.effects[1].change_log_odds, 3.0);
     assert_eq!(report.effects[2].change_log_odds, 0.0);
     assert_ne!(
@@ -233,7 +231,7 @@ fn links_the_saved_routing_probe_to_its_recorded_sources_and_tool_choice() {
     assert_eq!(probes.len(), 1);
     assert_eq!(
         probes[0].evidence.field,
-        "extra.metadata[\"nexusweave.candidate_probes\"]"
+        "extra.metadata[\"a2context.candidate_probes\"]"
     );
     let candidates::Verification::Matched { measurement } = &probes[0].verification else {
         panic!("Expected a matched report")
@@ -270,7 +268,7 @@ fn links_the_saved_routing_probe_to_its_recorded_sources_and_tool_choice() {
 #[test]
 fn rejects_stale_requests_and_tampered_reports_without_hiding_recorded_decisions() {
     let mut changed_body = trace();
-    let body = &mut changed_body["extra"]["metadata"]["nexusweave.request.body"];
+    let body = &mut changed_body["extra"]["metadata"]["a2context.request.body"];
     *body = json!(format!("{} ", body.as_str().unwrap()));
     let mut changed_effect = trace();
     changed_effect["extra"]["metadata"][PROBES][0]["effects"][0]["change_log_odds"] = json!(4.0);
@@ -278,7 +276,7 @@ fn rejects_stale_requests_and_tampered_reports_without_hiding_recorded_decisions
     changed_edit["extra"]["metadata"][PROBES][0]["effects"][0]["intervention"]["replacement"] =
         json!("Request type: something else.");
     let mut changed_source = trace();
-    changed_source["extra"]["metadata"]["nexusweave.context.semantics"]["request_sources"][0]
+    changed_source["extra"]["metadata"]["a2context.context.semantics"]["request_sources"][0]
         ["source_version"] = json!("changed");
     let mut malformed = trace();
     malformed["extra"]["metadata"][PROBES] = json!("{incomplete");
@@ -308,14 +306,14 @@ fn rejects_stale_requests_and_tampered_reports_without_hiding_recorded_decisions
 fn attaches_otlp_pending_requests_by_source_version_and_exact_fragment() {
     let mut raw = trace();
     let metadata = &mut raw["extra"]["metadata"];
-    let semantics = &mut metadata["nexusweave.context.semantics"];
+    let semantics = &mut metadata["a2context.context.semantics"];
     semantics["request_sources"][0]["id"] = json!("otel-request-type");
     let attributes = [
         ("gen_ai.operation.name", "chat".to_owned()),
-        ("nexusweave.context.semantics", semantics.to_string()),
+        ("a2context.context.semantics", semantics.to_string()),
         (
-            "nexusweave.request.body",
-            metadata["nexusweave.request.body"]
+            "a2context.request.body",
+            metadata["a2context.request.body"]
                 .as_str()
                 .unwrap()
                 .to_owned(),
@@ -345,7 +343,7 @@ fn prefix_review_requires_verified_matching_edits_and_counts_free_answers() {
     ))
     .unwrap();
     let review = |input: Value| {
-        let report = nexusweave::pending::inspect(serde_json::from_value(input).unwrap()).unwrap();
+        let report = a2context::pending::inspect(serde_json::from_value(input).unwrap()).unwrap();
         report["prefix_reviews"].clone()
     };
     let original = review(envelope.clone());

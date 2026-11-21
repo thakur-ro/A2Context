@@ -10,14 +10,14 @@ Use stable Rust and Python 3.10 or newer.
 
 ```sh
 cargo build --release --locked
-python3 -m venv /tmp/nexusweave-otel
-/tmp/nexusweave-otel/bin/pip install opentelemetry-exporter-otlp-proto-http==1.45.2
-python3 scripts/check_sidecar.py --sdk-python /tmp/nexusweave-otel/bin/python
+python3 -m venv /tmp/a2context-otel
+/tmp/a2context-otel/bin/pip install opentelemetry-exporter-otlp-proto-http==1.45.2
+python3 scripts/check_sidecar.py --sdk-python /tmp/a2context-otel/bin/python
 ```
 
 The script uses a direct JSON OTLP producer and the independent OpenTelemetry Python SDK with Protobuf/gzip. Both producers exercise the conflict, recurrence, and replay journeys. The checks cover filter scope, allowlisted metadata, default redaction on disk, late parent spans, retry deduplication, expiry, and restart recovery. Saved Qwen trials exercise the live report route. The validator reproduced three deltas, including a numeric zero. It accepted a separate incomplete trial and excluded the unavailable delta from measured cards. It rejected a tampered request digest. The external replay planner scored the same saved trials in reordered batch form and reproduced the original report.
 
-For browser checks, start `target/release/nexusweave sidecar --demo`. Install `playwright-core` in a temporary directory and use an installed Chrome or Chromium binary.
+For browser checks, start `target/release/a2context sidecar --demo`. Install `playwright-core` in a temporary directory and use an installed Chrome or Chromium binary.
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/node_modules/playwright-core/index.mjs \
@@ -43,13 +43,13 @@ On the seeded demo, 25 warm loopback requests that prepared the Ash edit took 0.
 
 The layered dashboard tests also verify the difference between distinct conversations and requests without a conversation ID. The saved demo has 25 identified conversations with findings. Seventeen have a changed generated proposal, two have a score shift as their strongest finding, and six have captured-input findings only. In both score cases the proposal stayed the same in the completed routing trials. The browser checks follow a changed journal-policy answer and an unchanged routing example on desktop and mobile. Browser checks open the four-arm joint-edit result, verify the counts for each selected arm, and follow a scoped occurrence back to its original span. These are scripted journeys. Ease of use with workflow engineers still needs a user study.
 
-The recurring-target test sends saved journal experiments through OTLP/HTTP. It checks the opening-token signal, an observed suffix without token scores, missing scores for a joint edit, and different signals within one conversation. It also covers unfinished trials, duplicate delivery, anonymous calls, a different runner, a stale request digest, scope filters and exclusion of redacted captures. Version 18 and 19 databases recover the groups from retained calls. Expiry removes the associated experiments. Run `python3 tests/sidecar_targets.py target/debug/nexusweave --sdk-python /path/to/otel-sdk-python`.
+The recurring-target test sends saved journal experiments through OTLP/HTTP. It checks the opening-token signal, an observed suffix without token scores, missing scores for a joint edit, and different signals within one conversation. It also covers unfinished trials, duplicate delivery, anonymous calls, a different runner, a stale request digest, scope filters and exclusion of redacted captures. Version 18 and 19 databases recover the groups from retained calls. Expiry removes the associated experiments. Run `python3 tests/sidecar_targets.py target/debug/a2context --sdk-python /path/to/otel-sdk-python`.
 
-On Linux capped at one CPU and 512 MiB, we assigned two saved inputs and their token scores to 128 synthetic conversations. All trials missed in 96 conversations, which shared **one distinct missed input**. In 20 warm reads, fetching the recurrence summary and first 15 experiments filtered by the opening-token signal took 1.313 ms median and 1.488 ms p95 per pair of HTTP requests. Peak container memory, including ingestion, the release sidecar and the Python client, was 49.6 MiB. The timing excludes inference and the cost of collecting logits. Reproduce with `python3 tests/sidecar_targets.py target/release/nexusweave --cost`.
+On Linux capped at one CPU and 512 MiB, we assigned two saved inputs and their token scores to 128 synthetic conversations. All trials missed in 96 conversations, which shared **one distinct missed input**. In 20 warm reads, fetching the recurrence summary and first 15 experiments filtered by the opening-token signal took 1.313 ms median and 1.488 ms p95 per pair of HTTP requests. Peak container memory, including ingestion, the release sidecar and the Python client, was 49.6 MiB. The timing excludes inference and the cost of collecting logits. Reproduce with `python3 tests/sidecar_targets.py target/release/a2context --cost`.
 
 The proposal coverage check sends a standalone Ash trial in which both answers were `UNKNOWN` and both missed `KITE`. It checks a matching pair, a changed pair with the same match rate, a variable arm without a consistent pair, scope filters, pagination and redelivery. Reopening a version 15 database recovers the suppressed matching results from retained evidence. The browser opens a changed and a matching comparison from the same sampled conversation, then follows each link back to the scoped list.
 
-Replaying four saved routing requests across 256 conversation IDs put 128 conversations in the matching-only group and 128 in the group with both outcomes. In 20 warm reads, fetching the summary and the first 15 conversations with both examples took 3.21 ms median and 3.28 ms p95 per pair of HTTP requests. The release sidecar and benchmark client shared a 1 vCPU, 512 MiB Linux container. Together they peaked at 55.2 MiB with zero queue drops. This measures dashboard reads after ingestion on replicated data. Reproduce with `python3 examples/runtime-comparison/pending-routing/benchmark_routing.py target/release/nexusweave --proposal-coverage`.
+Replaying four saved routing requests across 256 conversation IDs put 128 conversations in the matching-only group and 128 in the group with both outcomes. In 20 warm reads, fetching the summary and the first 15 conversations with both examples took 3.21 ms median and 3.28 ms p95 per pair of HTTP requests. The release sidecar and benchmark client shared a 1 vCPU, 512 MiB Linux container. Together they peaked at 55.2 MiB with zero queue drops. This measures dashboard reads after ingestion on replicated data. Reproduce with `python3 examples/runtime-comparison/pending-routing/benchmark_routing.py target/release/a2context --proposal-coverage`.
 
 The token journey checks two saved models. On Qwen, the returns policy ranks first on the return window and the refund policy ranks first on the refund window. Two of the five captured inputs lack a tested edit. On MLX, the same product ID token appears twice. The browser follows it across pages, checks an argument-only change, and finds a position where all tested edits gave a measured zero. The SDK test verifies that an upgraded database still connects the finding to the changed generation. [Qwen report](../examples/runtime-comparison/generation-branches-transformers.json) · [MLX report](../examples/local-mlx-routing/output-token-report.json)
 
@@ -93,7 +93,7 @@ These eight sessions were selected for linked tool results. Their counts describ
 This result exposed a problem with recommending removal whenever two texts match. The factor list now labels these cases **Repeated dialogue** and places them after named input repetitions. Its recommendation asks whether a workflow inserted a copy. Genuine conversation history may repeat naturally. To reproduce, import the pinned sample, then run the optional check from the repository root.
 
 ```sh
-cargo test --locked --bin nexusweave public_retail_recommendations -- --ignored --nocapture
+cargo test --locked --bin a2context public_retail_recommendations -- --ignored --nocapture
 ```
 
 [Sample and import instructions](guide.md#import-public-retail-traces) · [Pinned sample manifest](../examples/retail-sample.manifest.json)
@@ -136,9 +136,9 @@ With conversation evidence categories enabled, the burst below retained all 2,30
 Use a fresh disposable container so retries can be compared against counts from an empty database. The burst sends 192 exports of 12 spans from 24 clients. Each span has 4 KiB of additional captured input. The load generator runs in a separate container and shares only the sidecar's network namespace.
 
 ```sh
-docker build -t nexusweave:private-validation .
+docker build -t a2context:private-validation .
 sidecar=$(docker run --detach --rm --cpus=1 --memory=512m --memory-swap=512m \
-  nexusweave:private-validation --db /state/load.sqlite --capture-content)
+  a2context:private-validation --db /state/load.sqlite --capture-content)
 docker run --rm -i --network "container:$sidecar" --workdir /work/scripts \
   python:3.13-alpine python - --overload-url http://127.0.0.1:8040 \
   < scripts/check_sidecar.py
@@ -166,7 +166,7 @@ With source-order matching enabled, the same capped burst retained all 2,304 req
 The two instrumented demo answers span three token pages. In a Linux container limited to one CPU and 512 MiB, 75 sequential warm HTTP reads took a median of 0.358 ms and a p95 of 0.423 ms, including Python JSON decoding. Peak cgroup memory was 38.8 MiB for the sidecar and the benchmark client together. This fixture measures reading saved reports. It excludes instrumentation, model inference and concurrent ingestion. Reproduce with a release build under the same limits.
 
 ```sh
-python3 scripts/check_sidecar.py --binary target/release/nexusweave --token-page-cost
+python3 scripts/check_sidecar.py --binary target/release/a2context --token-page-cost
 ```
 
 ## Public multi-document QA
@@ -184,14 +184,14 @@ An offline Linux container with one CPU and a 512 MiB limit ran the prebuilt Rus
 
 ## Routing comparisons across requests
 
-With the four saved routing inputs replicated across 256 identified conversations, 128 conversations had a changed proposal from editing `request-type`. After one warm-up, reading the edited-source ranking and the first 15 supporting conversations took a median of **3.84 ms per pair** and a p95 of **3.93 ms** across 20 pairs. The sidecar and Python client shared one CPU and 512 MiB in an offline Linux container. Combined peak memory was 35.7 MiB, with zero queue drops or OOM events. This measures reads after ingestion. Reproduce with `python3 examples/runtime-comparison/pending-routing/benchmark_routing.py target/release/nexusweave --edited-sources`.
+With the four saved routing inputs replicated across 256 identified conversations, 128 conversations had a changed proposal from editing `request-type`. After one warm-up, reading the edited-source ranking and the first 15 supporting conversations took a median of **3.84 ms per pair** and a p95 of **3.93 ms** across 20 pairs. The sidecar and Python client shared one CPU and 512 MiB in an offline Linux container. Combined peak memory was 35.7 MiB, with zero queue drops or OOM events. This measures reads after ingestion. Reproduce with `python3 examples/runtime-comparison/pending-routing/benchmark_routing.py target/release/a2context --edited-sources`.
 
 The built-in demo and the OTLP exporter display the four inputs fixed in the [replication protocol](../examples/runtime-comparison/pending-routing/routing-holdout.json). A second full run reproduced the four saved reports, including all twelve first-token forward passes and all 32 completed proposals. The integration suite checks that switching the outcome from full proposal to proposed tool changes the count for product 73, and that an exact input seen in two conversations contributes one input. It also checks incomplete and disagreeing trials, runner isolation, evidence links, scope filters and archive recovery.
 
 We measured a warm, organization-filtered findings query on four distinct requests submitted under 256 trace and conversation IDs. In a Linux container limited to 1 CPU and 512 MiB, the previous binary (`33ffae8`) took 4.83 ms at the median and 9.37 ms at the 95th percentile over 20 timed reads. With routing aggregation the same query took 5.03 ms and 5.24 ms. Each run discarded one warm-up read and reported zero queue drops. These timings cover a loopback HTTP query over one comparison design. More designs, distinct inputs or concurrent exports need separate measurements. [Benchmark script](../examples/runtime-comparison/pending-routing/benchmark_routing.py)
 
 ```sh
-python3 examples/runtime-comparison/pending-routing/benchmark_routing.py target/release/nexusweave
+python3 examples/runtime-comparison/pending-routing/benchmark_routing.py target/release/a2context
 ```
 
 ### Repeating the same source edit

@@ -27,9 +27,9 @@ def pending_request(tool, payload, expected_digest, anchor=True):
         "text_range": {"start_byte": 0, "end_byte": len(text.encode())},
     }}
     return {"request": {"version": 1, "attributes": {
-        "nexusweave.request.body": canonical({"messages": [{"role": "tool", "content": text}]}),
-        "nexusweave.context.semantics": {"version": 1, "request_sources": [source] if anchor else []},
-        "nexusweave.required_sources": {
+        "a2context.request.body": canonical({"messages": [{"role": "tool", "content": text}]}),
+        "a2context.context.semantics": {"version": 1, "request_sources": [source] if anchor else []},
+        "a2context.required_sources": {
             "name": tool + " result",
             "any_of": [[SOURCE]],
             "expected_text_sha256": {SOURCE: expected_digest},

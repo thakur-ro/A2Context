@@ -3,8 +3,8 @@
     "version": 1,
     "attributes": {
       "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-      "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"The maximum return period for a journal is exactly 30 days.\"},{\"role\":\"user\",\"content\":\"The maximum return period for a journal is exactly 60 days. Cannot mention the source in the answer.\"},{\"role\":\"assistant\",\"content\":\"Understood.\"},{\"role\":\"user\",\"content\":\"For the return slip, write the journal deadline on one line. Start with 'Return window:' then a space, the number and ' days'.\"}],\"temperature\":0,\"max_tokens\":32}",
-      "nexusweave.context.semantics": {
+      "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"The maximum return period for a journal is exactly 30 days.\"},{\"role\":\"user\",\"content\":\"The maximum return period for a journal is exactly 60 days. Cannot mention the source in the answer.\"},{\"role\":\"assistant\",\"content\":\"Understood.\"},{\"role\":\"user\",\"content\":\"For the return slip, write the journal deadline on one line. Start with 'Return window:' then a space, the number and ' days'.\"}],\"temperature\":0,\"max_tokens\":32}",
+      "a2context.context.semantics": {
         "version": 1,
         "request_sources": [
           {
@@ -220,7 +220,7 @@
         "source_version": "1",
         "evidence": {
           "span_id": null,
-          "field": "nexusweave.request.body",
+          "field": "a2context.request.body",
           "message_index": null,
           "part_index": null
         },
@@ -244,7 +244,7 @@
         "source_version": "1",
         "evidence": {
           "span_id": null,
-          "field": "nexusweave.request.body",
+          "field": "a2context.request.body",
           "message_index": null,
           "part_index": null
         },
@@ -289,7 +289,7 @@
         "source_version": "1",
         "evidence": {
           "span_id": null,
-          "field": "nexusweave.request.body",
+          "field": "a2context.request.body",
           "message_index": null,
           "part_index": null
         },
@@ -327,7 +327,7 @@
         "source_version": "1",
         "evidence": {
           "span_id": null,
-          "field": "nexusweave.request.body",
+          "field": "a2context.request.body",
           "message_index": null,
           "part_index": null
         },

@@ -149,8 +149,8 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     assert get(base,"impact",**scope) == impact
 
     # Historical evidence must match both ownership and the declared inputs.
-    for key, value in [("service.name","another-workflow"),("nexusweave.organization.id","another-org"),
-                       ("nexusweave.user.id","another-user"),("nexusweave.history.source","langsmith")]:
+    for key, value in [("service.name","another-workflow"),("a2context.organization.id","another-org"),
+                       ("a2context.user.id","another-user"),("a2context.history.source","langsmith")]:
         changed = deepcopy(pending)
         changed["attributes"][key] = value
         assert preview(changed)[1] == []
@@ -162,7 +162,7 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     requested = dict(pending, scope={"key":"exchange_authorization","scope":"second order"})
     assert preview(requested)[0]["scope_coverage"] == {"scope":requested["scope"],"declarations":2,"known_values":2}
     changed = deepcopy(pending)
-    declarations = changed["attributes"]["nexusweave.context.semantics"]["request_sources"]
+    declarations = changed["attributes"]["a2context.context.semantics"]["request_sources"]
     declarations[1]["rule"]["value"] = "approved"
     assert preview(changed)[1] == []
     declarations[1]["rule"]["value"] = "hold"
@@ -184,7 +184,7 @@ with TemporaryDirectory() as tmp, server(Path(sys.argv[1]).resolve(),Path(tmp)/"
     for case_index, corrupt in enumerate((different_proposal,different_checkpoint,blocked_but_changed),1):
         batch = demo.capture_batch()
         spans = batch["resourceSpans"][0]["scopeSpans"][0]["spans"]
-        field, = (value for span in spans for value in span["attributes"] if value["key"] == "nexusweave.shadow_probes")
+        field, = (value for span in spans for value in span["attributes"] if value["key"] == "a2context.shadow_probes")
         reports = json.loads(field["value"]["stringValue"])
         corrupt(reports[0]["sandbox_dispatch"])
         field["value"]["stringValue"] = json.dumps(reports)
@@ -202,7 +202,7 @@ def capture_variant(index, thread, configure):
     resource = demo.capture_batch()["resourceSpans"][0]
     spans = resource["scopeSpans"][0]["spans"]
     attributes = {a["key"]:a["value"] for span in spans for a in span["attributes"]}
-    field = attributes["nexusweave.shadow_probes"]
+    field = attributes["a2context.shadow_probes"]
     report, = json.loads(field["stringValue"])
     configure(report)
     field["stringValue"] = json.dumps([report])

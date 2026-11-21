@@ -157,7 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=Path, help="Run the frozen protocol on this checkpoint.")
     parser.add_argument("--results", type=Path, default=HERE / "results.json")
     parser.add_argument("--example", type=Path, help="Independently generate the first question's dashboard report.")
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/debug/nexusweave")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/debug/a2context")
     args = parser.parse_args()
     protocol = json.loads(PROTOCOL.read_text())
     if args.model and not args.example:

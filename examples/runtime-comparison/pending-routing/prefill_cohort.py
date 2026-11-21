@@ -7,15 +7,15 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 FOLDER = Path(__file__).parent
-ATTRIBUTE = "nexusweave.prefill.probe"
+ATTRIBUTE = "a2context.prefill.probe"
 
 
 def inputs(record):
     metadata = record["extra"]["metadata"]
-    raw = metadata["nexusweave.request.body"]
+    raw = metadata["a2context.request.body"]
     messages = json.loads(raw)["messages"]
     return {"gen_ai.operation.name": "chat", "gen_ai.request.model": metadata["ls_model_name"],
-            "nexusweave.request.body": raw, "nexusweave.context.semantics": metadata["nexusweave.context.semantics"],
+            "a2context.request.body": raw, "a2context.context.semantics": metadata["a2context.context.semantics"],
             "gen_ai.input.messages": [{"role": m["role"], "parts": [{"type": "text", "content": m["content"]}]} for m in messages]}
 
 
@@ -24,10 +24,10 @@ def export(records, probes):
     for record in records:
         metadata = record["extra"]["metadata"]
         attrs = {**inputs(record), ATTRIBUTE: probes[record["id"]],
-                 "nexusweave.organization.id": metadata["organization_id"], "nexusweave.user.id": metadata["user_id"],
+                 "a2context.organization.id": metadata["organization_id"], "a2context.user.id": metadata["user_id"],
                  "gen_ai.conversation.id": metadata["thread_id"]}
-        if "nexusweave.shadow_probes" in metadata:
-            attrs["nexusweave.shadow_probes"] = metadata["nexusweave.shadow_probes"]
+        if "a2context.shadow_probes" in metadata:
+            attrs["a2context.shadow_probes"] = metadata["a2context.shadow_probes"]
         attributes = [{"key": k, "value": {"stringValue": v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)}}
                       for k, v in attrs.items()]
         trace = sha256(("nexusweave-prefill/" + record["id"]).encode()).hexdigest()[:32]
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     if args.prepare:
         args.prepare.mkdir(parents=True, exist_ok=True)
         for record in records:
-            report, = record["extra"]["metadata"]["nexusweave.shadow_probes"]
+            report, = record["extra"]["metadata"]["a2context.shadow_probes"]
             request = {"version": 1, "attributes": inputs(record)}
             scored = {"version": 1, "attributes": {**inputs(record), ATTRIBUTE: probes[record["id"]]}}
             for suffix, value in [("request", request), ("scored", scored),

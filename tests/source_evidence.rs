@@ -1,4 +1,4 @@
-use nexusweave::{activation, langsmith, replay::Trial, source_profiles, Run};
+use a2context::{activation, langsmith, replay::Trial, source_profiles, Run};
 use serde_json::{json, Value};
 
 const PROBE_TRACE: &str =
@@ -103,7 +103,7 @@ fn links_a_single_prediction_source_swap() {
 fn probe_trace() -> Run {
     let mut trace: Value = serde_json::from_str(PROBE_TRACE).unwrap();
     let candidate: Value = serde_json::from_str(CANDIDATE_TRACE).unwrap();
-    let key = "nexusweave.candidate_probes";
+    let key = "a2context.candidate_probes";
     trace["extra"]["metadata"][key] = candidate["extra"]["metadata"][key].clone();
     langsmith::import(&trace).unwrap().remove(0)
 }

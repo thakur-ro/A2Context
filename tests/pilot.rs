@@ -1,4 +1,4 @@
-use nexusweave::{add_annotations, exgentic, inspect, Annotation, Availability, FindingKind, Run};
+use a2context::{add_annotations, exgentic, inspect, Annotation, Availability, FindingKind, Run};
 use serde_json::{json, Value};
 use std::process::Command;
 
@@ -8,7 +8,7 @@ fn support() -> Vec<Run> {
 
 #[test]
 fn cli_inspection_links_the_saved_replay_to_the_recorded_policy() {
-    let output = Command::new(env!("CARGO_BIN_EXE_nexusweave"))
+    let output = Command::new(env!("CARGO_BIN_EXE_a2context"))
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .args([
             "inspect",

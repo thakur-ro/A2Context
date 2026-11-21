@@ -25,7 +25,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("model", type=Path)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/nexusweave")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/a2context")
     args = parser.parse_args()
     args.output.mkdir(exist_ok=True, parents=True)
     scores = {}

@@ -19,7 +19,7 @@ try {
     const entry = new URL(base);
     entry.searchParams.set("workflow","exchange-agent");
     await page.goto(new URL("/",base).href);
-    await page.getByRole("heading",{name:"Welcome to NexusWeave",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"Welcome to A2Context",exact:true}).waitFor();
     const workflows = page.getByRole("navigation",{name:"Workflows"});
     await workflows.getByRole("link",{name:"All workflows",exact:true}).waitFor();
     await page.getByRole("heading",{name:"What would you like to investigate?"}).waitFor();
@@ -47,7 +47,7 @@ try {
     const question = page.getByRole("textbox",{name:"Question about workflow evidence"});
     const submit = async text => {await question.fill(text); await question.press("Enter");};
     await submit("Show all workflows");
-    await page.getByRole("heading",{name:"Welcome to NexusWeave",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"Welcome to A2Context",exact:true}).waitFor();
     await submit("What did verify_customer return?");
     const search = page.getByRole("region",{name:"Answer canvas"});
     await search.getByRole("heading",{name:"Matching recorded activity"}).waitFor();
@@ -142,7 +142,7 @@ try {
     await submit("Show the token-position diagram");
     await canvas.getByRole("heading",{name:"No token measurements in this workflow"}).waitFor();
     await submit("Show all workflows");
-    await page.getByRole("heading",{name:"Welcome to NexusWeave",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"Welcome to A2Context",exact:true}).waitFor();
     await submit("Show the token-position diagram in Returns demo");
     const tokenMap = canvas.getByRole("table",{name:"Measured source edits by output token"});
     await tokenMap.waitFor();

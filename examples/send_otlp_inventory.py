@@ -19,20 +19,20 @@ def main():
     args = parser.parse_args()
 
     provider = TracerProvider(resource=Resource.create({
-        "service.name": "nexusweave-inventory-example",
-        "nexusweave.organization.id": "sdk-demo-org",
+        "service.name": "a2context-inventory-example",
+        "a2context.organization.id": "sdk-demo-org",
     }))
     exporter = OTLPSpanExporter(endpoint=args.endpoint, compression=Compression.Gzip)
     provider.add_span_processor(SimpleSpanProcessor(exporter))
-    tracer = provider.get_tracer("nexusweave-inventory-example")
+    tracer = provider.get_tracer("a2context-inventory-example")
     if args.request_sources:
         demo_thread = "sdk-inventory-prompt-sources"
     else:
         demo_thread = "sdk-inventory-captured-thread" if args.capture_request else "sdk-inventory-thread"
     scope = {
         "gen_ai.conversation.id": args.conversation_id or demo_thread,
-        "nexusweave.user.id": "sdk-demo-user",
-        "nexusweave.turn.id": "stock-question",
+        "a2context.user.id": "sdk-demo-user",
+        "a2context.turn.id": "stock-question",
     }
     inference = {
         **scope,
@@ -87,7 +87,7 @@ def main():
             system_prompt += "\n"
         messages.insert(0, {"role": "system", "content": system_prompt})
     if args.capture_request or args.request_sources:
-        capture["nexusweave.request.body"] = json.dumps({
+        capture["a2context.request.body"] = json.dumps({
             "model": inference["gen_ai.request.model"],
             "messages": messages,
             "tools": tools,
@@ -104,7 +104,7 @@ def main():
                     for message in messages
                 ]),
                 "gen_ai.tool.definitions": json.dumps(tools),
-                "nexusweave.context.semantics": json.dumps(semantics),
+                "a2context.context.semantics": json.dumps(semantics),
                 "gen_ai.output.messages": json.dumps([{"role": "assistant", "parts": [tool_call]}]),
             }):
                 pass

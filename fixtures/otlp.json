@@ -10,7 +10,7 @@
             }
           },
           {
-            "key": "nexusweave.organization.id",
+            "key": "a2context.organization.id",
             "value": {
               "stringValue": "demo-retail"
             }
@@ -20,7 +20,7 @@
       "scopeSpans": [
         {
           "scope": {
-            "name": "nexusweave.example"
+            "name": "a2context.example"
           },
           "spans": [
             {
@@ -157,7 +157,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.user.id",
+                  "key": "a2context.user.id",
                   "value": {
                     "stringValue": "inventory-user"
                   }
@@ -237,7 +237,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "inventory-turn-1"
                   }
@@ -443,7 +443,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.user.id",
+                  "key": "a2context.user.id",
                   "value": {
                     "stringValue": "inventory-user"
                   }

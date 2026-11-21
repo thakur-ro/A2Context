@@ -2,7 +2,7 @@ mod prefix;
 
 use super::{findings, recommendations};
 use crate::{report_store::Report, Result};
-use nexusweave::{activation, otlp, replay, Run};
+use a2context::{activation, otlp, replay, Run};
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension, Transaction};
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -251,7 +251,7 @@ impl Store {
             .map(|r| (r, "returns-demo"))
             .chain(routing_runs.iter().map(|r| (r, "routing-prefill")))
         {
-            nexusweave::validate(run)?;
+            a2context::validate(run)?;
             save_trace(
                 &tx,
                 &run.id,
@@ -432,7 +432,7 @@ impl Store {
                     "SELECT id FROM traces WHERE id>?1 AND run IS NOT NULL AND
                       (?2<8 OR EXISTS (SELECT 1 FROM observations o WHERE o.trace_id=traces.id AND o.kind IN ('token','shadow','prefill'))
                        OR (?2<13 AND EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='activation-reports'))
-                       OR instr(run,'shadow_probes')>0 OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='replay-reports') OR (?2=8 AND (instr(raw,?3)>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
+                       OR instr(run,'shadow_probes')>0 OR EXISTS (SELECT 1 FROM reports p WHERE p.trace_id=traces.id AND p.kind='replay-reports') OR (?2=8 AND (instr(raw,?3)>0 OR instr(raw,'nexusweave.prefill.probe')>0 OR (raw IS NULL AND instr(run,'prefill_probe')>0)))
                        OR (?2 IN (9,10) AND (instr(raw,'routing_test')>0 OR instr(run,'routing_test')>0)))
                       ORDER BY id LIMIT 16",
                 )?;
@@ -447,7 +447,7 @@ impl Store {
             for id in &ids {
                 // Older normalized calls omitted prefill reports even when the retained span had one.
                 let saved: Option<String> = tx.query_row(
-                    "SELECT CASE WHEN instr(raw,?2)>0 THEN raw END FROM traces WHERE id=?1",
+                    "SELECT CASE WHEN instr(raw,?2)>0 OR instr(raw,'nexusweave.prefill.probe')>0 THEN raw END FROM traces WHERE id=?1",
                     params![id, replay::prefill::ATTRIBUTE],
                     |row| row.get(0),
                 )?;
@@ -722,7 +722,7 @@ impl Store {
         &self,
         partition: &str,
         current: &str,
-        scope: Option<&nexusweave::DecisionScope>,
+        scope: Option<&a2context::DecisionScope>,
     ) -> Result<Value> {
         let data: String = self.0.query_row(
             super::history::PRIOR_DISPATCH,
@@ -1783,14 +1783,14 @@ fn save_trace(
         .filter(|call| {
             call.context
                 .iter()
-                .any(|item| item.availability == nexusweave::Availability::Included)
+                .any(|item| item.availability == a2context::Availability::Included)
         })
         .count();
     let with_rules = inference
         .clone()
         .filter(|call| {
             call.context.iter().any(|item| {
-                item.availability == nexusweave::Availability::Included
+                item.availability == a2context::Availability::Included
                     && item.rule.as_ref().is_some_and(|rule| rule.value.is_some())
             })
         })

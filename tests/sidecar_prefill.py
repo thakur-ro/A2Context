@@ -268,17 +268,17 @@ def check(binary, folder, sdk_python):
         assert sorted(row["leader"]["status"] for row in north["prefill_counts"]) == ["mixed", "unique"]
         assert north["prefill_followup"][0]["changed"] == 1
         def zero(probe, attrs):
-            attrs["nexusweave.organization.id"]["stringValue"] = "zero"
+            attrs["a2context.organization.id"]["stringValue"] = "zero"
             for row in probe["scores"]["effects"]:
                 row["js_bits"] = 0
         send_traces(base, modified(doc, 704, zero))
         z, = recommendation(base, org="zero")
         assert z["prefill_counts"] == [{"leader":{"status":"zero"}, "inputs":1}] and z["prefill_followup"] == []
         def bad_shadow(probe, attrs):
-            attrs["nexusweave.organization.id"]["stringValue"] = "unpaired"
-            reports = json.loads(attrs["nexusweave.shadow_probes"]["stringValue"])
+            attrs["a2context.organization.id"]["stringValue"] = "unpaired"
+            reports = json.loads(attrs["a2context.shadow_probes"]["stringValue"])
             reports[0]["effects"][0]["request_sha256"] = "0"*64
-            attrs["nexusweave.shadow_probes"]["stringValue"] = json.dumps(reports)
+            attrs["a2context.shadow_probes"]["stringValue"] = json.dumps(reports)
         send_traces(base, modified(doc, 705, bad_shadow))
         unpaired, = recommendation(base, org="unpaired")
         assert unpaired["prefill_counts"][0]["leader"]["status"] == "unique" and unpaired["prefill_followup"] == []

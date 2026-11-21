@@ -27,8 +27,8 @@ def span_for(week, row, session):
         "gen_ai.conversation.id": f'{week}:{row["session_id"]}',
         "gen_ai.usage.input_tokens": row["prompt_tokens"],
         "gen_ai.usage.output_tokens": row["completion_tokens"],
-        "nexusweave.organization.id": "freeinference",
-        "nexusweave.user.id": session["user_id"],
+        "a2context.organization.id": "freeinference",
+        "a2context.user.id": session["user_id"],
         "study.step_trigger": row["step_trigger"],
         "study.input_transition": row["transition"],
     }

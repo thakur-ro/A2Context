@@ -1,6 +1,6 @@
 # Rust package
 
-NexusWeave exposes the same inspection and replay functions used by its CLI. Use the crate to check a pending request in process, import a recorded trace, or supply your own model runner for an experiment.
+A2Context exposes the same inspection and replay functions used by its CLI. Use the crate to check a pending request in process, import a recorded trace, or supply your own model runner for an experiment.
 
 [Install from a checkout](#use-the-package-from-a-checkout) · [Trace a finding in Rust](#trace-a-finding-in-rust) · [Choose an API](#find-the-api-for-your-task)
 
@@ -12,13 +12,13 @@ To install the CLI, run this from the repository root with a stable Rust toolcha
 cargo install --locked --path .
 ```
 
-To depend on the library, run this from your Rust application's directory, with the NexusWeave checkout in a sibling directory.
+To depend on the library, run this from your Rust application's directory, with the A2Context checkout in a sibling directory.
 
 ```sh
-cargo add nexusweave --path ../NexusWeave
+cargo add a2context --path ../A2Context
 ```
 
-Generate the API reference from the NexusWeave checkout. The crate homepage has a tested example that links a pending finding to a recorded turn and groups it in a user scope. The `preflight::check` and `context_screening::screen_pending` pages have smaller runnable examples.
+Generate the API reference from the A2Context checkout. The crate homepage has a tested example that links a pending finding to a recorded turn and groups it in a user scope. The `preflight::check` and `context_screening::screen_pending` pages have smaller runnable examples.
 
 ```sh
 cargo doc --locked --no-deps --open

@@ -3,10 +3,10 @@
     "version": 1,
     "attributes": {
       "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-      "nexusweave.organization.id": "dispatch-lab",
-      "nexusweave.history.source": "synthetic-qwen-order",
-      "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Dispatch guide: Route Elm parcels to bay LARK.\"},{\"role\":\"user\",\"content\":\"Routing note: Route Elm parcels to bay LARK.\"},{\"role\":\"user\",\"content\":\"Where should a Elm parcel go?\"}],\"temperature\":0,\"max_tokens\":16}",
-      "nexusweave.context.semantics": {
+      "a2context.organization.id": "dispatch-lab",
+      "a2context.history.source": "synthetic-qwen-order",
+      "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the supplied dispatch records. Reply with the bay code alone. If no record specifies a bay, reply UNKNOWN.\"},{\"role\":\"user\",\"content\":\"Dispatch guide: Route Elm parcels to bay LARK.\"},{\"role\":\"user\",\"content\":\"Routing note: Route Elm parcels to bay LARK.\"},{\"role\":\"user\",\"content\":\"Where should a Elm parcel go?\"}],\"temperature\":0,\"max_tokens\":16}",
+      "a2context.context.semantics": {
         "version": 1,
         "request_sources": [
           {
@@ -116,7 +116,7 @@
         "source_version": "1",
         "evidence": {
           "span_id": null,
-          "field": "nexusweave.request.body",
+          "field": "a2context.request.body",
           "message_index": null,
           "part_index": null
         },
@@ -140,7 +140,7 @@
         "source_version": "1",
         "evidence": {
           "span_id": null,
-          "field": "nexusweave.request.body",
+          "field": "a2context.request.body",
           "message_index": null,
           "part_index": null
         },

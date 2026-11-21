@@ -17,7 +17,7 @@ from check_sidecar import get, send_traces, server
 def benchmark(binary, folder, sampled=False, edited_sources=False, proposal_coverage=False):
     records = json.loads((RESULTS.with_name("sampled-results.json") if sampled else RESULTS).read_text())
     org = records[0]["extra"]["metadata"]["organization_id"]
-    distinct = len({r["extra"]["metadata"]["nexusweave.request.body"] for r in records})
+    distinct = len({r["extra"]["metadata"]["a2context.request.body"] for r in records})
     document = export(records, {r["id"]: r["extra"]["metadata"][ATTRIBUTE] for r in records})
     spans = document["resourceSpans"][0]["scopeSpans"][0]["spans"]
     with server(binary, folder / "store", "--capture-content") as base:

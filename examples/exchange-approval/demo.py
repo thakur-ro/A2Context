@@ -66,10 +66,10 @@ def pending(case):
     body = {"model":MODEL,"temperature":0,"max_tokens":128,"tools":TOOLS,"messages":messages}
     return {"version":1,"attributes":{
         "gen_ai.request.model":MODEL,
-        "nexusweave.organization.id":"exchange-demo",
+        "a2context.organization.id":"exchange-demo",
         "service.name":"exchange-agent",
-        "nexusweave.request.body":json.dumps(body,separators=(",", ":")),
-        "nexusweave.context.semantics":{"version":1,"request_sources":declarations},
+        "a2context.request.body":json.dumps(body,separators=(",", ":")),
+        "a2context.context.semantics":{"version":1,"request_sources":declarations},
     }}
 
 
@@ -117,11 +117,11 @@ def measure(binary, checkpoint):
         request = pending(case)
         attrs = request["attributes"]
         if case["approved"]:
-            choice = json.loads(subprocess.check_output(runner,input=attrs["nexusweave.request.body"],text=True))
+            choice = json.loads(subprocess.check_output(runner,input=attrs["a2context.request.body"],text=True))
             trials = {"original":choice}
             report = None
         else:
-            edit = attrs["nexusweave.context.semantics"]["request_sources"][0]["request_fragment"]
+            edit = attrs["a2context.context.semantics"]["request_sources"][0]["request_fragment"]
             config = {"version":1,"id":"approval-" + case["id"],"runner_id":RUNNER,"samples":1,
                       "expected":{"kind":"tool_call","label":"message","outcome":{"content":""}},
                       "match_rule":{"kind":"kind_and_label"},
@@ -163,15 +163,15 @@ def dispatch_receipt(report, comparison):
 def check_incomplete_capture(binary, request, case):
     attrs = request["attributes"]
     if not case["approved"]:
-        semantics = attrs["nexusweave.context.semantics"]
+        semantics = attrs["a2context.context.semantics"]
         semantics["request_sources"] = [source for source in semantics["request_sources"]
                                         if source["source_id"] != "latest-customer-message"]
     example = json.loads((HERE / "pending.json").read_text())
-    attrs["nexusweave.required_sources"] = example["attributes"]["nexusweave.required_sources"]
+    attrs["a2context.required_sources"] = example["attributes"]["a2context.required_sources"]
     report = json.loads(subprocess.check_output([binary, "preflight", "-"], input=json.dumps(request), text=True))
-    attrs.pop("nexusweave.required_sources")
-    attrs["nexusweave.preflight"] = report["receipt"]
-    attrs["nexusweave.user.id"] = "exchange-customer"
+    attrs.pop("a2context.required_sources")
+    attrs["a2context.preflight"] = report["receipt"]
+    attrs["a2context.user.id"] = "exchange-customer"
 
 
 def capture_batch(*, capture_gap_binary=None):
@@ -188,13 +188,13 @@ def capture_batch(*, capture_gap_binary=None):
                 if baseline["kind"] == "tool_call" else {"type":"text","content":baseline["outcome"]})
         attrs.update({
             "gen_ai.operation.name":"chat","gen_ai.conversation.id":case["title"],
-            "nexusweave.turn.id":"Decide the second exchange",
+            "a2context.turn.id":"Decide the second exchange",
             "gen_ai.input.messages":[{"role":m["role"],"parts":[{"type":"text","content":m["content"]}]}
-                                     for m in json.loads(attrs["nexusweave.request.body"])["messages"][1:]],
+                                     for m in json.loads(attrs["a2context.request.body"])["messages"][1:]],
             "gen_ai.output.messages":[{"role":"assistant","parts":[part]}],
         })
         if result["shadow"] and capture_gap_binary is None:
-            attrs["nexusweave.shadow_probes"] = [dict(result["shadow"],
+            attrs["a2context.shadow_probes"] = [dict(result["shadow"],
                 sandbox_dispatch=dispatch_receipt(result["shadow"],result["sandbox"]["refreshed"]))]
 
         trace = uuid5(NAMESPACE_URL,"nexusweave/tau-retail/handoff/" + case["id"]).hex
@@ -238,7 +238,7 @@ def export(origin, *, capture_gap_binary=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--binary",type=Path,default=ROOT/"target/debug/nexusweave")
+    parser.add_argument("--binary",type=Path,default=ROOT/"target/debug/a2context")
     parser.add_argument("--measure",type=Path,metavar="CHECKPOINT")
     parser.add_argument("--output",type=Path)
     parser.add_argument("--capture-gap",action="store_true",
@@ -258,7 +258,7 @@ def main():
     ) as sidecar:
         try:
             startup = sidecar.stdout.readline().strip()
-            if not startup.startswith("NexusWeave sidecar is listening at "):
+            if not startup.startswith("A2Context sidecar is listening at "):
                 raise RuntimeError(f"Sidecar did not start. {startup}")
             origin = startup.rsplit(" ",1)[1]
             export(origin, capture_gap_binary=args.binary if args.capture_gap else None)

@@ -40,7 +40,7 @@ Open the printed address and ask **Show the context map**. The two resumed hold 
 
 ## What the test covers
 
-The public τ²-Bench trajectory supplied the two orders, catalog result, payment method and original confirmation. Both exchanges were authorized in that trajectory. We added two alternative customer messages that put the second order on hold after the first exchange request. NexusWeave replays the next proposal on a compact reconstruction of that checkpoint. The separate sandbox evaluates the resulting database state. [Pinned trace data](https://huggingface.co/datasets/Exgentic/agent-llm-traces/blob/70036b93a04e61b0ea2706a68b962f4f26774587/README.md) · [Scenario and checkpoint IDs](../examples/exchange-approval/scenario.json)
+The public τ²-Bench trajectory supplied the two orders, catalog result, payment method and original confirmation. Both exchanges were authorized in that trajectory. We added two alternative customer messages that put the second order on hold after the first exchange request. A2Context replays the next proposal on a compact reconstruction of that checkpoint. The separate sandbox evaluates the resulting database state. [Pinned trace data](https://huggingface.co/datasets/Exgentic/agent-llm-traces/blob/70036b93a04e61b0ea2706a68b962f4f26774587/README.md) · [Scenario and checkpoint IDs](../examples/exchange-approval/scenario.json)
 
 | Condition | Unwanted writes in the two hold cases |
 | --- | --- |
@@ -60,7 +60,7 @@ From **Conversations with findings**, open **Conversations with a sandbox dispat
 
 With the demo running, select **Before inference**, then **Check the next exchange**. This request has the same disagreement about the puzzle order and a new customer message asking to pause it. The preview shows the conflict in the current inputs and two distinct earlier requests where the authorization check preserved sandbox state. Open the result to inspect the earlier proposal and the state comparison. Running the preview makes zero model calls. [Pending request](../examples/exchange-approval/pending.json)
 
-To use this lookup in a workflow, provide `service.name` and `nexusweave.organization.id` alongside the pending request. The lookup matches the producer, exact user scope, model, request layout, source revisions, and declared rule values. It excludes the current request body, counts a repeated body once per comparison design, and surfaces disagreements as mixed. The bounded lookup uses at most 128 matching observations. Use a fresh replay to verify the pending request and its outcome.
+To use this lookup in a workflow, provide `service.name` and `a2context.organization.id` alongside the pending request. The lookup matches the producer, exact user scope, model, request layout, source revisions, and declared rule values. It excludes the current request body, counts a repeated body once per comparison design, and surfaces disagreements as mixed. The bounded lookup uses at most 128 matching observations. Use a fresh replay to verify the pending request and its outcome.
 
 ## See what the model did on the pending request
 
@@ -93,7 +93,7 @@ For a fresh measurement, install Transformers 4.57.6 and PyTorch 2.11.0 and supp
 cargo build --locked
 python3 examples/exchange-approval/demo.py --measure "$CHECKPOINT_DIR" --output /tmp/exchange-replay.json
 cmp examples/exchange-approval/results.json /tmp/exchange-replay.json
-python3 tests/check_exchange_demo.py target/debug/nexusweave
+python3 tests/check_exchange_demo.py target/debug/a2context
 ```
 
 To record the running dashboard again, use `node scripts/record_demo.mjs SIDECAR_URL /tmp/exchange-approval.mp4`. Pass the gateway URL and append the configured model ID to record real partner responses. The recorder follows the live UI in Chromium and encodes a 2560 × 1440 H.264 MP4 at 30 fps. It draws a 16 × 23 CSS-pixel pointer at the actual click coordinates. Set `PLAYWRIGHT_MODULE`, `CHROME_BINARY`, or `FFMPEG` if you installed those tools outside their usual locations.

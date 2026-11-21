@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 pub mod routing;
 
-pub const ATTRIBUTE: &str = "nexusweave.prefill.probe";
+pub const ATTRIBUTE: &str = "a2context.prefill.probe";
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

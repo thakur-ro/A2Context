@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 
-pub const ATTRIBUTE: &str = "nexusweave.render_check";
+pub const ATTRIBUTE: &str = "a2context.render_check";
 
 /// Adapter output in request order. A null entry means the renderer rejected that input.
 #[derive(Deserialize)]

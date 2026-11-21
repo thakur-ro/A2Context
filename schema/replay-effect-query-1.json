@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave controlled replay effect query",
+  "title": "A2Context controlled replay effect query",
   "type": "object",
   "additionalProperties": false,
   "required": ["version"],

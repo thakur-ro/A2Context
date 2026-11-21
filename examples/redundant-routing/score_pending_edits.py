@@ -14,7 +14,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def score_request(binary, snapshot, revision, request, key, alternatives, replacement):
-    sources = request["attributes"]["nexusweave.context.semantics"]["request_sources"]
+    sources = request["attributes"]["a2context.context.semantics"]["request_sources"]
     spec = {"version": 1, "id": key, "scorer_id": "qwen2-transformers-continuation-v1",
             "assistant_prefix": "", "candidates": [{"id": v, "continuation": v} for v in alternatives],
             "interventions": [{"context_id": "request-source:" + s["id"], **s["request_fragment"],

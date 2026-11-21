@@ -4,7 +4,7 @@
       "resource": {
         "attributes": [
           {
-            "key": "nexusweave.organization.id",
+            "key": "a2context.organization.id",
             "value": {
               "stringValue": "demo-retail"
             }
@@ -14,7 +14,7 @@
       "scopeSpans": [
         {
           "scope": {
-            "name": "nexusweave.openinference.example"
+            "name": "a2context.openinference.example"
           },
           "spans": [
             {
@@ -42,7 +42,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "stock-question"
                   }
@@ -90,13 +90,13 @@
                   }
                 },
                 {
-                  "key": "nexusweave.request.body",
+                  "key": "a2context.request.body",
                   "value": {
                     "stringValue": "{\"state\":{\"department\":\"inventory\",\"sku\":\"MUG-42\"},\"questions\":{\"route\":[\"stock\",\"returns\"]},\"model\":\"router-latest\"}"
                   }
                 },
                 {
-                  "key": "nexusweave.context.semantics",
+                  "key": "a2context.context.semantics",
                   "value": {
                     "stringValue": "{\"version\":1,\"context\":[{\"anchor\":{\"field\":\"input.value#/state\"},\"source_id\":\"support-routing-state\",\"source_version\":\"v1\"}],\"relationships\":[{\"context\":{\"field\":\"input.value#/state\"},\"decision\":{\"field\":\"output.value\"},\"relation\":\"routing input\"}]}"
                   }
@@ -129,7 +129,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "stock-question"
                   }
@@ -228,7 +228,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "stock-question"
                   }
@@ -285,7 +285,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "stock-question"
                   }
@@ -360,7 +360,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "stock-question"
                   }

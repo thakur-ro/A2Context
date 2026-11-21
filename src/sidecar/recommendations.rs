@@ -1,5 +1,5 @@
 use super::findings::{self, Observation};
-use nexusweave::{activation, pending, replay, Availability, Call, Run};
+use a2context::{activation, pending, replay, Availability, Call, Run};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -12,7 +12,7 @@ pub struct Action {
 
 fn checked_source_fragments(
     call: &Call,
-    coverage: &nexusweave::preflight::SourceCoverage,
+    coverage: &a2context::preflight::SourceCoverage,
 ) -> Vec<Value> {
     call.context
         .iter()
@@ -278,7 +278,7 @@ pub fn preview(
     store: &super::store::Store,
     input: pending::Request,
 ) -> Result<Value, (u16, String)> {
-    let history_scope = super::history::Scope::read(&input.request.attributes);
+    let history_scope = super::history::Scope::read(&input.request);
     let pending::Inspected {
         mut call,
         scope,
@@ -298,7 +298,7 @@ pub fn preview(
     // also carries a receipt from an earlier inspection.
     call.preflight_receipt = None;
     let run = Run {
-        schema_version: nexusweave::SCHEMA_VERSION,
+        schema_version: a2context::SCHEMA_VERSION,
         id: "pending".into(),
         source: "pending".into(),
         organization_id: None,

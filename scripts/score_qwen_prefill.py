@@ -1,4 +1,4 @@
-"""Score full-vocabulary first-token shifts for a NexusWeave prefill batch."""
+"""Score full-vocabulary first-token shifts for a A2Context prefill batch."""
 
 import argparse
 from hashlib import sha256

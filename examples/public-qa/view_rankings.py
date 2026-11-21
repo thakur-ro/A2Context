@@ -15,7 +15,7 @@ from view_passage_edits import post, prepare, verified_report, workflow_name
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("dataset", type=Path)
-    parser.add_argument("--binary", type=Path, default=Path("target/debug/nexusweave"))
+    parser.add_argument("--binary", type=Path, default=Path("target/debug/a2context"))
     parser.add_argument("--results", type=Path, default=Path(__file__).with_name("holdout-results.json"))
     parser.add_argument("--url", default="http://127.0.0.1:8040")
     parser.add_argument("--references", action="store_true", help="Attach the dataset aliases as evaluation metadata.")

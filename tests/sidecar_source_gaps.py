@@ -14,13 +14,13 @@ from check_sidecar import attrs, case_span, export, get, root_span, send, send_t
 def checked_span(binary, index, *, anchored=False, tamper=None, user="pat", source_version="v1", expected=None):
     request = json.loads((ROOT / "examples/exchange-approval/pending.json").read_text())
     fields = request["attributes"]
-    fields["nexusweave.context.semantics"]["request_sources"][0]["source_version"] = source_version
+    fields["a2context.context.semantics"]["request_sources"][0]["source_version"] = source_version
     if not anchored:
-        fields["nexusweave.context.semantics"]["request_sources"].pop()
+        fields["a2context.context.semantics"]["request_sources"].pop()
     if expected:
-        fields["nexusweave.required_sources"]["expected_text_sha256"] = {"latest-customer-message": expected}
+        fields["a2context.required_sources"]["expected_text_sha256"] = {"latest-customer-message": expected}
     if index % 2:
-        fields["nexusweave.required_sources"]["any_of"].reverse()
+        fields["a2context.required_sources"]["any_of"].reverse()
     report = json.loads(subprocess.check_output([binary, "preflight", "-"], input=json.dumps(request), text=True))
     assert report["source_coverage"]["matched"] == (anchored and expected is None)
     receipt = report["receipt"]
@@ -32,13 +32,13 @@ def checked_span(binary, index, *, anchored=False, tamper=None, user="pat", sour
     if tamper == "contract":
         receipt["required_sources"]["name"] += " (modified)"
     if tamper == "anchor":
-        fields["nexusweave.context.semantics"]["request_sources"][0]["source_version"] = "different"
+        fields["a2context.context.semantics"]["request_sources"][0]["source_version"] = "different"
     if tamper == "body":
-        fields["nexusweave.request.body"] += " "
-    fields.pop("nexusweave.required_sources")
+        fields["a2context.request.body"] += " "
+    fields.pop("a2context.required_sources")
     fields.pop("service.name")
-    fields.update({"nexusweave.preflight":receipt, "gen_ai.operation.name":"chat",
-                   "gen_ai.conversation.id":f"checkout-{index}", "nexusweave.user.id":user})
+    fields.update({"a2context.preflight":receipt, "gen_ai.operation.name":"chat",
+                   "gen_ai.conversation.id":f"checkout-{index}", "a2context.user.id":user})
     span = case_span("source-coverage", "undeclared", index)
     span["attributes"] = attrs({k:v if isinstance(v,str) else json.dumps(v) for k,v in fields.items()})
     return span

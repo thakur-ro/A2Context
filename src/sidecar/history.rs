@@ -1,6 +1,6 @@
 //! Find earlier source edits on requests with the same assembly and decoding settings.
 
-use nexusweave::{replay, Availability, Call, ContextItem, DecisionScope, Run};
+use a2context::{replay, Availability, Call, ContextItem, DecisionScope, Run};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -91,10 +91,10 @@ pub(super) struct Scope {
 }
 
 impl Scope {
-    pub fn read(attributes: &serde_json::Map<String, Value>) -> Result<Self, &'static str> {
+    pub fn read(request: &a2context::preflight::Request) -> Result<Self, &'static str> {
         let identity = |key| {
-            attributes
-                .get(key)
+            request
+                .attribute(key)
                 .map(|value| {
                     value
                         .as_str()
@@ -104,16 +104,16 @@ impl Scope {
                 })
                 .transpose()
         };
-        let org = identity("nexusweave.organization.id")?.ok_or("no_organization")?;
-        let user = if attributes.contains_key("nexusweave.user.id") {
-            identity("nexusweave.user.id")?
+        let org = identity("a2context.organization.id")?.ok_or("no_organization")?;
+        let user = if request.attribute("a2context.user.id").is_some() {
+            identity("a2context.user.id")?
         } else {
             identity("user.id")?
         };
         Ok(Self {
             org,
             user,
-            producer: identity("nexusweave.history.source")?.unwrap_or_else(|| "otlp".into()),
+            producer: identity("a2context.history.source")?.unwrap_or_else(|| "otlp".into()),
             workflow: identity("service.name").ok().flatten(),
         })
     }

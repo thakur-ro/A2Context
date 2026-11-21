@@ -48,8 +48,8 @@ def request_from_entries(protocol, entries, question):
                       "replacement": replacement})
     body = {"model": protocol["checkpoint"], "messages": [{"role": "system", "content": system},
             {"role": "user", "content": question}], "temperature": protocol["temperature"], "max_tokens": protocol["max_tokens"]}
-    return {"version": 1, "attributes": {"gen_ai.request.model": body["model"], "nexusweave.request.body": compact(body),
-            "nexusweave.context.semantics": {"version": 1, "request_sources": declarations}}}, edits
+    return {"version": 1, "attributes": {"gen_ai.request.model": body["model"], "a2context.request.body": compact(body),
+            "a2context.context.semantics": {"version": 1, "request_sources": declarations}}}, edits
 
 
 def log_probs(report):
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, help="Measure the frozen conditions with the pinned local checkpoint.")
     parser.add_argument("--cases", type=Path, default=HERE / "cases.json")
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/debug/nexusweave")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/debug/a2context")
     args = parser.parse_args()
     protocol = json.loads(PROTOCOL.read_text())
     binary = args.binary.resolve()

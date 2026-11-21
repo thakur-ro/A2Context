@@ -109,7 +109,7 @@ def note_projection(note):
 def content_packet(captured, current):
     packet = pending_request("Shared note text", captured, digest(current["content"]))
     fields = packet["request"]["attributes"]
-    fragment = fields["nexusweave.context.semantics"]["request_sources"][0]["request_fragment"]
+    fragment = fields["a2context.context.semantics"]["request_sources"][0]["request_fragment"]
     # Canonical JSON puts the content key first. Anchor only that encoded string in the tool message.
     prefix = len('{"content":'.encode())
     fragment["text_range"] = {"start_byte": prefix, "end_byte": prefix + len(canonical(captured["content"]).encode())}
@@ -180,7 +180,7 @@ def main():
         ids = load_task_ids(split)
         manifest[split] = digest(ids)
         for task in ids[:args.limit]:
-            with AppWorld(task_id=task, experiment_name="nexusweave-tool-state", load_ground_truth=False,
+            with AppWorld(task_id=task, experiment_name="a2context-tool-state", load_ground_truth=False,
                           remote_apis_url=None, remote_environment_url=None, raise_on_failure=False,
                           parse_datetimes=False, munchify_response=False) as world:
                 passwords = {row["account_name"]: row["password"] for row in world.apis.supervisor.show_account_passwords()}

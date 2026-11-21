@@ -1,4 +1,4 @@
-use nexusweave::{inspect, langsmith};
+use a2context::{inspect, langsmith};
 use serde_json::{json, Value};
 
 fn fixture() -> Value {

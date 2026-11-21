@@ -2,7 +2,7 @@
 
 ## Results
 
-On the 17 questions with complete baseline and paired edited answers, the model-ranked edit changed **14 answers**. Editing the first passage changed **11**. Both changed the answer on ten questions, only the ranked edit did on four, only the first edit did on one, and neither did on two. The paired difference was +17.6 percentage points. With five discordant pairs the two-sided exact test gives *p* = 0.375. That small comparison leaves the advantage over first position uncertain. The two selectors chose the same passage on four of the 20 questions. [Raw measurements](holdout-results.json) · [Protocol commit](https://github.com/thakur-ro/NexusWeave/commit/ff32861)
+On the 17 questions with complete baseline and paired edited answers, the model-ranked edit changed **14 answers**. Editing the first passage changed **11**. Both changed the answer on ten questions, only the ranked edit did on four, only the first edit did on one, and neither did on two. The paired difference was +17.6 percentage points. With five discordant pairs the two-sided exact test gives *p* = 0.375. That small comparison leaves the advantage over first position uncertain. The two selectors chose the same passage on four of the 20 questions. [Raw measurements](holdout-results.json) · [Protocol commit](https://github.com/thakur-ro/A2Context/commit/ff32861)
 
 | Edit selector | Exact answer changed / scorable | Annotated passage selected / questions |
 | --- | ---: | ---: |
@@ -23,7 +23,7 @@ For row 1000, the baseline answer reached the generation limit. We supplied the 
 Start a content-capturing sidecar and download the pinned dataset using the [public QA setup](README.md). Load the saved holdout with the command below. Each span includes the original input, the ten edit scores and their captured source locations. The importer attaches replay trials only when a baseline answer completed. Loading the study makes zero model calls.
 
 ```sh
-python3 examples/public-qa/view_rankings.py /tmp/nexus-qa.jsonl.gz \
+python3 examples/public-qa/view_rankings.py /tmp/a2context-qa.jsonl.gz \
   --results examples/public-qa/holdout-results.json
 ```
 
@@ -63,14 +63,14 @@ The first-token ranking was available before any generation. Finding the first d
 Load the saved measurements with no model calls. This workflow contains the same questions as the other holdout imports. Keep the workflow filter when comparing counts.
 
 ```sh
-python3 examples/public-qa/view_rankings.py /tmp/nexus-qa.jsonl.gz --tokens
+python3 examples/public-qa/view_rankings.py /tmp/a2context-qa.jsonl.gz --tokens
 python3 examples/public-qa/check_holdout.py --tokens --sidecar http://127.0.0.1:8040
 ```
 
 To rerun the model, use the [study environment](README.md#repeat-the-model-measurements). The script reselects both cases from the holdout, verifies the dataset and weights, and writes a new file.
 
 ```sh
-python3 examples/public-qa/inspect_rank_misses.py /tmp/nexus-qa.jsonl.gz /path/to/qwen/snapshot \
+python3 examples/public-qa/inspect_rank_misses.py /tmp/a2context-qa.jsonl.gz /path/to/qwen/snapshot \
   --output /tmp/lower-edit-tokens.json
 ```
 
@@ -85,8 +85,8 @@ For the *Rugrats* question, the original answer said nine seasons. Removing the 
 Add the public aliases as evaluation metadata to see the recommendation. The importer uses a separate workflow so you can still inspect the original study. The two workflows contain the same questions. Select one when comparing counts.
 
 ```sh
-python3 examples/public-qa/view_rankings.py /tmp/nexus-qa.jsonl.gz --references
-python3 examples/public-qa/check_holdout.py --dataset /tmp/nexus-qa.jsonl.gz --references --sidecar http://127.0.0.1:8040
+python3 examples/public-qa/view_rankings.py /tmp/a2context-qa.jsonl.gz --references
+python3 examples/public-qa/check_holdout.py --dataset /tmp/a2context-qa.jsonl.gz --references --sidecar http://127.0.0.1:8040
 ```
 
 Open the recommended investigation, then pick a question to see the original and edited text. The checker verifies the reference counts and exact questions for gains and losses under both selectors. The sidecar lowercases Unicode text, while the independent study checker uses Unicode case folding. Both produced the same labels on the saved completed answers checked here.
@@ -114,13 +114,13 @@ We will test the passage selector from the ten-question pilot on 20 further ques
 Use the pinned dataset, model snapshot and Python environment from the [public QA study](README.md#repeat-the-model-measurements).
 
 ```sh
-python3 examples/public-qa/check_passage_edits.py /tmp/nexus-qa.jsonl.gz /path/to/qwen/snapshot \
+python3 examples/public-qa/check_passage_edits.py /tmp/a2context-qa.jsonl.gz /path/to/qwen/snapshot \
   --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 \
-  --cohort holdout --rotation 0 --output /tmp/nexus-qa-holdout.json
+  --cohort holdout --rotation 0 --output /tmp/a2context-qa-holdout.json
 ```
 
 Check the saved results without a model. Supplying the dataset also checks each question and passage against the pinned bytes and recomputes the alias labels. After importing the rankings, add `--sidecar http://127.0.0.1:8040` to verify the counts and all 20 question-level results served by the dashboard.
 
 ```sh
-python3 examples/public-qa/check_holdout.py --dataset /tmp/nexus-qa.jsonl.gz
+python3 examples/public-qa/check_holdout.py --dataset /tmp/a2context-qa.jsonl.gz
 ```

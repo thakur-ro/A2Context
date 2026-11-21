@@ -559,7 +559,7 @@ function positionReadout(result) {
 
 function featuredLink(href, { title, label, description, detail, action = "Open evidence →" }, className = "featured") {
   return element("a", {className, href},
-    NexusWeaveA2UI.recommendation("recommended-investigation", {title, heading:"h2", label, description, detail}),
+    A2ContextA2UI.recommendation("recommended-investigation", {title, heading:"h2", label, description, detail}),
     element("span", {className:"investigation-link", text:action}));
 }
 
@@ -1481,7 +1481,7 @@ function priorDispatch(history, hasCurrentDispatch) {
     [row.both,"both matched"],[row.neither,"neither matched"],[row.mixed,"mixed"]]
     .filter(([count]) => count > 0).map(([count,label]) => count + " " + label).join(" · ");
   return element("section", {className:"panel", "aria-label":"Earlier dispatch replays"},
-    NexusWeaveA2UI.recommendation("earlier-dispatch", {
+    A2ContextA2UI.recommendation("earlier-dispatch", {
       title:heading, heading:"h2", label:"Evidence from earlier requests",
       description:"Earlier requests shared the workflow, model, request layout and declared rule values." +
         (hasCurrentDispatch ? "" : " Run a fresh sandbox test to check what happens on this request."),
@@ -2503,7 +2503,7 @@ async function render(refresh = false) {
             traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
             element("p",{},link("Check receiver status","/api/sidecar/health")));
           if (!impact.captured_conversations) {
-            byId("title").textContent = "Welcome to NexusWeave";
+            byId("title").textContent = "Welcome to A2Context";
             byId("content").replaceChildren(guidance);
             byId("content").removeAttribute("data-signature");
             return;
@@ -2621,7 +2621,7 @@ async function main() {
   const appearance = byId("appearance");
   const systemTheme = matchMedia("(prefers-color-scheme: dark)");
   let theme;
-  try { theme = localStorage.getItem("nexusweave-theme"); } catch { /* Follow the system preference. */ }
+  try { theme = localStorage.getItem("a2context-theme") || localStorage.getItem("nexusweave-theme"); } catch { /* Follow the system preference. */ }
   function applyTheme() {
     const dark = theme === "dark" || (theme !== "light" && systemTheme.matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -2631,7 +2631,7 @@ async function main() {
   appearance.hidden = false;
   appearance.addEventListener("click", () => {
     theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    try { localStorage.setItem("nexusweave-theme", theme); } catch { /* Apply for the current page. */ }
+    try { localStorage.setItem("a2context-theme", theme); } catch { /* Apply for the current page. */ }
     applyTheme();
   });
   systemTheme.addEventListener("change", applyTheme);

@@ -25,8 +25,8 @@ python3 examples/public-qa/support-review/witness-edits/generate.py \
   --check examples/public-qa/support-review/witness-edits/answers.json
 
 python3 examples/public-qa/support-review/witness-edits/generate.py \
-  --check examples/public-qa/support-review/witness-edits/answers.json --dataset /tmp/nexus-qa.jsonl.gz
+  --check examples/public-qa/support-review/witness-edits/answers.json --dataset /tmp/a2context-qa.jsonl.gz
 
 python3 examples/public-qa/support-review/witness-edits/generate.py \
-  --dataset /tmp/nexus-qa.jsonl.gz --snapshot /path/to/qwen/snapshot --output /tmp/witness-answers.json
+  --dataset /tmp/a2context-qa.jsonl.gz --snapshot /path/to/qwen/snapshot --output /tmp/witness-answers.json
 ```

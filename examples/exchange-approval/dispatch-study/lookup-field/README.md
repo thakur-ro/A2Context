@@ -22,7 +22,7 @@ The saved pending envelopes pin the expected payment text digest from the indepe
 ```sh
 study=examples/exchange-approval/dispatch-study/lookup-field
 jq -c '.cases[1].arms.lookup' "$study/pending-requests.json" |
-  target/debug/nexusweave preflight -
+  target/debug/a2context preflight -
 ```
 
 The punctuation control matches the target edit’s byte and token count. Its position, token class and meaning differ. The four cases were previously measured under a forced tool opener, and every target used the repaired consent-cache condition. This comparison does not measure natural tool selection or identify the most important source among unseen alternatives. [Protocol](protocol.md) · [Prior prefix experiment](../prefill-tool/README.md)

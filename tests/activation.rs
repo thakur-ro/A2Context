@@ -1,4 +1,4 @@
-use nexusweave::{
+use a2context::{
     activation::{patterns, Report},
     Run,
 };
@@ -15,7 +15,7 @@ const ROUTING_EVIDENCE: &str = include_str!("../examples/local-mlx-routing/evide
 
 #[test]
 fn visibility_outcomes_count_each_decision_once_and_keep_mixed_replays() {
-    use nexusweave::activation::visibility::patterns;
+    use a2context::activation::visibility::patterns;
     use serde_json::json;
     let runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/visibility-routing/evidence.json"
@@ -174,7 +174,7 @@ fn visibility_requires_an_exact_captured_object_at_the_reported_request_pointer(
 
 #[test]
 fn visibility_groups_keep_declared_boundary_whitespace_with_the_mask() {
-    use nexusweave::activation::visibility::patterns;
+    use a2context::activation::visibility::patterns;
     use serde_json::json;
     let runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/visibility-routing/evidence.json"
@@ -298,7 +298,7 @@ fn visibility_targets_require_unique_keys_and_recorded_token_ranges() {
 
 #[test]
 fn visibility_patterns_keep_changed_prefixes_and_source_versions_separate() {
-    use nexusweave::activation::visibility::patterns;
+    use a2context::activation::visibility::patterns;
     let mut runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/visibility-cohort/evidence.json"
     ))
@@ -330,7 +330,7 @@ fn visibility_patterns_keep_changed_prefixes_and_source_versions_separate() {
 
 #[test]
 fn visibility_pattern_order_keeps_scope_filters_and_stable_group_links() {
-    use nexusweave::activation::visibility::patterns;
+    use a2context::activation::visibility::patterns;
     use serde_json::json;
     let mut runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/visibility-cohort/evidence.json"
@@ -398,7 +398,7 @@ fn visibility_pattern_order_keeps_scope_filters_and_stable_group_links() {
 
 #[test]
 fn visibility_timeline_aligns_utc_days_and_keeps_undated_evidence() {
-    use nexusweave::activation::visibility::patterns;
+    use a2context::activation::visibility::patterns;
     use serde_json::json;
     let mut runs: Vec<Run> = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/visibility-cohort/evidence.json"

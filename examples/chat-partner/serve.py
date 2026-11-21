@@ -120,7 +120,7 @@ def main():
         parser.error("--sidecar must be a loopback origin.")
     with ThreadingHTTPServer(("127.0.0.1", config.port), Dashboard) as server:
         server.config = config
-        server.key = os.environ.get("NEXUSWEAVE_CHAT_KEY")
+        server.key = os.environ.get("A2CONTEXT_CHAT_KEY") or os.environ.get("NEXUSWEAVE_CHAT_KEY")
         server.slots = BoundedSemaphore(2)
         print(f"Open http://127.0.0.1:{server.server_port}", flush=True)
         server.serve_forever()

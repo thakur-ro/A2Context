@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-const BIN: &str = env!("CARGO_BIN_EXE_nexusweave");
+const BIN: &str = env!("CARGO_BIN_EXE_a2context");
 const ACTIVATION_REPORTS: &str = "examples/local-mlx-timeline/cohort/activation-reports.json";
 const ACTIVATION_EVIDENCE: &str = "examples/local-mlx-timeline/cohort/evidence.json";
 
@@ -58,7 +58,7 @@ impl Client {
                 "initialize",
                 json!({
                     "protocolVersion": "2025-11-25", "capabilities": {},
-                    "clientInfo": {"name": "nexusweave-test", "version": "1"},
+                    "clientInfo": {"name": "a2context-test", "version": "1"},
                 }),
             );
             assert_eq!(result["protocolVersion"], "2025-11-25");
@@ -259,7 +259,7 @@ fn live_mcp_reads_replays_published_after_startup() {
         false,
     );
     let raw = include_str!("../examples/context-screening/replay/report.json");
-    let report: nexusweave::replay::Replay = serde_json::from_str(raw).unwrap();
+    let report: a2context::replay::Replay = serde_json::from_str(raw).unwrap();
     let location = serde_json::to_value(&report.location).unwrap();
     let before = client.call("get_turn_evidence", location.clone());
     assert_eq!(before["structuredContent"]["counts"]["replay_tests"], 0);
@@ -1591,7 +1591,7 @@ fn candidate_comparison_and_drilldown_respect_the_host_scope() {
         "../examples/runtime-comparison/pending-routing/cohort.json"
     ))
     .unwrap();
-    let runs = nexusweave::langsmith::import(&export).unwrap();
+    let runs = a2context::langsmith::import(&export).unwrap();
     std::fs::write(&path, serde_json::to_vec(&runs).unwrap()).unwrap();
     let mut client = Client::start(
         &["--scope", scope.to_str().unwrap(), path.to_str().unwrap()],
@@ -1732,9 +1732,9 @@ fn recorded_first_token_measurements_follow_mcp_excerpt_permissions() {
     .unwrap();
     for record in records.as_array_mut().unwrap() {
         let id = record["id"].as_str().unwrap().to_owned();
-        record["extra"]["metadata"][nexusweave::replay::prefill::ATTRIBUTE] = probes[&id].clone();
+        record["extra"]["metadata"][a2context::replay::prefill::ATTRIBUTE] = probes[&id].clone();
     }
-    let runs = nexusweave::langsmith::import(&records).unwrap();
+    let runs = a2context::langsmith::import(&records).unwrap();
     let folder = tempfile::tempdir().unwrap();
     let path = folder.path().join("evidence.json");
     std::fs::write(&path, serde_json::to_vec(&runs).unwrap()).unwrap();

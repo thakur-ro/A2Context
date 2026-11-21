@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave pending request evidence query",
+  "title": "A2Context pending request evidence query",
   "type": "object",
   "required": ["input"],
   "additionalProperties": false,
@@ -36,7 +36,7 @@
         "attributes": {
           "type": "object",
           "properties": {
-            "nexusweave.required_sources": {
+            "a2context.required_sources": {
               "description": "One workflow requirement. All named source IDs in at least one alternative must have validated request fragments. Also accepts the object's JSON encoding.",
               "oneOf": [
                 {"type":"string"},
@@ -48,7 +48,7 @@
               ]
             }
           },
-          "description": "Captured GenAI inputs and optional NexusWeave context metadata. Preserve the original inference JSON as a string in nexusweave.request.body. Optional nexusweave.prefill.probe carries a first-token edit report returned by probe-prefill."
+          "description": "Captured GenAI inputs and optional A2Context context metadata. Preserve the original inference JSON as a string in a2context.request.body. Optional a2context.prefill.probe carries a first-token edit report returned by probe-prefill."
         }
       }
     }

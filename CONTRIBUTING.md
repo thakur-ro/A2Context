@@ -1,4 +1,4 @@
-# Contributing to NexusWeave
+# Contributing to A2Context
 
 Use stable Rust with `rustfmt` and Clippy, Python 3.11 or later, Node.js 24 and Make. The Rust binary embeds the dashboard. Run `make demo` and open the address it prints. [Watch the recording](docs/demo.md)
 

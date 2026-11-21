@@ -2,7 +2,7 @@
 
 Eight of twelve questions still had a defensible answer in the supplied passages after we replaced the annotated passage. In four, the remaining text supported the reference answer. In four others, it supported a different answer to the question as worded. Three appeared unsupported and one was uncertain. In one case, two passages together gave the end year of martial law by supplying its duration and its start year. A detector trained to flag every annotated removal would penalize that answer. [Reading rubric](annotation.md) · [Passage-level evidence sets](labels.json)
 
-One AI reviewer examined the ten candidate passages for each fresh question with access to the reference aliases. The reviewer could see neither the two request assignments nor the detector scores. We committed the annotations before inspecting the scores. There was no human adjudication. All twelve intact requests supported a reference answer under this review. [Frozen review and protocol](https://github.com/thakur-ro/NexusWeave/commit/e2f1a1e) · [Exact selection and thresholds](protocol.md)
+One AI reviewer examined the ten candidate passages for each fresh question with access to the reference aliases. The reviewer could see neither the two request assignments nor the detector scores. We committed the annotations before inspecting the scores. There was no human adjudication. All twelve intact requests supported a reference answer under this review. [Frozen review and protocol](https://github.com/thakur-ro/A2Context/commit/e2f1a1e) · [Exact selection and thresholds](protocol.md)
 
 ## Can we warn an engineer before generation?
 
@@ -31,7 +31,7 @@ The first command recomputes calibration, counts and cost from the saved scores.
 ```sh
 python3 examples/public-qa/support-review/run.py --check examples/public-qa/support-review/scores.json
 python3 examples/public-qa/support-review/compare.py
-python3 examples/public-qa/support-review/run.py --dataset /tmp/nexus-qa.jsonl.gz \
+python3 examples/public-qa/support-review/run.py --dataset /tmp/a2context-qa.jsonl.gz \
   --snapshot /path/to/qwen/snapshot --output /tmp/qa-support-scores.json
 python3 examples/public-qa/support-review/compare.py --scores /tmp/qa-support-scores.json
 ```

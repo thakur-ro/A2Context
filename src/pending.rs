@@ -46,7 +46,7 @@ fn default_limit() -> usize {
 /// The result includes captured inputs and exact request locations.
 ///
 /// ```
-/// use nexusweave::{pending, preflight};
+/// use a2context::{pending, preflight};
 ///
 /// let request: preflight::Request = serde_json::from_str(include_str!(concat!(
 ///     env!("CARGO_MANIFEST_DIR"),
@@ -207,8 +207,12 @@ pub fn preview(input: Request) -> Result<Inspected, String> {
 }
 
 fn prepare(mut input: Request, excerpts: bool) -> Result<Inspected, String> {
-    let raw = input.request.attributes.remove(replay::prefill::ATTRIBUTE);
-    let renderer = input.request.attributes.remove(rendering::ATTRIBUTE);
+    let raw = crate::span_metadata::take_attribute(
+        &mut input.request.attributes,
+        replay::prefill::ATTRIBUTE,
+    );
+    let renderer =
+        crate::span_metadata::take_attribute(&mut input.request.attributes, rendering::ATTRIBUTE);
     let required = preflight::RequiredSources::take(&mut input.request.attributes)?;
     let (mut call, request, scope) = preflight::pending_call(input.request)?;
     let preflight = preflight::report_for_pending(&call, scope.clone(), required);

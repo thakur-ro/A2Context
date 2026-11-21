@@ -2,7 +2,7 @@
 
 use super::{store::Store, variation::Input};
 use crate::Result;
-use nexusweave::{
+use a2context::{
     replay::{
         position::{Background, Condition, Experiment, Plan},
         Intervention, Location,
@@ -247,7 +247,7 @@ mod tests {
 #[serde(deny_unknown_fields)]
 pub(super) struct Submission {
     selection: BTreeMap<String, Value>,
-    pub result: nexusweave::replay::position::Results,
+    pub result: a2context::replay::position::Results,
 }
 
 impl Submission {

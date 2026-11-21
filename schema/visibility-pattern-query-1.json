@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave visibility pattern query",
+  "title": "A2Context visibility pattern query",
   "type": "object",
   "additionalProperties": false,
   "required": ["version"],

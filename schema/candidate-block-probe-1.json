@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave candidate decoder-block probe",
+  "title": "A2Context candidate decoder-block probe",
   "description": "One post-block vector transplant at a time, read out as next-token log odds for the first tokens of the two candidates. Blocks and token positions use zero-based indices.",
   "type": "object",
   "additionalProperties": false,

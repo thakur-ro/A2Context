@@ -1,6 +1,6 @@
 //! Index the prediction and its checked outcome without copying scores or trial text.
 use super::findings::digest;
-use nexusweave::{
+use a2context::{
     replay::{candidates, shadow},
     Call, Run,
 };
@@ -141,8 +141,8 @@ pub(super) fn uploads(
     results
 }
 
-pub(super) fn upload_origin(call: &Call) -> nexusweave::Evidence {
-    nexusweave::Evidence {
+pub(super) fn upload_origin(call: &Call) -> a2context::Evidence {
+    a2context::Evidence {
         field: "sidecar.prefix_trials".into(),
         span_id: call.span_id.clone(),
         message_index: None,
@@ -166,7 +166,7 @@ pub(super) fn trials<'a>(
     id: &'a str,
     call: &'a Call,
     uploads: &'a [shadow::Report],
-    evidence: &'a nexusweave::Evidence,
+    evidence: &'a a2context::Evidence,
 ) -> Vec<shadow::RecordedProbe<'a>> {
     let mut trials = shadow::recorded(id, call);
     trials.extend(

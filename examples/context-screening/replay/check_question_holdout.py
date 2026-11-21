@@ -15,7 +15,7 @@ from score_qwen_prefill import load_runtime, score_batch
 
 PROTOCOL = HERE / "question-holdout.json"
 SOURCES = ("journal-policy", "journal-faq")
-ATTRIBUTE = "nexusweave.prefill.probe"
+ATTRIBUTE = "a2context.prefill.probe"
 
 
 def compact(value):
@@ -44,8 +44,8 @@ def conditions(reference, question):
         edits.append({"context_id":context_id, **field, "operation":"replace_text_fragment", "replacement":operation["replacement"]})
         batch["edits"].append({"context_id":context_id, "source_id":source, "source_version":"1",
                                "request_sha256":digest(edited), "request":edited})
-    attributes = {"gen_ai.request.model":body["model"], "nexusweave.request.body":compact(body),
-                  "nexusweave.context.semantics":{"version":1,"request_sources":declarations}}
+    attributes = {"gen_ai.request.model":body["model"], "a2context.request.body":compact(body),
+                  "a2context.context.semantics":{"version":1,"request_sources":declarations}}
     return batch, {"version":1, "attributes":attributes}, edits
 
 
@@ -117,7 +117,7 @@ def main():
     commands.add_argument("--preview", type=int, choices=range(1,9), help="Write a saved request with pre-generation scores.")
     parser.add_argument("--results", type=Path, default=HERE / "question-results.json")
     parser.add_argument("--verify-with", type=Path, metavar="MODEL", help="Independently rerun the displayed proposals using this local snapshot.")
-    parser.add_argument("--binary", type=Path, default=HERE.parents[2] / "target/debug/nexusweave")
+    parser.add_argument("--binary", type=Path, default=HERE.parents[2] / "target/debug/a2context")
     args = parser.parse_args()
     if args.verify_with and not args.preview:
         parser.error("--verify-with needs a preview question.")

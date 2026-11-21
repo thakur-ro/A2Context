@@ -157,7 +157,7 @@ try {
     await read("The replay receipt shows that the first exchange stayed in place in both runs.", 3, dispatch, 96);
     caption = "";
     await click(page.getByRole("navigation",{name:"Workflows"}).getByRole("link",{name:"All workflows",exact:true}));
-    await page.getByRole("heading",{name:"Welcome to NexusWeave",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"Welcome to A2Context",exact:true}).waitFor();
     await typeQuestion("Which words were sensitive to the refund policy in Returns demo?");
     const tokens = canvas.getByRole("table",{name:"Measured source edits by output token"});
     await tokens.waitFor();

@@ -37,8 +37,8 @@ def import_observations(archive, sidecar):
                                   "gen_ai.tool.name": step.action,
                                   "gen_ai.tool.call.result": observation,
                                   "gen_ai.conversation.id": identity,
-                                  "nexusweave.organization.id": "whowhen-pro",
-                                  "nexusweave.turn.id": str(step.coordinate),
+                                  "a2context.organization.id": "whowhen-pro",
+                                  "a2context.turn.id": str(step.coordinate),
                               })})
             if spans:
                 traces.append(spans)

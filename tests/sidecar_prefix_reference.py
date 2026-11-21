@@ -78,7 +78,7 @@ def check_pair_controls(base, cases):
         trace = trace_for(case, index, org=org, reference=True)
         record = span(trace)
         record["traceId"] = f"{index:032x}"
-        field = next(a["value"] for a in record["attributes"] if a["key"] == "nexusweave.candidate_probes")
+        field = next(a["value"] for a in record["attributes"] if a["key"] == "a2context.candidate_probes")
         reports = json.loads(field["stringValue"])
         target = reports[0]["reference_target"]
         if set_name:
@@ -103,7 +103,7 @@ def check_pair_controls(base, cases):
     assert not pairs(org)
     different_version = deepcopy(right)
     envelope = different_version["envelope"]
-    source = envelope["request"]["attributes"]["nexusweave.context.semantics"]["request_sources"][0]
+    source = envelope["request"]["attributes"]["a2context.context.semantics"]["request_sources"][0]
     source["source_version"] += "-revised"
     for report in (envelope["candidate"], envelope["shadow"]):
         report["effects"][0]["source_version"] = source["source_version"]

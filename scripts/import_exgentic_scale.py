@@ -44,7 +44,7 @@ def convert(row, source, keep_content):
     }
     attributes.update({
         "gen_ai.conversation.id": row["session_id"],
-        "nexusweave.organization.id": "exgentic-v2",
+        "a2context.organization.id": "exgentic-v2",
         "benchmark.harness": row["harness"],
         "benchmark.success": str(row["success"]).lower() if row["success"] is not None else "unknown",
         "benchmark.original_trace_id": source["trace_id"],

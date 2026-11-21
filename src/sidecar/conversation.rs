@@ -1,5 +1,5 @@
 //! Bounded dialogue previews and call-level finding links for a scoped thread.
-use nexusweave::{Availability, Call, Run};
+use a2context::{Availability, Call, Run};
 use rusqlite::{params, Transaction};
 use serde_json::{json, Value};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};

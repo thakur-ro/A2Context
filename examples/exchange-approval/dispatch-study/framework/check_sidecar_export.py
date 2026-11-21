@@ -61,5 +61,5 @@ def verify(binary):
 if __name__ == "__main__":
     logger.setLevel("ERROR")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--binary", type=Path, default=ROOT / "target" / "debug" / "nexusweave")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target" / "debug" / "a2context")
     verify(parser.parse_args().binary.resolve())

@@ -1,10 +1,10 @@
-# How NexusWeave works
+# How A2Context works
 
-NexusWeave connects an assembled inference request to a turn, a measured effect, and recurring findings across sessions. A source can be an instruction, a retrieved document, a tool definition, or a fragment of a prompt. A decision can be an answer, a tool choice, or an argument within a tool call.
+A2Context connects an assembled inference request to a turn, a measured effect, and recurring findings across sessions. A source can be an instruction, a retrieved document, a tool definition, or a fragment of a prompt. A decision can be an answer, a tool choice, or an argument within a tool call.
 
 ## Sidecar architecture
 
-The sidecar is the service that checks context and turns the evidence into recommendations. The workflow assembles requests, calls the model, authorizes actions, and executes tools. Its batch exporter can send spans to both NexusWeave and the existing observability backend through a local Collector. [Architecture diagram](../README.md#ship-it-beside-your-service) · [Collector configuration](sidecar.md#fan-out-without-changing-observability-platforms)
+The sidecar is the service that checks context and turns the evidence into recommendations. The workflow assembles requests, calls the model, authorizes actions, and executes tools. Its batch exporter can send spans to both A2Context and the existing observability backend through a local Collector. [Architecture diagram](../README.md#ship-it-beside-your-service) · [Collector configuration](sidecar.md#fan-out-without-changing-observability-platforms)
 
 In the exchange demo, a customer's hold and a cached approval appear in the same request. A preview can flag the two declarations before the model call. Captured calls show where the disagreement recurs. A separate sandbox comparison tests whether checking approval again at dispatch preserves the customer's hold. The result supports a specific next test on a valid approval before enabling the check. [Walk through the exchange](demo.md)
 
@@ -72,13 +72,13 @@ flowchart TD
     I --> J[Check baseline and compare match rates]
 ```
 
-Each comparison uses the exact captured source text and a chosen request location. A comparison needs a scored result for every trial in both conditions and at least one match in the original condition. NexusWeave subtracts the original match rate from the edited match rate. The classifier describes the relationship between the excerpts in both directions. The replay measures the workflow model's response to a particular edit. [Try the saved run](guide.md#test-a-screened-pair)
+Each comparison uses the exact captured source text and a chosen request location. A comparison needs a scored result for every trial in both conditions and at least one match in the original condition. A2Context subtracts the original match rate from the edited match rate. The classifier describes the relationship between the excerpts in both directions. The replay measures the workflow model's response to a particular edit. [Try the saved run](guide.md#test-a-screened-pair)
 
 ### From a rule conflict to a recorded turn
 
 In the returns example, both sources declare `return_window_days` for the `standard` scope. Preflight reads `30` from the policy and `60` from the FAQ, finds unequal values, and returns one conflict with the source versions and request locations. If those values were both `30`, the group would be a duplicate. If only one value were known, the comparison would have insufficient evidence.
 
-In the linked demo, the recorded answer says 60 days. NexusWeave checks that the preflight receipt matches the captured request and scoped source declarations, so the finding can open beside that answer. The workflow supplies when the check ran. Seeing the FAQ and answer agree makes the FAQ a source to test. [Follow the preflight finding into the conversation](guide.md#show-preflight-alongside-the-recorded-answer)
+In the linked demo, the recorded answer says 60 days. A2Context checks that the preflight receipt matches the captured request and scoped source declarations, so the finding can open beside that answer. The workflow supplies when the check ran. Seeing the FAQ and answer agree makes the FAQ a source to test. [Follow the preflight finding into the conversation](guide.md#show-preflight-alongside-the-recorded-answer)
 
 ### Test which source changes an outcome
 
@@ -111,7 +111,7 @@ Use **Timeline** to follow calls and source versions in a thread. Use **Patterns
 | Your integration | Entry point |
 | --- | --- |
 | Inspect an assembled request and optional probe reports | Open **Before inference**, call `pending::inspect` in Rust, use `POST /api/pending`, or use MCP `inspect_pending`. [Pending request guide](guide.md#inspect-an-assembled-request) · [Pending MCP tools](guide.md#inspect-pending-requests-through-mcp) |
-| Call preflight while assembling a request | [`preflight::check`](../src/preflight.rs) in Rust, `nexusweave preflight` from the CLI, or `POST /api/preflight` from another language. [Preflight guide](guide.md#check-context-before-inference) |
+| Call preflight while assembling a request | [`preflight::check`](../src/preflight.rs) in Rust, `a2context preflight` from the CLI, or `POST /api/preflight` from another language. [Preflight guide](guide.md#check-context-before-inference) |
 | Inspect traces from an existing workflow | Import OTLP, OpenInference, or LangSmith. Supply stable source IDs and versions, and the organization, user, conversation, and turn identifiers your workflow records. [OpenTelemetry guide](guide.md#import-opentelemetry-traces) · [LangSmith guide](guide.md#import-langsmith-traces) |
 | Emit evidence directly or query an inspector | Use the versioned evidence format, or connect an MCP client to browse turn evidence and query patterns. [Evidence format](../schema/evidence-1.json) · [MCP guide](guide.md#connect-an-mcp-client) |
 

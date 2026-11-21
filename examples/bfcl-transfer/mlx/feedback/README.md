@@ -14,14 +14,14 @@ The opening probability comes from the model distribution on the assembled reque
 
 The original and native prompts both contained 4,579 tokens at the measured call. The generic wording contained 4,581. The generic edit moved the conditional margin *more* than the route diagnostic did. The error text affected these model scores. This one case offers no evidence that adding diagnostic detail repaired the workflow. The historical reference remained unreproduced. Our attribution target here was a failure we could reproduce on the LFM runner. [Baseline calibration](../README.md)
 
-## Open the measured request in NexusWeave
+## Open the measured request in A2Context
 
-Use the pinned simulator, MLX runtime and checkpoint from the calibration. Build the Rust binary with `cargo build --locked`. The command below reconstructs the pending request before the second inference, scores both edits through `nexusweave probe-candidates`, and checks the rendered prefixes and margins against the saved intervention. The output contains public benchmark conversation text and stays on your machine. Choose an unused output path.
+Use the pinned simulator, MLX runtime and checkpoint from the calibration. Build the Rust binary with `cargo build --locked`. The command below reconstructs the pending request before the second inference, scores both edits through `a2context probe-candidates`, and checks the rendered prefixes and margins against the saved intervention. The output contains public benchmark conversation text and stays on your machine. Choose an unused output path.
 
 ```sh
 study=examples/bfcl-transfer/mlx/feedback
 HF_HUB_OFFLINE=1 python "$study/preview.py" --upstream "$BFCL_CHECKOUT" \
-  --snapshot "$LFM_SNAPSHOT" --binary target/debug/nexusweave --output /tmp/fare-preview.json
+  --snapshot "$LFM_SNAPSHOT" --binary target/debug/a2context --output /tmp/fare-preview.json
 cargo run --locked -- demo
 ```
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave sandbox dispatch comparison",
+  "title": "A2Context sandbox dispatch comparison",
   "description": "Two dispatch runs of one exact tool proposal from the same sandbox checkpoint. The edited request must identify one verified shadow effect, and both original and edited proposal trials must agree with the supplied proposal.",
   "type": "object",
   "additionalProperties": false,

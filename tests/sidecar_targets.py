@@ -24,12 +24,12 @@ def experiment(name, fixture, thread=None, modify=None, scores=False):
         if scores == "singles":
             del candidate["joint_request_sha256"]
             assert candidate["scores"]["conditions"].pop()["id"] == "joint"
-        fields["nexusweave.candidate_probes"] = [candidate]
+        fields["a2context.candidate_probes"] = [candidate]
     if modify:
         modify(report)
-    body = json.loads(fields["nexusweave.request.body"])
-    fields.update({"gen_ai.operation.name": "chat", "nexusweave.shadow_probes": [report],
-                   "nexusweave.user.id": "support-17", "nexusweave.organization.id": "journal",
+    body = json.loads(fields["a2context.request.body"])
+    fields.update({"gen_ai.operation.name": "chat", "a2context.shadow_probes": [report],
+                   "a2context.user.id": "support-17", "a2context.organization.id": "journal",
                    "gen_ai.input.messages": [{"role": m["role"], "parts": [{"type": "text", "content": m["content"]}]}
                                              for m in body["messages"]]})
     if thread:

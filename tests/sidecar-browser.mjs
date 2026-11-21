@@ -306,7 +306,7 @@ try {
   assert.equal(new URL(page.url()).searchParams.get("view"), "preview");
   const missingRule = JSON.parse(await readFile(new URL("../examples/preflight-returns.json",import.meta.url),"utf8"));
   missingRule.scope.scope = "holiday";
-  missingRule.attributes["nexusweave.required_sources"] = {name:"Holiday eligibility",
+  missingRule.attributes["a2context.required_sources"] = {name:"Holiday eligibility",
     any_of:[["retail/returns-policy","retail/holiday-calendar"],["retail/holiday-policy"]]};
   await page.locator('input[type="file"]').setInputFiles({name:"coverage.json",mimeType:"application/json",
     buffer:Buffer.from(JSON.stringify({request:missingRule}))});
@@ -315,15 +315,15 @@ try {
   const required = page.getByRole("region",{name:"Required source coverage"});
   await required.getByRole("heading",{name:"Check sources for Holiday eligibility"}).waitFor();
   assert.equal(await required.getByText(/Still unconfirmed/).count(),2);
-  missingRule.attributes["nexusweave.required_sources"].any_of.push(["retail/returns-policy"]);
+  missingRule.attributes["a2context.required_sources"].any_of.push(["retail/returns-policy"]);
   await page.locator('input[type="file"]').setInputFiles({name:"fallback.json",mimeType:"application/json",
     buffer:Buffer.from(JSON.stringify({request:missingRule}))});
   await required.getByRole("heading",{name:"Sources captured for Holiday eligibility"}).waitFor();
   assert.equal(await required.getByText(/All anchored in the request/).count(),1);
   const substitution = structuredClone(missingRule);
   delete substitution.scope;
-  for (const row of substitution.attributes["nexusweave.context.semantics"].request_sources) delete row.rule;
-  substitution.attributes["nexusweave.required_sources"] = {name:"Expected returns policy",
+  for (const row of substitution.attributes["a2context.context.semantics"].request_sources) delete row.rule;
+  substitution.attributes["a2context.required_sources"] = {name:"Expected returns policy",
     any_of:[["retail/returns-policy"]],expected_text_sha256:{"retail/returns-policy":"a".repeat(64)}};
   const response = await page.request.post(new URL("/api/sidecar/preview",page.url()).href,{data:{request:substitution}});
   assert.ok(response.ok());
@@ -348,7 +348,7 @@ try {
     if (arm === "lookup") {
       await required.getByText(/Captured text differs: payment-lookup/).waitFor();
       await required.getByText("Inspect differing fragments").click();
-      const digest = fan.lookup.attributes["nexusweave.required_sources"].expected_text_sha256["payment-lookup"];
+      const digest = fan.lookup.attributes["a2context.required_sources"].expected_text_sha256["payment-lookup"];
       await required.getByText(digest,{exact:true}).waitFor();
     } else {
       await required.getByRole("heading",{name:"Sources captured for Authorized payment method"}).waitFor();
@@ -358,7 +358,7 @@ try {
       await required.getByText(/UTF-8 bytes \[426, 435\)/).waitFor();
     }
   }
-  const declarations = missingRule.attributes["nexusweave.context.semantics"].request_sources;
+  const declarations = missingRule.attributes["a2context.context.semantics"].request_sources;
   declarations.push({id:"handbook",source_id:"retail/handbook",
     request_fragment:{pointer:"/messages/0/content",text_range:{start_byte:12,end_byte:31}}});
   await page.locator('input[type="file"]').setInputFiles({name:"overlap.json",mimeType:"application/json",
@@ -373,7 +373,7 @@ try {
   const demoFixture = name => readFile(new URL("../examples/redundant-routing/" + name, import.meta.url), "utf8").then(JSON.parse);
   const {request} = await demoFixture("candidate-checks/ash-routing-note.json");
   const {shadow} = await demoFixture("ash-history-check.json");
-  delete request.attributes["nexusweave.organization.id"];
+  delete request.attributes["a2context.organization.id"];
   await page.locator('input[type="file"]').setInputFiles({name:"proposal.json", mimeType:"application/json", buffer:Buffer.from(JSON.stringify({request,shadow}))});
   await page.getByRole("heading", {name:"Test another source on this request"}).waitFor();
   await page.getByText("Compare the matching proposals", {exact:true}).click();
@@ -685,7 +685,7 @@ try {
   if (process.env.PREFILL_COHORT_URL) {
     for (const device of [page, mobile]) {
       const study = process.env.PREFILL_COHORT_URL;
-      await device.goto(study + "/?org=retail-north");
+      await device.goto(study + "/?explore=1&org=retail-north");
       await factor(device, "First-token sensitivity").click();
       const changed = device.locator(".card").filter({hasText:"2 changed, 0 unchanged"});
       await changed.getByRole("link", {name:"Review recommendation"}).click();
@@ -694,7 +694,7 @@ try {
       await device.getByText("Compare generated proposals", {exact:true}).first().click();
       await device.getByRole("heading", {name:"request-type · proposal changed"}).first().waitFor();
       if (device === page && process.env.COHORT_SCREENSHOT) await device.screenshot({path:process.env.COHORT_SCREENSHOT});
-      await device.goto(study + "/?org=retail-south");
+      await device.goto(study + "/?explore=1&org=retail-south");
       await factor(device, "Instruction and tool test").click();
       await device.locator(".card").filter({hasText:"0 changed, 1 unchanged"}).getByRole("link").click();
       await device.getByRole("heading", {name:"Retest the tool inventory on another request"}).waitFor();
@@ -1086,7 +1086,7 @@ try {
   if (process.env.TOOL_MASK_URL) {
     const origin = process.env.TOOL_MASK_URL;
     for (const device of [page,mobile]) {
-      await device.goto(origin + "/?workflow=retail-tool-masks");
+      await device.goto(origin + "/?explore=1&workflow=retail-tool-masks");
       await device.getByText("of 6 captured conversations",{exact:true}).waitFor();
       await device.getByRole("link",{name:/price.*stock.*retail-north.*Source masks tested/}).click();
       const card = device.locator(".card").filter({has:device.getByRole("heading",

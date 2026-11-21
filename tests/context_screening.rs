@@ -1,4 +1,4 @@
-use nexusweave::{
+use a2context::{
     context_screening::{self as screening, Assessment, Selection, Suggestion},
     inspect, otlp, preflight, turn_evidence, Run,
 };
@@ -108,7 +108,7 @@ fn matches_an_unannotated_otlp_call_and_keeps_excerpts_opt_in() {
     let mut attrs = request().attributes;
     attrs.insert("gen_ai.operation.name".into(), json!("chat"));
     attrs.insert(
-        "nexusweave.context_screening".into(),
+        "a2context.context_screening".into(),
         serde_json::to_value(saved).unwrap(),
     );
     let attributes: Vec<_> = attrs

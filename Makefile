@@ -1,4 +1,4 @@
-IMAGE ?= nexusweave:local
+IMAGE ?= a2context:local
 PYTHON ?= python3
 SDK_OPTION = $(if $(SDK_PYTHON),--sdk-python "$(SDK_PYTHON)")
 
@@ -17,20 +17,20 @@ check: check-qa check-dispatch-study check-sidecar
 
 check-sidecar:
 	cargo build --locked
-	$(PYTHON) scripts/check_sidecar.py --binary target/debug/nexusweave $(SDK_OPTION)
-	$(PYTHON) tests/sidecar_targets.py target/debug/nexusweave $(SDK_OPTION)
-	$(PYTHON) tests/sidecar_conflict_coverage.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_prefix_reference.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_tool_masks.py target/debug/nexusweave
-	$(PYTHON) tests/check_exchange_demo.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_baseline.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_source_gaps.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_source_history.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_prefix_experiment.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_prefix_cohort.py target/debug/nexusweave $(SDK_OPTION)
-	$(PYTHON) tests/sidecar_opening_study.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_position.py target/debug/nexusweave
-	$(PYTHON) tests/sidecar_prefill.py target/debug/nexusweave $(SDK_OPTION)
+	$(PYTHON) scripts/check_sidecar.py --binary target/debug/a2context $(SDK_OPTION)
+	$(PYTHON) tests/sidecar_targets.py target/debug/a2context $(SDK_OPTION)
+	$(PYTHON) tests/sidecar_conflict_coverage.py target/debug/a2context
+	$(PYTHON) tests/sidecar_prefix_reference.py target/debug/a2context
+	$(PYTHON) tests/sidecar_tool_masks.py target/debug/a2context
+	$(PYTHON) tests/check_exchange_demo.py target/debug/a2context
+	$(PYTHON) tests/sidecar_baseline.py target/debug/a2context
+	$(PYTHON) tests/sidecar_source_gaps.py target/debug/a2context
+	$(PYTHON) tests/sidecar_source_history.py target/debug/a2context
+	$(PYTHON) tests/sidecar_prefix_experiment.py target/debug/a2context
+	$(PYTHON) tests/sidecar_prefix_cohort.py target/debug/a2context $(SDK_OPTION)
+	$(PYTHON) tests/sidecar_opening_study.py target/debug/a2context
+	$(PYTHON) tests/sidecar_position.py target/debug/a2context
+	$(PYTHON) tests/sidecar_prefill.py target/debug/a2context $(SDK_OPTION)
 
 check-bundles:
 	npm ci --prefix ui/mcp-app --no-audit --no-fund

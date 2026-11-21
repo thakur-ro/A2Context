@@ -37,7 +37,7 @@ def reference_input(case, consent, parent, renderer):
     prompt = parent["generation"]["rendered_prompt"]
     if renderer == "nous":
         return original, prompt
-    history = json.loads(original["attributes"]["nexusweave.request.body"])["messages"]
+    history = json.loads(original["attributes"]["a2context.request.body"])["messages"]
     messages, tools = tokenizer_request(request, history)
     return pending(case, consent, messages, cache, tools), prompt.replace(SINGLE, DOUBLE)
 

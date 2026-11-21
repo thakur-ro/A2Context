@@ -1,4 +1,4 @@
-use nexusweave::pending;
+use a2context::pending;
 use serde_json::{json, Value};
 
 fn inspection(input: Value) -> Value {
@@ -48,7 +48,7 @@ fn verifies_pending_model_reports_against_the_supplied_request() {
         100.0
     );
     assert!(view["shadow_probes"][0]["measurement"]["effects"][0]["context_id"].is_string());
-    let body = &mut input["request"]["attributes"]["nexusweave.request.body"];
+    let body = &mut input["request"]["attributes"]["a2context.request.body"];
     *body = json!(format!("{} ", body.as_str().unwrap()));
     let stale = inspection(input);
     assert_eq!(stale["candidate_probes"][0]["status"], "unverified");
@@ -83,7 +83,7 @@ fn binds_first_token_ranking_to_the_same_edits_as_the_tool_proposals() {
         "../examples/runtime-comparison/pending-routing/shadow-report.json"
     ))
     .unwrap();
-    let attr = nexusweave::replay::prefill::ATTRIBUTE;
+    let attr = a2context::replay::prefill::ATTRIBUTE;
     let envelope = json!({"request":request});
     let view = inspection(envelope.clone());
     let ranked = view["prefill"]["ranked"].as_array().unwrap();
@@ -130,9 +130,9 @@ fn binds_first_token_ranking_to_the_same_edits_as_the_tool_proposals() {
     let mut raw = envelope;
     let attributes = &mut raw["request"]["attributes"];
     let mut body: Value =
-        serde_json::from_str(attributes["nexusweave.request.body"].as_str().unwrap()).unwrap();
+        serde_json::from_str(attributes["a2context.request.body"].as_str().unwrap()).unwrap();
     body["temperature"] = json!(0.8);
-    attributes["nexusweave.request.body"] = json!(body.to_string());
+    attributes["a2context.request.body"] = json!(body.to_string());
     assert!(pending::inspect(serde_json::from_value(raw).unwrap()).is_err());
 }
 
@@ -142,7 +142,7 @@ fn opening_tokens_require_complete_pairs_and_follow_excerpt_permissions() {
         "../examples/context-screening/replay/opening-followup.json"
     ))
     .unwrap();
-    let attr = nexusweave::replay::prefill::ATTRIBUTE;
+    let attr = a2context::replay::prefill::ATTRIBUTE;
     let scores = &original["request"]["attributes"][attr]["scores"];
     let view = inspection(original.clone());
     assert_eq!(view["prefill"]["top_token_id"], scores["top_token_id"]);
@@ -182,7 +182,7 @@ fn opening_tokens_require_complete_pairs_and_follow_excerpt_permissions() {
 
 #[test]
 fn prefill_validates_all_edits_before_calling_the_adapter() {
-    use nexusweave::replay::prefill;
+    use a2context::replay::prefill;
     let raw: Value = serde_json::from_str(include_str!(
         "../examples/runtime-comparison/pending-routing/prefill-preview.json"
     ))
@@ -228,7 +228,7 @@ fn prefill_validates_all_edits_before_calling_the_adapter() {
 fn compares_the_named_catalog_and_keeps_unknown_tools_and_missing_capture_visible() {
     let envelope = |body: Value| {
         json!({
-            "request":{"version":1,"attributes":{"nexusweave.request.body":body.to_string()}},
+            "request":{"version":1,"attributes":{"a2context.request.body":body.to_string()}},
             "allowed_tools":["fare"]
         })
     };
@@ -281,15 +281,15 @@ fn renderer_receipts_bind_to_the_request_and_hide_locations_when_excerpts_are_of
     );
     for (pointer, value) in [
         (
-            "/request/attributes/nexusweave.render_check/request_sha256",
+            "/request/attributes/a2context.render_check/request_sha256",
             json!("0".repeat(64)),
         ),
         (
-            "/request/attributes/nexusweave.render_check/removals/0/tokens/count",
+            "/request/attributes/a2context.render_check/removals/0/tokens/count",
             json!(2),
         ),
         (
-            "/request/attributes/nexusweave.render_check/removals/1/pointer",
+            "/request/attributes/a2context.render_check/removals/1/pointer",
             json!("/messages/3"),
         ),
     ] {
@@ -303,7 +303,7 @@ fn renderer_receipts_bind_to_the_request_and_hide_locations_when_excerpts_are_of
 fn renderer_receives_independent_removals_in_captured_order_and_preserves_rejections() {
     use pending::rendering::{measure, Rendered};
     let request = serde_json::from_value(json!({"version":1,"attributes":{
-        "nexusweave.request.body":r#"{"middle":2,"a/~b":1,"tail":[7,8]}"#
+        "a2context.request.body":r#"{"middle":2,"a/~b":1,"tail":[7,8]}"#
     }}))
     .unwrap();
     let receipt = measure(request, vec!["/a~1~0b".into(), "/tail/0".into()], |batch| {

@@ -335,7 +335,7 @@ function prefixExperiment(params) {
   });
   return element("details",{className:"prefix-experiment"},element("summary",{text:"Prepare a two-request test"}),
     element("p",{text:"Give the original request and the suggested edit to your proposal runner. Let it generate both answers from the beginning."}),
-    download,status,element("pre",{},element("code",{text:"nexusweave test-prefix scored-input.json RUNNER_ID checked-input.json -- RUNNER"})),
+    download,status,element("pre",{},element("code",{text:"a2context test-prefix scored-input.json RUNNER_ID checked-input.json -- RUNNER"})),
     element("p",{text:"Replace RUNNER_ID and RUNNER with your runner’s identity and command. Attach checked-input.json here to update this recommendation."}),
     element("label",{},"Attach trial results ",upload));
 }

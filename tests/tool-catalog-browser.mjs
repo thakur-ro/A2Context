@@ -51,7 +51,7 @@ try {
     assert.equal(await condition.count(),0);
     assert.equal(await change.count(),0);
     const body = JSON.stringify({tools:large});
-    await load({request:{version:1,attributes:{"nexusweave.request.body":body}},allowed_tools:["lookup_14"]});
+    await load({request:{version:1,attributes:{"a2context.request.body":body}},allowed_tools:["lookup_14"]});
     await catalog.getByRole("button",{name:/Outside scope\s*1199/}).waitFor();
     assert.equal(await row.count(),8);
     assert.ok(await catalog.evaluate(el => el.scrollWidth <= el.clientWidth));

@@ -33,9 +33,9 @@ def pending_request(messages, tools, ranges, pins, edited=None, omit=False):
     requirement = {"name": "Airline handoff", "any_of": [list(ranges)]}
     if pins:
         requirement["expected_text_sha256"] = pins
-    attributes = {"nexusweave.request.body": canonical({"messages": messages, "tools": tools}),
-                  "nexusweave.context.semantics": {"version": 1, "request_sources": sources},
-                  "nexusweave.required_sources": requirement}
+    attributes = {"a2context.request.body": canonical({"messages": messages, "tools": tools}),
+                  "a2context.context.semantics": {"version": 1, "request_sources": sources},
+                  "a2context.required_sources": requirement}
     return {"version": 1, "attributes": attributes}
 
 

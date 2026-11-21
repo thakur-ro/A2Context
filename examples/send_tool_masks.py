@@ -31,12 +31,12 @@ def measurement(run, report):
     span = trace[:16]
     fields = {
         "gen_ai.operation.name":"chat", "gen_ai.request.model":call["model"],
-        "gen_ai.conversation.id":run["conversation_id"], "nexusweave.turn.id":call["turn_id"],
-        "nexusweave.organization.id":run["organization_id"], "nexusweave.user.id":run["user_id"],
-        "nexusweave.request.body":raw, "gen_ai.tool.definitions":tools,
+        "gen_ai.conversation.id":run["conversation_id"], "a2context.turn.id":call["turn_id"],
+        "a2context.organization.id":run["organization_id"], "a2context.user.id":run["user_id"],
+        "a2context.request.body":raw, "gen_ai.tool.definitions":tools,
         "gen_ai.output.messages":[{"role":"assistant","parts":[{
             "type":"tool_call","id":"proposal","name":decision["label"],"arguments":decision["outcome"]}]}],
-        "nexusweave.context.semantics":{"version":1,"context":annotations,"request_sources":sources},
+        "a2context.context.semantics":{"version":1,"context":annotations,"request_sources":sources},
     }
     time = str(int(datetime.fromisoformat(call["started_at"]).timestamp()) * 10**9)
     inference = {

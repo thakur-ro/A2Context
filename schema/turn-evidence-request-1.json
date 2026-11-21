@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave turn evidence request",
+  "title": "A2Context turn evidence request",
   "type": "object",
   "additionalProperties": false,
   "required": ["run_id", "call_id"],

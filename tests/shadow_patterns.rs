@@ -1,4 +1,4 @@
-use nexusweave::{
+use a2context::{
     langsmith,
     replay::{shadow::patterns, MatchRule, Trial},
     Run,
@@ -12,7 +12,7 @@ fn cohort() -> Vec<Run> {
     langsmith::import(&serde_json::from_str(COHORT).unwrap()).unwrap()
 }
 
-fn attached(run: &mut Run) -> &mut nexusweave::replay::shadow::Report {
+fn attached(run: &mut Run) -> &mut a2context::replay::shadow::Report {
     &mut run.calls[0]
         .shadow_probes
         .as_mut()

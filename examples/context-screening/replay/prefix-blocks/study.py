@@ -25,7 +25,7 @@ def measure(runtime, record, pinned):
     ids = [tokens[0] for tokens in scores["candidate_token_ids"]]
     if [runtime.tokenizer.decode([i]) for i in ids] != ["3", "6"] or runtime.layer_count != 24:
         raise ValueError("The readout or decoder blocks differ from the protocol.")
-    return measure_blocks(runtime, envelope["request"]["attributes"]["nexusweave.request.body"], candidate)
+    return measure_blocks(runtime, envelope["request"]["attributes"]["a2context.request.body"], candidate)
 
 
 def main():

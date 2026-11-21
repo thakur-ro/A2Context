@@ -52,8 +52,8 @@ def parse_and_dispatch(case, arm, history, prompt, g, tokens, frozen, tracer, to
         measured, result[gate] = attempt(case, "repair", tracer, enforce, saved=reconstructed, tokenizer=tokenizer,
                                          transport_type=TRANSPORTS[arm])
         if (measured["pending_request"] != boundary or measured["generation"]["raw"] != g["parser_input"]
-                or measured["pending_request"]["attributes"]["nexusweave.request.body"] !=
-                   frozen["attributes"]["nexusweave.request.body"]):
+                or measured["pending_request"]["attributes"]["a2context.request.body"] !=
+                   frozen["attributes"]["a2context.request.body"]):
             raise ValueError("Native model-boundary reconstruction or parser input differed from the frozen trial.")
         if gate == "without_gate":
             result["parser"] = measured["parser"]
@@ -121,7 +121,7 @@ def run(runtime=None, tokenizer=None, saved=None, repeat=False):
             if (original["case"], original["consent_arm"]) != (case["id"], "repair"):
                 raise ValueError("Prior run and repaired study case do not match.")
             original = original["prefilled"]
-            history = json.loads(parent["pending_request"]["attributes"]["nexusweave.request.body"])["messages"]
+            history = json.loads(parent["pending_request"]["attributes"]["a2context.request.body"])["messages"]
             for name in (ARMS[1:] if repeat else ARMS):
                 position = spec["cases"][i]["arms"][name]
                 messages = edited_history(history, case, name)

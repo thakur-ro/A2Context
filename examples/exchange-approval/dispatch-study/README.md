@@ -46,7 +46,7 @@ As a post-hoc comparison, always choosing the latest customer message selects ex
 
 ## What happened in an existing agent framework?
 
-Qwen-Agent 0.0.34 recognized 30 calls. Its registered tool rejected 22 argument payloads and executed eight against SQLite. The final states matched the strict JSON comparison, although the point of failure differed. Both parsers gave four first-ranked source edits that changed an ungated outcome. The NexusWeave adapter counted held requests. Qwen-Agent counted approved ones. The framework replay includes the raw arguments received by the callback and the resulting state. [Qwen-Agent staging results and trace export](framework/README.md)
+Qwen-Agent 0.0.34 recognized 30 calls. Its registered tool rejected 22 argument payloads and executed eight against SQLite. The final states matched the strict JSON comparison, although the point of failure differed. Both parsers gave four first-ranked source edits that changed an ungated outcome. The A2Context adapter counted held requests. Qwen-Agent counted approved ones. The framework replay includes the raw arguments received by the callback and the resulting state. [Qwen-Agent staging results and trace export](framework/README.md)
 
 ## Cost and reproduction
 

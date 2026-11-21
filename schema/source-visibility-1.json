@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave source visibility report",
+  "title": "A2Context source visibility report",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "kind", "id", "location", "model_id", "model_revision", "runtime", "prompt_sha256", "tokenizer_sha256", "request_sha256", "prompt_token_count", "baseline_answer", "output_token_ids", "fragments", "baseline_log_probs", "all_visible_max_abs_error", "sources"],

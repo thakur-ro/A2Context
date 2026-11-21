@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave generation branches request",
+  "title": "A2Context generation branches request",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "location", "report_id"],

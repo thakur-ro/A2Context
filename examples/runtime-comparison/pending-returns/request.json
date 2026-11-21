@@ -17,8 +17,8 @@
         ]
       }
     ],
-    "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Apply the company policy to the return window. Use the FAQ if the company policy gives no return window. Answer with the duration in days.\\nCompany policy: 30 days.\\nArchived FAQ: 60 days.\\nStore name: Alder.\"},{\"role\":\"user\",\"content\":\"What is the standard return window?\"}]}",
-    "nexusweave.context.semantics": {
+    "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Apply the company policy to the return window. Use the FAQ if the company policy gives no return window. Answer with the duration in days.\\nCompany policy: 30 days.\\nArchived FAQ: 60 days.\\nStore name: Alder.\"},{\"role\":\"user\",\"content\":\"What is the standard return window?\"}]}",
+    "a2context.context.semantics": {
       "version": 1,
       "request_sources": [
         {

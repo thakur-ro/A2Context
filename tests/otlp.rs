@@ -1,4 +1,4 @@
-use nexusweave::{inspect, otlp, Availability};
+use a2context::{inspect, otlp, Availability};
 use serde_json::{json, Value};
 
 fn fixture() -> Value {
@@ -14,7 +14,7 @@ fn captures_only_explicit_inference_request_bodies_and_preserves_the_raw_json() 
         .as_array_mut()
         .unwrap();
     let body = r#"{ "model":"stock", "seed":9223372036854775807 }"#;
-    let attribute = json!({"key": "nexusweave.request.body", "value": {"stringValue": body}});
+    let attribute = json!({"key": "a2context.request.body", "value": {"stringValue": body}});
     for span in spans.iter_mut().filter(|span| {
         matches!(
             span["spanId"].as_str(),
@@ -29,12 +29,12 @@ fn captures_only_explicit_inference_request_bodies_and_preserves_the_raw_json() 
     let runs = otlp::import(&document).unwrap();
     let capture = runs[0].calls[0].recorded_request.as_ref().unwrap();
     assert_eq!(capture.body, body);
-    assert_eq!(capture.evidence.field, "nexusweave.request.body");
+    assert_eq!(capture.evidence.field, "a2context.request.body");
     assert_eq!(capture.evidence.span_id, runs[0].calls[0].span_id);
     assert!(runs[0].calls[1].recorded_request.is_none());
     let written = serde_json::to_string(&runs).unwrap();
     assert_eq!(
-        serde_json::from_str::<Vec<nexusweave::Run>>(&written).unwrap(),
+        serde_json::from_str::<Vec<a2context::Run>>(&written).unwrap(),
         runs
     );
 

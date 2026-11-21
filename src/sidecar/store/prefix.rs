@@ -4,7 +4,7 @@ use crate::{
     sidecar::{prefix_patterns, required},
     Result,
 };
-use nexusweave::{otlp, replay};
+use a2context::{otlp, replay};
 use rusqlite::{params, OptionalExtension};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;

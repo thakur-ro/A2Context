@@ -1,7 +1,7 @@
 //! MCP transport for pending requests, evidence files, and live inspector journals.
 
 use super::{otlp_http, report_store};
-use nexusweave::{
+use a2context::{
     activation, conflict_query, context_screening, pending, replay, replay_effects,
     source_profiles, turn_evidence, Run,
 };
@@ -37,7 +37,7 @@ const SCREENING_PATTERNS: &str = "query_screening_patterns";
 const REPLAY_EFFECTS: &str = "query_replay_effects";
 const PENDING: &str = "inspect_pending";
 const SHADOW_CHECK: &str = "validate_shadow_case";
-const APP_URI: &str = "ui://nexusweave/conflict-evidence.html";
+const APP_URI: &str = "ui://a2context/conflict-evidence.html";
 const APP_MIME: &str = "text/html;profile=mcp-app";
 const APP: &str = include_str!("../ui/mcp-app.html");
 
@@ -460,7 +460,7 @@ impl ServerHandler for Inspector {
         capabilities.extensions =
             Some([("io.modelcontextprotocol/ui".into(), JsonObject::new())].into());
         ServerConfig::new(capabilities)
-            .with_server_info(Implementation::new("nexusweave", env!("CARGO_PKG_VERSION")))
+            .with_server_info(Implementation::new("a2context", env!("CARGO_PKG_VERSION")))
             .with_instructions("Inspect a caller-supplied pending request or the evidence configured by the host. Conflict findings and recorded links describe captured inputs. Replay measurements apply to their tested edits.")
     }
 
@@ -479,7 +479,7 @@ impl ServerHandler for Inspector {
     ) -> Result<ListResourcesResult, ErrorData> {
         Ok(ListResourcesResult::with_all_items(vec![Resource::new(
             APP_URI,
-            "NexusWeave evidence",
+            "A2Context evidence",
         )
         .with_mime_type(APP_MIME)]))
     }
@@ -489,7 +489,7 @@ impl ServerHandler for Inspector {
         request: ReadResourceRequestParams,
         _: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResponse, ErrorData> {
-        if request.uri != APP_URI {
+        if request.uri != APP_URI && request.uri != "ui://nexusweave/conflict-evidence.html" {
             return Err(ErrorData::new(
                 rmcp::model::ErrorCode(-32002),
                 "Resource unavailable.",
@@ -497,7 +497,7 @@ impl ServerHandler for Inspector {
             ));
         }
         Ok(ReadResourceResult::new(vec![
-            ResourceContents::text(APP, APP_URI).with_mime_type(APP_MIME)
+            ResourceContents::text(APP, request.uri).with_mime_type(APP_MIME)
         ])
         .into())
     }

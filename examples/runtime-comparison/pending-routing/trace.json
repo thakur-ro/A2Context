@@ -88,9 +88,9 @@
       "thread_id": "candidate-routing-demo",
       "turn_id": "product-route",
       "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
-      "nexusweave.span.id": "qwen-routing-candidate-demo",
-      "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 42.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
-      "nexusweave.context.semantics": {
+      "a2context.span.id": "qwen-routing-candidate-demo",
+      "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 42.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+      "a2context.context.semantics": {
         "version": 1,
         "request_sources": [
           {
@@ -119,7 +119,7 @@
           }
         ]
       },
-      "nexusweave.candidate_probes": [
+      "a2context.candidate_probes": [
         {
           "version": 1,
           "id": "pending-product-route",
@@ -206,7 +206,7 @@
               "source_version": "v1",
               "evidence": {
                 "span_id": null,
-                "field": "nexusweave.request.body",
+                "field": "a2context.request.body",
                 "message_index": null,
                 "part_index": null
               },
@@ -230,7 +230,7 @@
               "source_version": "v1",
               "evidence": {
                 "span_id": null,
-                "field": "nexusweave.request.body",
+                "field": "a2context.request.body",
                 "message_index": null,
                 "part_index": null
               },

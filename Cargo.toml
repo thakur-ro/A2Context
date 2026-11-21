@@ -1,11 +1,11 @@
 [package]
-name = "nexusweave"
+name = "a2context"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Find context conflicts and test source edits in LLM workflows"
-repository = "https://github.com/thakur-ro/NexusWeave"
-documentation = "https://github.com/thakur-ro/NexusWeave/blob/main/docs/rust-api.md"
+repository = "https://github.com/thakur-ro/A2Context"
+documentation = "https://github.com/thakur-ro/A2Context/blob/main/docs/rust-api.md"
 include = [
     "/src/**",
     "/ui/*.js",

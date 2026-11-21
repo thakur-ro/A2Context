@@ -19,14 +19,14 @@ def records(study):
     original = next(r for r in originals if r["id"] == study["reference"])
     for case in study["inputs"]:
         meta = deepcopy(original["extra"]["metadata"])
-        del meta["nexusweave.shadow_probes"]
+        del meta["a2context.shadow_probes"]
         identifier = "routing-holdout-" + str(case["product"])
         meta["thread_id"] = identifier
-        meta["nexusweave.span.id"] = identifier
-        body = json.loads(meta["nexusweave.request.body"])
+        meta["a2context.span.id"] = identifier
+        body = json.loads(meta["a2context.request.body"])
         body["messages"][2]["content"] = f"Product ID: {case['product']}."
         body["messages"][-1]["content"] = case["message"]
-        meta["nexusweave.request.body"] = json.dumps(body, ensure_ascii=False, separators=(",", ":"))
+        meta["a2context.request.body"] = json.dumps(body, ensure_ascii=False, separators=(",", ":"))
         yield dict(id=identifier, run_type="llm", name=original["name"], start_time=original["start_time"],
                    inputs={"messages": body["messages"]}, extra={"metadata": meta})
 
@@ -53,7 +53,7 @@ def measure(binary, model, study, cohort):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, help="Measure with this local checkpoint. Omit to export the saved corpus.")
-    parser.add_argument("--binary", type=Path, default=Path("target/debug/nexusweave"))
+    parser.add_argument("--binary", type=Path, default=Path("target/debug/a2context"))
     parser.add_argument("--output", type=Path, help="New file for the measured results.")
     args = parser.parse_args()
     study = json.loads(STUDY.read_text())

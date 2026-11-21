@@ -33,9 +33,9 @@ jobs:
       - name: Verify sidecar with JSON and OpenTelemetry SDK producers
         if: runner.os == 'Linux'
         run: |
-          python3 -m venv "$RUNNER_TEMP/nexusweave-otel"
-          "$RUNNER_TEMP/nexusweave-otel/bin/pip" install opentelemetry-exporter-otlp-proto-http==1.45.2
-          make check-sidecar SDK_PYTHON="$RUNNER_TEMP/nexusweave-otel/bin/python"
+          python3 -m venv "$RUNNER_TEMP/a2context-otel"
+          "$RUNNER_TEMP/a2context-otel/bin/pip" install opentelemetry-exporter-otlp-proto-http==1.45.2
+          make check-sidecar SDK_PYTHON="$RUNNER_TEMP/a2context-otel/bin/python"
       - name: Verify saved public QA rankings and passage-order comparison
         if: runner.os == 'Linux'
         run: make check-qa check-dispatch-study

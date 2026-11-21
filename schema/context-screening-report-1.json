@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave context screening report",
+  "title": "A2Context context screening report",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "selection", "scorer", "sources", "total_pairs", "pairs"],

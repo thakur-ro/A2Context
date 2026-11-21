@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave source visibility query",
+  "title": "A2Context source visibility query",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "location", "report_id"],

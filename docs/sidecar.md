@@ -1,4 +1,4 @@
-# Run NexusWeave beside inference
+# Run A2Context beside inference
 
 [Watch the embedded walkthrough](demo.md) · [Build and verify the shipping image](../DEPLOYMENT.md)
 
@@ -6,7 +6,7 @@ The sidecar receives OTLP/HTTP trace exports and writes normalized evidence to e
 
 ```sh
 cargo build --release --locked
-target/release/nexusweave sidecar --db ./evidence.sqlite --metadata deployment.environment.name
+target/release/a2context sidecar --db ./evidence.sqlite --metadata deployment.environment.name
 ```
 
 Use `http://127.0.0.1:8040/v1/traces` as the traces endpoint of an asynchronous OTLP exporter. The sidecar accepts OTLP JSON or Protobuf, optionally gzip encoded. It acknowledges success after the SQLite transaction commits. An exact retry preserves a single copy per trace and span ID. A late span merges into the existing trace, including a parent span that arrived after its child. Trace exports for unsupported instrumentation can be stored as topology until a supported span arrives.
@@ -19,7 +19,7 @@ To check a request before calling the model, post `{"request": ...}` to `/api/si
 
 For sources with an expected digest, **Inspect checked fragments** shows the exact request pointer, byte range and result, including fragments that matched. The `checked_source_fragments` field gives the same evidence in the preview response. A match covers the named fragment and its configured digest. An unconfirmed anchor stays in the alternatives list.
 
-Run preflight on an assembled request with `nexusweave.required_sources`. Copy its `receipt` into the inference span’s `nexusweave.preflight` attribute. On OTLP, JSON-encode the receipt as a string. Export the exact original request and source declarations with it. With content capture enabled, a matching version-two or version-three receipt lets the background worker recompute which named fragments satisfied the requirement. A missing or mismatched receipt provides no verified result. Version-one receipts still verify ordinary rule checks. [Preflight example](guide.md#check-alternative-sources-before-dispatch)
+Run preflight on an assembled request with `a2context.required_sources`. Copy its `receipt` into the inference span’s `a2context.preflight` attribute. On OTLP, JSON-encode the receipt as a string. Export the exact original request and source declarations with it. With content capture enabled, a matching version-two or version-three receipt lets the background worker recompute which named fragments satisfied the requirement. A missing or mismatched receipt provides no verified result. Version-one receipts still verify ordinary rule checks. [Preflight example](guide.md#check-alternative-sources-before-dispatch)
 
 If every alternative has an unconfirmed source, the dashboard shows **Check sources for** the named requirement. Filter by user or workflow to see affected conversations and open the exact call. In the context map, hollow dashed nodes identify required IDs with no matching anchor. Filled source nodes identify fragments the call actually captured. The workflow may still have supplied the text at an undeclared location.
 
@@ -131,7 +131,7 @@ The release binary handled 384 synthetic conversations built from the three save
 Peak cgroup memory for the sidecar and Python harness together was 60.3 MiB. These timings cover dashboard reads on repeated inputs. Inference-path latency needs a separate measurement with a live exporter. Reproduce the fixture after building the release binary.
 
 ```sh
-python3 tests/sidecar_conflict_coverage.py target/release/nexusweave --measure
+python3 tests/sidecar_conflict_coverage.py target/release/a2context --measure
 ```
 
 ### Read recommendations from another dashboard
@@ -309,7 +309,7 @@ To run the same probe with local Qwen weights, supply the existing named edits a
 ```sh
 routing=examples/runtime-comparison/pending-routing
 jq '.interventions' "$routing/case.json" > /tmp/routing-edits.json
-nexusweave probe-prefill "$routing/request.json" /tmp/routing-edits.json /tmp/routing-preview.json -- \
+a2context probe-prefill "$routing/request.json" /tmp/routing-edits.json /tmp/routing-preview.json -- \
   python3 scripts/score_qwen_prefill.py /path/to/qwen/snapshot --model-id Qwen/Qwen2.5-0.5B-Instruct \
   --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2
 ```
@@ -398,7 +398,7 @@ Open **Test source suggestions from 11 conversations**, pick a calendar, then a 
 Choose **Prepare a two-request test**, then **Download scored input**. The scorer can operate on an assembled request before generation. The sidecar verifies that the reported probabilities and trials refer to the captured inputs. The producer supplies when the scorer ran and which runner produced the proposals. The export contains the selected candidate report, the captured request and its input source declarations. Run the command shown on the card using a proposal-only adapter that accepts a request body on stdin and returns a choice on stdout. With a local Qwen checkpoint run this command.
 
 ```sh
-nexusweave test-prefix scored-input.json qwen-cpu-greedy checked-input.json -- \
+a2context test-prefix scored-input.json qwen-cpu-greedy checked-input.json -- \
   python3 scripts/propose_qwen.py "$qwen_dir" --model-id Qwen/Qwen2.5-0.5B-Instruct
 ```
 
@@ -460,7 +460,7 @@ Load the saved study into a sidecar running with `--capture-content`. Run the se
 
 ```sh
 cargo build --locked
-target/debug/nexusweave sidecar --db /tmp/journal-study.sqlite --capture-content
+target/debug/a2context sidecar --db /tmp/journal-study.sqlite --capture-content
 # In a second terminal
 python3 examples/view_opening_study.py --url http://127.0.0.1:8040
 ```
@@ -477,7 +477,7 @@ Each selector needs a completed original and edited proposal from the same singl
 
 The API exposes counts through `GET /api/sidecar/ranking-results` and paginated witnesses through `GET /api/sidecar/ranking-examples`. The latter accepts `result` values `both`, `ranked_only`, `first_only`, `neither`, `missing` and `mixed`. Each witness identifies the trace, call and ranking recommendation. [Paired evaluation on twenty public questions](../examples/public-qa/holdout.md#inspect-the-measured-calls)
 
-Copy the measured request’s `nexusweave.prefill.probe` attribute to the inference span alongside the original request body and its source declarations. OTLP attributes can carry the probe as a JSON string. LangSmith imports accept the same key in run metadata. A sidecar with content capture enabled verifies the request and edit digests, source versions, and model identity when it indexes the span. With content capture disabled, the report is discarded with the request body.
+Copy the measured request’s `a2context.prefill.probe` attribute to the inference span alongside the original request body and its source declarations. OTLP attributes can carry the probe as a JSON string. LangSmith imports accept the same key in run metadata. A sidecar with content capture enabled verifies the request and edit digests, source versions, and model identity when it indexes the span. With content capture disabled, the report is discarded with the request body.
 
 In **Recommendations**, open **First-token sensitivity**, then review a comparison. The card counts distinct captured request bodies. It keeps ties, all-zero measurements and disagreed repeat rankings separate. Opening a conversation shows the tested edit, its shift in bits and any completed paired proposals from an attached shadow report. One observed change applies to that input and runner.
 
@@ -505,7 +505,7 @@ When the producer also supplied opening-token IDs, the first generated token mus
 
 ### Check whether an edit preserves a reference answer
 
-Inside the captured `nexusweave.prefill.probe` object, set the optional `answer_reference` field when your workflow has known reference answers.
+Inside the captured `a2context.prefill.probe` object, set the optional `answer_reference` field when your workflow has known reference answers.
 
 ```json
 {"kind":"word_sequence_v1","aliases":["9 seasons","9"]}
@@ -525,14 +525,14 @@ To reproduce the eight proposals with the local Qwen checkpoint and Python envir
 
 ```sh
 routing=examples/runtime-comparison/pending-routing
-python3 "$routing/prefill_cohort.py" --prepare /tmp/nw-routing-study
-nexusweave test-routing /tmp/nw-routing-study/routing-south-stock-only-scored.json \
+python3 "$routing/prefill_cohort.py" --prepare /tmp/a2context-routing-study
+a2context test-routing /tmp/a2context-routing-study/routing-south-stock-only-scored.json \
   "$routing/routing-design.json" qwen2.5-0.5b-instruct-eaa56b5-transformers-cpu-greedy \
-  /tmp/nw-routing-study/repeated.json -- python3 scripts/propose_qwen.py \
+  /tmp/a2context-routing-study/repeated.json -- python3 scripts/propose_qwen.py \
   "$MODEL_DIR" --model-id Qwen/Qwen2.5-0.5B-Instruct
 ```
 
-Load the output in **Before inference**, or attach its `nexusweave.prefill.probe` attribute to the corresponding inference span. On your own scored chat request, choose a verified edit within a user message, the index of a system or developer message, its alternate text, and the alternate array of tool definitions. The CLI passes each full request to the explicit proposal runner on stdin. The runner returns a JSON choice with `kind`, `label` and `outcome`. Use a proposal-only runner, since dispatching calls would change the experiment.
+Load the output in **Before inference**, or attach its `a2context.prefill.probe` attribute to the corresponding inference span. On your own scored chat request, choose a verified edit within a user message, the index of a system or developer message, its alternate text, and the alternate array of tool definitions. The CLI passes each full request to the explicit proposal runner on stdin. The runner returns a JSON choice with `kind`, `label` and `outcome`. Use a proposal-only runner, since dispatching calls would change the experiment.
 
 The sidecar reconstructs all eight requests and checks their digests before comparing complete choices. A failed trial leaves its comparison incomplete. The producer supplies the runner identity and trial outputs. The eight trials belong to one example and add zero conversations to the dashboard totals. MCP returns the pattern and trial statuses by default. Reading instruction excerpts, tool names or returned arguments requires excerpt access.
 
@@ -595,7 +595,7 @@ Agents can read `position_test` on a `factors` row to get the group, pair, trial
 Agents can follow the same route. From a `replay-variations` row with a `position_pair`, carry the current scope plus `factor`, `group`, `pair=position_pair`, `baseline_trials` and `edit_trials` to `GET /api/sidecar/position-plan`. Read the two trial counts from the changed example's baseline and variant measurements. A stale pair or a filter that excludes one background makes the plan unavailable. Each condition references a compact JSON string in `requests` by SHA-256. Numbered slots are one-based. Each background retains its original position and evidence location.
 
 ```sh
-nexusweave run-position-plan plan.json my-runner-revision trials.json -- my-proposal-runner
+a2context run-position-plan plan.json my-runner-revision trials.json -- my-proposal-runner
 ```
 
 The explicit runner receives one JSON request on stdin and returns a proposal with `kind`, `label` and `outcome` on stdout. The CLI checks the table and hashes before invoking it once per condition. A failed or unreadable proposal is recorded as failed. The plan names the historical runner. The CLI argument names the runner you actually use. A tool-call experiment should return the proposed call for comparison.
@@ -613,32 +613,32 @@ Choose **Check a new request against earlier edits** in the demo. Two earlier an
 
 </details>
 
-For live traffic, supply `nexusweave.organization.id` and the same user identity as the captured calls. The producer defaults to `otlp`. For another producer, set `nexusweave.history.source` to the stored run source. A missing user matches only calls with no user ID. Named, versioned sources must bind to verified text fragments or complete message content. Settings, tools, message roles, fixed text and source positions must agree. Only the text inside bound sources and a separate final plain user question can vary.
+For live traffic, supply `a2context.organization.id` and the same user identity as the captured calls. The producer defaults to `otlp`. For another producer, set `a2context.history.source` to the stored run source. A missing user matches only calls with no user ID. Named, versioned sources must bind to verified text fragments or complete message content. Settings, tools, message roles, fixed text and source positions must agree. Only the text inside bound sources and a separate final plain user question can vary.
 
 The preview's `history.edits` field returns up to five tested edits from the latest 512 eligible observations for this layout and identity. Each edit needs two distinct earlier input bodies after excluding the pending body. Fully scored single-source comparisons with a fully matching baseline qualify. The response flags a truncated window. Missing scope or anchors leave the current request’s own checks available.
 
 Each input votes once per edit. The `proposals` field counts inputs whose complete answers or tool calls consistently changed or held. Repeats that demonstrate both outcomes count as `mixed`. Incomplete or inconsistent pairs with no established disagreement count as `unresolved`. The separate `lower`, `equal` and `mixed` counts describe the scoring rule. Ranking favors edits with more inputs showing a consistent proposal change. Among such ties it favors fewer mixed or unresolved inputs, then compares rule results and input counts.
 
-**Download edit for this request** exports a JSON intervention list for `nexusweave probe-prefill`. The sidecar verifies the source version and position, binds the full replacement to the current context ID and byte range, and returns baseline and edited request hashes in `history.experiment`. A ready experiment has `status: "ready"`. When the source already contains the replacement, the response reports `already_applied` and offers the historical evidence. Replacement previews in the history table show up to 160 characters.
+**Download edit for this request** exports a JSON intervention list for `a2context probe-prefill`. The sidecar verifies the source version and position, binds the full replacement to the current context ID and byte range, and returns baseline and edited request hashes in `history.experiment`. A ready experiment has `status: "ready"`. When the source already contains the replacement, the response reports `already_applied` and offers the historical evidence. Replacement previews in the history table show up to 160 characters.
 
-To attach results, supply a measured request with `nexusweave.prefill.probe` or a `shadow` report in the preview envelope. The card joins verified measurements for that source and edited request hash. It shows the first-token shift when supplied, up to five matching proposal comparisons, and their total count. A pair of identical completed answers appears side by side. A missing comparison has no measured outcome. [Measured Ash reports](../examples/redundant-routing/ash-history-check.json)
+To attach results, supply a measured request with `a2context.prefill.probe` or a `shadow` report in the preview envelope. The card joins verified measurements for that source and edited request hash. It shows the first-token shift when supplied, up to five matching proposal comparisons, and their total count. A pair of identical completed answers appears side by side. A missing comparison has no measured outcome. [Measured Ash reports](../examples/redundant-routing/ash-history-check.json)
 
 Open **Before inference** and load a preflight request or a request bundled with previously measured probe reports. The workflow can also call `POST /api/sidecar/preview` with a JSON object containing `request` and optional `candidate` or `shadow` reports. The response includes the evidence and suggested next step. This route uses the bounded worker, processes the request in memory, and makes zero model calls. Use it as a separate check when the workflow needs a result before dispatching the original request. [Preflight format](guide.md#check-context-before-inference) · [Pending inspection format](../schema/pending-inspection-1.json)
 
-To carry the same measurements into the background feed, attach verified reports as `nexusweave.candidate_probes` or `nexusweave.shadow_probes` on the matching inference span. The sidecar checks request identity, source edits, and score or trial arithmetic. [Candidate probes](guide.md#measure-candidate-preference-before-a-decision)
+To carry the same measurements into the background feed, attach verified reports as `a2context.candidate_probes` or `a2context.shadow_probes` on the matching inference span. The sidecar checks request identity, source edits, and score or trial arithmetic. [Candidate probes](guide.md#measure-candidate-preference-before-a-decision)
 
 ### Capture inputs and sources
 
 The default policy stores a trace skeleton, scope identifiers, model and operation attributes, and explicitly allowlisted scalar metadata. Content capture requires `--capture-content` and a new database if the existing database used a different policy. Redact secrets, prompt data, tool arguments, and personal data in the exporter or collector before using this flag. Only allowlist low-sensitivity keys such as the deployment environment. Scope and service IDs are stored even with content capture disabled, so use pseudonymous IDs where needed. [OpenTelemetry GenAI attributes](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
 
-For input findings, emit standard captured GenAI or OpenInference content attributes and [NexusWeave source declarations](guide.md#declare-context-sources-and-decision-scope). To create repeat groups across threads, attach stable source IDs and versions, and carry the same organization and user keys across those threads. `service.name` supplies the workflow filter. Multiple distinct metadata values for one key within a trace are treated as ambiguous and omitted from filtering.
+For input findings, emit standard captured GenAI or OpenInference content attributes and [A2Context source declarations](guide.md#declare-context-sources-and-decision-scope). To create repeat groups across threads, attach stable source IDs and versions, and carry the same organization and user keys across those threads. `service.name` supplies the workflow filter. Multiple distinct metadata values for one key within a trace are treated as ambiguous and omitted from filtering.
 
-For a replay where proposals run in a separate job, use `nexusweave plan-replay <evidence.json> <case.json> <plan.json>` to export exact baseline and edited request bytes. Collect the proposals with your runner and call `nexusweave score-replay <evidence.json> <case.json> <trials.json> <report.json>`. The trial file has a `version` of 1, the exported `plan_id`, and `conditions` with `context_ids`, `request_sha256`, and `trials`. The scorer checks the plan, request digests, and trial counts. Neither command calls a model. [Replay case and results](guide.md#try-a-decision-replay)
+For a replay where proposals run in a separate job, use `a2context plan-replay <evidence.json> <case.json> <plan.json>` to export exact baseline and edited request bytes. Collect the proposals with your runner and call `a2context score-replay <evidence.json> <case.json> <trials.json> <report.json>`. The trial file has a `version` of 1, the exported `plan_id`, and `conditions` with `context_ids`, `request_sha256`, and `trials`. The scorer checks the plan, request digests, and trial counts. Neither command calls a model. [Replay case and results](guide.md#try-a-decision-replay)
 
 Upload a completed report to `POST /api/replay-reports` once the captured baseline trace is accepted. Use `POST /api/activation-reports` for a validated report from an instrumented model. A verified, supported report can generate a recommendation with its measured comparison and next test. Try an existing saved report without running a model:
 
 ```sh
-target/release/nexusweave sidecar --db ./synthetic.sqlite --capture-content
+target/release/a2context sidecar --db ./synthetic.sqlite --capture-content
 # In another terminal
 python3 examples/send_otlp_replay.py
 ```
@@ -647,18 +647,18 @@ Semantic screening and proposal-only checks run as separate opt-in jobs. The sid
 
 ### Deploy in a shared network namespace
 
-Build the image with `docker build -t nexusweave:private .`. In Kubernetes, run it as an additional container in the same pod as the instrumented application or its local Collector. Configure a writable volume for UID 10001 at `/state`. For a provisional limit of one CPU and 512 MiB, a container spec can use:
+Build the image with `docker build -t a2context:private .`. In Kubernetes, run it as an additional container in the same pod as the instrumented application or its local Collector. Configure a writable volume for UID 10001 at `/state`. For a provisional limit of one CPU and 512 MiB, a container spec can use:
 
 ```yaml
-- name: nexusweave
-  image: registry.example/nexusweave:private
+- name: a2context
+  image: registry.example/a2context:private
   args: ["--db", "/state/evidence.sqlite", "--retain-days", "7"]
   resources:
     limits:
       cpu: "1"
       memory: 512Mi
   volumeMounts:
-    - name: nexusweave-state
+    - name: a2context-state
       mountPath: /state
 ```
 
@@ -679,7 +679,7 @@ processors:
     send_batch_size: 32
     send_batch_max_size: 32
 exporters:
-  otlphttp/nexusweave:
+  otlphttp/a2context:
     traces_endpoint: http://127.0.0.1:8040/v1/traces
     sending_queue:
       queue_size: 128
@@ -693,7 +693,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/nexusweave, otlphttp/observability]
+      exporters: [otlphttp/a2context, otlphttp/observability]
 ```
 
 For LangSmith, configure its [OTLP endpoint and headers](https://docs.langchain.com/langsmith/trace-with-opentelemetry) on the observability exporter. This fan-out sends traces to both destinations. Use the [LangSmith importer](guide.md#import-langsmith-traces) for saved runs. [Collector queue and retry behavior](https://opentelemetry.io/docs/collector/resiliency/)

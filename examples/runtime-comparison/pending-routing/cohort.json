@@ -73,9 +73,9 @@
         "thread_id": "trace-north-17",
         "turn_id": "product-route",
         "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
-        "nexusweave.span.id": "routing-north-17",
-        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 17.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
-        "nexusweave.context.semantics": {
+        "a2context.span.id": "routing-north-17",
+        "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 17.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please handle the request now.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "a2context.context.semantics": {
           "version": 1,
           "request_sources": [
             {
@@ -104,7 +104,7 @@
             }
           ]
         },
-        "nexusweave.candidate_probes": [
+        "a2context.candidate_probes": [
           {
             "version": 1,
             "id": "pending-product-route",
@@ -191,7 +191,7 @@
                 "source_version": "v1",
                 "evidence": {
                   "span_id": null,
-                  "field": "nexusweave.request.body",
+                  "field": "a2context.request.body",
                   "message_index": null,
                   "part_index": null
                 },
@@ -215,7 +215,7 @@
                 "source_version": "v1",
                 "evidence": {
                   "span_id": null,
-                  "field": "nexusweave.request.body",
+                  "field": "a2context.request.body",
                   "message_index": null,
                   "part_index": null
                 },
@@ -303,9 +303,9 @@
         "thread_id": "trace-north-88",
         "turn_id": "product-route",
         "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
-        "nexusweave.span.id": "routing-north-88",
-        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 88.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please check current product availability.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
-        "nexusweave.context.semantics": {
+        "a2context.span.id": "routing-north-88",
+        "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 88.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please check current product availability.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "a2context.context.semantics": {
           "version": 1,
           "request_sources": [
             {
@@ -334,7 +334,7 @@
             }
           ]
         },
-        "nexusweave.candidate_probes": [
+        "a2context.candidate_probes": [
           {
             "version": 1,
             "id": "pending-product-route",
@@ -421,7 +421,7 @@
                 "source_version": "v1",
                 "evidence": {
                   "span_id": null,
-                  "field": "nexusweave.request.body",
+                  "field": "a2context.request.body",
                   "message_index": null,
                   "part_index": null
                 },
@@ -445,7 +445,7 @@
                 "source_version": "v1",
                 "evidence": {
                   "span_id": null,
-                  "field": "nexusweave.request.body",
+                  "field": "a2context.request.body",
                   "message_index": null,
                   "part_index": null
                 },
@@ -533,9 +533,9 @@
         "thread_id": "trace-south-52",
         "turn_id": "product-route",
         "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
-        "nexusweave.span.id": "routing-south-52",
-        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 52.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please use the provided request details.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
-        "nexusweave.context.semantics": {
+        "a2context.span.id": "routing-south-52",
+        "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Handle the supplied product request by calling exactly one listed tool. Use stock for a stock check or price for a price check. Pass the supplied product_id without changes.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 52.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Please use the provided request details.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"price\",\"description\":\"Read the current price for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0}",
+        "a2context.context.semantics": {
           "version": 1,
           "request_sources": [
             {
@@ -564,7 +564,7 @@
             }
           ]
         },
-        "nexusweave.candidate_probes": [
+        "a2context.candidate_probes": [
           {
             "version": 1,
             "id": "pending-product-route",
@@ -651,7 +651,7 @@
                 "source_version": "v1",
                 "evidence": {
                   "span_id": null,
-                  "field": "nexusweave.request.body",
+                  "field": "a2context.request.body",
                   "message_index": null,
                   "part_index": null
                 },
@@ -675,7 +675,7 @@
                 "source_version": "v1",
                 "evidence": {
                   "span_id": null,
-                  "field": "nexusweave.request.body",
+                  "field": "a2context.request.body",
                   "message_index": null,
                   "part_index": null
                 },

@@ -2,7 +2,7 @@
 //!
 //! Preflight checks the supplied request and source declarations without a
 //! model call. Each finding includes the sources and their request anchors.
-//! The [workflow guide](https://github.com/thakur-ro/NexusWeave/blob/main/docs/guide.md#check-context-before-inference)
+//! The [workflow guide](https://github.com/thakur-ro/A2Context/blob/main/docs/guide.md#check-context-before-inference)
 //! walks through the same check from the CLI and HTTP API.
 
 use crate::{
@@ -29,9 +29,16 @@ pub struct Request {
     pub version: u32,
     /// Optional rule key and scope to check. Omit it to check every declared scope.
     pub scope: Option<DecisionScope>,
-    /// OpenTelemetry GenAI input attributes and NexusWeave source declarations.
-    /// `nexusweave.request.body` can carry a JSON object encoded as a string.
+    /// OpenTelemetry GenAI input attributes and A2Context source declarations.
+    /// `a2context.request.body` can carry a JSON object encoded as a string.
     pub attributes: Map<String, Value>,
+}
+
+impl Request {
+    /// Read a telemetry attribute using its current or legacy spelling.
+    pub fn attribute(&self, key: &str) -> Option<&Value> {
+        span_metadata::attribute(&self.attributes, key).map(|(_, value)| value)
+    }
 }
 
 /// Findings from the supplied input. Source text and the request body stay out of the report.
@@ -51,7 +58,7 @@ pub struct Report {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anchor_overlap: Option<AnchorOverlap>,
     pub findings: Vec<Finding>,
-    /// Attach to the resulting inference span as `nexusweave.preflight`.
+    /// Attach to the resulting inference span as `a2context.preflight`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receipt: Option<Receipt>,
 }
@@ -148,7 +155,7 @@ pub struct Source {
 /// # Example
 ///
 /// ```
-/// use nexusweave::{preflight, FindingKind};
+/// use a2context::{preflight, FindingKind};
 ///
 /// let input = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/preflight-returns.json"));
 /// let report = preflight::check(serde_json::from_str(input)?)?;

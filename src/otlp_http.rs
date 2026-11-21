@@ -1,6 +1,6 @@
 use super::{header, Result};
+use a2context::{otlp, Run};
 use flate2::read::MultiGzDecoder;
-use nexusweave::{otlp, Run};
 use opentelemetry_proto::tonic::collector::trace::v1::{
     ExportTraceServiceRequest, ExportTraceServiceResponse,
 };

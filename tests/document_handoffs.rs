@@ -1,4 +1,4 @@
-use nexusweave::{document_handoffs::HandoffStatus, inspect, otlp, replay, Availability};
+use a2context::{document_handoffs::HandoffStatus, inspect, otlp, replay, Availability};
 use serde_json::{json, Value};
 
 fn fixture() -> Value {
@@ -170,7 +170,7 @@ fn matches_span_level_documents_with_numeric_ids() {
     let input = spans[2]["attributes"].as_array_mut().unwrap();
     input.retain(|attribute| {
         let field = attribute["key"].as_str().unwrap();
-        !field.starts_with("llm.input_messages.1.") && field != "nexusweave.context.semantics"
+        !field.starts_with("llm.input_messages.1.") && field != "a2context.context.semantics"
     });
     input.push(json!({"key":"input.documents.7.document.id","value":{"stringValue":"4007"}}));
     input.push(json!({"key":"input.documents.7.document.content","value":{"stringValue":"Returns are accepted within 30 days."}}));

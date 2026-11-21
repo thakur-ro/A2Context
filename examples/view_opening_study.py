@@ -32,8 +32,8 @@ def records():
             ATTRIBUTE: {"interventions": edits, "scores": scores},
             "gen_ai.operation.name": "chat",
             "gen_ai.conversation.id": f"Journal question {index}",
-            "nexusweave.organization.id": ORG,
-            "nexusweave.user.id": "journal-evaluation",
+            "a2context.organization.id": ORG,
+            "a2context.user.id": "journal-evaluation",
             "gen_ai.input.messages": [
                 {"role": m["role"], "parts": [{"type": "text", "content": m["content"]}]}
                 for m in original["messages"]
@@ -80,7 +80,7 @@ def load(base, binary):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8040")
-    parser.add_argument("--binary", type=Path, default=Path("target/debug/nexusweave"))
+    parser.add_argument("--binary", type=Path, default=Path("target/debug/a2context"))
     args = parser.parse_args()
     base = args.url.rstrip("/")
     load(base, args.binary.resolve())

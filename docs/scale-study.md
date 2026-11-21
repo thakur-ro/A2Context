@@ -31,7 +31,7 @@ Use the nine Parquet shards under `data/train` in the [pinned dataset](https://h
 
 ```sh
 cargo build --release --locked
-target/release/nexusweave sidecar --listen 127.0.0.1:18052 \
+target/release/a2context sidecar --listen 127.0.0.1:18052 \
   --db data/scale/study.sqlite --capture-content \
   --metadata benchmark.harness --metadata benchmark.success \
   --metadata benchmark.original_trace_id
@@ -80,7 +80,7 @@ node scripts/check_scale_browser.mjs http://127.0.0.1:18052 \
 Download the `processed/requests.parquet` and `processed/sessions.parquet` files for each week from the [pinned FreeInference release](https://huggingface.co/datasets/harvardMadsys/freeinference_agentic_trace/tree/bb26cf72c9c20f2b05f765d88548156a74d3c253/release). Rename them `WEEK-requests.parquet` and `WEEK-sessions.parquet` where `WEEK` is the upstream week directory. Use a separate database to keep its capture policy and results independent of the content study.
 
 ```sh
-target/release/nexusweave sidecar --listen 127.0.0.1:18055 \
+target/release/a2context sidecar --listen 127.0.0.1:18055 \
   --db data/scale/freeinference-load.sqlite \
   --metadata study.input_transition --metadata study.step_trigger
 ```

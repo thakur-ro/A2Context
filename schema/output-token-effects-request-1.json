@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave output token effects request",
+  "title": "A2Context output token effects request",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "location", "report_id", "block"],

@@ -14,7 +14,7 @@ def sessions():
         trace, report = prepare(topic, report_file=filename, archived=True, declare_windows=True)
         # Assign a shared demo tenant to the exported telemetry. The three model requests stay intact.
         span = trace["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
-        org = next(a for a in span["attributes"] if a["key"] == "nexusweave.organization.id")
+        org = next(a for a in span["attributes"] if a["key"] == "a2context.organization.id")
         org["value"]["stringValue"] = "journal-coverage-lab"
         yield topic, trace, report
 

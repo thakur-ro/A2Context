@@ -47,4 +47,4 @@ python3 "$study/study.py" --model "$CHECKPOINT_DIR" --cases /tmp/indirect-repeat
 cmp "$study/cases.json" /tmp/indirect-repeat.json
 ```
 
-Two complete local inference passes produced byte-identical case files (SHA-256 `8adcd4da87db116aadbb747827a44fabfd174b9adfef607b36b832ebdc3faa43`) and identical verified summaries. Each row of [cases.json](cases.json) contains the intended source, question and source assignments, empty-prefix log probabilities, and a request-bound `envelope` with the supplied-prefix scores and all three generated trials. To inspect an individual envelope, pass it to `nexusweave inspect-pending -`.
+Two complete local inference passes produced byte-identical case files (SHA-256 `8adcd4da87db116aadbb747827a44fabfd174b9adfef607b36b832ebdc3faa43`) and identical verified summaries. Each row of [cases.json](cases.json) contains the intended source, question and source assignments, empty-prefix log probabilities, and a request-bound `envelope` with the supplied-prefix scores and all three generated trials. To inspect an individual envelope, pass it to `a2context inspect-pending -`.

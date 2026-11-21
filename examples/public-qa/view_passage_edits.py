@@ -79,9 +79,9 @@ def prepare(record, case, study, *, rankings=False, references=False, token_stud
     attributes = {
         "gen_ai.operation.name": "chat", "gen_ai.request.model": study["model"],
         "gen_ai.conversation.id": f"QA {case['row']} · {question}",
-        "nexusweave.organization.id": "public-qa",
-        "nexusweave.request.body": json.dumps(original, ensure_ascii=False, separators=(",", ":")),
-        "nexusweave.context.semantics": json.dumps({"version": 1, "request_sources": sources}),
+        "a2context.organization.id": "public-qa",
+        "a2context.request.body": json.dumps(original, ensure_ascii=False, separators=(",", ":")),
+        "a2context.context.semantics": json.dumps({"version": 1, "request_sources": sources}),
         "gen_ai.input.messages": json.dumps([{"role": message["role"], "parts": [
             {"type": "text", "content": message["content"]}]} for message in original["messages"]]),
     }
@@ -106,7 +106,7 @@ def prepare(record, case, study, *, rankings=False, references=False, token_stud
                     break
         if references:
             probe["answer_reference"] = {"kind":"word_sequence_v1", "aliases":record["answers"]}
-        attributes["nexusweave.prefill.probe"] = json.dumps(probe)
+        attributes["a2context.prefill.probe"] = json.dumps(probe)
     timestamp = study["finished_unix_ns"]
     span = {"traceId": trace_id, "spanId": span_id, "name": "Public QA study replay",
             "startTimeUnixNano": str(timestamp), "endTimeUnixNano": str(timestamp),
@@ -156,7 +156,7 @@ def post(base, path, data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("dataset", type=Path)
-    parser.add_argument("--binary", type=Path, default=Path("target/debug/nexusweave"))
+    parser.add_argument("--binary", type=Path, default=Path("target/debug/a2context"))
     parser.add_argument("--results", type=Path, default=Path(__file__).with_name("results.json"))
     parser.add_argument("--url", default="http://127.0.0.1:8040")
     args = parser.parse_args()

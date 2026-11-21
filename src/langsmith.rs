@@ -53,7 +53,9 @@ pub fn import(document: &Value) -> Result<Vec<Run>, String> {
                     import_inference(row, &mut call)?;
                     let metadata = &row["extra"]["metadata"];
                     // Child runs may inherit metadata from their parent.
-                    if string(metadata, "nexusweave.span.id") == Some(call.id.as_str()) {
+                    if crate::span_metadata::string(metadata, "a2context.span.id")
+                        == Some(call.id.as_str())
+                    {
                         crate::span_metadata::apply(&mut call, metadata, |key| {
                             format!("extra.metadata[{key:?}]")
                         });

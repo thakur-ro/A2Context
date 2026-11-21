@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-  <title>NexusWeave</title>
-  <rect width="40" height="40" rx="9" fill="#20232b"/>
-  <path d="M9 29V11l22 18V11" fill="none" stroke="#ffffff" stroke-width="4" stroke-linejoin="bevel"/>
-  <path d="m13 26 14-12" fill="none" stroke="#20232b" stroke-width="8"/>
-  <path d="m13 26 14-12" fill="none" stroke="#a5bdee" stroke-width="4"/>
-</svg>

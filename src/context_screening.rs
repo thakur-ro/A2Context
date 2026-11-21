@@ -208,7 +208,7 @@ pub struct Report {
 /// to use exact matching only. Exact copies bypass the scorer.
 ///
 /// ```
-/// use nexusweave::context_screening::{screen_pending, Selection, Suggestion};
+/// use a2context::context_screening::{screen_pending, Selection, Suggestion};
 ///
 /// let request = serde_json::from_str(include_str!(concat!(
 ///     env!("CARGO_MANIFEST_DIR"),

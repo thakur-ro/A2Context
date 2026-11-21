@@ -1,4 +1,4 @@
-use nexusweave::{
+use a2context::{
     activation, add_annotations, context_screening, exgentic, inspect, langsmith, otlp, preflight,
     replay, replay_effects, Annotation, Evidence, Run,
 };
@@ -15,38 +15,38 @@ use std::process::{Command, Stdio};
 use tiny_http::{Header, Method, Response, Server};
 
 const USAGE: &str = "Usage:
-  nexusweave import <exgentic.jsonl> <evidence.json>
-  nexusweave import-langsmith <runs.json|runs.jsonl> <evidence.json>
-  nexusweave import-otlp <traces.json|traces.jsonl> <evidence.json>
-  nexusweave annotate <evidence.json> <annotations.json> <output.json>
-  nexusweave replay --baseline-only <evidence.json> <case.json> -- <runner> [args...]
-  nexusweave replay <evidence.json> <case.json> <report.json> -- <runner> [args...]
-  nexusweave run-position-plan <plan.json> <runner-id> <trials.json> -- <runner> [args...]
-  nexusweave plan-replay <evidence.json> <case.json> <plan.json>
-  nexusweave score-replay <evidence.json> <case.json> <trials.json> <report.json>
-  nexusweave rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>
-  nexusweave validate <evidence.json> [...]
-  nexusweave preflight <request.json|->
-  nexusweave inspect-pending <input.json|->
-  nexusweave screen-context <request.json> <selection.json|-> <report.json> [-- <scorer> [args...]]
-  nexusweave screen-recorded-context <evidence.json> <run-id> <call-id> <selection.json|-> <output.json> [-- <scorer> [args...]]
-  nexusweave probe-render <request.json> <pointers.json> <preview.json> -- <renderer> [args...]
-  nexusweave probe-prefill <request.json> <edits.json> <preview.json> -- <scorer> [args...]
-  nexusweave test-routing <scored-request.json> <design.json> <runner-id> <preview.json> -- <runner> [args...]
-  nexusweave probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
-  nexusweave test-prefix <scored-input.json> <runner-id> <checked-input.json> -- <runner> [args...]
-  nexusweave shadow <request.json> <case.json> <report.json> -- <runner> [args...]
-  nexusweave query-conflicts <view.json> <evidence.json> [...]
-  nexusweave query-candidate-patterns <view.json> <evidence.json> [...]
-  nexusweave query-shadow-patterns <view.json> <evidence.json> [...]
-  nexusweave query-screening-patterns <view.json> [--replay <report.json>]... <evidence.json> [...]
-  nexusweave query-replay-effects <view.json> [--replay <report.json>]... <evidence.json> [...]
-  nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] [evidence.json ...]
-  nexusweave mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
-  nexusweave inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
-  nexusweave demo
-  nexusweave sidecar [--listen 127.0.0.1:8040] (--db path | --demo) [--capture-content] [--retain-days 7] [--metadata key]...
-  nexusweave serve [--listen 127.0.0.1:8040] [--replay report.json] [--activation-report report.json] [--otlp-store directory] [evidence.json ...]";
+  a2context import <exgentic.jsonl> <evidence.json>
+  a2context import-langsmith <runs.json|runs.jsonl> <evidence.json>
+  a2context import-otlp <traces.json|traces.jsonl> <evidence.json>
+  a2context annotate <evidence.json> <annotations.json> <output.json>
+  a2context replay --baseline-only <evidence.json> <case.json> -- <runner> [args...]
+  a2context replay <evidence.json> <case.json> <report.json> -- <runner> [args...]
+  a2context run-position-plan <plan.json> <runner-id> <trials.json> -- <runner> [args...]
+  a2context plan-replay <evidence.json> <case.json> <plan.json>
+  a2context score-replay <evidence.json> <case.json> <trials.json> <report.json>
+  a2context rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>
+  a2context validate <evidence.json> [...]
+  a2context preflight <request.json|->
+  a2context inspect-pending <input.json|->
+  a2context screen-context <request.json> <selection.json|-> <report.json> [-- <scorer> [args...]]
+  a2context screen-recorded-context <evidence.json> <run-id> <call-id> <selection.json|-> <output.json> [-- <scorer> [args...]]
+  a2context probe-render <request.json> <pointers.json> <preview.json> -- <renderer> [args...]
+  a2context probe-prefill <request.json> <edits.json> <preview.json> -- <scorer> [args...]
+  a2context test-routing <scored-request.json> <design.json> <runner-id> <preview.json> -- <runner> [args...]
+  a2context probe-candidates <request.json> <probe.json> <report.json> -- <scorer> [args...]
+  a2context test-prefix <scored-input.json> <runner-id> <checked-input.json> -- <runner> [args...]
+  a2context shadow <request.json> <case.json> <report.json> -- <runner> [args...]
+  a2context query-conflicts <view.json> <evidence.json> [...]
+  a2context query-candidate-patterns <view.json> <evidence.json> [...]
+  a2context query-shadow-patterns <view.json> <evidence.json> [...]
+  a2context query-screening-patterns <view.json> [--replay <report.json>]... <evidence.json> [...]
+  a2context query-replay-effects <view.json> [--replay <report.json>]... <evidence.json> [...]
+  a2context mcp-stdio [--scope scope.json] [--include-excerpts] [--replay report.json] [--activation-report report.json] [evidence.json ...]
+  a2context mcp-stdio [--scope scope.json] [--include-excerpts] --otlp-store directory [evidence.json ...]
+  a2context inspect [--replay report.json] [--activation-report report.json] <evidence.json> [...]
+  a2context demo
+  a2context sidecar [--listen 127.0.0.1:8040] (--db path | --demo) [--capture-content] [--retain-days 7] [--metadata key]...
+  a2context serve [--listen 127.0.0.1:8040] [--replay report.json] [--activation-report report.json] [--otlp-store directory] [evidence.json ...]";
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -193,7 +193,7 @@ fn run(args: Vec<String>) -> Result<()> {
             } else {
                 serde_json::from_reader(fs::File::open(path)?)?
             };
-            let report = nexusweave::pending::inspect(input)?;
+            let report = a2context::pending::inspect(input)?;
             serde_json::to_writer_pretty(std::io::stdout().lock(), &report)?;
             println!();
         }
@@ -243,7 +243,7 @@ fn run(args: Vec<String>) -> Result<()> {
             }
             let input = serde_json::from_reader(fs::File::open(request)?)?;
             let fields = serde_json::from_reader(fs::File::open(pointers)?)?;
-            let preview = nexusweave::pending::rendering::measure(input, fields, |batch| {
+            let preview = a2context::pending::rendering::measure(input, fields, |batch| {
                 run_json(program, args, batch, Stdio::inherit()).map_err(|error| error.to_string())
             })?;
             write_new(output, &serde_json::to_vec_pretty(&preview)?)?;
@@ -309,7 +309,7 @@ fn run(args: Vec<String>) -> Result<()> {
             if Path::new(output).exists() {
                 return Err(format!("output already exists: {output}").into());
             }
-            let mut input: nexusweave::pending::Request =
+            let mut input: a2context::pending::Request =
                 serde_json::from_reader(fs::File::open(input)?)?;
             let candidate = input
                 .candidate
@@ -343,7 +343,7 @@ fn run(args: Vec<String>) -> Result<()> {
             let runs = read_runs(paths)?;
             validate_loaded_runs(&runs)?;
             let spec = serde_json::from_reader(fs::File::open(spec)?)?;
-            let page = nexusweave::conflict_query::query(&spec, &runs)?;
+            let page = a2context::conflict_query::query(&spec, &runs)?;
             serde_json::to_writer_pretty(std::io::stdout().lock(), &page)?;
             println!();
         }
@@ -511,7 +511,7 @@ fn read_runs(paths: &[&str]) -> Result<Vec<Run>> {
 fn validate_loaded_runs(runs: &[Run]) -> Result<()> {
     let mut seen = BTreeSet::new();
     for run in runs {
-        nexusweave::validate(run)?;
+        a2context::validate(run)?;
         if !seen.insert(&run.id) {
             return Err(format!("duplicate run ID: {}", run.id).into());
         }
@@ -578,7 +578,7 @@ fn inspection_options<'a>(
 #[derive(Serialize)]
 struct InspectionSnapshot<'a> {
     #[serde(flatten)]
-    inspection: nexusweave::Inspection<'a>,
+    inspection: a2context::Inspection<'a>,
     replays: &'a [replay::Replay],
     #[serde(skip_serializing_if = "<[activation::Report]>::is_empty")]
     activation_reports: &'a [activation::Report],
@@ -754,7 +754,7 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
         read_runs(options.evidence)?
     };
     for run in &fixed {
-        nexusweave::validate(run)?;
+        a2context::validate(run)?;
     }
     let fixed_ids: BTreeSet<_> = fixed.iter().map(|run| run.id.clone()).collect();
     let mut journal = options
@@ -798,7 +798,7 @@ fn serve(options: InspectionOptions<'_>) -> Result<()> {
     let allowed_origins = allowed_hosts
         .each_ref()
         .map(|host| format!("http://{host}"));
-    println!("NexusWeave is listening at http://{bound}");
+    println!("A2Context is listening at http://{bound}");
     if journal.is_some() {
         println!("Receiving OTLP traces at http://{bound}/v1/traces");
     }
@@ -968,7 +968,7 @@ fn browser_asset(path: &str) -> Option<(u16, &'static str, &'static [u8])> {
         return Some((200, JS, file));
     }
     Some(match path {
-        "/nexusweave.svg" => (200, "image/svg+xml", include_bytes!("../ui/nexusweave.svg")),
+        "/a2context.svg" => (200, "image/svg+xml", include_bytes!("../ui/a2context.svg")),
         "/examples/pending-returns.json" => (
             200,
             "application/json",

@@ -4,16 +4,16 @@ A recommendation should name a decision, the context that may explain it, and a 
 
 ## What similar systems already do
 
-| Work | What it demonstrates | What NexusWeave should test |
+| Work | What it demonstrates | What A2Context should test |
 | --- | --- | --- |
 | [AgentRx paper](https://arxiv.org/abs/2602.02475v1) and [open implementation](https://github.com/microsoft/AgentRx/tree/7a18c79708e7671be15124460f4f7296107c2a55) | Synthesize step-level constraints, produce an auditable violation log, and localize failures with a model judge. | Compare evidence-guided diagnosis with direct prompting and programmatic checks. Use independently annotated steps where access permits. |
 | [TRACE](https://arxiv.org/abs/2608.09153v1) | Mine historical trajectories and verify which context component to create or update. | Require the actual request source or a named capture gap for a proposed change. |
 | [REFLECT](https://arxiv.org/abs/2606.09071v1) | Replay a targeted patch, then use the intervention result to refine the diagnosis. | Require an unchanged-request control and test the same outcome after one source edit. |
-| [AgentDebugX](https://github.com/AgentDebugX/AgentDebugX) | Diagnose, attribute, prepare a recovery, and rerun it from an integrated CLI and web console. | Reuse its attribution and rerun outputs when a NexusWeave evidence adapter can retain exact provenance. |
-| [AdaMAST runtime in ATLAS](https://github.com/multi-agent-systems-failure-taxonomy/ATLAS/tree/546687ad2289d3fe4865b7e02aa2413c8b99821b) | Learn a failure taxonomy from traces with exact evidence spans and a review step. Use it at checkpoints to decide whether to repair or continue. | Evaluate its categories and evidence references as inputs to an investigation. Keep source verification and outcome comparisons in NexusWeave. |
+| [AgentDebugX](https://github.com/AgentDebugX/AgentDebugX) | Diagnose, attribute, prepare a recovery, and rerun it from an integrated CLI and web console. | Reuse its attribution and rerun outputs when a A2Context evidence adapter can retain exact provenance. |
+| [AdaMAST runtime in ATLAS](https://github.com/multi-agent-systems-failure-taxonomy/ATLAS/tree/546687ad2289d3fe4865b7e02aa2413c8b99821b) | Learn a failure taxonomy from traces with exact evidence spans and a review step. Use it at checkpoints to decide whether to repair or continue. | Evaluate its categories and evidence references as inputs to an investigation. Keep source verification and outcome comparisons in A2Context. |
 | [LangSmith Engine](https://www.langchain.com/blog/how-we-built-langsmith-engine-our-agent-for-improving-agents) | Review recurring patterns from production traces and turn them into evaluators. | Import model-generated and independently scored hypotheses with the same IDs used by the sidecar. |
 
-These systems already do trajectory-level diagnosis and feedback. The NexusWeave research question is whether a small runtime service can connect exact context snapshots before inference to verified interventions and cross-session recommendations without adding model calls to ordinary telemetry intake.
+These systems already do trajectory-level diagnosis and feedback. The A2Context research question is whether a small runtime service can connect exact context snapshots before inference to verified interventions and cross-session recommendations without adding model calls to ordinary telemetry intake.
 
 ## The proposed loop
 
@@ -147,13 +147,13 @@ The preview verified 36 packets across the six workflows. On **Before inference*
 
 The archive showed a changed `data_refueling_gb` value on a repeat telecom lookup. We tested the consequence in the pinned τ²-Bench telecom simulator. We screened all 2,285 tasks and found 1,120 with one reference top-up and a matching exact-amount assertion. This includes 38 train tasks, 12 test tasks, and 1,070 tasks outside those two splits. The scenarios reuse the same account, line and 2 GB top-up. [Pinned tasks](https://github.com/sierra-research/tau2-bench/blob/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/data/tau2/domains/telecom/tasks.json) · [How benchmark assertions are scored](https://github.com/sierra-research/tau2-bench/blob/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/docs/evaluation.md)
 
-Each test replays the task's reference actions to the top-up step and holds the earlier `get_data_usage` response. In the update arm, another channel applies the authorized top-up through the simulator's tool before the agent acts. The unchanged arm leaves it due. The workflow either uses the cached result, always refreshes, or uses NexusWeave to verify the assembled fragment against the current result from the simulator. It then runs the same remaining reference actions and evaluates every original environment assertion. This is a controlled checkpoint experiment with scripted decisions and surroundings.
+Each test replays the task's reference actions to the top-up step and holds the earlier `get_data_usage` response. In the update arm, another channel applies the authorized top-up through the simulator's tool before the agent acts. The unchanged arm leaves it due. The workflow either uses the cached result, always refreshes, or uses A2Context to verify the assembled fragment against the current result from the simulator. It then runs the same remaining reference actions and evaluates every original environment assertion. This is a controlled checkpoint experiment with scripted decisions and surroundings.
 
 | Scripted decision input | Unchanged controls passing | Updated controls passing | Additional top-ups after another channel fulfilled the request |
 | --- | ---: | ---: | ---: |
 | Cached result | 1,120 / 1,120 | 0 / 1,120 | 1,120 |
 | Always refresh | 1,120 / 1,120 | 1,120 / 1,120 | 0 |
-| NexusWeave preview and refresh on mismatch | 1,120 / 1,120 | 1,120 / 1,120 | 0 |
+| A2Context preview and refresh on mismatch | 1,120 / 1,120 | 1,120 / 1,120 | 0 |
 
 The stale arm ended with 4 GB refueled and an additional simulated $4 charge in each updated case. All 6,720 scripted results reproduced. The preview arm reads the current value from the tool backend to establish the expected digest. This test measures request validation and task state. It offers no estimate of saved tool calls or the incidence of stale results in production.
 
@@ -172,10 +172,10 @@ Reuse the content study sidecar or run a fresh instance on loopback:
 ```sh
 cargo build --locked
 mkdir -p data/scale
-target/debug/nexusweave sidecar --listen 127.0.0.1:18058 --db data/scale/telecom-preview.sqlite
+target/debug/a2context sidecar --listen 127.0.0.1:18058 --db data/scale/telecom-preview.sqlite
 ```
 
-From another terminal in the NexusWeave checkout, install the pinned simulator dependencies and run the study with Python 3.13:
+From another terminal in the A2Context checkout, install the pinned simulator dependencies and run the study with Python 3.13:
 
 ```sh
 TAU2_CHECKOUT="$(mktemp -d)"

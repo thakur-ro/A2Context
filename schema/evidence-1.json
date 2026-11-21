@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave evidence v1",
+  "title": "A2Context evidence v1",
   "type": "array",
   "minItems": 1,
   "items": {

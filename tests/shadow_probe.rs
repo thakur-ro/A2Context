@@ -1,4 +1,4 @@
-use nexusweave::{
+use a2context::{
     inspect, langsmith, otlp, preflight,
     replay::{shadow, Choice, Trial},
     turn_evidence, Run,
@@ -9,7 +9,7 @@ const REQUEST: &str = include_str!("../examples/runtime-comparison/pending-routi
 const CASE: &str = include_str!("../examples/runtime-comparison/pending-routing/shadow-case.json");
 const TRACE: &str =
     include_str!("../examples/runtime-comparison/pending-routing/shadow-trace.json");
-const SHADOW: &str = "nexusweave.shadow_probes";
+const SHADOW: &str = "a2context.shadow_probes";
 
 fn setup() -> (preflight::Request, shadow::Case) {
     (
@@ -65,7 +65,7 @@ fn measures_a_new_proposal_from_a_zero_match_baseline_and_rotates_trials() {
     assert_eq!(report.effects[0].result.summary.matched, 2);
     assert_eq!(report.effects[0].result.difference_pp, Some(100.0));
     assert_eq!(report.effects[0].source_id.as_deref(), Some("request-type"));
-    assert_eq!(report.effects[0].evidence.field, "nexusweave.request.body");
+    assert_eq!(report.effects[0].evidence.field, "a2context.request.body");
     assert_eq!(report.effects[1].result.difference_pp, Some(0.0));
     assert_eq!(
         report.pair.as_ref().unwrap().result.interaction_pp,
@@ -211,7 +211,7 @@ fn matches_a_shadow_probe_to_a_stock_call_and_limits_visible_proposals() {
     let probe = &inspection.shadow_probes[0];
     assert_eq!(
         probe.evidence.field,
-        "extra.metadata[\"nexusweave.shadow_probes\"]"
+        "extra.metadata[\"a2context.shadow_probes\"]"
     );
     let shadow::Verification::Matched { measurement } = &probe.verification else {
         panic!("Expected a matched shadow proposal");
@@ -325,14 +325,14 @@ fn rejects_shadow_reports_that_do_not_match_request_or_trial_evidence() {
 fn attaches_shadow_probes_to_pending_otlp_calls_with_imported_source_ids() {
     let raw = trace();
     let metadata = &raw["extra"]["metadata"];
-    let mut semantics = metadata["nexusweave.context.semantics"].clone();
+    let mut semantics = metadata["a2context.context.semantics"].clone();
     semantics["request_sources"][0]["id"] = json!("imported-request");
     let attributes = [
         ("gen_ai.operation.name", "chat".to_owned()),
-        ("nexusweave.context.semantics", semantics.to_string()),
+        ("a2context.context.semantics", semantics.to_string()),
         (
-            "nexusweave.request.body",
-            metadata["nexusweave.request.body"]
+            "a2context.request.body",
+            metadata["a2context.request.body"]
                 .as_str()
                 .unwrap()
                 .to_owned(),

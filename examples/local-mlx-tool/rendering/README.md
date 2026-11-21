@@ -23,7 +23,7 @@ cargo run --locked -- probe-render "$study/request.json" "$study/fields.json" /t
   python3 scripts/render_chat_tokens.py "$LFM_SNAPSHOT" --renderer-id inventory-staging
 ```
 
-Select JSON pointers to fields you expect to affect the model input. NexusWeave passes the adapter a version-one object with a `requests` array. Its first entry is the original body. Each following entry removes one selected field independently. Return `renderer`, a `renderer_sha256` fingerprint for the rendering configuration, and `tokens`, one ordered array of unsigned token IDs per request. Use `null` for an input the renderer rejects. The original must render. The CLI records fingerprints and lengths, then the dashboard verifies that each condition still matches the supplied request. The adapter supplies the token evidence. For hosted or multimodal systems, use this check only on a token channel your workflow can observe.
+Select JSON pointers to fields you expect to affect the model input. A2Context passes the adapter a version-one object with a `requests` array. Its first entry is the original body. Each following entry removes one selected field independently. Return `renderer`, a `renderer_sha256` fingerprint for the rendering configuration, and `tokens`, one ordered array of unsigned token IDs per request. Use `null` for an input the renderer rejects. The original must render. The CLI records fingerprints and lengths, then the dashboard verifies that each condition still matches the supplied request. The adapter supplies the token evidence. For hosted or multimodal systems, use this check only on a token channel your workflow can observe.
 
 ## Reproduce the model experiment
 

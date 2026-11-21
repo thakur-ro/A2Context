@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave shadow probe case",
+  "title": "A2Context shadow probe case",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "id", "runner_id", "expected", "samples", "interventions"],

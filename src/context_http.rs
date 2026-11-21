@@ -1,6 +1,6 @@
 //! Serve preflight checks, context comparisons, and conflict breakdowns.
 
-use nexusweave::{conflict_query, context_changes, Call, Decision, Run};
+use a2context::{conflict_query, context_changes, Call, Decision, Run};
 use percent_encoding::percent_decode_str;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -12,7 +12,7 @@ pub fn preflight(request: &mut Request) -> Option<(u16, Vec<u8>)> {
         return None;
     }
     let result = crate::replay_http::read_json(request, 1024 * 1024)
-        .and_then(|input| nexusweave::preflight::check(input).map_err(|error| (400, error)))
+        .and_then(|input| a2context::preflight::check(input).map_err(|error| (400, error)))
         .and_then(|report| {
             serde_json::to_vec(&report)
                 .map_err(|_| (500, "Could not prepare the preflight report.".into()))
@@ -32,7 +32,7 @@ pub fn pending(request: &mut Request) -> Option<(u16, Vec<u8>)> {
     }
     Some(
         match crate::replay_http::read_json(request, 1024 * 1024)
-            .and_then(|input| nexusweave::pending::inspect(input).map_err(|error| (400, error)))
+            .and_then(|input| a2context::pending::inspect(input).map_err(|error| (400, error)))
         {
             Ok(report) => (200, report.to_string().into_bytes()),
             Err((status, message)) => (

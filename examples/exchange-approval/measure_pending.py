@@ -21,7 +21,7 @@ def measure(binary, checkpoint):
     verify_checkpoint(checkpoint)
     pending = HERE / "pending.json"
     attributes = json.loads(pending.read_text())["attributes"]
-    sources = attributes["nexusweave.context.semantics"]["request_sources"]
+    sources = attributes["a2context.context.semantics"]["request_sources"]
     edits = [{"context_id": "request-source:" + source["id"], **source["request_fragment"],
               "operation": "replace_text_fragment", "replacement": replacement}
              for source, replacement in zip(sources, [REFRESHED, EXPLICIT_HOLD], strict=True)]
@@ -58,7 +58,7 @@ def measure(binary, checkpoint):
     }
     runtime = load_runtime(checkpoint)
     with runtime.torch.inference_mode():
-        outputs["candidate"]["block_probe"] = measure_blocks(runtime, attributes["nexusweave.request.body"], outputs["candidate"])
+        outputs["candidate"]["block_probe"] = measure_blocks(runtime, attributes["a2context.request.body"], outputs["candidate"])
     return outputs
 
 
@@ -66,7 +66,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checkpoint", type=Path)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/debug/nexusweave")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/debug/a2context")
     args = parser.parse_args()
     if args.output.exists():
         parser.error("output already exists")

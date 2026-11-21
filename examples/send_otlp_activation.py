@@ -1,4 +1,4 @@
-"""Send a saved Qwen inference and its measured activation report to NexusWeave."""
+"""Send a saved Qwen inference and its measured activation report to A2Context."""
 
 import argparse
 import json
@@ -56,17 +56,17 @@ def main():
     provider = TracerProvider()
     exporter = OTLPSpanExporter(endpoint=base_url + "/v1/traces")
     provider.add_span_processor(SimpleSpanProcessor(exporter))
-    tracer = provider.get_tracer("nexusweave-activation-example")
+    tracer = provider.get_tracer("a2context-activation-example")
     try:
         with tracer.start_as_current_span("Return and refund answer", attributes={
             "gen_ai.operation.name": "chat",
             "gen_ai.request.model": report["model_id"],
             "gen_ai.conversation.id": args.conversation_id,
-            "nexusweave.organization.id": "qwen-demo-org",
-            "nexusweave.user.id": "qwen-demo-user",
-            "nexusweave.turn.id": "returns-and-refunds",
-            "nexusweave.request.body": call["recorded_request"]["body"],
-            "nexusweave.context.semantics": json.dumps(semantics),
+            "a2context.organization.id": "qwen-demo-org",
+            "a2context.user.id": "qwen-demo-user",
+            "a2context.turn.id": "returns-and-refunds",
+            "a2context.request.body": call["recorded_request"]["body"],
+            "a2context.context.semantics": json.dumps(semantics),
             "gen_ai.output.messages": json.dumps([{
                 "role": "assistant", "parts": [{"type": "text", "content": report["baseline_answer"]}],
             }]),

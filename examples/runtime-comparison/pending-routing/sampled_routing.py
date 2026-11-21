@@ -19,11 +19,11 @@ def measure(binary, model):
     record = next(r for r in records if r["id"] == study["reference"])
     metadata = record["extra"]["metadata"]
     original = metadata.pop(ATTRIBUTE)
-    body = json.loads(metadata["nexusweave.request.body"])
+    body = json.loads(metadata["a2context.request.body"])
     assert body["max_tokens"] == study["max_tokens"]
     body["temperature"] = study["temperature"]
     metadata.update(organization_id="routing-sampling", thread_id="sampled-routing-28")
-    metadata["nexusweave.request.body"] = json.dumps(body, ensure_ascii=False, separators=(",", ":"))
+    metadata["a2context.request.body"] = json.dumps(body, ensure_ascii=False, separators=(",", ":"))
     adapter = [model, "--model-id", study["model"]]
     results = []
     with TemporaryDirectory() as directory:
@@ -40,7 +40,7 @@ def measure(binary, model):
             repeat = deepcopy(record)
             repeat["id"] = f"sampled-routing-28-seed-{seed}"
             meta = repeat["extra"]["metadata"]
-            meta["nexusweave.span.id"] = repeat["id"]
+            meta["a2context.span.id"] = repeat["id"]
             meta["sampling_seed"] = seed
             meta[ATTRIBUTE] = json.loads(result.read_text())["attributes"][ATTRIBUTE]
             results.append(repeat)
@@ -49,7 +49,7 @@ def measure(binary, model):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--binary", type=Path, default=Path("target/debug/nexusweave"))
+    parser.add_argument("--binary", type=Path, default=Path("target/debug/a2context"))
     parser.add_argument("--model", type=Path, help="Pinned local Qwen checkpoint for new measurements.")
     parser.add_argument("--output", type=Path, help="New file for all four sampled repeats.")
     args = parser.parse_args()

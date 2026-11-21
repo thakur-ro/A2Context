@@ -1,10 +1,10 @@
-use nexusweave::{inspect, langsmith, otlp, preflight, turn_evidence, FindingKind, Run};
+use a2context::{inspect, langsmith, otlp, preflight, turn_evidence, FindingKind, Run};
 use serde_json::{json, Value};
 use std::process::Command;
 
 const EXAMPLE: &str = include_str!("../examples/preflight-returns.json");
 const TRACE: &str = include_str!("../examples/preflight-returns-langsmith.json");
-const SEMANTICS: &str = "nexusweave.context.semantics";
+const SEMANTICS: &str = "a2context.context.semantics";
 
 fn check(input: Value) -> Result<preflight::Report, String> {
     preflight::check(serde_json::from_value(input).unwrap())
@@ -23,8 +23,8 @@ fn measures_unions_of_shared_utf8_bytes_in_each_field() {
         })
     };
     let mut request = json!({"version":1,"attributes":{
-        "nexusweave.request.body":json!({"a/b":"éabcdef","other":"éabcdef"}).to_string(),
-        "nexusweave.context.semantics":{"version":1,"request_sources":[
+        "a2context.request.body":json!({"a/b":"éabcdef","other":"éabcdef"}).to_string(),
+        "a2context.context.semantics":{"version":1,"request_sources":[
             fragment(0,"cache","/a~1b",0,5), fragment(1,"cache","/a~1b",2,6),
             fragment(2,"customer","/a~1b",3,7), fragment(3,"policy","/a~1b",4,5),
             fragment(4,"outside","/a~1b",7,8), fragment(5,"other","/other",0,8),
@@ -80,8 +80,8 @@ fn bounds_overlap_examples_without_truncating_the_measurement() {
             );
         }
     }
-    let request = json!({"version":1,"attributes":{"nexusweave.request.body":json!({"inputs":fields}).to_string(),
-        "nexusweave.context.semantics":{"version":1,"request_sources":sources}}});
+    let request = json!({"version":1,"attributes":{"a2context.request.body":json!({"inputs":fields}).to_string(),
+        "a2context.context.semantics":{"version":1,"request_sources":sources}}});
     let overlap = check(request).unwrap().anchor_overlap.unwrap();
     assert_eq!(
         (
@@ -113,7 +113,7 @@ fn at_turn(recorded: &[Run], include_excerpts: bool) -> Value {
 
 #[test]
 fn cli_reports_a_conflict_with_request_anchors_and_omits_raw_content() {
-    let output = Command::new(env!("CARGO_BIN_EXE_nexusweave"))
+    let output = Command::new(env!("CARGO_BIN_EXE_a2context"))
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .args(["preflight", "examples/preflight-returns.json"])
         .output()
@@ -181,7 +181,7 @@ fn explicit_scope_distinguishes_missing_capture_from_a_measured_count() {
 #[test]
 fn required_sources_match_complete_alternatives_at_validated_request_fragments() {
     let mut input: Value = serde_json::from_str(EXAMPLE).unwrap();
-    let required = "nexusweave.required_sources";
+    let required = "a2context.required_sources";
     let any = json!({"name":"Return eligibility","any_of":[
         ["retail/returns-policy", "order/receipt"], ["retail/archive-faq"]
     ]});
@@ -190,7 +190,7 @@ fn required_sources_match_complete_alternatives_at_validated_request_fragments()
     assert!(initial.matched);
     assert_eq!(initial.alternatives[0].unconfirmed, ["order/receipt"]);
     assert!(initial.alternatives[1].unconfirmed.is_empty());
-    let mcp = nexusweave::pending::evidence(
+    let mcp = a2context::pending::evidence(
         serde_json::from_value(json!({
             "input":{"request":input}
         }))
@@ -221,7 +221,7 @@ fn required_sources_match_complete_alternatives_at_validated_request_fragments()
 fn a_source_name_in_unanchored_text_cannot_satisfy_a_capture_requirement() {
     let report = check(json!({"version":1,"attributes":{
         "gen_ai.input.messages":[{"role":"user","parts":[{"type":"text","content":"confirmed-consent"}]}],
-        "nexusweave.required_sources":{"name":"Approval","any_of":[["confirmed-consent"]]}
+        "a2context.required_sources":{"name":"Approval","any_of":[["confirmed-consent"]]}
     }})).unwrap();
     let coverage = report.source_coverage.unwrap();
     assert!(!coverage.matched);
@@ -233,12 +233,12 @@ fn pins_match_any_exact_fragment_with_the_named_id() {
     use sha2::{Digest, Sha256};
     let pin = format!("{:x}", Sha256::digest(" é ".as_bytes()));
     let mut input = json!({"version":1,"attributes":{
-        "nexusweave.request.body":json!({"copies":["é"," é "]}).to_string(),
-        "nexusweave.context.semantics":{"version":1,"request_sources":[
+        "a2context.request.body":json!({"copies":["é"," é "]}).to_string(),
+        "a2context.context.semantics":{"version":1,"request_sources":[
             {"id":"old","source_id":"policy","request_fragment":{"pointer":"/copies/0","text_range":{"start_byte":0,"end_byte":2}}},
             {"id":"new","source_id":"policy","request_fragment":{"pointer":"/copies/1","text_range":{"start_byte":0,"end_byte":4}}}
         ]},
-        "nexusweave.required_sources":{"name":"Current policy","any_of":[["policy"],["fallback"]],
+        "a2context.required_sources":{"name":"Current policy","any_of":[["policy"],["fallback"]],
             "expected_text_sha256":{"policy":pin}}
     }});
     let check_input = |v: &Value| check(v.clone()).unwrap().source_coverage.unwrap();
@@ -262,7 +262,7 @@ fn pins_match_any_exact_fragment_with_the_named_id() {
         json!({"policy":"x"}),
         json!({"policy":pin.to_uppercase()}),
     ] {
-        input["attributes"]["nexusweave.required_sources"]["expected_text_sha256"] = pins;
+        input["attributes"]["a2context.required_sources"]["expected_text_sha256"] = pins;
         assert!(check(input.clone()).is_err());
     }
 }
@@ -271,27 +271,27 @@ fn pins_match_any_exact_fragment_with_the_named_id() {
 fn empty_requirements_cannot_pass_vacuously() {
     let mut input: Value = serde_json::from_str(EXAMPLE).unwrap();
     for groups in [json!([]), json!([[]]), json!([[" "]])] {
-        input["attributes"]["nexusweave.required_sources"] =
+        input["attributes"]["a2context.required_sources"] =
             json!({"name":"Policy", "any_of":groups});
         assert!(check(input.clone()).is_err());
     }
     input["attributes"]
         .as_object_mut()
         .unwrap()
-        .remove("nexusweave.required_sources");
+        .remove("a2context.required_sources");
     assert!(check(input).unwrap().source_coverage.is_none());
 }
 
 #[test]
 fn langsmith_recomputes_source_coverage_only_for_a_matching_version_two_receipt() {
     let mut input: Value = serde_json::from_str(EXAMPLE).unwrap();
-    input["attributes"]["nexusweave.required_sources"] = json!({
+    input["attributes"]["a2context.required_sources"] = json!({
         "name":"Holiday return", "any_of":[["retail/returns-policy","holiday-calendar"]]
     });
     let receipt = serde_json::to_value(check(input).unwrap().receipt.unwrap()).unwrap();
     assert_eq!(receipt["version"], 2);
     let mut trace = fixture_trace();
-    trace["extra"]["metadata"]["nexusweave.preflight"] = receipt;
+    trace["extra"]["metadata"]["a2context.preflight"] = receipt;
     let runs = langsmith::import(&trace).unwrap();
     let result = at_turn(&runs, false);
     let coverage = &result["preflight"]["source_coverage"];
@@ -301,7 +301,7 @@ fn langsmith_recomputes_source_coverage_only_for_a_matching_version_two_receipt(
         coverage["alternatives"][0]["unconfirmed"],
         json!(["holiday-calendar"])
     );
-    trace["extra"]["metadata"]["nexusweave.preflight"]["version"] = json!(1);
+    trace["extra"]["metadata"]["a2context.preflight"]["version"] = json!(1);
     let changed = at_turn(&langsmith::import(&trace).unwrap(), false);
     assert_eq!(changed["preflight"]["status"], "unverified");
     assert!(changed["preflight"].get("source_coverage").is_none());
@@ -315,7 +315,7 @@ fn carries_the_same_source_identities_into_a_recorded_decision() {
     let trace = fixture_trace();
     assert_eq!(
         serde_json::to_value(&before.receipt).unwrap(),
-        trace["extra"]["metadata"]["nexusweave.preflight"]
+        trace["extra"]["metadata"]["a2context.preflight"]
     );
     let recorded = langsmith::import(&trace).unwrap();
     let normalized = serde_json::to_string(&recorded).unwrap();
@@ -330,7 +330,7 @@ fn carries_the_same_source_identities_into_a_recorded_decision() {
     assert_eq!(report.findings[0].kind, FindingKind::Conflict);
     assert_eq!(
         checked.evidence.field,
-        "extra.metadata[\"nexusweave.preflight\"]"
+        "extra.metadata[\"a2context.preflight\"]"
     );
     assert_eq!(after.findings.len(), 1);
     let finding = &after.findings[0];
@@ -363,10 +363,10 @@ fn rejects_changed_requests_and_rule_declarations_without_hiding_the_outcome() {
     let trace = fixture_trace();
     for (key, new_value) in [
         (
-            "nexusweave.request.body",
+            "a2context.request.body",
             json!(format!(
                 "{} ",
-                trace["extra"]["metadata"]["nexusweave.request.body"]
+                trace["extra"]["metadata"]["a2context.request.body"]
                     .as_str()
                     .unwrap()
             )),
@@ -376,7 +376,7 @@ fn rejects_changed_requests_and_rule_declarations_without_hiding_the_outcome() {
             semantics["request_sources"][0]["rule"]["value"] = json!(90);
             semantics
         }),
-        ("nexusweave.preflight", json!("{invalid")),
+        ("a2context.preflight", json!("{invalid")),
     ] {
         let mut changed = trace.clone();
         changed["extra"]["metadata"][key] = new_value;
@@ -402,16 +402,16 @@ fn matches_an_otlp_receipt_with_the_same_request_across_adapters() {
             json!([{"role":"assistant","parts":[{"type":"text","content":"60 days"}]}]).to_string(),
         ),
         (
-            "nexusweave.request.body",
-            metadata["nexusweave.request.body"]
+            "a2context.request.body",
+            metadata["a2context.request.body"]
                 .as_str()
                 .unwrap()
                 .to_owned(),
         ),
         (SEMANTICS, metadata[SEMANTICS].to_string()),
         (
-            "nexusweave.preflight",
-            metadata["nexusweave.preflight"].to_string(),
+            "a2context.preflight",
+            metadata["a2context.preflight"].to_string(),
         ),
     ]
     .map(|(key, value)| json!({"key":key,"value":{"stringValue":value}}));
@@ -422,7 +422,7 @@ fn matches_an_otlp_receipt_with_the_same_request_across_adapters() {
     let recorded = otlp::import(&export).unwrap();
     let view = at_turn(&recorded, false);
     assert_eq!(view["preflight"]["status"], "matched");
-    assert_eq!(view["preflight"]["anchor"]["field"], "nexusweave.preflight");
+    assert_eq!(view["preflight"]["anchor"]["field"], "a2context.preflight");
     assert_eq!(
         view["rows"][0]["inputs"][1]["source_id"],
         "retail/returns-policy"

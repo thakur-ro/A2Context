@@ -24,7 +24,7 @@ use crate::{
     browser_asset, context_http, evidence_http, header, otlp_http, replay_http,
     serialize_inspection, Result,
 };
-use nexusweave::{activation, otlp::CapturePolicy, replay, Run};
+use a2context::{activation, otlp::CapturePolicy, replay, Run};
 use percent_encoding::percent_decode_str;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
@@ -116,6 +116,7 @@ fn metadata_key(key: &str) -> bool {
             "output.",
             "tool.",
             "retrieval.",
+            "a2context.",
             "nexusweave.",
         ]
         .iter()
@@ -186,7 +187,7 @@ fn start(mut options: Options) -> Result<()> {
     let retention = options.retention;
     let metadata = options.metadata.clone();
     let worker = std::thread::Builder::new()
-        .name("nexusweave-findings".into())
+        .name("a2context-findings".into())
         .spawn(move || {
             work(
                 writer,
@@ -200,7 +201,7 @@ fn start(mut options: Options) -> Result<()> {
     if matches!(options.demo, Some(Demo::Exchange)) {
         println!("Open http://{address}/");
     } else {
-        println!("NexusWeave sidecar is listening at http://{address}");
+        println!("A2Context sidecar is listening at http://{address}");
     }
     for mut request in server.incoming_requests() {
         if !local(&request, &hosts) {
@@ -486,7 +487,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                                 .any(|obs| obs.kind == "prefill" && obs.call_id == call.id)
                         {
                             if let Some(Err(issue)) =
-                                nexusweave::replay::prefill::recorded(call, false)
+                                a2context::replay::prefill::recorded(call, false)
                             {
                                 prefill_issues.insert(call.id.clone(), issue);
                             }
@@ -608,8 +609,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             let meta = &record["extra"]["metadata"];
                             json!({"request":{"version":1,"attributes":{
                                 "gen_ai.request.model":meta["ls_model_name"],
-                                "nexusweave.request.body":meta["nexusweave.request.body"],
-                                "nexusweave.context.semantics":meta["nexusweave.context.semantics"],
+                                "a2context.request.body":meta["a2context.request.body"],
+                                "a2context.context.semantics":meta["a2context.context.semantics"],
                                 (replay::prefill::ATTRIBUTE):probes[id]
                             }}})
                         }
@@ -640,7 +641,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                             "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/preflight-returns.json"))?,
                         }),
                     };
-                    let question = fixture["request"]["attributes"]["nexusweave.request.body"]
+                    let question = fixture["request"]["attributes"]["a2context.request.body"]
                         .as_str()
                         .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
                         .and_then(|body| {
@@ -949,34 +950,34 @@ fn seed(store: &mut Store) -> Result<()> {
     ] {
         let envelope = journal_example(name)?;
         let attrs = &envelope["request"]["attributes"];
-        let body = attrs["nexusweave.request.body"]
+        let body = attrs["a2context.request.body"]
             .as_str()
             .ok_or("missing demo request")?;
         let capture = json!({"id":format!("journal-window-{question}"),"run_type":"llm",
             "name":"Journal return question","start_time":"2026-11-20T08:00:00Z",
             "inputs":serde_json::from_str::<serde_json::Value>(body)?,"extra":{"metadata":{
                 "thread_id":format!("journal-window-{question}"),"organization_id":"journal-window-study",
-                "user_id":"support-17","nexusweave.span.id":format!("journal-window-{question}"),"ls_model_name":attrs["gen_ai.request.model"],
-                "nexusweave.request.body":body,"nexusweave.context.semantics":attrs["nexusweave.context.semantics"],
-                "nexusweave.candidate_probes":[envelope["candidate"]],"nexusweave.shadow_probes":[envelope["shadow"]]}}});
-        runs.extend(nexusweave::langsmith::import(&capture)?);
+                "user_id":"support-17","a2context.span.id":format!("journal-window-{question}"),"ls_model_name":attrs["gen_ai.request.model"],
+                "a2context.request.body":body,"a2context.context.semantics":attrs["a2context.context.semantics"],
+                "a2context.candidate_probes":[envelope["candidate"]],"a2context.shadow_probes":[envelope["shadow"]]}}});
+        runs.extend(a2context::langsmith::import(&capture)?);
     }
     let pending = include_str!("../../examples/runtime-comparison/pending-routing/trace.json");
-    runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
+    runs.extend(a2context::langsmith::import(&serde_json::from_str(
         pending,
     )?)?);
     let pending_shadow =
         include_str!("../../examples/runtime-comparison/pending-routing/shadow-trace.json");
-    runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
+    runs.extend(a2context::langsmith::import(&serde_json::from_str(
         pending_shadow,
     )?)?);
     let routing_study = include_str!(
         "../../examples/runtime-comparison/pending-routing/routing-holdout-results.json"
     );
-    let mut routing_runs = nexusweave::langsmith::import(&serde_json::from_str(routing_study)?)?;
+    let mut routing_runs = a2context::langsmith::import(&serde_json::from_str(routing_study)?)?;
     let sampled =
         include_str!("../../examples/runtime-comparison/pending-routing/sampled-results.json");
-    routing_runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
+    routing_runs.extend(a2context::langsmith::import(&serde_json::from_str(
         sampled,
     )?)?);
     let (measured_run, activation) = return_measurement()?;

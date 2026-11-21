@@ -1,6 +1,6 @@
 //! Compare recorded opening-token readouts with proposal trials for the same edits.
 use super::{findings::digest, outcomes};
-use nexusweave::replay;
+use a2context::replay;
 use serde_json::{json, Value};
 
 pub(super) fn trial(baseline: &[replay::Trial], edited: &[replay::Trial]) -> Value {

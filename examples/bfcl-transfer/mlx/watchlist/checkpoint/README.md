@@ -43,7 +43,7 @@ To open the actual request in the UI, build the binary and regenerate a local up
 ```sh
 cargo build --locked
 HF_HUB_OFFLINE=1 python "$study/preview.py" --upstream "$BFCL_CHECKOUT" \
-  --snapshot "$LFM_SNAPSHOT" --binary target/debug/nexusweave --output /tmp/watchlist-preview.json
+  --snapshot "$LFM_SNAPSHOT" --binary target/debug/a2context --output /tmp/watchlist-preview.json
 cargo run --locked -- demo
 ```
 

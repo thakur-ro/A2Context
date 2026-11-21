@@ -21,7 +21,7 @@ All eight scripted reference paths completed with the declared scope, including 
 
 Run `cargo run --locked -- demo`, choose **Before inference**, and load [preview.json](preview.json). This small example shows the two model-visible functions outside its quote scope and their exact locations. It uses synthetic input. During the experiment, the Rust inspector separately checked the full, unabridged benchmark tool catalogs before generation. Full quote catalogs had 15 out-of-scope definitions, and full booking catalogs had 14. Every scoped catalog had zero. [Integrate the check](../../../../docs/guide.md#check-the-advertised-tools-before-inference)
 
-The application supplies the allowlist for each workflow operation. NexusWeave can inspect what the request advertises. The dispatcher in this experiment separately checked each proposed name, using the same model-visible request as the ungated arm until a proposal was denied. Restricting the visible catalog changes the prompt length and contents. The experiment measures their combined effect on one local model under fixed limits. It does not rate the prose of the final answer.
+The application supplies the allowlist for each workflow operation. A2Context can inspect what the request advertises. The dispatcher in this experiment separately checked each proposed name, using the same model-visible request as the ungated arm until a proposal was denied. Restricting the visible catalog changes the prompt length and contents. The experiment measures their combined effect on one local model under fixed limits. It does not rate the prose of the final answer.
 
 ## Reproduce
 

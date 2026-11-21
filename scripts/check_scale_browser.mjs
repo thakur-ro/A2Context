@@ -9,7 +9,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROME_BINAR
 try {
   const landing = await browser.newPage({viewport:{width:1152,height:850}});
   await landing.goto(origin);
-  await landing.getByRole("heading",{name:"Welcome to NexusWeave"}).waitFor({timeout:60000});
+  await landing.getByRole("heading",{name:"Welcome to A2Context"}).waitFor({timeout:60000});
   const sidebar = landing.getByRole("navigation",{name:"Workflows"});
   await sidebar.getByRole("link",{name:"All workflows",exact:true}).waitFor();
   const entries = await sidebar.getByRole("link").evaluateAll(links => links.map(link => new URL(link.href).searchParams.get("workflow")));

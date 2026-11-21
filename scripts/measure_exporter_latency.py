@@ -37,12 +37,12 @@ class Sink(BaseHTTPRequestHandler):
 
 
 def tracer(endpoints):
-    provider = TracerProvider(resource=Resource.create({"service.name": "nexusweave-latency-fixture"}))
+    provider = TracerProvider(resource=Resource.create({"service.name": "a2context-latency-fixture"}))
     for endpoint in endpoints:
         exporter = OTLPSpanExporter(endpoint=endpoint + "/v1/traces", compression=Compression.Gzip, timeout=5)
         provider.add_span_processor(BatchSpanProcessor(exporter, max_queue_size=256,
                                                        max_export_batch_size=16, schedule_delay_millis=75))
-    return provider, provider.get_tracer("nexusweave.validation")
+    return provider, provider.get_tracer("a2context.validation")
 
 
 def measure(runtime, base, sidecar, samples):
@@ -86,7 +86,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("model", type=Path, help="Local Qwen2.5-0.5B-Instruct snapshot")
     parser.add_argument("--revision", required=True)
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/nexusweave")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/a2context")
     parser.add_argument("--samples-per-block", type=int, default=12)
     args = parser.parse_args()
     if not args.model.is_dir() or args.samples_per_block < 2:

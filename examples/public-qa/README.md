@@ -50,16 +50,16 @@ python3 examples/public-qa/compare_orders.py
 To view the actual trials, download the pinned dataset and start a sidecar that captures the public source text. The import checks the dataset digest and every passage hash, reconstructs the OTLP input, and checks each Rust-planned request against the input used for generation.
 
 ```sh
-curl -fL https://raw.githubusercontent.com/nelson-liu/lost-in-the-middle/29b8a6d042ce29abccee3db1a73171a107d7e6af/qa_data/10_total_documents/nq-open-10_total_documents_gold_at_4.jsonl.gz -o /tmp/nexus-qa.jsonl.gz
+curl -fL https://raw.githubusercontent.com/nelson-liu/lost-in-the-middle/29b8a6d042ce29abccee3db1a73171a107d7e6af/qa_data/10_total_documents/nq-open-10_total_documents_gold_at_4.jsonl.gz -o /tmp/a2context-qa.jsonl.gz
 cargo build --locked
-target/debug/nexusweave sidecar --db /tmp/nexus-qa.sqlite --capture-content
+target/debug/a2context sidecar --db /tmp/a2context-qa.sqlite --capture-content
 ```
 
 In a second terminal, load one or both orders. Each command prints a link per question to the recommendation for the passage chosen by the pre-generation ranking. The link selects the exact trace, call, replay and source edit. From that card, **See this recommendation across requests** opens the group. Single-edit cards show an answer excerpt for each arm whose trials all returned the same text. The study completion time timestamps the reconstructed spans. A repeat import of the same saved study uses the same IDs and timestamps. For the live paired ranking comparison, use the [holdout importer](holdout.md#inspect-the-measured-calls).
 
 ```sh
-python3 examples/public-qa/view_passage_edits.py /tmp/nexus-qa.jsonl.gz
-python3 examples/public-qa/view_passage_edits.py /tmp/nexus-qa.jsonl.gz \
+python3 examples/public-qa/view_passage_edits.py /tmp/a2context-qa.jsonl.gz
+python3 examples/public-qa/view_passage_edits.py /tmp/a2context-qa.jsonl.gz \
   --results examples/public-qa/rotated-results.json
 ```
 
@@ -93,9 +93,9 @@ We also tested the other same-titled passage, `af59531e`. Moving it changed the 
 With the pinned local model and dataset, reproduce the selected comparison from the repository root.
 
 ```sh
-python3 examples/public-qa/replay_source_position.py /tmp/nexus-qa.jsonl.gz /path/to/qwen/snapshot \
+python3 examples/public-qa/replay_source_position.py /tmp/a2context-qa.jsonl.gz /path/to/qwen/snapshot \
   --row 100 --source-sha256 77e0876f48fc69052adfee2956b3b1fddec5a130fdcb59984a40298501696524 \
-  --output /tmp/nexus-film-position.json
+  --output /tmp/a2context-film-position.json
 ```
 
 ### Run the downloaded test
@@ -111,14 +111,14 @@ With both saved studies in the sidecar, open the film comparison for source vers
 To reproduce those proposals, use the pinned Qwen snapshot and the downloaded filename in the following command. The sidecar prepares the requests. This explicit CLI command runs eight local generations.
 
 ```sh
-target/debug/nexusweave run-position-plan /path/to/position-test.json qwen2.5-0.5b-eaa56b5-cpu-greedy \
+target/debug/a2context run-position-plan /path/to/position-test.json qwen2.5-0.5b-eaa56b5-cpu-greedy \
   /tmp/film-trials.json -- python3 scripts/propose_qwen.py /path/to/qwen/snapshot --model-id Qwen/Qwen2.5-0.5B-Instruct
 ```
 
 All eight answers from this CLI run matched the independent single-passage experiment above. Across the 37 eligible comparison cards, all 296 planned conditions reproduced the expected compact request bytes when assembled separately from the pinned passages. Repeat the byte check with both studies loaded.
 
 ```sh
-python3 examples/public-qa/check_position_plans.py /tmp/nexus-qa.jsonl.gz --url http://127.0.0.1:8040
+python3 examples/public-qa/check_position_plans.py /tmp/a2context-qa.jsonl.gz --url http://127.0.0.1:8040
 ```
 
 ## Repeat the model measurements
@@ -128,11 +128,11 @@ We used Qwen2.5-0.5B-Instruct with Transformers 4.57.6, PyTorch 2.11.0, eager at
 ```sh
 python3 -m pip install 'transformers==4.57.6' 'torch==2.11.0'
 for rotation in 0 5; do
-  python3 examples/public-qa/check_passage_edits.py /tmp/nexus-qa.jsonl.gz /path/to/qwen/snapshot \
+  python3 examples/public-qa/check_passage_edits.py /tmp/a2context-qa.jsonl.gz /path/to/qwen/snapshot \
     --model-id Qwen/Qwen2.5-0.5B-Instruct --revision eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2 \
-    --rotation "$rotation" --output "/tmp/nexus-qa-order-$rotation.json"
+    --rotation "$rotation" --output "/tmp/a2context-qa-order-$rotation.json"
 done
-python3 examples/public-qa/compare_orders.py /tmp/nexus-qa-order-0.json /tmp/nexus-qa-order-5.json
+python3 examples/public-qa/compare_orders.py /tmp/a2context-qa-order-0.json /tmp/a2context-qa-order-5.json
 ```
 
 Each ranking required eleven forward passes. The median time per full ranking was 11.62 seconds in the first order and 11.60 seconds in the rotated order on this host. Timing starts after tokenization and ends before decoding. It includes inference and divergence arithmetic, with no inference latency measurement for a production workflow. The default sidecar runs zero model calls. Independent questions, more checkpoints and semantic outcome labels would be necessary to decide where this opt-in experiment adds value. [First-order measurements](results.json) · [Rotated measurements](rotated-results.json)

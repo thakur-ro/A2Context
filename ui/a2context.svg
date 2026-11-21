@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <title>A2Context</title>
+  <rect width="40" height="40" rx="9" fill="#20232b"/>
+  <path d="m6 28 8-18 8 18m-13-6h10" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+  <path d="M25 16c0-5 9-5 9 0 0 3-3 5-8 10h8" fill="none" stroke="#a5bdee" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+</svg>

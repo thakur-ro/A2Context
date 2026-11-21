@@ -18,7 +18,7 @@ Build the CLI with `cargo build --locked`. From the repository root, inspect the
 ```sh
 study=examples/exchange-approval/dispatch-study/prospective
 jq -c '.cases[1].arms.original.pending_request' "$study/results.json" |
-  target/debug/nexusweave preflight -
+  target/debug/a2context preflight -
 ```
 
 The original result has one conflict for order `#R831649`. Its anchors identify the cached hold and the customer’s approval. The repaired result has zero conflicts. In the same fixture, the parser and database receipts show what happened after inference.

@@ -1,6 +1,6 @@
 # Inference attribution
 
-NexusWeave should help a developer see which context is influencing a decision as inference unfolds, how that influence changes, and which other available inputs have little measured effect or reinforce each other. Clicking a result should take the developer back to the prompt source and the inference position that the evidence covers.
+A2Context should help a developer see which context is influencing a decision as inference unfolds, how that influence changes, and which other available inputs have little measured effect or reinforce each other. Clicking a result should take the developer back to the prompt source and the inference position that the evidence covers.
 
 The [research preview](research-preview.md) records the latest holdout, the decisions it changed, and the next experiment.
 
@@ -27,7 +27,7 @@ Use one instrumentable open-weight model and the existing return-window scenario
 
 The pilot should reproduce the baseline decision, trace a result back to the exact request and activation intervention, and show how the measured changes compare with the controls. Repeat on a tool choice or routing task before treating the view as a general workflow diagnostic. Keep the experiment narrow enough to distinguish model behavior from changes introduced by the probe.
 
-## What NexusWeave adds
+## What A2Context adds
 
 Use the same anchors to connect inference evidence to a real workflow. When the runtime supplies deeper evidence, follow a named source through the prompt, the prediction position, and the resulting decision. When the provider exposes a narrower interface, show the captured trace and available replay measurements. ContextCite is a related method for attributing generated statements to context. [ContextCite](https://proceedings.neurips.cc/paper_files/paper/2024/hash/adbea136219b64db96a9941e4249a857-Abstract-Conference.html)
 
@@ -39,7 +39,7 @@ On the synthetic return-window case, the original prompt produced **30** with +4
 
 Patching the edited policy token flipped the preference to 60 at blocks 0–13. At blocks 14–15, that patch left the original margin unchanged. Patching just the prediction position with the policy edit flipped the preference at blocks 12–15, with a temporary rise in preference for 30 at blocks 10–11. Patching the edited store-name positions kept the margin within 0.25 log odds of the original at every block. Block numbers are zero-based. The probe covers the output of one decoder block at a time, at one output prediction position. It supports a claim about these interventions in this case. The transfer path between positions, the contribution of individual heads, and the behavior over multiple output tokens remain open.
 
-The report is attached to the original decision by matching the reproduced answer and the digests of the tested context entries. The browser shows it as a separate instrumented replay. This example covers one synthetic conversation. Repeating it on other decisions and runtimes is needed to learn whether any measured patterns recur across conversations. [Open the probe in NexusWeave](guide.md#inspect-activations-on-the-return-window-decision)
+The report is attached to the original decision by matching the reproduced answer and the digests of the tested context entries. The browser shows it as a separate instrumented replay. This example covers one synthetic conversation. Repeating it on other decisions and runtimes is needed to learn whether any measured patterns recur across conversations. [Open the probe in A2Context](guide.md#inspect-activations-on-the-return-window-decision)
 
 ## Follow two predictions in one answer
 
@@ -137,7 +137,7 @@ We measured every alignable source in the recorded Qwen return-and-refund decisi
 | Store name | +0.001 | ≈0 | +0.20 at ` is` |
 | Question | −0.003 | ≈0 | −4.08 at ` return` |
 
-Scores are changes in natural log probability, with the masked score minus the original score. The policy sources had their largest effects at the corresponding values. The question mattered more to the earlier wording, and the store name had a smaller measured effect across the response. This is a one-source-at-a-time intervention on one recorded answer. Redundant sources can be missed, and the result depends on the fixed prefix and the attention mask. ContextCite measures fixed-response likelihood across many prompt ablations. AttriBoT speeds up a leave-one-out context attribution method. NexusWeave attaches the measured token effects and coverage to the original workflow decision and source locations. [ContextCite](https://arxiv.org/abs/2409.00729), [AttriBoT](https://github.com/r-three/AttriBoT), [Reproduce the probe](guide.md#test-source-visibility-on-a-recorded-answer)
+Scores are changes in natural log probability, with the masked score minus the original score. The policy sources had their largest effects at the corresponding values. The question mattered more to the earlier wording, and the store name had a smaller measured effect across the response. This is a one-source-at-a-time intervention on one recorded answer. Redundant sources can be missed, and the result depends on the fixed prefix and the attention mask. ContextCite measures fixed-response likelihood across many prompt ablations. AttriBoT speeds up a leave-one-out context attribution method. A2Context attaches the measured token effects and coverage to the original workflow decision and source locations. [ContextCite](https://arxiv.org/abs/2409.00729), [AttriBoT](https://github.com/r-three/AttriBoT), [Reproduce the probe](guide.md#test-source-visibility-on-a-recorded-answer)
 
 ## Test whether two sources back each other up
 

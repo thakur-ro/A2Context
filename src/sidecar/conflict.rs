@@ -1,7 +1,7 @@
 //! Resolve the evidence and editable fields for one declared disagreement on one call.
 use super::findings::{digest, Observation};
 use crate::Result;
-use nexusweave::{replay, Availability, Call, Decision, Run};
+use a2context::{replay, Availability, Call, Decision, Run};
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};

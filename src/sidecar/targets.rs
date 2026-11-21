@@ -1,6 +1,6 @@
 //! Compare every tested request edit against the same declared proposal.
 use super::outcomes;
-use nexusweave::{replay, replay::shadow, replay::TargetStatus, Call};
+use a2context::{replay, replay::shadow, replay::TargetStatus, Call};
 use serde::Serialize;
 use serde_json::{json, Value};
 

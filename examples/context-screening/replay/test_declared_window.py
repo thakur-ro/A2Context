@@ -29,8 +29,8 @@ def prepare(fixture, question=None):
                       "operation": "replace_text_fragment", "replacement": "45"})
     request = {"version": 1, "attributes": {
         "gen_ai.request.model": body["model"],
-        "nexusweave.request.body": json.dumps(body, separators=(",", ":"), ensure_ascii=False),
-        "nexusweave.context.semantics": {"version": 1, "request_sources": sources}}}
+        "a2context.request.body": json.dumps(body, separators=(",", ":"), ensure_ascii=False),
+        "a2context.context.semantics": {"version": 1, "request_sources": sources}}}
     case = {"version": 1, "id": "declared-journal-window", "runner_id": original["runner_id"],
             "expected": {"kind": "model_output", "label": "Model answer", "outcome": "45"},
             "samples": 1, "interventions": edits, "test_pair": True}
@@ -41,7 +41,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("model", type=Path)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/nexusweave")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/a2context")
     args = parser.parse_args()
     args.output.mkdir(exist_ok=True, parents=True)
     cases = [("earlier", "case.json", None), ("followup", "case-followup.json", None),

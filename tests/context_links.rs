@@ -1,4 +1,4 @@
-use nexusweave::{
+use a2context::{
     context_links::LinkKind,
     context_patterns::{ContextRelationship, ContextSource, LinkEvidence},
     inspect, Basis, Run,

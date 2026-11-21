@@ -24,7 +24,7 @@ def main():
     packet = json.loads(args.telecom_packet.read_text())
     fields = dict(packet["request"]["attributes"])
     fields.update({"gen_ai.operation.name": "chat", "gen_ai.conversation.id": "Refuel an existing line",
-                   "nexusweave.shadow_probes": [packet["shadow"]]})
+                   "a2context.shadow_probes": [packet["shadow"]]})
     now = time_ns()
     span = {"traceId": "16" * 16, "spanId": "34" * 8, "name": "Refuel check",
             "startTimeUnixNano": str(now), "endTimeUnixNano": str(now + 1000000),
@@ -34,7 +34,7 @@ def main():
     def check(origin):
         subprocess.run(["node", "scripts/check_interview_questions.mjs", origin, origin, args.model or "-", "replays"],
                        cwd=ROOT, check=True)
-    with TemporaryDirectory() as folder, server(ROOT / "target/debug/nexusweave", Path(folder) / "replays.sqlite", "--capture-content") as base:
+    with TemporaryDirectory() as folder, server(ROOT / "target/debug/a2context", Path(folder) / "replays.sqlite", "--capture-content") as base:
         export(base)
         send_traces(base, batch)
         for workflow in ["exchange-agent", "telecom-refuel"]:

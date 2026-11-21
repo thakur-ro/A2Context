@@ -12,7 +12,7 @@
 //! Verify the receipt and open the contributing turn from a user-scoped query.
 //!
 //! ```
-//! use nexusweave::{conflict_query, inspect, langsmith, preflight, turn_evidence, FindingKind};
+//! use a2context::{conflict_query, inspect, langsmith, preflight, turn_evidence, FindingKind};
 //! use serde_json::json;
 //!
 //! let request = include_str!("../examples/preflight-returns.json");
@@ -59,8 +59,8 @@
 //! - [`replay::execute`] measures how an edit changes a recorded decision in replay.
 //! - [`activation`] validates measurements from an instrumented runtime.
 //!
-//! See the [package guide](https://github.com/thakur-ro/NexusWeave/blob/main/docs/rust-api.md)
-//! for input formats and the [architecture guide](https://github.com/thakur-ro/NexusWeave/blob/main/docs/architecture.md)
+//! See the [package guide](https://github.com/thakur-ro/A2Context/blob/main/docs/rust-api.md)
+//! for input formats and the [architecture guide](https://github.com/thakur-ro/A2Context/blob/main/docs/architecture.md)
 //! for what each result measures.
 
 pub mod activation;

@@ -20,7 +20,7 @@ def instrumentation(port=None):
             session.trust_env = False
             exporter = OTLPSpanExporter(endpoint=f"http://127.0.0.1:{port}/v1/traces", session=session, timeout=5)
             provider.add_span_processor(BatchSpanProcessor(exporter, max_export_batch_size=16, max_queue_size=512))
-        yield provider.get_tracer("nexusweave.qwen_agent_replay")
+        yield provider.get_tracer("a2context.qwen_agent_replay")
         if not provider.force_flush(timeout_millis=10000):
             raise RuntimeError("The span processor did not finish exporting.")
     finally:

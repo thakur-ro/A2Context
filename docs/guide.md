@@ -1,12 +1,12 @@
-# NexusWeave guide
+# A2Context guide
 
 The [retail exchange walkthrough](demo.md) shows a full investigation from affected conversations to the proposed write. For the guides below, open the loopback address printed by the service after you start it.
 
 Run the commands in this guide from the repository root.
 
-NexusWeave helps you investigate the inputs to an LLM workflow decision. Check a pending request for rule conflicts, or start from a recorded tool choice, argument, or answer. Inspect its prompt sources and tool results, then replay a targeted edit to measure how often the decision changes.
+A2Context helps you investigate the inputs to an LLM workflow decision. Check a pending request for rule conflicts, or start from a recorded tool choice, argument, or answer. Inspect its prompt sources and tool results, then replay a targeted edit to measure how often the decision changes.
 
-Traces show what was recorded. Conflict checks use declared rules, and replay effects describe changes under the tested conditions. Compare those findings across turns, threads, users, or organizations when the trace carries the corresponding identifiers. NexusWeave accepts OTLP, LangSmith exports, and its own versioned JSON format. ContextCite provides a related attribution method for generated statements. [ContextCite paper](https://arxiv.org/abs/2409.00729)
+Traces show what was recorded. Conflict checks use declared rules, and replay effects describe changes under the tested conditions. Compare those findings across turns, threads, users, or organizations when the trace carries the corresponding identifiers. A2Context accepts OTLP, LangSmith exports, and its own versioned JSON format. ContextCite provides a related attribution method for generated statements. [ContextCite paper](https://arxiv.org/abs/2409.00729)
 
 | Start with | Follow this path |
 | --- | --- |
@@ -29,7 +29,7 @@ Open **Before inference** and select **Load returns example**. Expand the confli
 
 To inspect your workflow, paste the versioned pending request JSON used by preflight. The inspector checks declared rules and compares captured text for exact reuse. Under **Attach existing model reports**, you can add a saved context screen, candidate probe, or shadow probe. For example, paste the saved Qwen routing request, attach its candidate and shadow reports, and select **Inspect request**. You'll see whether an edit changes preference between two fixed continuations or the rate of a generated proposal. The inspector checks the supplied reports against this request and displays why a stale report failed verification. [Routing request](../examples/runtime-comparison/pending-routing/request.json) · [Candidate report](../examples/runtime-comparison/pending-routing/report.json) · [Shadow report](../examples/runtime-comparison/pending-routing/shadow-report.json)
 
-The same inspection is available through `nexusweave inspect-pending <input.json|->`, `POST /api/pending`, and the Rust function `pending::inspect`. Supply a JSON object with `request` and optional `screening`, `candidate`, and `shadow` report objects. The HTTP request is limited to 1 MiB. The response includes captured context, so send it only where that context can be read. The inspector does its work in memory and invokes no model or tools. [Inspect pending requests through MCP](#inspect-pending-requests-through-mcp)
+The same inspection is available through `a2context inspect-pending <input.json|->`, `POST /api/pending`, and the Rust function `pending::inspect`. Supply a JSON object with `request` and optional `screening`, `candidate`, and `shadow` report objects. The HTTP request is limited to 1 MiB. The response includes captured context, so send it only where that context can be read. The inspector does its work in memory and invokes no model or tools. [Inspect pending requests through MCP](#inspect-pending-requests-through-mcp)
 
 ```sh
 jq -n --slurpfile request examples/preflight-returns.json '{request: $request[0]}' \
@@ -74,20 +74,20 @@ cargo run --locked -- preflight examples/preflight-returns.json
 
 The response has `captured_items`, `scoped_rule_items`, and `findings`. The example has three captured items, two declared rules, and one `conflict`. Each finding includes the rule key and scope, the declared values, source IDs and versions, and the evidence locations. For sources declared inside a request string, the location includes a JSON Pointer and UTF-8 byte range. The report omits the raw request and prompt excerpts.
 
-Send a versioned JSON object with `version: 1` and an `attributes` object. An optional `scope` object has a `key` and `scope` and limits the check to that pair. Without it, preflight compares all declared scopes independently. Use GenAI input attributes such as `gen_ai.input.messages`, `gen_ai.system_instructions`, and `gen_ai.tool.definitions` for captured inputs. Attach source declarations as an object or encoded JSON string under `nexusweave.context.semantics`. For sources within a combined prompt string, send the actual JSON body as a string under `nexusweave.request.body` and use `request_sources`. Declare each source once. [Source declaration format](#declare-context-sources-and-decision-scope)
+Send a versioned JSON object with `version: 1` and an `attributes` object. An optional `scope` object has a `key` and `scope` and limits the check to that pair. Without it, preflight compares all declared scopes independently. Use GenAI input attributes such as `gen_ai.input.messages`, `gen_ai.system_instructions`, and `gen_ai.tool.definitions` for captured inputs. Attach source declarations as an object or encoded JSON string under `a2context.context.semantics`. For sources within a combined prompt string, send the actual JSON body as a string under `a2context.request.body` and use `request_sources`. Declare each source once. [Source declaration format](#declare-context-sources-and-decision-scope)
 
 A rule group with two different known values yields `conflict`. Otherwise, any missing value yields `insufficient_evidence`. When all values are known and equal, it yields `duplicate`. Groups with fewer than two declarations produce no finding. Authority labels are shown as declared. The report measures input conditions, and your workflow decides how to handle the findings.
 
 When your workflow asks for a particular rule, inspect `scope_coverage` before treating an empty findings list as a successful check. For example, this staging assertion requires at least one declaration for the requested rule and a value for each matching declaration.
 
 ```sh
-nexusweave preflight examples/preflight-returns.json |
+a2context preflight examples/preflight-returns.json |
   jq -e '.scope_coverage | .declarations > 0 and .known_values == .declarations'
 ```
 
 This assertion checks capture completeness for that rule. The separate `findings` array reports contradictions, including the one in this example. A missing declaration can come from the request builder or its instrumentation. An unscoped CLI check omits `scope_coverage`.
 
-Use `nexusweave preflight -` to read the same JSON from stdin. Rust applications can deserialize it as `nexusweave::preflight::Request` and call `nexusweave::preflight::check`. Run `cargo doc --locked --no-deps --open` for the Rust API and a tested example.
+Use `a2context preflight -` to read the same JSON from stdin. Rust applications can deserialize it as `a2context::preflight::Request` and call `a2context::preflight::check`. Run `cargo doc --locked --no-deps --open` for the Rust API and a tested example.
 
 For an HTTP integration, start the [local inspector](#run-the-local-demo) and post the same request to it.
 
@@ -103,10 +103,10 @@ The endpoint accepts up to 1 MiB and returns HTTP `200` for a completed check, i
 A workflow can declare several ways to supply the inputs for one operation. In the exchange example the request builder expects either the confirmation cache **and** latest customer message, or a verified consent event. Run the check against the assembled request in staging.
 
 ```sh
-nexusweave preflight examples/exchange-approval/pending.json | jq -e '.source_coverage.matched'
+a2context preflight examples/exchange-approval/pending.json | jq -e '.source_coverage.matched'
 ```
 
-Set the `nexusweave.required_sources` attribute to an object or its JSON encoding. For example, `{"name":"Exchange authorization","any_of":[["confirmation-cache","latest-customer-message"],["verified-consent-event"]]}` names two alternatives. Each inner list requires all its exact source IDs. Preflight counts an included declaration with a validated fragment in the original request body. The response lists each alternative's required and unconfirmed IDs. The dashboard shows the same result in **Before inference** when you load the request.
+Set the `a2context.required_sources` attribute to an object or its JSON encoding. For example, `{"name":"Exchange authorization","any_of":[["confirmation-cache","latest-customer-message"],["verified-consent-event"]]}` names two alternatives. Each inner list requires all its exact source IDs. Preflight counts an included declaration with a validated fragment in the original request body. The response lists each alternative's required and unconfirmed IDs. The dashboard shows the same result in **Before inference** when you load the request.
 
 With an ID-only requirement, an unconfirmed ID means the capture lacks that anchor. The text may still be present. A complete set establishes capture coverage only. Currency, revision, the meaning of the text and approval at dispatch require their own checks. When the request includes a body, preflight returns a version-two receipt for this check. Attach that receipt to the inference span alongside the original request and source declarations to see where a gap recurs. [Example request](../examples/exchange-approval/pending.json)
 
@@ -137,7 +137,7 @@ Preflight also checks whether two named sources cover the same part of a request
 To reproduce the diagram, load the resulting file in **Before inference**.
 
 ```sh
-jq '.attributes["nexusweave.context.semantics"].request_sources +=
+jq '.attributes["a2context.context.semantics"].request_sources +=
     [{id:"handbook",source_id:"retail/handbook",request_fragment:{
       pointer:"/messages/0/content",text_range:{start_byte:12,end_byte:31}}}] | {request:.}' \
     examples/preflight-returns.json > /tmp/returns-source-boundaries.json
@@ -147,9 +147,9 @@ jq '.attributes["nexusweave.context.semantics"].request_sources +=
 
 ### Show preflight alongside the recorded answer
 
-When the check includes `nexusweave.request.body`, the response includes a `receipt`. Attach it to the same inference call as `nexusweave.preflight`. For OTLP, serialize the receipt as a JSON string span attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `nexusweave.span.id` to the inference run's exact `id`.
+When the check includes `a2context.request.body`, the response includes a `receipt`. Attach it to the same inference call as `a2context.preflight`. For OTLP, serialize the receipt as a JSON string span attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `a2context.span.id` to the inference run's exact `id`.
 
-Capture the same JSON body string and source declarations on the recorded call. Retain the original bytes when serializing the trace. NexusWeave matches the receipt against the request and the declared rule sources in its scope, independent of the field paths assigned by the trace importer. The check can be reported by the workflow before inference. The receipt verifies the matching inputs and declarations, and the workflow supplies the timing.
+Capture the same JSON body string and source declarations on the recorded call. Retain the original bytes when serializing the trace. A2Context matches the receipt against the request and the declared rule sources in its scope, independent of the field paths assigned by the trace importer. The check can be reported by the workflow before inference. The receipt verifies the matching inputs and declarations, and the workflow supplies the timing.
 
 Try the same returns request before inference and after a synthetic recorded answer.
 
@@ -202,7 +202,7 @@ cargo run --locked -- screen-recorded-context examples/context-screening/evidenc
 
 To connect a different scorer, read one JSON object from stdin with `version: 1` and `pairs` containing `id`, `left`, and `right`. Return one object with `version: 1`, `scorer` containing `model_id`, `revision`, and `runtime`, and one result per input pair in the same order. A result carries its `id` and either `status: "scored"` with `left_to_right` and `right_to_left` distributions or `status: "unscored"` with `reason: "too_long"` or `"unavailable"`. Each distribution has `contradiction`, `entailment`, and `neutral` scores summing to one within `0.0001`. The selected scorer receives the captured text.
 
-Attach a pending report to the inference call as `nexusweave.context_screening`. For OTLP, use a JSON string attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `nexusweave.span.id` to the inference run's exact ID. NexusWeave matches the captured selection and text digests and checks that the scores and labels follow the report contract. The inspector shows which sources were screened on the recorded call. MCP `get_turn_evidence` includes the scores and anchors, with text available under the existing excerpt setting. [Report and selection schema](../schema/context-screening-report-1.json)
+Attach a pending report to the inference call as `a2context.context_screening`. For OTLP, use a JSON string attribute. For LangSmith, put the object or JSON string under `extra.metadata` and set `a2context.span.id` to the inference run's exact ID. A2Context matches the captured selection and text digests and checks that the scores and labels follow the report contract. The inspector shows which sources were screened on the recorded call. MCP `get_turn_evidence` includes the scores and anchors, with text available under the existing excerpt setting. [Report and selection schema](../schema/context-screening-report-1.json)
 
 ### Test a screened pair
 
@@ -355,7 +355,7 @@ Choose **See contributing turns** to browse each side in time order. **Open pair
 
 Grouping uses the exact captured text of both sources and their roles, kinds, and declared names and versions when available. Classifier comparisons also share the model, revision, and runtime. The same pair can arrive in either order. Counts cover distinct calls with that pair screened. An assessed call has at least one model score or exact-text comparison for the pair. The group keeps scored calls with no flag and shows how many calls lack a usable comparison. Multiple copies of a pair within one call count once in the summary.
 
-The CLI, HTTP, and MCP use the same versioned query. Save this example as `screening-view.json`, then use `nexusweave query-screening-patterns screening-view.json examples/context-screening/cohort.json`, `POST /api/screening-patterns`, or MCP `query_screening_patterns`. Pass a returned `key` as `group` to page through the pairs. The MCP view shows captured source references and scores. Use turn evidence with captured excerpts enabled to see the underlying text. [Query schema](../schema/screening-pattern-query-1.json)
+The CLI, HTTP, and MCP use the same versioned query. Save this example as `screening-view.json`, then use `a2context query-screening-patterns screening-view.json examples/context-screening/cohort.json`, `POST /api/screening-patterns`, or MCP `query_screening_patterns`. Pass a returned `key` as `group` to page through the pairs. The MCP view shows captured source references and scores. Use turn evidence with captured excerpts enabled to see the underlying text. [Query schema](../schema/screening-pattern-query-1.json)
 
 ```json
 {
@@ -410,19 +410,19 @@ Read `baseline_log_odds` and each edit's `log_odds` and `change_log_odds`. The r
 
 ### Score an LFM2 request on Apple Silicon
 
-Pass `python3 scripts/score_mlx_candidates.py MODEL_DIR --model-id MODEL_ID --revision REVISION` after the same `probe-candidates … --` command. Supply a local LFM2 MLX checkpoint and the message and tool representation your service actually renders. The optional `--token-steps` returns the candidate and top-token scores at each position. The travel example reconstructs a captured tool response, changes only its wording and loads the verified scores into **Before inference**. [Runnable MLX example](../examples/bfcl-transfer/mlx/feedback/README.md#open-the-measured-request-in-nexusweave)
+Pass `python3 scripts/score_mlx_candidates.py MODEL_DIR --model-id MODEL_ID --revision REVISION` after the same `probe-candidates … --` command. Supply a local LFM2 MLX checkpoint and the message and tool representation your service actually renders. The optional `--token-steps` returns the candidate and top-token scores at each position. The travel example reconstructs a captured tool response, changes only its wording and loads the verified scores into **Before inference**. [Runnable MLX example](../examples/bfcl-transfer/mlx/feedback/README.md#open-the-measured-request-in-a2context)
 
 ### Connect another scoring runtime
 
-The CLI sends one JSON `ScoringRequest` on stdin. It contains `version: 1`, `assistant_prefix`, the two `candidates`, and `conditions`. Each condition contains an `id` and a `request`. The original request comes first as `baseline`. NexusWeave verifies all source edits before calling the scorer.
+The CLI sends one JSON `ScoringRequest` on stdin. It contains `version: 1`, `assistant_prefix`, the two `candidates`, and `conditions`. Each condition contains an `id` and a `request`. The original request comes first as `baseline`. A2Context verifies all source edits before calling the scorer.
 
-Return one JSON `ScoringResult` on stdout with `version: 1`, `model_id`, `model_revision`, `runtime`, `tokenizer_sha256`, `assistant_prefix_token_ids`, `candidate_token_ids`, and `conditions`. Keep the same token boundaries across the batch and return one row per condition in the original order. Each row contains its `id`, `rendered_prefix_sha256`, and the two finite `log_probs` in candidate order. The two candidate token sequences need to be nonempty and neither can be a prefix of the other. Use raw continuation probabilities from the same model and tokenizer across conditions. Rust integrations can call `nexusweave::replay::candidates::execute` with a scoring callback instead of a subprocess. [Rust scoring interface](../src/replay/candidates.rs)
+Return one JSON `ScoringResult` on stdout with `version: 1`, `model_id`, `model_revision`, `runtime`, `tokenizer_sha256`, `assistant_prefix_token_ids`, `candidate_token_ids`, and `conditions`. Keep the same token boundaries across the batch and return one row per condition in the original order. Each row contains its `id`, `rendered_prefix_sha256`, and the two finite `log_probs` in candidate order. The two candidate token sequences need to be nonempty and neither can be a prefix of the other. Use raw continuation probabilities from the same model and tokenizer across conditions. Rust integrations can call `a2context::replay::candidates::execute` with a scoring callback instead of a subprocess. [Rust scoring interface](../src/replay/candidates.rs)
 
 ### Show candidate scores on the recorded turn
 
-Attach an array of [candidate probe reports](../schema/candidate-probe-report-1.json) to the inference call as `nexusweave.candidate_probes`. For OTLP, send a JSON string span attribute. For LangSmith, put the array or encoded JSON string under `extra.metadata` and set `nexusweave.span.id` to the run's exact `id`. Keep the same raw `nexusweave.request.body` string and source declarations on the call.
+Attach an array of [candidate probe reports](../schema/candidate-probe-report-1.json) to the inference call as `a2context.candidate_probes`. For OTLP, send a JSON string span attribute. For LangSmith, put the array or encoded JSON string under `extra.metadata` and set `a2context.span.id` to the run's exact `id`. Keep the same raw `a2context.request.body` string and source declarations on the call.
 
-NexusWeave checks the request hash, resolves each edited source, walks its original request path, and verifies the edited request hash. It recomputes the margins from the reported scores. A report that fails verification shows a reason beside the recorded call. The scoring runtime supplies the model probabilities and the workflow supplies the timing. A matching probe can also appear on a call with no recorded output.
+A2Context checks the request hash, resolves each edited source, walks its original request path, and verifies the edited request hash. It recomputes the margins from the reported scores. A report that fails verification shows a reason beside the recorded call. The scoring runtime supplies the model probabilities and the workflow supplies the timing. A matching probe can also appear on a call with no recorded output.
 
 The example trace pairs the saved candidate probe with the `stock` proposal from the [local routing run](../examples/runtime-comparison/visibility-routing/report.json). Load it without model weights or an API key.
 
@@ -465,7 +465,7 @@ The same query is available through the CLI, local HTTP, and MCP.
 }
 ```
 
-Save this view as `candidate-view.json` and use `nexusweave query-candidate-patterns candidate-view.json <evidence.json>`, `POST /api/candidate-patterns`, or MCP `query_candidate_patterns`. Pass a returned `key` as `group` to page through contributing calls. [Candidate pattern query schema](../schema/candidate-pattern-query-1.json)
+Save this view as `candidate-view.json` and use `a2context query-candidate-patterns candidate-view.json <evidence.json>`, `POST /api/candidate-patterns`, or MCP `query_candidate_patterns`. Pass a returned `key` as `group` to page through contributing calls. [Candidate pattern query schema](../schema/candidate-pattern-query-1.json)
 
 ## Test context with shadow proposals
 
@@ -489,17 +489,17 @@ cargo run --locked -- shadow "$base/request.json" "$base/shadow-case.json" "$out
 
 Every proposal retained product ID 42. This example uses one greedy trial per condition. The request-type edit changed the observed match rate by 100 percentage points. The store rename changed it by 0. [Saved shadow report](../examples/runtime-comparison/pending-routing/shadow-report.json)
 
-Set `samples` to the number of trials per condition. NexusWeave verifies every edit's captured source and request location before sampling, then rotates the condition order between rounds. It retains the returned proposals, failed trials, and proposals the match rule could not score. It reports a rate difference when both conditions are fully scored, including a baseline with zero matches. **Joint interaction** subtracts both individual rates from the joint rate and adds the baseline rate. A negative-control comparison reports the target edit's rate minus the control edit's rate. Set `sampling_design` to `independent` when trials are independently sampled to include the optional 95% bounds.
+Set `samples` to the number of trials per condition. A2Context verifies every edit's captured source and request location before sampling, then rotates the condition order between rounds. It retains the returned proposals, failed trials, and proposals the match rule could not score. It reports a rate difference when both conditions are fully scored, including a baseline with zero matches. **Joint interaction** subtracts both individual rates from the joint rate and adds the baseline rate. A negative-control comparison reports the target edit's rate minus the control edit's rate. Set `sampling_design` to `independent` when trials are independently sampled to include the optional 95% bounds.
 
 ### Connect another proposal runner
 
-The CLI sends one inference request object on stdin per trial. Return one JSON object with `kind`, `label`, and `outcome` on stdout. For a tool proposal, use the tool name as `label` and its argument object as `outcome`. For an answer, put the text in `outcome`. Call the inference endpoint directly and stop before dispatching tools or accepting actions. Use a `runner_id` that identifies the model and sampling configuration. Rust integrations can supply a runner callback to `nexusweave::replay::shadow::execute`. [Rust runner interface](../src/replay/shadow.rs)
+The CLI sends one inference request object on stdin per trial. Return one JSON object with `kind`, `label`, and `outcome` on stdout. For a tool proposal, use the tool name as `label` and its argument object as `outcome`. For an answer, put the text in `outcome`. Call the inference endpoint directly and stop before dispatching tools or accepting actions. Use a `runner_id` that identifies the model and sampling configuration. Rust integrations can supply a runner callback to `a2context::replay::shadow::execute`. [Rust runner interface](../src/replay/shadow.rs)
 
 ### Show shadow proposals on the recorded turn
 
-Attach an array of [shadow reports](../schema/shadow-report-1.json) to the same inference call as `nexusweave.shadow_probes`. For OTLP, use a JSON string span attribute. For LangSmith, use the array or JSON string in `extra.metadata` and set `nexusweave.span.id` to the inference run's exact ID. Keep the original `nexusweave.request.body` string and the source declarations on that call.
+Attach an array of [shadow reports](../schema/shadow-report-1.json) to the same inference call as `a2context.shadow_probes`. For OTLP, use a JSON string span attribute. For LangSmith, use the array or JSON string in `extra.metadata` and set `a2context.span.id` to the inference run's exact ID. Keep the original `a2context.request.body` string and the source declarations on that call.
 
-NexusWeave matches the request hash, resolves each source to its captured location, and rebuilds the edited request hashes. It recalculates the counts, match-rate shifts, and any joint or control comparisons from the supplied trials. The workflow supplies the proposals and their timing. A report can match a call with no recorded output yet. An attachment that cannot be verified shows the reason beside the call.
+A2Context matches the request hash, resolves each source to its captured location, and rebuilds the edited request hashes. It recalculates the counts, match-rate shifts, and any joint or control comparisons from the supplied trials. The workflow supplies the proposals and their timing. A report can match a call with no recorded output yet. An attachment that cannot be verified shows the reason beside the call.
 
 ```sh
 demo_dir=$(mktemp -d)
@@ -525,7 +525,7 @@ Groups require the same named source, captured content, version, role and kind, 
 
 **Edited target by conversation** counts each identified conversation once for a comparable single-source edit. **Met** means every edited trial matched the workflow’s criterion. **Missed** means every trial was scored and none matched. **Mixed** includes disagreements across trials or across calls in one conversation. A failed or unscored edited trial takes precedence and puts that conversation under **Incomplete**. The baseline remains available in the contributing turns. Calls without a conversation ID count toward call and measurement totals. The conversation breakdown excludes them.
 
-The CLI, local API, and MCP share the probe pattern query format. Save a view such as the one below as `shadow-view.json`. Use `nexusweave query-shadow-patterns shadow-view.json <evidence.json>`, `POST /api/shadow-patterns`, or MCP `query_shadow_patterns`. Pass a returned `key` as `group` to page through contributing calls. In MCP, use turn evidence with captured excerpts to inspect the tracked target label and exact outcome. [Query schema](../schema/candidate-pattern-query-1.json)
+The CLI, local API, and MCP share the probe pattern query format. Save a view such as the one below as `shadow-view.json`. Use `a2context query-shadow-patterns shadow-view.json <evidence.json>`, `POST /api/shadow-patterns`, or MCP `query_shadow_patterns`. Pass a returned `key` as `group` to page through contributing calls. In MCP, use turn evidence with captured excerpts to inspect the tracked target label and exact outcome. [Query schema](../schema/candidate-pattern-query-1.json)
 
 ```json
 {
@@ -626,8 +626,8 @@ Build with `cargo build --locked` and point your MCP client at the resulting bin
 
 ```json
 {
-  "command": "/path/to/NexusWeave/target/debug/nexusweave",
-  "args": ["mcp-stdio", "/path/to/NexusWeave/fixtures/conversation.json"]
+  "command": "/path/to/A2Context/target/debug/a2context",
+  "args": ["mcp-stdio", "/path/to/A2Context/fixtures/conversation.json"]
 }
 ```
 
@@ -661,8 +661,8 @@ Start the [local OTLP receiver](#receive-live-opentelemetry-traces), then give t
 
 ```json
 {
-  "command": "/path/to/NexusWeave/target/debug/nexusweave",
-  "args": ["mcp-stdio", "--otlp-store", "/path/to/NexusWeave/data/live-otlp"]
+  "command": "/path/to/A2Context/target/debug/a2context",
+  "args": ["mcp-stdio", "--otlp-store", "/path/to/A2Context/data/live-otlp"]
 }
 ```
 
@@ -726,7 +726,7 @@ python scripts/view_retail_baseline.py data/exgentic-retail.jsonl
 python scripts/view_retail_baseline.py data/exgentic-retail.jsonl --transcript
 ```
 
-The first command wraps the original spans in an OTLP envelope. Agentpile retains the spans and reports an unsupported framework dialect, with no mapped steps. The second displays the last captured request and response as a transcript. In that view, search for the identity lookup, then search the message history for the policy. The transcript preserves those excerpts but omits the original call boundaries. NexusWeave presents the annotation beside the observed action. Its repeated-finding drill-down uses the synthetic cohort because the public sample has no joined user identities or labeled policy conflicts. This comparison covers one session and was untimed.
+The first command wraps the original spans in an OTLP envelope. Agentpile retains the spans and reports an unsupported framework dialect, with no mapped steps. The second displays the last captured request and response as a transcript. In that view, search for the identity lookup, then search the message history for the policy. The transcript preserves those excerpts but omits the original call boundaries. A2Context presents the annotation beside the observed action. Its repeated-finding drill-down uses the synthetic cohort because the public sample has no joined user identities or labeled policy conflicts. This comparison covers one session and was untimed.
 
 ## Import LangSmith traces
 
@@ -758,7 +758,7 @@ cargo run --locked -- serve data/otlp-evidence.json
 
 Select **Timeline** and choose `inventory-demo-thread`. The import reads GenAI chat, generation, completion, and tool-execution spans. It keeps trace and span IDs, the original attribute names, and nanosecond timestamps. Tool results link by explicit `gen_ai.tool.call.id`, and a tool execution stays distinct from the context sent on the later inference. A message reference appears as unavailable context with its recorded reference.
 
-Use `gen_ai.conversation.id` to group traces into conversations. Add `nexusweave.organization.id` and `nexusweave.user.id` on spans or resources for explicit identity grouping, and `nexusweave.turn.id` on spans for turn counts. OTLP exports can omit captured messages, tool arguments, and results. The inspector still shows supported spans with the evidence that was recorded.
+Use `gen_ai.conversation.id` to group traces into conversations. Add `a2context.organization.id` and `a2context.user.id` on spans or resources for explicit identity grouping, and `a2context.turn.id` on spans for turn counts. OTLP exports can omit captured messages, tool arguments, and results. The inspector still shows supported spans with the evidence that was recorded.
 
 ### Import OpenInference spans
 
@@ -870,7 +870,7 @@ To follow a group into a turn, send the same request with `group` set to its `ke
 
 ### Capture the request for a controlled replay
 
-Set the optional `nexusweave.request.body` string attribute on the inference span to the JSON body sent to the model. This NexusWeave extension works with both live exports and saved OTLP imports. If the exporter truncates the JSON, the trace stays available and request verification is unavailable. The body can include prompts, tool results, and personal data. Keep transport credentials and headers out of the attribute. [OpenTelemetry guidance on capturing GenAI content](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md#recording-content-on-attributes)
+Set the optional `a2context.request.body` string attribute on the inference span to the JSON body sent to the model. This A2Context extension works with both live exports and saved OTLP imports. If the exporter truncates the JSON, the trace stays available and request verification is unavailable. The body can include prompts, tool results, and personal data. Keep transport credentials and headers out of the attribute. [OpenTelemetry guidance on capturing GenAI content](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md#recording-content-on-attributes)
 
 ```sh
 python3 examples/send_otlp_inventory.py --capture-request
@@ -880,7 +880,7 @@ Refresh the inspector, select `sdk-inventory-captured-thread`, and open the firs
 
 ### Attach a controlled replay after a trace arrives
 
-With `serve --otlp-store` running, send the report produced by `nexusweave replay` once the inference span is in the store. The report uses the original run, call, decision, and context IDs. The inspector verifies the baseline against the captured request, checks the source edits, and recomputes the match rates from the reported trial outcomes. Your runner supplies the trial outcomes.
+With `serve --otlp-store` running, send the report produced by `a2context replay` once the inference span is in the store. The report uses the original run, call, decision, and context IDs. The inspector verifies the baseline against the captured request, checks the source edits, and recomputes the match rates from the reported trial outcomes. Your runner supplies the trial outcomes.
 
 ```sh
 curl -fsS -H 'Content-Type: application/json' \
@@ -900,7 +900,7 @@ python3 examples/send_otlp_replay.py --conversation-id journal-live-replay-secon
 
 ## Declare context sources and decision scope
 
-An application can use `nexusweave.context.semantics` to label captured context with a stable source ID, version, or rule. It can also declare which rule scope a recorded decision addresses and which inputs apply to it. Send the declaration as a JSON string attribute on the OpenTelemetry inference span, or as a JSON object or string under `extra.metadata` on a LangSmith LLM run. [Declaration schema](../schema/context-semantics-1.json)
+An application can use `a2context.context.semantics` to label captured context with a stable source ID, version, or rule. It can also declare which rule scope a recorded decision addresses and which inputs apply to it. Send the declaration as a JSON string attribute on the OpenTelemetry inference span, or as a JSON object or string under `extra.metadata` on a LangSmith LLM run. [Declaration schema](../schema/context-semantics-1.json)
 
 ```json
 {
@@ -931,11 +931,11 @@ An application can use `nexusweave.context.semantics` to label captured context 
 
 An anchor uses the exact `field`, `message_index`, and `part_index` shown in the normalized evidence. An omitted index selects evidence with no index at that position. LangSmith anchors can use paths such as `inputs.messages[0].content` and `outputs.output`. Use the paths in the imported trace because serialized message layouts vary.
 
-For LangSmith, also set `extra.metadata["nexusweave.span.id"]` to the run's exact `id` so inherited metadata binds only to its intended call. The same run binding enables opt-in capture of `extra.metadata["nexusweave.request.body"]` as a JSON string for verified replays. Configure capture where the application has the actual request body. [LangSmith trace metadata](https://docs.langchain.com/langsmith/add-metadata-tags), [LangSmith Python SDK inheritance](https://github.com/langchain-ai/langsmith-sdk/blob/main/python/langsmith/run_helpers.py)
+For LangSmith, also set `extra.metadata["a2context.span.id"]` to the run's exact `id` so inherited metadata binds only to its intended call. The same run binding enables opt-in capture of `extra.metadata["a2context.request.body"]` as a JSON string for verified replays. Configure capture where the application has the actual request body. [LangSmith trace metadata](https://docs.langchain.com/langsmith/add-metadata-tags), [LangSmith Python SDK inheritance](https://github.com/langchain-ai/langsmith-sdk/blob/main/python/langsmith/run_helpers.py)
 
 Each declaration binds within its own call. If an anchor is missing or ambiguous, the inspector keeps the original trace and shows the error under **Context on this call**. Explicit relationships appear as **declared**. Two captured rules with the same key and scope can produce a conflict or duplicate finding for a decision in that scope. Use the same source IDs and versions across integrations to aggregate recurring rule findings.
 
-If several sources are assembled into one prompt string, use `request_sources` to identify each source in `nexusweave.request.body`. NexusWeave extracts the text and adds a context item with the request's evidence. For example, if `/messages/0/content` starts with `Préface\nUse 30 days.\n`, this declaration captures `Use 30 days.`.
+If several sources are assembled into one prompt string, use `request_sources` to identify each source in `a2context.request.body`. A2Context extracts the text and adds a context item with the request's evidence. For example, if `/messages/0/content` starts with `Préface\nUse 30 days.\n`, this declaration captures `Use 30 days.`.
 
 ```json
 {
@@ -979,7 +979,7 @@ The [JSON Schema](../schema/evidence-1.json) defines an array of versioned run r
 - Supply stable source IDs and versions for repeated-pattern grouping. Use explicit organization and user identifiers to scope identity. A turn count requires a conversation ID and turn ID.
 - To enable verification of replay baselines, add `recorded_request` to the call with the original JSON body as a string in `body` and its field or span in `evidence`.
 - Add a relationship to connect a decision to an item in its context. State the relation and its basis: observed, declared, derived, or hypothesis. Observed relationships require an evidence reference.
-- Use `nexusweave validate <file>` to check a record set or `nexusweave inspect <file>` to print evidence and findings as JSON.
+- Use `a2context validate <file>` to check a record set or `a2context inspect <file>` to print evidence and findings as JSON.
 
 The analyzer matches the tool invocation ID to a result recorded on a later call in the same run. It records observed outcomes and checks explicit scope. A trace on its own leaves the influence of any particular input unknown.
 
@@ -987,7 +987,7 @@ The analyzer matches the tool invocation ID to a result recorded on a later call
 
 The decision panel links a recorded tool name to matching tool definitions on that call. It also finds exact argument values in recorded tool results or identifiers in user text. Where an earlier tool invocation has a unique matching call ID, the panel can open that invocation. Exact matches are candidates for replay. Causal attribution requires testing an intervention.
 
-For model answers, routing decisions, and guardrail outputs, NexusWeave can link a structured field to the same field name and value in structured context. A whole numeric answer links only when exactly one typed field matches. In prose, the inspector links distinctive identifiers such as `MUG-42` from structured context. An identifier match highlights the shared identifier. A replay can then test whether that source affected the answer.
+For model answers, routing decisions, and guardrail outputs, A2Context can link a structured field to the same field name and value in structured context. A whole numeric answer links only when exactly one typed field matches. In prose, the inspector links distinctive identifiers such as `MUG-42` from structured context. An identifier match highlights the shared identifier. A replay can then test whether that source affected the answer.
 
 In **Patterns**, choose **Tool calls** to group recorded invocations by tool and trace source. Filter by name or switch to an explicit user or organization. Open any occurrence to inspect its decision and matched context.
 
@@ -1039,7 +1039,7 @@ An exact match is a request string, JSON container, or declared text fragment th
 
 In **Patterns → Context sources**, search for a named source and filter by organization, user, or thread. The history groups by the supplied source ID across adapters and lists capture availability by version. It includes context items with no decision link. Open an occurrence to reveal its exact context in the original call. From a named item in **Decisions**, **View source history** starts the search across all imported runs.
 
-Try `return-preference` in the support fixture to see two included versions and a redacted version. When one version has multiple captured text forms, the history shows the number of forms and the SHA-256 fingerprint for each available capture. A linked-decision count covers distinct recorded decisions. The `source_profiles` array from `nexusweave inspect` includes source IDs, versions, capture availability, and references to the original evidence.
+Try `return-preference` in the support fixture to see two included versions and a redacted version. When one version has multiple captured text forms, the history shows the number of forms and the SHA-256 fingerprint for each available capture. A linked-decision count covers distinct recorded decisions. The `source_profiles` array from `a2context inspect` includes source IDs, versions, capture availability, and references to the original evidence.
 
 Use **Evidence → Rule conflicts** to find occurrences with disagreeing declared values. On the [returns demo](#show-preflight-alongside-the-recorded-answer), open `retail/returns-policy` to see its preflight and decision conflicts with the archived FAQ. Each link opens the source or the exact rule pair. The summary counts an occurrence once even when it has evidence from both stages.
 
@@ -1105,7 +1105,7 @@ Use **Compare with** to see the same patterns side by side for two organizations
 
 The Timeline summarizes decision changes between ordered calls, including pairs with a missing context snapshot. The inspector groups decisions by recorded kind and label, retaining every decision ID. A change in labels or counts changes the decision mix. Equal-sized groups compare exact outcomes and their counts independent of output order. Missing outcomes are marked incomplete when they could account for the observed differences.
 
-The inspector and `nexusweave inspect` use the same Rust implementation for context changes. The JSON includes these fields.
+The inspector and `a2context inspect` use the same Rust implementation for context changes. The JSON includes these fields.
 
 - `context_timelines` gives the display order of calls for each thread or standalone trace.
 - `context_transitions` locates consecutive input calls by run and call ID. A pair has state `compared`, `missing_context`, or `ambiguous_order`. Each compared change lists the context IDs on the before and after sides and names the fields that differ. Ordered pairs include `decision_change`, with status `same`, `mix_changed`, `outcome_changed`, `incomplete`, or `unavailable` and the decision IDs for each group.
@@ -1116,7 +1116,7 @@ In **Compare**, structured outcomes and declared rule values are compared using 
 
 ## Test a context item with a controlled replay
 
-A [replay case](../fixtures/replay-case.json) points to a recorded decision and contains the inference request as JSON. Each intervention changes one captured value at a specific JSON Pointer. NexusWeave checks the selected value against recorded context and rotates baseline and variant trial order. When the original body was captured, NexusWeave also compares the full baseline request before sampling and again before displaying a report. The comparison ignores JSON formatting whitespace and preserves member order. The report includes the trial outcomes and the change in the recorded-decision rate, in percentage points. Missing trial outcomes or a baseline that never reproduced the recorded decision leave the effect unavailable.
+A [replay case](../fixtures/replay-case.json) points to a recorded decision and contains the inference request as JSON. Each intervention changes one captured value at a specific JSON Pointer. A2Context checks the selected value against recorded context and rotates baseline and variant trial order. When the original body was captured, A2Context also compares the full baseline request before sampling and again before displaying a report. The comparison ignores JSON formatting whitespace and preserves member order. The report includes the trial outcomes and the change in the recorded-decision rate, in percentage points. Missing trial outcomes or a baseline that never reproduced the recorded decision leave the effect unavailable.
 
 In **Decisions**, open **Plan replay**, **Test this conflict**, or **Test this context** beside an exact match. Use the recorded body or choose a separately saved JSON request for traces without a captured body. The local inspector uses the same text and JSON matching as capture coverage and preserves full-width integers in the exported request and evidence. If a value occurs more than once, choose the request field to change. The inspector validates the request, intervention, and match rule before downloading a case for the CLI. It labels reports without an independently captured baseline as unverified.
 
@@ -1180,7 +1180,7 @@ Replay matches the recorded kind, label, and full outcome by default. Use **Deci
 
 The CLI checks that the rule can score the recorded outcome before running any trials. JSON field matching accepts objects, arrays, and strings containing encoded JSON. A text rule must have exactly one capture group and extract exactly one nonempty value. If a response with the same kind and label lacks a selected field or a unique capture, its trial is unscored. Unscored or failed trials leave the corresponding effect unavailable. Reports retain the original outcomes for review. [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901.txt), [Rust regex syntax](https://docs.rs/regex/latest/regex/#syntax)
 
-To compare rules on the same trial outcomes, use `nexusweave rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>`. The command writes a new report with the original trial set identified by `rescored_from`. The rule file contains one JSON object from the table. Use `{"kind":"exact"}` for exact matching. Reports derived this way share their source trials.
+To compare rules on the same trial outcomes, use `a2context rescore-replay <evidence.json> <report.json> <match-rule.json> <new-id> <output.json>`. The command writes a new report with the original trial set identified by `rescored_from`. The rule file contains one JSON object from the table. Use `{"kind":"exact"}` for exact matching. Reports derived this way share their source trials.
 
 In the [inventory quantity experiment](../examples/local-mlx-tool/case-quantity.json), the local model reported 42 units in all six baseline trials. Two answers reproduced the exact recorded wording. With the JSON result replaced, four answers said “0 units” and two said “no units.” The original numeric capture left those last two unscored. The [revised capture](../examples/local-mlx-tool/match-quantity.json) covers both forms. The three reports below use the same raw trial outcomes.
 
@@ -1229,7 +1229,7 @@ To run the experiment on Apple Silicon, use the [saved case](../examples/local-m
 
 ### Test two context items together
 
-Select two items in the planner and enable **Also test both changes together**. For hand-authored cases, set `"test_pair": true` with exactly two interventions on distinct request fields. NexusWeave runs the original request, each replacement alone, and both replacements together. [NIST design of experiments glossary](https://www.itl.nist.gov/div898/handbook/pri/section7/pri7.htm)
+Select two items in the planner and enable **Also test both changes together**. For hand-authored cases, set `"test_pair": true` with exactly two interventions on distinct request fields. A2Context runs the original request, each replacement alone, and both replacements together. [NIST design of experiments glossary](https://www.itl.nist.gov/div898/handbook/pri/section7/pri7.htm)
 
 The interaction is the change in the recorded-decision rate when both texts are replaced minus the sum of the two changes measured separately. It is expressed in percentage points. A failed trial in any condition or a baseline that never reproduces the recorded decision leaves the interaction unavailable.
 

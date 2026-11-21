@@ -1,6 +1,6 @@
 //! Classify source-edit findings by the outcome actually measured on a captured call.
 use super::findings::{source_set_id, Observation};
-use nexusweave::{replay, Run};
+use a2context::{replay, Run};
 use serde_json::{json, Value};
 
 pub(super) fn preview(choice: &replay::Choice) -> Value {

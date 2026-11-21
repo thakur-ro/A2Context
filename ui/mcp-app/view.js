@@ -4,7 +4,7 @@ import { button, countLabel, element, scopeColumns } from "./dom.js";
 import { renderSourceHistory, sourceHistoryBackLabel, sourceHistoryTitle } from "./source-history.js";
 import { renderVisibility, visibilityBackLabel, visibilityTitle } from "./visibility.js";
 
-const app = new App({ name: "NexusWeave evidence", version: "1.0.0" });
+const app = new App({ name: "A2Context evidence", version: "1.0.0" });
 const result = document.getElementById("result");
 let initialQuery;
 let current;
@@ -13,7 +13,7 @@ let generation = 0;
 function showStatus(message, error = false) {
   const status = element("p", message, "muted");
   status.setAttribute("role", error ? "alert" : "status");
-  result.replaceChildren(element("h1", "NexusWeave evidence"), status);
+  result.replaceChildren(element("h1", "A2Context evidence"), status);
 }
 
 function payload(response) {

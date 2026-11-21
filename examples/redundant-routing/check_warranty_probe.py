@@ -31,8 +31,8 @@ def assemble(inspection, order, edit=None):
     messages.append({"role": "user", "content": "What is the disposition of this warranty request?"})
     body = {"model": MODEL, "messages": messages, "temperature": 0, "max_tokens": 16}
     return {"version": 1, "attributes": {"gen_ai.request.model": MODEL,
-            "nexusweave.request.body": json.dumps(body, separators=(",", ":")),
-            "nexusweave.context.semantics": {"version": 1, "request_sources": sources}}}
+            "a2context.request.body": json.dumps(body, separators=(",", ":")),
+            "a2context.context.semantics": {"version": 1, "request_sources": sources}}}
 
 
 def run(binary, snapshot, revision):
@@ -54,7 +54,7 @@ def run(binary, snapshot, revision):
             case["answers"] = {}
             for source in [None, *case["order"]]:
                 request = assemble(INSPECTIONS[case["scenario"]], case["order"], source)
-                body = json.loads(request["attributes"]["nexusweave.request.body"])
+                body = json.loads(request["attributes"]["a2context.request.body"])
                 case["answers"][source or "baseline"] = propose(runtime, body, MODEL)["outcome"]
     return {"model": MODEL, "revision": revision, "runtime": runtime.identity, "cases": cases, "example": example}
 

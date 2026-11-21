@@ -21,10 +21,10 @@ def pending(parcel, bay, order):
                                              "text_range": {"start_byte": len((name + ": ").encode()),
                                                             "end_byte": len(text.encode())}}})
     return {"version": 1, "attributes": {
-        "gen_ai.request.model": MODEL, "nexusweave.organization.id": "dispatch-lab",
-        "nexusweave.history.source": "synthetic-qwen-order",
-        "nexusweave.request.body": json.dumps(request, separators=(",", ":")),
-        "nexusweave.context.semantics": {"version": 1, "request_sources": sources}}}
+        "gen_ai.request.model": MODEL, "a2context.organization.id": "dispatch-lab",
+        "a2context.history.source": "synthetic-qwen-order",
+        "a2context.request.body": json.dumps(request, separators=(",", ":")),
+        "a2context.context.semantics": {"version": 1, "request_sources": sources}}}
 
 
 def reproduce_ash(model, binary, request, experiment):
@@ -48,7 +48,7 @@ def reproduce_ash(model, binary, request, experiment):
             binary, "shadow", path / "request.json", path / "case.json", path / "shadow.json", "--",
             sys.executable, scripts / "propose_qwen.py", model, "--model-id", MODEL,
         ], check=True, stdout=sys.stderr)
-        actual = json.loads((path / "scored.json").read_text())["attributes"]["nexusweave.prefill.probe"]
+        actual = json.loads((path / "scored.json").read_text())["attributes"]["a2context.prefill.probe"]
         assert actual == saved["prefill"]
         assert json.loads((path / "shadow.json").read_text()) == expected
         assert actual["scores"]["baseline_request_sha256"] == experiment["baseline_request_sha256"]
@@ -61,7 +61,7 @@ def main():
     parser.add_argument("--results", type=Path, default=Path(__file__).with_name("heldout-order-results.json"))
     parser.add_argument("--candidate-checks", type=Path, help="Also verify and evaluate saved model scores for each input.")
     parser.add_argument("--reproduce-ash", type=Path, metavar="MODEL", help="Rerun the saved Ash proposal pair and first-token measurement locally.")
-    parser.add_argument("--binary", type=Path, default=Path("target/release/nexusweave"))
+    parser.add_argument("--binary", type=Path, default=Path("target/release/a2context"))
     args = parser.parse_args()
     results = []
     transfer = {"changed": {"changed": 0, "held": 0}, "held": {"changed": 0, "held": 0}, "no_consensus": 0}

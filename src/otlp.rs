@@ -140,7 +140,8 @@ impl StoredTrace {
     pub fn pending_request(&self, id: &str) -> Option<crate::preflight::Request> {
         let (_, span) = self.0.get(id)?;
         let attrs = span.attrs.as_object()?;
-        attrs.get(crate::span_metadata::REQUEST)?;
+        let captured = |key| crate::span_metadata::attribute(attrs, key).map(|(_, value)| value);
+        captured(crate::span_metadata::REQUEST)?;
         let mut attributes: Map<String, Value> = [
             crate::span_metadata::REQUEST,
             "gen_ai.request.model",
@@ -149,9 +150,9 @@ impl StoredTrace {
             "gen_ai.tool.definitions",
         ]
         .into_iter()
-        .filter_map(|key| Some((key.to_owned(), attrs.get(key)?.clone())))
+        .filter_map(|key| Some((key.to_owned(), captured(key)?.clone())))
         .collect();
-        if let Some(raw) = attrs.get("nexusweave.context.semantics") {
+        if let Some(raw) = captured("a2context.context.semantics") {
             let mut declarations: Value = match raw.as_str() {
                 Some(encoded) => serde_json::from_str(encoded).ok()?,
                 None => raw.clone(),
@@ -159,7 +160,7 @@ impl StoredTrace {
             declarations
                 .as_object_mut()?
                 .retain(|key, _| matches!(key.as_str(), "version" | "context" | "request_sources"));
-            attributes.insert("nexusweave.context.semantics".into(), declarations);
+            attributes.insert("a2context.context.semantics".into(), declarations);
         }
         Some(crate::preflight::Request {
             version: 1,
@@ -291,9 +292,9 @@ fn prepare(
                         organization_id: identity(
                             &attrs,
                             &resource_attrs,
-                            "nexusweave.organization.id",
+                            "a2context.organization.id",
                         ),
-                        user_id: identity(&attrs, &resource_attrs, "nexusweave.user.id")
+                        user_id: identity(&attrs, &resource_attrs, "a2context.user.id")
                             .or_else(|| openinference::scope_id(&attrs, "user.id")),
                         conversation_id: optional_str(&attrs, "gen_ai.conversation.id")
                             .or_else(|| openinference::scope_id(&attrs, "session.id")),
@@ -312,6 +313,7 @@ fn prepare(
                                         | "gen_ai.request.model"
                                         | "openinference.span.kind"
                                         | "llm.model_name"
+                                        | "a2context.turn.id"
                                         | "nexusweave.turn.id"
                                 )
                             });
@@ -441,7 +443,7 @@ fn normalize_span(trace_id: &str, id: &str, span: &RecordedSpan) -> Result<Optio
     let time = span.start.map(format_time).transpose()?;
     let mut call = empty_call(id, Some(trace_id.to_owned()), time);
     call.ended_at = span.end.map(format_time).transpose()?;
-    call.turn_id = optional_str(attrs, "nexusweave.turn.id");
+    call.turn_id = crate::span_metadata::string(attrs, "a2context.turn.id").map(str::to_owned);
     if let Some(kind) = use_openinference {
         openinference::record(&mut call, attrs, span.name.as_deref(), kind);
         if kind != Kind::Tool {
@@ -537,7 +539,9 @@ fn anchor(id: &str, field: &str) -> Evidence {
 }
 
 fn identity(attrs: &Value, resource: &Value, field: &str) -> Option<String> {
-    optional_str(attrs, field).or_else(|| optional_str(resource, field))
+    crate::span_metadata::string(attrs, field)
+        .or_else(|| crate::span_metadata::string(resource, field))
+        .map(str::to_owned)
 }
 
 fn agreeing(

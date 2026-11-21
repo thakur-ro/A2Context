@@ -11,14 +11,14 @@
       "thread_id": "returns-preflight-demo",
       "turn_id": "return-question",
       "ls_model_name": "demo-model",
-      "nexusweave.span.id": "returns-run",
-      "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Company policy: 30 days.\\nArchived FAQ: 60 days.\"},{\"role\":\"user\",\"content\":\"Can I return this after 45 days?\"}]}",
-      "nexusweave.preflight": {
+      "a2context.span.id": "returns-run",
+      "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"Company policy: 30 days.\\nArchived FAQ: 60 days.\"},{\"role\":\"user\",\"content\":\"Can I return this after 45 days?\"}]}",
+      "a2context.preflight": {
         "version": 1,
         "scope": {"key": "return_window_days", "scope": "standard"},
         "fingerprint": "c9cdd77950ddecbfbc238eba22a86777d833274d239f2931606ada035ca76038"
       },
-      "nexusweave.context.semantics": {
+      "a2context.context.semantics": {
         "version": 1,
         "request_sources": [
           {

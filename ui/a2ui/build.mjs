@@ -8,7 +8,7 @@ const { outputFiles, metafile } = await build({
   entryPoints: ["surface.js"],
   bundle: true,
   format: "iife",
-  globalName: "NexusWeaveA2UI",
+  globalName: "A2ContextA2UI",
   target: "es2022",
   minify: true,
   metafile: true,

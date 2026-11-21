@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave context source query",
+  "title": "A2Context context source query",
   "type": "object",
   "additionalProperties": false,
   "required": ["version"],

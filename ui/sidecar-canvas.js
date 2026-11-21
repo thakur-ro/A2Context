@@ -266,21 +266,21 @@ function investigationCanvas(impact, page, models) {
   past.hidden = true;
 
   function suggest(labels) {
-    suggestions.replaceChildren(...(labels.length ? [NexusWeaveA2UI.questions(labels, ask)] : []));
+    suggestions.replaceChildren(...(labels.length ? [A2ContextA2UI.questions(labels, ask)] : []));
   }
 
   function showBriefing() {
     const workflow = activeScope.workflow;
-    heading.textContent = workflow ? workflowName(workflow) : "Welcome to NexusWeave";
+    heading.textContent = workflow ? workflowName(workflow) : "Welcome to A2Context";
     input.placeholder = workflow ? "Ask about " + workflowName(workflow) + "…" : "Ask about any recorded workflow…";
     home.classList.toggle("workflow-home",Boolean(workflow));
     const metrics = [{value:currentImpact.captured_conversations.toLocaleString(),label:"Conversations captured"},
         {value:currentImpact.conversations.toLocaleString(),label:"With findings"},
         {value:currentImpact.recommendations.toLocaleString(),label:"Finding groups"}];
     const recommended = records[0];
-    lead.replaceChildren(workflow ? NexusWeaveA2UI.workflowBriefing({metrics,recommendation:recommended && {
+    lead.replaceChildren(workflow ? A2ContextA2UI.workflowBriefing({metrics,recommendation:recommended && {
       title:recommended.facts.title,summary:recommended.facts.next,
-    }},() => recommended.tokenCard ? ask("Show the token-position diagram") : ask(recommended.facts.title,recommended)) : NexusWeaveA2UI.briefing({
+    }},() => recommended.tokenCard ? ask("Show the token-position diagram") : ask(recommended.facts.title,recommended)) : A2ContextA2UI.briefing({
       metrics,
       themes: (currentImpact.themes || []).map(({kind,conversations,groups}) =>
         (kindLabels[kind] || kind) + " · " + (conversations ? plural(conversations,"conversation") : plural(groups,"group"))),
@@ -304,7 +304,7 @@ function investigationCanvas(impact, page, models) {
   }
 
   function evidenceSections(id, title, description, sections = []) {
-    const surface = NexusWeaveA2UI.evidenceSections(id,{title,description,sections});
+    const surface = A2ContextA2UI.evidenceSections(id,{title,description,sections});
     surface.className = "canvas-result canvas-evidence-sections";
     output.append(surface);
   }
@@ -559,7 +559,7 @@ function investigationCanvas(impact, page, models) {
     output.replaceChildren(element("div",{className:"canvas-question",text:question}));
     if (text) output.append(element("p",{className:"partner-text"},element("span",{className:"partner-name",text:author || picker.value}),text));
     if (!facts) {
-      if (!text) output.append(NexusWeaveA2UI.recommendation("unmatched-question", {title:"Evidence unavailable",heading:"h2",
+      if (!text) output.append(A2ContextA2UI.recommendation("unmatched-question", {title:"Evidence unavailable",heading:"h2",
         description:records.length ? "I couldn’t match that question to captured evidence. Try naming a source, tool, or finding." :
           "This scope has no matching findings. Ask to see recorded activity."}));
       suggest(records.length ? ["What needs attention first?"] : []);
@@ -614,7 +614,7 @@ function investigationCanvas(impact, page, models) {
         intervening = betweenCopies(context, copies);
       }
     }
-    const surface = NexusWeaveA2UI.answerSurface({title:name,description:text ? null : description,
+    const surface = A2ContextA2UI.answerSurface({title:name,description:text ? null : description,
       map,detail}, () => {});
     surface.view.className = "canvas-result";
     Object.assign(surface.view.dataset,{trace:record.capture.trace,call:record.capture.call,group:facts.id,view});

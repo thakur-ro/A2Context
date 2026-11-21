@@ -1,6 +1,6 @@
 //! Compare scored single-source edits across distinct captured requests.
 
-use nexusweave::{replay::Intervention, Availability, Call, RecordedRequest, RequestFragment};
+use a2context::{replay::Intervention, Availability, Call, RecordedRequest, RequestFragment};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};

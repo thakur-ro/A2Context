@@ -353,8 +353,8 @@
       "version": 1,
       "attributes": {
         "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-        "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Evaluate this warranty request using the supplied policy and inspection. A verified exception authorizes approval. If eligibility cannot be determined, return REVIEW. Reply with exactly one label: APPROVE, REVIEW, or DENY.\"},{\"role\":\"user\",\"content\":\"Policy: Approve factory faults. Deny accidental damage.\"},{\"role\":\"user\",\"content\":\"Inspection: Inspection found accidental damage. No exception is recorded.\"},{\"role\":\"user\",\"content\":\"What is the disposition of this warranty request?\"}],\"temperature\":0,\"max_tokens\":16}",
-        "nexusweave.context.semantics": {
+        "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Evaluate this warranty request using the supplied policy and inspection. A verified exception authorizes approval. If eligibility cannot be determined, return REVIEW. Reply with exactly one label: APPROVE, REVIEW, or DENY.\"},{\"role\":\"user\",\"content\":\"Policy: Approve factory faults. Deny accidental damage.\"},{\"role\":\"user\",\"content\":\"Inspection: Inspection found accidental damage. No exception is recorded.\"},{\"role\":\"user\",\"content\":\"What is the disposition of this warranty request?\"}],\"temperature\":0,\"max_tokens\":16}",
+        "a2context.context.semantics": {
           "version": 1,
           "request_sources": [
             {
@@ -466,7 +466,7 @@
           "source_version": "1",
           "evidence": {
             "span_id": null,
-            "field": "nexusweave.request.body",
+            "field": "a2context.request.body",
             "message_index": null,
             "part_index": null
           },
@@ -490,7 +490,7 @@
           "source_version": "1",
           "evidence": {
             "span_id": null,
-            "field": "nexusweave.request.body",
+            "field": "a2context.request.body",
             "message_index": null,
             "part_index": null
           },

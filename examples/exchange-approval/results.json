@@ -64,7 +64,7 @@
           "source_version": "v1",
           "evidence": {
             "span_id": null,
-            "field": "nexusweave.request.body",
+            "field": "a2context.request.body",
             "message_index": null,
             "part_index": null
           },
@@ -204,7 +204,7 @@
           "source_version": "v1",
           "evidence": {
             "span_id": null,
-            "field": "nexusweave.request.body",
+            "field": "a2context.request.body",
             "message_index": null,
             "part_index": null
           },

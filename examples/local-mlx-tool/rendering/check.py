@@ -17,7 +17,7 @@ def verify():
     keys = set()
     for package, rendered in data["renderings"].items():
         preview = json.loads((HERE / (package + "-preview.json")).read_text())
-        check = preview["attributes"]["nexusweave.render_check"]
+        check = preview["attributes"]["a2context.render_check"]
         assert check["request_sha256"] == old["baseline_request_sha256"]
         for name, field in [("original", check["baseline"]), ("omit_tool_calls", check["removals"][0]["tokens"])]:
             assert (field["count"], field["sha256"]) == (rendered[name]["input_tokens"], rendered[name]["ids_sha256"])

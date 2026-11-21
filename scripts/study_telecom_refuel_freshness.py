@@ -134,7 +134,7 @@ def run_case(task, checkpoint, sidecar, updated, policy, propose=None):
 
 def write_witness(args, sidecar, checkpoint, trials, packets):
     """Bind the measured proposals and simulator states to an exact shadow edit."""
-    bodies = [json.loads(packets[key]["request"]["attributes"]["nexusweave.request.body"])
+    bodies = [json.loads(packets[key]["request"]["attributes"]["a2context.request.body"])
               for key in ("cached", "refreshed")]
     before_read, after_read = (body["messages"][0]["content"] for body in bodies)
     proposal = {"kind": "tool_call", "label": "refuel_data", "outcome": checkpoint[1].arguments}
@@ -150,9 +150,9 @@ def write_witness(args, sidecar, checkpoint, trials, packets):
     packet = packets["cached"]
     fields = packet["request"]["attributes"]
     fields["gen_ai.request.model"] = args.model
-    fields["nexusweave.request.body"] = canonical(baseline)
-    fields["nexusweave.required_sources"]["name"] = "Current data-usage snapshot"
-    source = fields["nexusweave.context.semantics"]["request_sources"][0]
+    fields["a2context.request.body"] = canonical(baseline)
+    fields["a2context.required_sources"]["name"] = "Current data-usage snapshot"
+    source = fields["a2context.context.semantics"]["request_sources"][0]
     start = baseline["messages"][0]["content"].encode().index(before_read.encode())
     source["request_fragment"]["text_range"] = {"start_byte": start, "end_byte": start + len(before_read.encode())}
     case = {"version": 1, "id": "compare-current-telecom-usage", "runner_id": f"{args.model}-recorded-refuel-proposals",
@@ -206,7 +206,7 @@ def main():
     parser.add_argument("--split", choices=("train", "test", "full"), default="full")
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--packets", type=Path)
-    parser.add_argument("--binary", type=Path, default=Path(__file__).resolve().parents[1] / "target/debug/nexusweave")
+    parser.add_argument("--binary", type=Path, default=Path(__file__).resolve().parents[1] / "target/debug/a2context")
     parser.add_argument("--model-endpoint", help="Use a local chat completion server for an exploratory proposal test.")
     parser.add_argument("--model", default="default_model")
     args = parser.parse_args()

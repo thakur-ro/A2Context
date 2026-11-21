@@ -69,7 +69,7 @@ def check(binary, folder):
         outside = deepcopy(another)
         outside_span = outside["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
         outside_span["traceId"] = "b" * 32
-        next(a for a in outside_span["attributes"] if a["key"] == "nexusweave.organization.id")["value"]["stringValue"] = "outside"
+        next(a for a in outside_span["attributes"] if a["key"] == "a2context.organization.id")["value"]["stringValue"] = "outside"
         send_traces(base, outside)
         assert counts(base, selection) == (1, 2, 0, 4)
         assert get(base,"impact",org="outside")["conflict_gap"] is None

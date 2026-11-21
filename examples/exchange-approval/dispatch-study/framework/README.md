@@ -10,7 +10,7 @@ Qwen-Agent recognized 30 tool calls in the 40 saved assistant responses. **Only 
 | Assistant returned text | 10 |
 | Truncations or unknown tool names | 0 |
 
-Qwen-Agent and the NexusWeave adapter produced different pending-order states on 22 of 40 ungated replays and 12 of 40 gated replays. Under Qwen-Agent, all eight valid writes concerned approved orders, so its totals were eight writes and 32 unchanged orders with either gate policy. The first-ranked source edit changed the outcome on four requests, and the first-listed edit changed one, under both gate settings. Those four were the **approved** requests. In the original adapter's ungated test, the four were **held** requests. The aggregate count alone hides which customers were affected. [Original adapter study](../README.md) · [Strict parsing comparison](../compare_parsers.py)
+Qwen-Agent and the A2Context adapter produced different pending-order states on 22 of 40 ungated replays and 12 of 40 gated replays. Under Qwen-Agent, all eight valid writes concerned approved orders, so its totals were eight writes and 32 unchanged orders with either gate policy. The first-ranked source edit changed the outcome on four requests, and the first-listed edit changed one, under both gate settings. Those four were the **approved** requests. In the original adapter's ungated test, the four were **held** requests. The aggregate count alone hides which customers were affected. [Original adapter study](../README.md) · [Strict parsing comparison](../compare_parsers.py)
 
 ## What ran
 
@@ -35,17 +35,17 @@ The 22 retries used 11,878 input tokens and 394 generated tokens including end m
 We used Python 3.13.7. From the repository root, install the optional study dependencies in a virtual environment, then run the checks. The application and sidecar do not need these dependencies.
 
 ```sh
-python3.13 -m venv /tmp/nexus-qwen-agent
-/tmp/nexus-qwen-agent/bin/python -m pip install -r examples/exchange-approval/dispatch-study/framework/requirements.txt
-/tmp/nexus-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/replay.py --check
-/tmp/nexus-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/retry.py --check
+python3.13 -m venv /tmp/a2context-qwen-agent
+/tmp/a2context-qwen-agent/bin/python -m pip install -r examples/exchange-approval/dispatch-study/framework/requirements.txt
+/tmp/a2context-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/replay.py --check
+/tmp/a2context-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/retry.py --check
 ```
 
 To generate fresh retries, install `framework/retry-requirements.txt` in that environment and use the pinned local checkpoint from the dispatch study. To rebuild the figure, install Matplotlib 3.10.8 in a separate plotting environment.
 
 ```sh
-/tmp/nexus-qwen-agent/bin/python -m pip install -r examples/exchange-approval/dispatch-study/framework/retry-requirements.txt
-/tmp/nexus-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/retry.py \
+/tmp/a2context-qwen-agent/bin/python -m pip install -r examples/exchange-approval/dispatch-study/framework/retry-requirements.txt
+/tmp/a2context-qwen-agent/bin/python examples/exchange-approval/dispatch-study/framework/retry.py \
   --snapshot /path/to/qwen/snapshot --output /tmp/fresh-exchange-retries.json
 python3 examples/exchange-approval/dispatch-study/plot_retries.py /tmp/exchange-retry-outcomes.png
 ```
@@ -57,7 +57,7 @@ The replay harness adds OpenTelemetry SDK spans at the public agent invocation, 
 The check starts a private sidecar on an ephemeral loopback port with a temporary database. The SDK's batch processor sends OTLP/HTTP Protobuf. It then queries the sidecar's public API and checks every parent-child relationship. The measured run returned **8 threads, 80 traces and 236 spans**: 80 agent roots, 80 saved-completion spans, 60 callback spans and 16 SQLite dispatch spans. The receiver counted 80 normalized chat spans and zero captured input bodies, request snapshots or rule declarations. The 80 chat spans are replays of 40 saved strings across two policies.
 
 ```sh
-make check-qwen-agent PYTHON=/tmp/nexus-qwen-agent/bin/python
+make check-qwen-agent PYTHON=/tmp/a2context-qwen-agent/bin/python
 ```
 
 To send the same traces to a sidecar you have already started on this machine, add `--sidecar-port 8040` to the offline replay command. Without that flag the SDK has no exporter. Span-name capture in the disposable test makes it possible to verify the tool and database spans from the trace detail endpoint.

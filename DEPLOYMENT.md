@@ -1,6 +1,6 @@
-# Ship NexusWeave with a workflow
+# Ship A2Context with a workflow
 
-Run the Rust sidecar alongside the process that sends the model request. The workflow serves the answer and exports spans in a background batch. NexusWeave receives OTLP/HTTP on loopback, processes admitted batches on a bounded worker, and commits the evidence to SQLite. The same process serves the dashboard. Model weights, Python, Node, and a model API key are unnecessary in the runtime container. [Sidecar architecture and request paths](docs/architecture.md#sidecar-architecture)
+Run the Rust sidecar alongside the process that sends the model request. The workflow serves the answer and exports spans in a background batch. A2Context receives OTLP/HTTP on loopback, processes admitted batches on a bounded worker, and commits the evidence to SQLite. The same process serves the dashboard. Model weights, Python, Node, and a model API key are unnecessary in the runtime container. [Sidecar architecture and request paths](docs/architecture.md#sidecar-architecture)
 
 ## Check the shipping image locally
 

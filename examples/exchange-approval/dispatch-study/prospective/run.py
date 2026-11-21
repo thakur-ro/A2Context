@@ -53,9 +53,9 @@ def pending(case, arm, history, cache, tools=None):
                         "rule": {"key": "exchange_authorization", "scope": case["pending_arguments"]["order_id"],
                                  "value": "approved" if consent else "hold"}})
     return {"version": 1, "attributes": {"gen_ai.request.model": demo.MODEL,
-            "nexusweave.organization.id": "exchange-study", "service.name": "exchange-staging",
-            "nexusweave.request.body": json.dumps(body, ensure_ascii=False, separators=(",", ":")),
-            "nexusweave.context.semantics": {"version": 1, "request_sources": sources}}}
+            "a2context.organization.id": "exchange-study", "service.name": "exchange-staging",
+            "a2context.request.body": json.dumps(body, ensure_ascii=False, separators=(",", ":")),
+            "a2context.context.semantics": {"version": 1, "request_sources": sources}}}
 
 
 class IncompleteOutput(Exception):

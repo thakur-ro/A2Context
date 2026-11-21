@@ -1,4 +1,4 @@
-use nexusweave::{activation, replay, replay_effects, Availability, Call, ContextItem, Run};
+use a2context::{activation, replay, replay_effects, Availability, Call, ContextItem, Run};
 use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -80,7 +80,7 @@ pub(super) fn occurrence(
 pub(super) fn source_gap(
     run: &Run,
     call: &Call,
-    coverage: &nexusweave::preflight::SourceCoverage,
+    coverage: &a2context::preflight::SourceCoverage,
 ) -> Option<Observation> {
     if coverage.matched {
         return None;
@@ -193,7 +193,7 @@ pub fn derive(
 ) -> Result<Vec<Observation>, String> {
     let mut findings = Vec::new();
     for call in &run.calls {
-        if let Some(coverage) = nexusweave::preflight::verified_source_coverage(call) {
+        if let Some(coverage) = a2context::preflight::verified_source_coverage(call) {
             findings.extend(source_gap(run, call, &coverage));
         }
         let mut rules = BTreeMap::<_, Vec<_>>::new();
@@ -476,7 +476,7 @@ mod tests {
                 {"key":"gen_ai.input.messages","value":{"stringValue":json!(input).to_string()}}
             ]
         }]}]}]});
-        let [run]: [Run; 1] = nexusweave::otlp::import(&document)
+        let [run]: [Run; 1] = a2context::otlp::import(&document)
             .unwrap()
             .try_into()
             .unwrap();

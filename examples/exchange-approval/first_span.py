@@ -27,7 +27,7 @@ def approval_inputs(cached_status, customer_status):
         })
     return {
         "gen_ai.input.messages": json.dumps(messages),
-        "nexusweave.context.semantics": json.dumps({"version": 1, "context": declarations}),
+        "a2context.context.semantics": json.dumps({"version": 1, "context": declarations}),
     }
 
 

@@ -16,7 +16,7 @@ def verify(binary):
             attrs = {item["key"]:item["value"] for item in span["attributes"]}
             # Identical display names from different users represent different conversations.
             attrs["gen_ai.conversation.id"]["stringValue"] = "return-" + str(i // 4)
-            attrs["nexusweave.user.id"]["stringValue"] = "sam" if i % 2 else "jo"
+            attrs["a2context.user.id"]["stringValue"] = "sam" if i % 2 else "jo"
             if i >= 252:
                 span["attributes"] = [item for item in span["attributes"] if item["key"] != "gen_ai.conversation.id"]
             spans.append(span)

@@ -35,8 +35,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the greenhouse tour lasts 30 minutes.\\nBirch calendar: the orchestra rehearsal lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the greenhouse tour lasts 30 minutes.\\nBirch calendar: the orchestra rehearsal lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -150,7 +150,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -174,7 +174,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -219,7 +219,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -257,7 +257,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -330,8 +330,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the greenhouse tour lasts 30 minutes.\\nBirch calendar: the orchestra rehearsal lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the greenhouse tour lasts 30 minutes.\\nBirch calendar: the orchestra rehearsal lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -445,7 +445,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -469,7 +469,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -514,7 +514,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -552,7 +552,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -625,8 +625,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the orchestra rehearsal lasts 30 minutes.\\nBirch calendar: the greenhouse tour lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the orchestra rehearsal lasts 30 minutes.\\nBirch calendar: the greenhouse tour lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -740,7 +740,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -764,7 +764,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -809,7 +809,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -847,7 +847,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -920,8 +920,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the orchestra rehearsal lasts 30 minutes.\\nBirch calendar: the greenhouse tour lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the orchestra rehearsal lasts 30 minutes.\\nBirch calendar: the greenhouse tour lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -1035,7 +1035,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1059,7 +1059,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1104,7 +1104,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1142,7 +1142,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1215,8 +1215,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the greenhouse tour lasts 60 minutes.\\nBirch calendar: the orchestra rehearsal lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the greenhouse tour lasts 60 minutes.\\nBirch calendar: the orchestra rehearsal lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -1330,7 +1330,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1354,7 +1354,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1399,7 +1399,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1437,7 +1437,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1510,8 +1510,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the greenhouse tour lasts 60 minutes.\\nBirch calendar: the orchestra rehearsal lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the greenhouse tour lasts 60 minutes.\\nBirch calendar: the orchestra rehearsal lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -1625,7 +1625,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1649,7 +1649,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1694,7 +1694,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1732,7 +1732,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1805,8 +1805,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the orchestra rehearsal lasts 60 minutes.\\nBirch calendar: the greenhouse tour lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the orchestra rehearsal lasts 60 minutes.\\nBirch calendar: the greenhouse tour lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -1920,7 +1920,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1944,7 +1944,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -1989,7 +1989,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2027,7 +2027,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2100,8 +2100,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the orchestra rehearsal lasts 60 minutes.\\nBirch calendar: the greenhouse tour lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nAtlas calendar: the orchestra rehearsal lasts 60 minutes.\\nBirch calendar: the greenhouse tour lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -2215,7 +2215,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2239,7 +2239,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2284,7 +2284,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2322,7 +2322,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2395,8 +2395,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the orchestra rehearsal lasts 60 minutes.\\nAtlas calendar: the greenhouse tour lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the orchestra rehearsal lasts 60 minutes.\\nAtlas calendar: the greenhouse tour lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -2510,7 +2510,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2534,7 +2534,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2579,7 +2579,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2617,7 +2617,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2690,8 +2690,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the orchestra rehearsal lasts 60 minutes.\\nAtlas calendar: the greenhouse tour lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the orchestra rehearsal lasts 60 minutes.\\nAtlas calendar: the greenhouse tour lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -2805,7 +2805,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2829,7 +2829,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2874,7 +2874,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2912,7 +2912,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -2985,8 +2985,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the greenhouse tour lasts 60 minutes.\\nAtlas calendar: the orchestra rehearsal lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the greenhouse tour lasts 60 minutes.\\nAtlas calendar: the orchestra rehearsal lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -3100,7 +3100,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3124,7 +3124,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3169,7 +3169,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3207,7 +3207,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3280,8 +3280,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the greenhouse tour lasts 60 minutes.\\nAtlas calendar: the orchestra rehearsal lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the greenhouse tour lasts 60 minutes.\\nAtlas calendar: the orchestra rehearsal lasts 30 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -3395,7 +3395,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3419,7 +3419,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3464,7 +3464,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3502,7 +3502,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3575,8 +3575,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the orchestra rehearsal lasts 30 minutes.\\nAtlas calendar: the greenhouse tour lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the orchestra rehearsal lasts 30 minutes.\\nAtlas calendar: the greenhouse tour lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -3690,7 +3690,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3714,7 +3714,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3759,7 +3759,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3797,7 +3797,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -3870,8 +3870,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the orchestra rehearsal lasts 30 minutes.\\nAtlas calendar: the greenhouse tour lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the orchestra rehearsal lasts 30 minutes.\\nAtlas calendar: the greenhouse tour lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -3985,7 +3985,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4009,7 +4009,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4054,7 +4054,7 @@
             "source_version": "music-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4092,7 +4092,7 @@
             "source_version": "plants-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4165,8 +4165,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the greenhouse tour lasts 30 minutes.\\nAtlas calendar: the orchestra rehearsal lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the greenhouse tour lasts 30 minutes.\\nAtlas calendar: the orchestra rehearsal lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the guided walk among the tropical plants? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -4280,7 +4280,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4304,7 +4304,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4349,7 +4349,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4387,7 +4387,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4460,8 +4460,8 @@
         "version": 1,
         "attributes": {
           "gen_ai.request.model": "Qwen/Qwen2.5-0.5B-Instruct",
-          "nexusweave.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the greenhouse tour lasts 30 minutes.\\nAtlas calendar: the orchestra rehearsal lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
-          "nexusweave.context.semantics": {
+          "a2context.request.body": "{\"model\":\"Qwen/Qwen2.5-0.5B-Instruct\",\"messages\":[{\"role\":\"system\",\"content\":\"Use the event listings below to answer the visitor's question.\\nBirch calendar: the greenhouse tour lasts 30 minutes.\\nAtlas calendar: the orchestra rehearsal lasts 60 minutes.\"},{\"role\":\"user\",\"content\":\"How long should I set aside for the musicians' practice before the concert? Begin with 'Activity length: ' and give the number of minutes in digits.\"}],\"temperature\":0,\"max_tokens\":32}",
+          "a2context.context.semantics": {
             "version": 1,
             "request_sources": [
               {
@@ -4575,7 +4575,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4599,7 +4599,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4644,7 +4644,7 @@
             "source_version": "plants-30m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },
@@ -4682,7 +4682,7 @@
             "source_version": "music-60m",
             "evidence": {
               "span_id": null,
-              "field": "nexusweave.request.body",
+              "field": "a2context.request.body",
               "message_index": null,
               "part_index": null
             },

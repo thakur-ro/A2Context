@@ -43,7 +43,7 @@ def manifest(source, tokenizer):
     rows = []
     for case in source["cases"]:
         for name, arm in case["arms"].items():
-            history = json.loads(arm["pending_request"]["attributes"]["nexusweave.request.body"])["messages"]
+            history = json.loads(arm["pending_request"]["attributes"]["a2context.request.body"])["messages"]
             messages, tools = tokenizer_request(arm["workflow_request"], history)
             baseline = tokenizer.apply_chat_template(history, tools=None, tokenize=False, add_generation_prompt=True)
             variant = tokenizer.apply_chat_template(messages, tools=tools, tokenize=False, add_generation_prompt=True)

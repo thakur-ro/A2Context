@@ -151,7 +151,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path)
     parser.add_argument("--cases", type=Path, default=HERE / "cases.json")
-    parser.add_argument("--binary", type=Path, default=room.ROOT / "target/debug/nexusweave")
+    parser.add_argument("--binary", type=Path, default=room.ROOT / "target/debug/a2context")
     args = parser.parse_args()
     protocol = json.loads(PROTOCOL.read_text())
     binary = args.binary.resolve()

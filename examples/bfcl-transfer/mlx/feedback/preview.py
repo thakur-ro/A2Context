@@ -38,8 +38,8 @@ def main():
                 "text_range":{"start_byte":start,"end_byte":start+len(FEEDBACK["original"].encode())}}
     request = {"version":1,"attributes":{
         "gen_ai.request.model":design["model"],
-        "nexusweave.request.body":json.dumps({"model":design["model"],"messages":messages,"tools":schemas},ensure_ascii=False),
-        "nexusweave.context.semantics":{"version":1,"request_sources":[{
+        "a2context.request.body":json.dumps({"model":design["model"],"messages":messages,"tools":schemas},ensure_ascii=False),
+        "a2context.context.semantics":{"version":1,"request_sources":[{
             "id":"fare-error","source_id":"fare-error","source_version":"generic-v1","request_fragment":fragment}]}}}
     verified = []
     with TemporaryDirectory() as tmp:
@@ -67,7 +67,7 @@ def main():
                 assert sha256(prompt.encode()).hexdigest() == score["prompt_sha256"]
                 assert condition["rendered_prefix_sha256"] == sha256((prompt+spec["assistant_prefix"]).encode()).hexdigest()
             verified.append(report)
-    request["attributes"]["nexusweave.candidate_probes"] = verified
+    request["attributes"]["a2context.candidate_probes"] = verified
     save(args.output,request)
     print(f"Verified original and edited margins. Open {args.output} in Before inference.")
 

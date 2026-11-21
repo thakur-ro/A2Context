@@ -3,8 +3,8 @@ spec:
   template:
     spec:
       containers:
-        - name: nexusweave
-          image: registry.example/nexusweave:private
+        - name: a2context
+          image: registry.example/a2context:private
           args: ["--db", "/state/evidence.sqlite", "--retain-days", "7"]
           resources:
             limits:
@@ -19,9 +19,9 @@ spec:
             capabilities:
               drop: ["ALL"]
           volumeMounts:
-            - name: nexusweave-state
+            - name: a2context-state
               mountPath: /state
       volumes:
-        - name: nexusweave-state
+        - name: a2context-state
           persistentVolumeClaim:
-            claimName: nexusweave-state
+            claimName: a2context-state

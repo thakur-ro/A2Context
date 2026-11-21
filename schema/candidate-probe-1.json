@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NexusWeave candidate probe case",
+  "title": "A2Context candidate probe case",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "id", "scorer_id", "candidates", "interventions"],

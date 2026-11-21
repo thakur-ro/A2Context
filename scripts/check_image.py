@@ -43,7 +43,7 @@ def probe(phase):
 
 
 def check_image(image, client):
-    name = "nexusweave-check-" + uuid4().hex
+    name = "a2context-check-" + uuid4().hex
     scripts = Path(__file__).resolve().parent
 
     def docker(*args):
@@ -72,7 +72,7 @@ def check_image(image, client):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--image", default="nexusweave:local")
+    parser.add_argument("--image", default="a2context:local")
     parser.add_argument("--client", default="python:3.13-alpine")
     parser.add_argument("--probe", choices=("send", "reopen", "captured"), help=argparse.SUPPRESS)
     args = parser.parse_args()

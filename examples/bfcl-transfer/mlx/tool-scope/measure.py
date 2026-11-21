@@ -56,7 +56,7 @@ def run_arm(model, tokenizer, pkt, schemas, cls, allowed, arm, scripted=None):
 def catalog_check(binary, pkt, visible, allowed):
     messages, tools = inputs(pkt, visible)
     body = json.dumps({"messages": messages, "tools": tools}, ensure_ascii=False)
-    envelope = {"request": {"version": 1, "attributes": {"nexusweave.request.body": body}},
+    envelope = {"request": {"version": 1, "attributes": {"a2context.request.body": body}},
                 "allowed_tools": sorted(allowed)}
     output = subprocess.run([binary, "inspect-pending", "-"], input=json.dumps(envelope),
                             capture_output=True, text=True, check=True)
@@ -72,7 +72,7 @@ def main():
     for name in ("upstream", "snapshot", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--repeat", type=Path)
-    parser.add_argument("--binary", type=Path, default=Path("target/debug/nexusweave"))
+    parser.add_argument("--binary", type=Path, default=Path("target/debug/a2context"))
     args = parser.parse_args()
     if args.output.exists():
         parser.error("Use an unused output path.")

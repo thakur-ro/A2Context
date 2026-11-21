@@ -1,4 +1,4 @@
-use nexusweave::{inspect, otlp, replay, Availability};
+use a2context::{inspect, otlp, replay, Availability};
 use serde_json::{json, Value};
 
 fn fixture() -> Value {

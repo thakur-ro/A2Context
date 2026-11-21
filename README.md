@@ -1,18 +1,18 @@
-# NexusWeave
+# A2Context
 
 **Find which context edits change an LLM’s answer or tool call.**
 
-NexusWeave runs beside your LLM workflow. It flags conflicting instructions and missing sources, groups recurring problems across conversations, and shows what happened when someone tested an edit.
+A2Context runs beside your LLM workflow. It flags conflicting instructions and missing sources, groups recurring problems across conversations, and shows what happened when someone tested an edit.
 
-**Start here** · [Try the demo](#try-the-demo) · [Check a request before inference](docs/getting-started.md#check-one-request-before-inference) · [Connect your application](docs/getting-started.md#instrument-your-application)
+**Start here** · [Try the demo](#try-the-demo) · [Check a request before inference](docs/getting-started.md#check-one-request-before-inference) · [Connect your application](docs/getting-started.md#instrument-your-application) · [Upgrade an existing installation](docs/getting-started.md#upgrade-an-existing-installation)
 
 ## Try the demo
 
 A customer puts an exchange on hold, but the agent’s confirmation cache still says “approved.” To run this research preview, you need Git, stable Rust and your platform’s C build tools. The demo needs no API key or model download. [Install Rust](https://rustup.rs/)
 
 ```sh
-git clone https://github.com/thakur-ro/NexusWeave.git
-cd NexusWeave
+git clone https://github.com/thakur-ro/A2Context.git
+cd A2Context
 cargo run --locked -- demo
 ```
 
@@ -24,7 +24,7 @@ Open the address printed in the terminal. Ask **What did verify_customer return?
 
 ## What can I learn?
 
-| Your question | Evidence NexusWeave uses |
+| Your question | Evidence A2Context uses |
 | --- | --- |
 | Did my chat template drop the previous tool call? | Remove one structured field and compare the exact input token IDs before calling the model. [Try the inventory rendering check](examples/local-mlx-tool/rendering/README.md) |
 | Can a quote request expose booking tools? | Compare named functions in the assembled catalog with the permissions your workflow supplies. The card shows each mismatch and its location in the request. [Try a tool-scope check](docs/guide.md#check-the-advertised-tools-before-inference) |
@@ -55,12 +55,12 @@ config:
     padding: 10
 ---
 flowchart TB
-    accTitle: NexusWeave sidecar and inference paths
+    accTitle: A2Context sidecar and inference paths
     accDescr: The application owns inference and tool execution. It exports captured traces asynchronously and can request a synchronous preview. The sidecar checks captured context and verifies reports from a separate experiment runner. SQLite backs the recommendations dashboard, where an engineer can prepare another test.
 
     App["LLM application<br/>Runs inference and tools"]
     Runner["Experiment runner<br/>Tests a source edit"]
-    Worker["NexusWeave sidecar<br/>Context and report checks"]
+    Worker["A2Context sidecar<br/>Context and report checks"]
     Store[("SQLite<br/>Evidence and findings")]
     Dashboard["Recommendations<br/>Dashboard and API"]
 
@@ -78,6 +78,6 @@ flowchart TB
 
 Your application controls inference, authorization, and tool execution. Background analysis makes zero model calls. A preview can flag a missing or conflicting source before dispatch. To measure which source changed a proposed answer or tool call, run a controlled edit separately and attach the report. [Request paths and evidence limits](docs/architecture.md#sidecar-architecture)
 
-Build the container and verify that traces survive a restart with `make verify-image`. A local OpenTelemetry Collector can send the same spans to NexusWeave and your existing observability backend. [Deployment](DEPLOYMENT.md) · [Collector setup](docs/sidecar.md#fan-out-without-changing-observability-platforms) · [Staging checks and resource measurements](docs/validation.md)
+Build the container and verify that traces survive a restart with `make verify-image`. A local OpenTelemetry Collector can send the same spans to A2Context and your existing observability backend. [Deployment](DEPLOYMENT.md) · [Collector setup](docs/sidecar.md#fan-out-without-changing-observability-platforms) · [Staging checks and resource measurements](docs/validation.md)
 
 [Study recommendations across six workloads](docs/scale-study.md) · [Contributor setup and release checks](CONTRIBUTING.md) · [Rust API](docs/rust-api.md) · [Connect a model to the dashboard](docs/chat-canvas.md) · [Research and dataset credits](CREDITS.md) · [Apache 2.0 license](LICENSE)

@@ -95,9 +95,9 @@ def case_span(case, mode, number=0, *, org="heldout", shift=0):
             "gen_ai.request.model": "fixture",
             "gen_ai.input.messages": json.dumps(messages),
             "gen_ai.conversation.id": "thread-" + str(number),
-            "nexusweave.context.semantics": json.dumps({"version": 1, "context": declarations}),
-            "nexusweave.organization.id": org,
-            "nexusweave.user.id": "case-owner",
+            "a2context.context.semantics": json.dumps({"version": 1, "context": declarations}),
+            "a2context.organization.id": org,
+            "a2context.user.id": "case-owner",
             "deployment.environment.name": "validation",
             "private.token": "secret-would-be-redacted",
         }),
@@ -199,14 +199,14 @@ def check_thread_calls(binary, folder):
         span = case_span("page", "conflict", org="thread-test")
         span.update(traceId=f"{1 + index % 2:032x}", spanId=f"{100 - index:016x}",
                     startTimeUnixNano=str(CLOCK * 10**9 + index * 1000))
-        span["attributes"] += attrs({"nexusweave.turn.id": f"turn-{index // 2}"})
+        span["attributes"] += attrs({"a2context.turn.id": f"turn-{index // 2}"})
         spans.append(span)
     tool = spans[17]
     tool["attributes"] = attrs({
         "gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": "update_order",
         "gen_ai.tool.call.id": "order-write", "gen_ai.tool.call.result": "Order write rejected",
-        "gen_ai.conversation.id": "thread-0", "nexusweave.organization.id": "thread-test",
-        "nexusweave.user.id": "case-owner", "nexusweave.turn.id": "turn-8",
+        "gen_ai.conversation.id": "thread-0", "a2context.organization.id": "thread-test",
+        "a2context.user.id": "case-owner", "a2context.turn.id": "turn-8",
     })
     key = json.dumps(["otlp", "thread-test", "case-owner", "thread-0"], separators=(",", ":"))
     db = folder / "conversation.sqlite"
@@ -307,7 +307,7 @@ def check_tool_handoffs(binary, db):
     start = CLOCK * 10**9
     cases = ["same", "different", "missing", "duplicate", "late", "unknown"]
     receiver["attributes"] = [field for field in receiver["attributes"]
-                              if field["key"] not in {"gen_ai.input.messages", "nexusweave.context.semantics"}]
+                              if field["key"] not in {"gen_ai.input.messages", "a2context.context.semantics"}]
     receiver["attributes"] += attrs({"gen_ai.input.messages": json.dumps([{
         "role": "tool", "parts": [{"type": "tool_call_response", "id": key, "response": "shown"} for key in cases],
     }])})
@@ -389,7 +389,7 @@ def check_screen_suggestions(binary, folder):
         child = case_span(kind, "undeclared", number=index)
         child["attributes"] = attrs({"gen_ai.operation.name":"chat", "gen_ai.request.model":"support-demo",
             "gen_ai.conversation.id":kind, "gen_ai.input.messages":json.dumps(selected),
-            "nexusweave.context_screening":json.dumps(report)})
+            "a2context.context_screening":json.dumps(report)})
         cases.append((child, selected, report, kind))
     for capture in (False, True):
         with server(binary, folder / f"screen-{capture}.sqlite", *(["--capture-content"] if capture else [])) as base:
@@ -425,7 +425,7 @@ def check_screen_suggestions(binary, folder):
                 def reversal(name, scores):
                     span = case_span(name, "undeclared")
                     span["attributes"] = attrs({"gen_ai.operation.name":"chat","gen_ai.conversation.id":name,
-                        "gen_ai.input.messages":json.dumps(texts[::-1]),"nexusweave.context_screening":json.dumps(scores)})
+                        "gen_ai.input.messages":json.dumps(texts[::-1]),"a2context.context_screening":json.dumps(scores)})
                     send_traces(base, export(span))
                 reversal("reversed", reversed_report)
                 pattern, = (g for g in groups if g["relation"] == relation)
@@ -439,7 +439,7 @@ def check_screen_suggestions(binary, folder):
                 multi = case_span("all-screened", "undeclared")
                 multi["attributes"] = attrs({"gen_ai.operation.name":"chat", "gen_ai.conversation.id":"multi",
                     "gen_ai.input.messages":json.dumps(request["attributes"]["gen_ai.input.messages"]),
-                    "nexusweave.context_screening":json.dumps(screen)})
+                    "a2context.context_screening":json.dumps(screen)})
                 send_traces(base, export(multi))
                 scoped = {"trace":"otlp:" + multi["traceId"]}
                 assert get(base, "findings", **scoped)["rows"][0]["kind"] == "duplicate"
@@ -757,8 +757,8 @@ def check_joint_proposals(base):
         trace, report = prepare(thread)
         span = trace["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
         fields = {attr["key"]: attr["value"] for attr in span["attributes"]}
-        fields["nexusweave.organization.id"]["stringValue"] = "joint-check"
-        fields["nexusweave.user.id"]["stringValue"] = owner
+        fields["a2context.organization.id"]["stringValue"] = "joint-check"
+        fields["a2context.user.id"]["stringValue"] = owner
         report["match_rule"] = {"kind": "kind_and_label"}
         baseline = report["baseline"][0]
         report["baseline"] *= samples
@@ -830,8 +830,8 @@ def check_replay_variation(base):
         trace, report = prepare("variation-fixture")
         span = trace["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
         fields = {row["key"]: row["value"] for row in span["attributes"]}
-        fields["nexusweave.organization.id"]["stringValue"] = "variation-fixture"
-        raw = fields["nexusweave.request.body"]
+        fields["a2context.organization.id"]["stringValue"] = "variation-fixture"
+        raw = fields["a2context.request.body"]
         body = json.loads(raw["stringValue"])
         body["messages"][-1]["content"] = question
         if reorder_keys:
@@ -889,10 +889,10 @@ def bound_order_reports(base):
                         for item in call["context"]]
         span["attributes"] = attrs({
             "gen_ai.operation.name": "chat", "gen_ai.request.model": call["model"],
-            "gen_ai.conversation.id": run["conversation_id"], "nexusweave.organization.id": "order-check",
-            "nexusweave.user.id": call["context"][0]["source_id"],
-            "nexusweave.request.body": call["recorded_request"]["body"],
-            "nexusweave.context.semantics": json.dumps({"version": 1, "request_sources": declarations}),
+            "gen_ai.conversation.id": run["conversation_id"], "a2context.organization.id": "order-check",
+            "a2context.user.id": call["context"][0]["source_id"],
+            "a2context.request.body": call["recorded_request"]["body"],
+            "a2context.context.semantics": json.dumps({"version": 1, "request_sources": declarations}),
             "gen_ai.input.messages": json.dumps([{"role": m["role"], "parts": [{"type": "text", "content": m["content"]}]}
                                                  for m in request["messages"]]),
             "gen_ai.output.messages": json.dumps([{"role": "assistant", "parts": [
@@ -919,31 +919,31 @@ def check_order_tests(base):
     assert get(base, "factors", org="order-check")["rows"][0]["signal"] == "order"
     pending = json.loads((ROOT / "examples/redundant-routing/pending-maple.json").read_text())
     attributes = pending["attributes"]
-    attributes.pop("nexusweave.history.source")
-    attributes.update({"nexusweave.organization.id": "order-check", "nexusweave.user.id": "dispatch-guide"})
+    attributes.pop("a2context.history.source")
+    attributes.update({"a2context.organization.id": "order-check", "a2context.user.id": "dispatch-guide"})
     def prior(request):
         return send(base, "/api/sidecar/preview", {"request": request})[1]["history"]["edits"]
     coverage = get(base, "health")["coverage"]
     top = prior(pending)[0]
     assert (top["example"]["source"], top["requests"], top["lower"], top["mixed"]) == ("routing-note", 2, 2, 0)
-    for key in ["nexusweave.organization.id", "nexusweave.user.id", "nexusweave.history.source", "gen_ai.request.model"]:
+    for key in ["a2context.organization.id", "a2context.user.id", "a2context.history.source", "gen_ai.request.model"]:
         other = deepcopy(pending)
         other["attributes"][key] = "different"
         assert prior(other) == []
     repeated = deepcopy(pending)
-    repeated["attributes"]["nexusweave.request.body"] = bodies[0]
+    repeated["attributes"]["a2context.request.body"] = bodies[0]
     assert not prior(repeated), "An identical prior input must not count toward transfer."
     for change in ["version", "system", "temperature"]:
         other = deepcopy(pending)
         fields = other["attributes"]
-        body = json.loads(fields["nexusweave.request.body"])
+        body = json.loads(fields["a2context.request.body"])
         if change == "version":
-            fields["nexusweave.context.semantics"]["request_sources"][0]["source_version"] = "v2"
+            fields["a2context.context.semantics"]["request_sources"][0]["source_version"] = "v2"
         elif change == "system":
             body["messages"][0]["content"] += " Changed instructions."
         else:
             body["temperature"] = 0.9
-        fields["nexusweave.request.body"] = json.dumps(body)
+        fields["a2context.request.body"] = json.dumps(body)
         assert prior(other) == []
     assert get(base, "health")["coverage"] == coverage
     # An inconsistent repeat in one orientation retires only that matched comparison.
@@ -964,8 +964,8 @@ def check_history_proposals(base):
     saved = [r for _, r in bound_order_reports(base) if r["id"].endswith("dispatch-guide-1")]
     assert len(saved) == 2
     pending = json.loads((ROOT / "examples/redundant-routing/pending-maple.json").read_text())
-    pending["attributes"].update({"nexusweave.history.source":"otlp", "nexusweave.organization.id":"order-check",
-                                  "nexusweave.user.id":"dispatch-guide"})
+    pending["attributes"].update({"a2context.history.source":"otlp", "a2context.organization.id":"order-check",
+                                  "a2context.user.id":"dispatch-guide"})
     def replay(original, suffix, outcomes):
         report = deepcopy(original)
         report["id"] += suffix
@@ -997,14 +997,14 @@ def check_history_proposals(base):
     check(2, 0, 0, 0)
     revised = deepcopy(pending)
     attrs = revised["attributes"]
-    body = json.loads(attrs["nexusweave.request.body"])
-    source = attrs["nexusweave.context.semantics"]["request_sources"][0]
+    body = json.loads(attrs["a2context.request.body"])
+    source = attrs["a2context.context.semantics"]["request_sources"][0]
     source["id"] = "this-call-only"
     message = body["messages"][1]
     message["content"] = "Dispatch guide: Route Érable parcels to bay OISEAU."
     fragment = source["request_fragment"]["text_range"]
     fragment["end_byte"] = len(message["content"].encode())
-    attrs["nexusweave.request.body"] = json.dumps(body, ensure_ascii=False)
+    attrs["a2context.request.body"] = json.dumps(body, ensure_ascii=False)
     plan = send(base, "/api/sidecar/preview", {"request":revised})[1]["history"]["experiment"]
     edit, = plan["interventions"]
     encode = lambda doc: json.dumps(doc, ensure_ascii=False, separators=(",",":")).encode()
@@ -1013,7 +1013,7 @@ def check_history_proposals(base):
     message["content"] = "Dispatch guide: " + edit["replacement"]
     assert plan["edited_request_sha256"] == sha256(encode(body)).hexdigest()
     fragment["end_byte"] = len(message["content"].encode())
-    attrs["nexusweave.request.body"] = json.dumps(body)
+    attrs["a2context.request.body"] = json.dumps(body)
     skipped = send(base, "/api/sidecar/preview", {"request": revised})[1]["history"]["experiment"]
     assert skipped == {"status": "already_applied", "baseline_request_sha256": plan["edited_request_sha256"]}
     replay(saved[0], "-held", [False, False])
@@ -1030,7 +1030,7 @@ def check_current_history_test(binary):
         def preview(request, shadow):
             return send(base, "/api/sidecar/preview", {"request":request, "shadow":shadow})[1]
         request = deepcopy(original)
-        request["attributes"]["nexusweave.prefill.probe"] = saved["prefill"]
+        request["attributes"]["a2context.prefill.probe"] = saved["prefill"]
         result = preview(request, saved["shadow"])["history"]["experiment"]
         trial, = result["proposal_tests"]
         assert result["first_token_js_bits"] == saved["prefill"]["scores"]["effects"][0]["js_bits"]
@@ -1041,7 +1041,7 @@ def check_current_history_test(binary):
         other = deepcopy(changed)
         arm = other["effects"][0]
         arm["intervention"]["replacement"] = "Different wording"
-        body = json.loads(original["attributes"]["nexusweave.request.body"])
+        body = json.loads(original["attributes"]["a2context.request.body"])
         body["messages"][2]["content"] = "Dispatch guide: Different wording"
         arm["request_sha256"] = sha256(json.dumps(body,separators=(",",":")).encode()).hexdigest()
         unrelated = preview(original, other)
@@ -1059,7 +1059,7 @@ def check_proposal_coverage(binary, db):
     def observed(name, thread, report):
         span = case_span(name, "undeclared", org=org)
         fields = {**request["attributes"], "gen_ai.operation.name": "chat", "gen_ai.conversation.id": thread,
-                  "nexusweave.organization.id": org, "nexusweave.shadow_probes": [report]}
+                  "a2context.organization.id": org, "a2context.shadow_probes": [report]}
         span["attributes"] = attrs({key: value if isinstance(value, str) else json.dumps(value) for key, value in fields.items()})
         return span
     different = deepcopy(saved)
@@ -1201,13 +1201,13 @@ def check_predecision_recommendations(base):
     assert rejected["unverified_probes"] and not any(item["kind"] == "candidate" for item in rejected["recommendations"])
 
     observed = case_span("measured-routing", "undeclared", org="candidate-validation")
-    body = json.loads(request["attributes"]["nexusweave.request.body"])
+    body = json.loads(request["attributes"]["a2context.request.body"])
     messages = [{"role": item["role"], "parts": [{"type": "text", "content": item["content"]}]}
                 for item in body["messages"]]
     observed["attributes"] = attrs({
         "gen_ai.operation.name": "chat",
-        "nexusweave.organization.id": "candidate-validation",
-        "nexusweave.candidate_probes": json.dumps([candidate]),
+        "a2context.organization.id": "candidate-validation",
+        "a2context.candidate_probes": json.dumps([candidate]),
         "gen_ai.input.messages": json.dumps(messages),
         **{key: value if isinstance(value, str) else json.dumps(value) for key, value in request["attributes"].items()},
     })
@@ -1460,7 +1460,7 @@ def measure_dense_screens(binary):
                       "total_pairs":276, "pairs":pairs}
             span = case_span("dense","undeclared",number=call)
             span["attributes"] = attrs({"gen_ai.operation.name":"chat","gen_ai.conversation.id":f"c{call}",
-                "gen_ai.input.messages":json.dumps(messages),"nexusweave.context_screening":json.dumps(report)})
+                "gen_ai.input.messages":json.dumps(messages),"a2context.context_screening":json.dumps(report)})
             send_traces(base, export(span))
         assert len(get(base, "screened-pairs", offset=8191)["rows"]) == 1
         for iteration in range(21):
@@ -1535,7 +1535,7 @@ def measure_history_preview(binary):
     request = json.loads((folder / "candidate-checks/ash-routing-note.json").read_text())["request"]
     saved = json.loads((folder / "ash-history-check.json").read_text())
     measured = deepcopy(request)
-    measured["attributes"]["nexusweave.prefill.probe"] = saved["prefill"]
+    measured["attributes"]["a2context.prefill.probe"] = saved["prefill"]
     cases = {"history": {"request": request}, "with_current_trial": {"request": measured, "shadow": saved["shadow"]}}
     timings = {name: [] for name in cases}
     with server(binary, None) as base:
@@ -1553,7 +1553,7 @@ def measure_history_preview(binary):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/nexusweave")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/a2context")
     parser.add_argument("--sdk-python", help="Interpreter with OpenTelemetry SDK and OTLP/HTTP exporter installed")
     parser.add_argument("--overload-url", help="Run load only against an isolated persistent sidecar")
     parser.add_argument("--token-page-cost", action="store_true", help="Measure warm reads of the two instrumented demo answers")
@@ -1612,7 +1612,7 @@ def main():
                     for item in entries:
                         item["role"] = "assistant"
                     field["value"]["stringValue"] = json.dumps(entries)
-            chat["attributes"] = [field for field in chat["attributes"] if field["key"] != "nexusweave.context.semantics"]
+            chat["attributes"] = [field for field in chat["attributes"] if field["key"] != "a2context.context.semantics"]
             send_traces(base, export(chat))
             repeated = get(base, "findings", org="dialogue")["rows"][0]
             assert repeated["evidence"]["detail"]["dialogue_only"] and repeated["priority"] == 5
@@ -1674,8 +1674,8 @@ def main():
             sql.execute("PRAGMA user_version = 4")
             sql.execute("UPDATE observations SET detail=json_remove(detail,'$.prior') WHERE kind='replay'")
         lookup = json.loads((ROOT / "examples/redundant-routing/pending-maple.json").read_text())
-        lookup["attributes"].update({"nexusweave.organization.id": "order-check", "nexusweave.user.id": "dispatch-guide",
-                                     "nexusweave.history.source": "otlp"})
+        lookup["attributes"].update({"a2context.organization.id": "order-check", "a2context.user.id": "dispatch-guide",
+                                     "a2context.history.source": "otlp"})
         with server(args.binary, representative, "--capture-content") as base:
             rebuilt = send(base, "/api/sidecar/preview", {"request": lookup})[1]["history"]
             assert rebuilt["edits"] and not rebuilt["truncated"], rebuilt

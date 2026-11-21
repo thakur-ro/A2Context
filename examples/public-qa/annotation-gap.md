@@ -26,8 +26,8 @@ For each method, use a strict threshold above the second-highest score on the te
 To check the published thresholds and counts from the saved pairs, run `python3 examples/public-qa/annotation_gap.py --check-saved`. To repeat the forward passes, use the dataset and pinned CPU environment from the [public QA setup](README.md#repeat-the-model-measurements). The runner checks the dataset, checkpoint weights, tokenizer and runtime. It records both scores for every input. Repeating the run requires no hosted API.
 
 ```sh
-python3 examples/public-qa/annotation_gap.py /tmp/nexus-qa.jsonl.gz /path/to/qwen/snapshot \
-  --output /tmp/nexus-qa-gap.json
+python3 examples/public-qa/annotation_gap.py /tmp/a2context-qa.jsonl.gz /path/to/qwen/snapshot \
+  --output /tmp/a2context-qa-gap.json
 ```
 
 Two complete runs on the same CPU produced byte-identical result files. On the first evaluation pair, scoring each token in its own forward pass agreed with the combined score to within 0.000016 natural-log units in both arms.

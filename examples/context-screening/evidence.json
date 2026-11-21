@@ -17,7 +17,7 @@
         "context_screening": {
           "evidence": {
             "span_id": "2222222222222222",
-            "field": "nexusweave.context_screening",
+            "field": "a2context.context_screening",
             "message_index": null,
             "part_index": null
           },

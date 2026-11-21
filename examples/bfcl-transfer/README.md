@@ -23,7 +23,7 @@ The public V4 base dataset contains 200 multi-turn tasks. Thirteen use only the 
 
 The local agent received the exact benchmark first user message, one staging system instruction and all 18 published travel function schemas. For the tool framework, the official schema types `dict` and `float` become `object` and `number`. Qwen-Agent's Nous formatter and parser handled raw local greedy completions without assistant prefilling. Its registered tools ran the pinned upstream Python TravelAPI methods on a fresh isolated object. The initial database, reference arguments, future user turns and outcomes stayed outside model context. Generated tool responses were fed back to the model.
 
-The state check uses TravelAPI’s native equality. The reference-action check requires each published name and arguments in order among executed calls. The result check requires each reference return value with multiplicity. These tests are stricter than the upstream leaderboard’s state and execution-response checks. This is a six-case calibration for the NexusWeave source-ranking experiment. It covers one local checkpoint, one tool presentation and a single first turn per task. The public benchmark’s presence in model training data is unknown. [Official evaluator](https://github.com/ShishirPatil/gorilla/blob/6ea57973c7a6097fd7c5915698c54c17c5b1b6c8/berkeley-function-call-leaderboard/bfcl_eval/eval_checker/multi_turn_eval/multi_turn_checker.py) · [BFCL paper, Patil et al., ICML 2025](https://proceedings.mlr.press/v267/patil25a.html)
+The state check uses TravelAPI’s native equality. The reference-action check requires each published name and arguments in order among executed calls. The result check requires each reference return value with multiplicity. These tests are stricter than the upstream leaderboard’s state and execution-response checks. This is a six-case calibration for the A2Context source-ranking experiment. It covers one local checkpoint, one tool presentation and a single first turn per task. The public benchmark’s presence in model training data is unknown. [Official evaluator](https://github.com/ShishirPatil/gorilla/blob/6ea57973c7a6097fd7c5915698c54c17c5b1b6c8/berkeley-function-call-leaderboard/bfcl_eval/eval_checker/multi_turn_eval/multi_turn_checker.py) · [BFCL paper, Patil et al., ICML 2025](https://proceedings.mlr.press/v267/patil25a.html)
 
 ## Reproduce
 
@@ -33,9 +33,9 @@ From the repository root, reconstruct the selection, replay the nine known refer
 
 ```sh
 study=examples/bfcl-transfer
-data=/tmp/nexus-bfcl-data
-python "$study/inputs.py" "$data" --fetch > /tmp/nexus-bfcl-selection.json
-cmp /tmp/nexus-bfcl-selection.json "$study/selection.json"
+data=/tmp/a2context-bfcl-data
+python "$study/inputs.py" "$data" --fetch > /tmp/a2context-bfcl-selection.json
+cmp /tmp/a2context-bfcl-selection.json "$study/selection.json"
 python "$study/run.py" --upstream "$data" --check "$study/results.json"
 ```
 

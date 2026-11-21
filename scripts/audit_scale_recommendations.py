@@ -91,7 +91,7 @@ def main():
         db.execute("BEGIN")
         for workflow in args.workflows:
             trace_cache = {}
-            cards = {"nexusweave": api(base, "findings", workflow=workflow)["rows"][:5]}
+            cards = {"a2context": api(base, "findings", workflow=workflow)["rows"][:5]}
             for sort in ("frequency", "recency"):
                 cards[sort] = baseline(db, workflow, sort)
             report[workflow] = {
@@ -100,7 +100,7 @@ def main():
                              for name, rows in cards.items()},
             }
             counts = Counter(card.get("evidence_class", card["kind"])
-                             for card in report[workflow]["rankings"]["nexusweave"])
+                             for card in report[workflow]["rankings"]["a2context"])
             print(workflow, dict(counts))
     args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 

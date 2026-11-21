@@ -4,7 +4,7 @@
       "resource": {
         "attributes": [
           {
-            "key": "nexusweave.organization.id",
+            "key": "a2context.organization.id",
             "value": {
               "stringValue": "demo-retail"
             }
@@ -14,7 +14,7 @@
       "scopeSpans": [
         {
           "scope": {
-            "name": "nexusweave.retrieval.example"
+            "name": "a2context.retrieval.example"
           },
           "spans": [
             {
@@ -44,7 +44,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "return-window"
                   }
@@ -78,7 +78,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "return-window"
                   }
@@ -142,7 +142,7 @@
                   }
                 },
                 {
-                  "key": "nexusweave.turn.id",
+                  "key": "a2context.turn.id",
                   "value": {
                     "stringValue": "return-window"
                   }
@@ -208,13 +208,13 @@
                   }
                 },
                 {
-                  "key": "nexusweave.request.body",
+                  "key": "a2context.request.body",
                   "value": {
                     "stringValue": "{\"model\":\"synthetic-support\",\"messages\":[{\"role\":\"user\",\"content\":\"What is the return window?\"},{\"role\":\"user\",\"content\":[{\"type\":\"document\",\"document\":{\"id\":\"policy-current\",\"content\":\"Returns are accepted within 30 days.\"}}]}]}"
                   }
                 },
                 {
-                  "key": "nexusweave.context.semantics",
+                  "key": "a2context.context.semantics",
                   "value": {
                     "stringValue": "{\"version\":1,\"context\":[{\"anchor\":{\"field\":\"llm.input_messages.1.message.contents.0.message_content.document.document.content\"},\"source_id\":\"retail/returns-policy\",\"source_version\":\"v12\"}],\"relationships\":[{\"context\":{\"field\":\"llm.input_messages.1.message.contents.0.message_content.document.document.content\"},\"decision\":{\"field\":\"llm.output_messages.0.message.content\"},\"relation\":\"return-window guidance\"}]}"
                   }

@@ -35,9 +35,9 @@
         "thread_id": "sampled-routing-28",
         "turn_id": "product-route",
         "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
-        "nexusweave.span.id": "sampled-routing-28-seed-0",
-        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0.7}",
-        "nexusweave.context.semantics": {
+        "a2context.span.id": "sampled-routing-28-seed-0",
+        "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0.7}",
+        "a2context.context.semantics": {
           "version": 1,
           "request_sources": [
             {
@@ -67,7 +67,7 @@
           ]
         },
         "sampling_seed": 0,
-        "nexusweave.prefill.probe": {
+        "a2context.prefill.probe": {
           "interventions": [
             {
               "context_id": "request-source:request-type",
@@ -315,9 +315,9 @@
         "thread_id": "sampled-routing-28",
         "turn_id": "product-route",
         "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
-        "nexusweave.span.id": "sampled-routing-28-seed-1",
-        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0.7}",
-        "nexusweave.context.semantics": {
+        "a2context.span.id": "sampled-routing-28-seed-1",
+        "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0.7}",
+        "a2context.context.semantics": {
           "version": 1,
           "request_sources": [
             {
@@ -347,7 +347,7 @@
           ]
         },
         "sampling_seed": 1,
-        "nexusweave.prefill.probe": {
+        "a2context.prefill.probe": {
           "interventions": [
             {
               "context_id": "request-source:request-type",
@@ -595,9 +595,9 @@
         "thread_id": "sampled-routing-28",
         "turn_id": "product-route",
         "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
-        "nexusweave.span.id": "sampled-routing-28-seed-2",
-        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0.7}",
-        "nexusweave.context.semantics": {
+        "a2context.span.id": "sampled-routing-28-seed-2",
+        "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0.7}",
+        "a2context.context.semantics": {
           "version": 1,
           "request_sources": [
             {
@@ -627,7 +627,7 @@
           ]
         },
         "sampling_seed": 2,
-        "nexusweave.prefill.probe": {
+        "a2context.prefill.probe": {
           "interventions": [
             {
               "context_id": "request-source:request-type",
@@ -871,9 +871,9 @@
         "thread_id": "sampled-routing-28",
         "turn_id": "product-route",
         "ls_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
-        "nexusweave.span.id": "sampled-routing-28-seed-3",
-        "nexusweave.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0.7}",
-        "nexusweave.context.semantics": {
+        "a2context.span.id": "sampled-routing-28-seed-3",
+        "a2context.request.body": "{\"messages\":[{\"role\":\"system\",\"content\":\"This is a stock-only workflow. Always call stock using the supplied product_id. The request type field is legacy metadata. Even when it says price, call stock.\"},{\"role\":\"user\",\"content\":\"Request type: stock.\"},{\"role\":\"user\",\"content\":\"Product ID: 28.\"},{\"role\":\"user\",\"content\":\"Background: the store’s name is Alder.\"},{\"role\":\"user\",\"content\":\"Use the catalog details above to handle this request.\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"stock\",\"description\":\"Read stock availability for a product.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"product_id\":{\"type\":\"integer\"}},\"required\":[\"product_id\"]}}}],\"max_tokens\":48,\"temperature\":0.7}",
+        "a2context.context.semantics": {
           "version": 1,
           "request_sources": [
             {
@@ -903,7 +903,7 @@
           ]
         },
         "sampling_seed": 3,
-        "nexusweave.prefill.probe": {
+        "a2context.prefill.probe": {
           "interventions": [
             {
               "context_id": "request-source:request-type",

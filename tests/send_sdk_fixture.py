@@ -36,7 +36,7 @@ def emit(document, endpoint):
         provider.add_span_processor(BatchSpanProcessor(exporter, max_export_batch_size=32))
         try:
             for scope in batch["scopeSpans"]:
-                tracer = provider.get_tracer("nexusweave.fixture")
+                tracer = provider.get_tracer("a2context.fixture")
                 for record in scope["spans"]:
                     ids.record = record
                     context = Context()

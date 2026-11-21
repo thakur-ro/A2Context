@@ -26,7 +26,7 @@ def check(binary, folder, cases, sdk_python):
         # Without a trial the first suggestion cannot supply a matched comparison.
         partial = deepcopy(traces[0])
         record = span(partial)
-        record["attributes"] = [a for a in record["attributes"] if a["key"] != "nexusweave.shadow_probes"]
+        record["attributes"] = [a for a in record["attributes"] if a["key"] != "a2context.shadow_probes"]
         send_traces(base, partial)
         for i, trace in enumerate(traces[1:]):
             (second_sender if i % 2 == 0 else send_traces)(base, trace)

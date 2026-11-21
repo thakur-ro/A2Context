@@ -73,7 +73,7 @@ To reproduce the capture comparison after downloading the pinned inputs, build t
 
 ```sh
 cargo build --locked
-python3 examples/airline-transfer/check_capture.py --data /tmp/airline-study --binary target/debug/nexusweave --check
+python3 examples/airline-transfer/check_capture.py --data /tmp/airline-study --binary target/debug/a2context --check
 ```
 
 To inspect a substitution yourself, export one reconstructed request and choose it in the dashboard’s **Before inference** view. Task 32 replaces a reservation lookup with a placeholder while preserving its source label. Open **Inspect differing fragments** to see the JSON field, its byte range and the two digests. The file contains public simulated conversation history.
@@ -140,13 +140,13 @@ Yes. On the saved inventory question, removing the assistant’s structured call
 
 ## Release scope
 
-A source preview can ship the deterministic checks, trace adapters, UI and reproducible experiments. The sidecar and browser journeys have scripted fixture coverage. The full local release target passed on commit `75cf70e`, including the runtime image and packaged crate. GitHub reported a failed run on that same commit. We track hosted validation separately. [Hosted run](https://github.com/thakur-ro/NexusWeave/actions/runs/44824991943) The public QA examples now include upstream data notices and an article index for the 62 questions used in the passage studies. The SQuAD transfer example ships identifiers, labels, hashes and measurements, with the full text downloaded separately for reproduction. [QA data credits](../examples/public-qa/data-credits.md) · [SQuAD source and license](https://rajpurkar.github.io/SQuAD-explorer/)
+A source preview can ship the deterministic checks, trace adapters, UI and reproducible experiments. The sidecar and browser journeys have scripted fixture coverage. The full local release target passed on commit `75cf70e`, including the runtime image and packaged crate. GitHub reported a failed run on that same commit. We track hosted validation separately. [Hosted run](https://github.com/thakur-ro/A2Context/actions/runs/44824991943) The public QA examples now include upstream data notices and an article index for the 62 questions used in the passage studies. The SQuAD transfer example ships identifiers, labels, hashes and measurements, with the full text downloaded separately for reproduction. [QA data credits](../examples/public-qa/data-credits.md) · [SQuAD source and license](https://rajpurkar.github.io/SQuAD-explorer/)
 
 Inference accuracy and deployment cost require separate evidence on the target workflow. [Validation and resource measurements](validation.md) · [Dataset and software credits](../CREDITS.md)
 
 The catalog map has a scripted 1,200-function desktop and mobile test. It follows verified proposals through individual source edits, rejects stale evidence, and finds a function at the end of a large catalog. [Reproduce the investigation](guide.md#check-the-advertised-tools-before-inference)
 
-The remaining usability check requires an engineer who has never used NexusWeave. Give them the saved exchange demo and ask, “Did refreshing consent fix the order? Show what happened to the pending order and where you found it.” Record their first action, whether they find both the conflicting sources and the SQLite receipt, and where they need help. Desktop and mobile scripts exercise those controls. We have yet to observe an unfamiliar engineer complete this task.
+The remaining usability check requires an engineer who has never used A2Context. Give them the saved exchange demo and ask, “Did refreshing consent fix the order? Show what happened to the pending order and where you found it.” Record their first action, whether they find both the conflicting sources and the SQLite receipt, and where they need help. Desktop and mobile scripts exercise those controls. We have yet to observe an unfamiliar engineer complete this task.
 
 
 ## What to learn from the first preview

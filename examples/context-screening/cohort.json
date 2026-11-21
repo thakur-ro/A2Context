@@ -17,7 +17,7 @@
         "context_screening": {
           "evidence": {
             "span_id": "0000000000000065",
-            "field": "nexusweave.context_screening",
+            "field": "a2context.context_screening",
             "message_index": null,
             "part_index": null
           },
@@ -197,7 +197,7 @@
         "context_screening": {
           "evidence": {
             "span_id": "0000000000000066",
-            "field": "nexusweave.context_screening",
+            "field": "a2context.context_screening",
             "message_index": null,
             "part_index": null
           },
@@ -457,7 +457,7 @@
         "context_screening": {
           "evidence": {
             "span_id": "0000000000000067",
-            "field": "nexusweave.context_screening",
+            "field": "a2context.context_screening",
             "message_index": null,
             "part_index": null
           },
@@ -637,7 +637,7 @@
         "context_screening": {
           "evidence": {
             "span_id": "0000000000000068",
-            "field": "nexusweave.context_screening",
+            "field": "a2context.context_screening",
             "message_index": null,
             "part_index": null
           },

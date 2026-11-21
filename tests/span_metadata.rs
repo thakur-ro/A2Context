@@ -1,7 +1,7 @@
-use nexusweave::{inspect, langsmith, otlp, replay, Availability, Basis, FindingKind, Run};
+use a2context::{inspect, langsmith, otlp, replay, Availability, Basis, FindingKind, Run};
 use serde_json::{json, Value};
 
-const SEMANTICS: &str = "nexusweave.context.semantics";
+const SEMANTICS: &str = "a2context.context.semantics";
 const BODY: &str = r#"{ "messages": [{"role":"system","content":"Use 30 days."},{"role":"user","content":"Use 60 days."}], "seed": 9223372036854775807 }"#;
 
 fn declarations(first: Value, second: Value, decision: Value) -> Value {
@@ -26,8 +26,8 @@ fn otlp_export(metadata: &Value) -> Value {
         "attributes":[
             {"key":"gen_ai.operation.name","value":{"stringValue":"chat"}},
             {"key":"gen_ai.conversation.id","value":{"stringValue":"otel-thread"}},
-            {"key":"nexusweave.organization.id","value":{"stringValue":"retail"}},
-            {"key":"nexusweave.user.id","value":{"stringValue":"shopper"}},
+            {"key":"a2context.organization.id","value":{"stringValue":"retail"}},
+            {"key":"a2context.user.id","value":{"stringValue":"shopper"}},
             {"key":"gen_ai.input.messages","value":{"stringValue":json!([
                 {"role":"system","parts":[{"type":"text","content":"Use 30 days."}]},
                 {"role":"user","parts":[{"type":"text","content":"Use 60 days."}]}
@@ -36,7 +36,7 @@ fn otlp_export(metadata: &Value) -> Value {
                 {"role":"assistant","parts":[{"type":"text","content":"30 days."}]}
             ]).to_string()}},
             {"key":SEMANTICS,"value":{"stringValue":metadata.to_string()}},
-            {"key":"nexusweave.request.body","value":{"stringValue":BODY}}
+            {"key":"a2context.request.body","value":{"stringValue":BODY}}
         ]
     }]}]}]})
 }
@@ -63,8 +63,8 @@ fn otlp_declarations() -> Value {
 fn langsmith_export() -> Value {
     let mut metadata = json!({
         "organization_id":"retail", "user_id":"shopper", "thread_id":"langsmith-thread",
-        "nexusweave.span.id":"ls-call",
-        "nexusweave.request.body":BODY
+        "a2context.span.id":"ls-call",
+        "a2context.request.body":BODY
     });
     metadata[SEMANTICS] = declarations(
         json!({"field":"inputs.messages[0].content"}),
@@ -94,12 +94,12 @@ fn binds_request_fragments_in_otlp_and_langsmith() {
     let mut metadata = otlp_declarations();
     metadata["context"][0]["request_fragment"] = fragment.clone();
     let mut export = otlp_export(&metadata);
-    set_otlp_attribute(&mut export, "nexusweave.request.body", body.clone());
+    set_otlp_attribute(&mut export, "a2context.request.body", body.clone());
     let mut runs = otlp::import(&export).unwrap();
     let mut export = langsmith_export();
     let metadata = &mut export["extra"]["metadata"];
     metadata[SEMANTICS]["context"][0]["request_fragment"] = fragment.clone();
-    metadata["nexusweave.request.body"] = json!(body);
+    metadata["a2context.request.body"] = json!(body);
     runs.extend(langsmith::import(&export).unwrap());
     let inspection = inspect(&runs).unwrap();
     for (run, capture) in runs.iter().zip(&inspection.capture_profiles) {
@@ -142,7 +142,7 @@ fn projects_source_text_from_one_captured_message_and_links_it_to_decisions() {
     let mut export = otlp_export(&declaration(
         json!({"field":"gen_ai.output.messages","message_index":0,"part_index":0}),
     ));
-    set_otlp_attribute(&mut export, "nexusweave.request.body", body.clone());
+    set_otlp_attribute(&mut export, "a2context.request.body", body.clone());
     set_otlp_attribute(
         &mut export,
         "gen_ai.input.messages",
@@ -152,7 +152,7 @@ fn projects_source_text_from_one_captured_message_and_links_it_to_decisions() {
     let mut export = langsmith_export();
     export["inputs"]["messages"] = json!([{"role":"system","content":prompt}]);
     export["extra"]["metadata"][SEMANTICS] = declaration(json!({"field":"outputs.output"}));
-    export["extra"]["metadata"]["nexusweave.request.body"] = json!(body);
+    export["extra"]["metadata"]["a2context.request.body"] = json!(body);
     runs.extend(langsmith::import(&export).unwrap());
     let view = inspect(&runs).unwrap();
     assert_eq!(view.findings.len(), 2);
@@ -224,7 +224,7 @@ fn leaves_original_evidence_usable_when_request_source_declarations_fail() {
         export
     };
     let mut missing = make_export();
-    missing["extra"]["metadata"]["nexusweave.request.body"] = json!("{");
+    missing["extra"]["metadata"]["a2context.request.body"] = json!("{");
     let mut invalid = make_export();
     invalid["extra"]["metadata"][SEMANTICS]["request_sources"][0]["request_fragment"]
         ["text_range"]["end_byte"] = json!(300);
@@ -304,7 +304,7 @@ fn combines_versioned_rule_findings_across_importers_and_verifies_captured_repla
         let capture = call.recorded_request.as_ref().unwrap();
         assert_eq!(capture.body, BODY);
         assert_eq!(capture.evidence.span_id, call.span_id);
-        assert!(capture.evidence.field.contains("nexusweave.request.body"));
+        assert!(capture.evidence.field.contains("a2context.request.body"));
 
         let mut case: replay::Case = serde_json::from_value(json!({
             "version":1, "id":"withhold-policy", "runner_id":"synthetic",
@@ -365,8 +365,7 @@ fn combines_versioned_rule_findings_across_importers_and_verifies_captured_repla
         "scope":{"kind":"user","organization_id":"retail","user_id":"shopper"}
     }))
     .unwrap();
-    let coverage =
-        nexusweave::source_profiles::query::query(&query, runs.iter(), &[], &[]).unwrap();
+    let coverage = a2context::source_profiles::query::query(&query, runs.iter(), &[], &[]).unwrap();
     assert_eq!(coverage["source"]["occurrence_count"], 2);
     assert_eq!(coverage["source"]["conversation_count"], 2);
     assert_eq!(coverage["source"]["linked_decision_count"], 2);
