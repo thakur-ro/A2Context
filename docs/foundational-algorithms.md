@@ -31,6 +31,8 @@ The sidecar already captures supported spans, indexes source references and grou
 
 In the first pilot, start from empty state on a previously unseen tool-using workflow and a retrieval workflow. Use normal usage, then have engineers review a small sample after suggestions appear. Compare the proposed recommender with the current feed on the same traffic at the same notification and compute budgets. Report by workflow, including those with zero useful findings. Promote the new ranking only when it improves confirmed usefulness without increasing reviewer burden or exceeding the deployment's agreed latency and cost limits. This review measures A2Context and imposes no eval setup on the team using it.
 
+The frozen feed surfaced zero suggestions on both public pilot workflows. A follow-up found a tool description that named an absent tool. Correcting the description increased first-step tool use on zero paired trials and decreased it on two. Future recommenders can use these sessions for development. Another prospective test needs fresh workflows. [Pilot and intervention results](../examples/ordinary-usage/README.md)
+
 ## A score for the monitored workflow
 
 **Proposed measure.** Report the percentage of assessable runs that passed a named set of operational checks. Start with one capability, such as tool handoffs. An example check asks whether a tool result designated for delivery appears in the next model request with its invocation ID. Apply that check only to runs with a handoff due. Intentional termination, an expected human wait and legitimate result transformations need explicit treatment in the check definition. Publish the check set and version. Teams can use the built-in checks without supplying test cases or grading answers.

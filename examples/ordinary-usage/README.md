@@ -16,6 +16,8 @@ The frozen sidecar produced **zero recommendations** on ten development sessions
 
 The project owner volunteered to review the quiet-session sample. These observations are the implementer’s reading of the outputs. Independent dispositions are pending. This pilot uses a small local model, project material and one person’s engineering questions. [Per-request record and application output digests](first-pass.json)
 
+We tested one possible explanation after the pilot. One tool description referred to an unavailable tool. Correcting the description produced fewer first-step tool proposals on the same inputs. [Controlled edit, including unchanged repeats](catalog-edit.md)
+
 ## Reproduce
 
 Use the current pilot scripts and build the sidecar binary from the revision pinned in the protocol. Start a loopback MLX server with `lmstudio-community/LFM2.5-1.2B-Instruct-MLX-8bit` loaded as its default model. The original run used a 512-token server default. The capture listener forwards only chat completions to that local port. It records model traffic and application exits. Tool execution inside the SQLite plugin and PaperQA’s local search operations have no execution spans in this setup.

@@ -123,6 +123,8 @@ The comparison reused one warm Qwen2.5-0.5B-Instruct model on an arm64 macOS hos
 
 The measured median difference was **+0.193 ms**. This is a short single-host inference workload. It does not establish latency for hosted models, other exporters, or concurrent production workflows.
 
+At `efc5332`, we repeated the 72-calls-per-arm test twice. In the first pass, other local validation work overlapped and p95 moved from 94.169 to 100.846 ms. After ending that workload, baseline p95 was 89.696 ms and sidecar p95 was 90.019 ms (**+0.323 ms**). The corresponding medians were 88.895 and 89.095 ms. Each pass captured all 72 treatment requests. The difference between passes illustrates the limits of inferring production overhead from one host.
+
 ```sh
 # Use an environment with the OTLP SDK, torch==2.11.0 and transformers==4.57.6.
 python3 scripts/measure_exporter_latency.py /path/to/pinned/qwen/snapshot \
@@ -130,6 +132,37 @@ python3 scripts/measure_exporter_latency.py /path/to/pinned/qwen/snapshot \
 ```
 
 ## Constrained overload
+
+### Time until a recommendation is readable
+
+At revision `efc5332`, a fresh Linux sidecar handled **1,024 single-call traces in 7.954 seconds**. Each batch included seven valid tool-result references and one orphan. Each tool result contained 4 KiB of text. Eight client workers shared a target rate of 16 batches per second. After each successful export, the client fetched that batch’s user-scoped feed and checked the affected trace and exact message pointer. This times the OTLP send through the readable recommendation, including the HTTP read. Exporter buffering before the send and browser rendering fall outside the measurement.
+
+| Arm64 Linux, one vCPU and 512 MiB | Result |
+| --- | ---: |
+| First batch, send to readable finding | 13.857 ms |
+| Median / p95 across 128 batches | 14.714 / 17.530 ms |
+| Queue drops / retry attempts | 0 / 0 |
+| Most recent worker processing lag | 2 ms |
+| Peak sidecar cgroup memory / OOM kills | 35.25 MiB / 0 |
+| Sidecar CPU per 1,000 calls | 1.414 CPU-seconds |
+| Additional analysis model spend per 1,000 calls | $0 |
+
+The score counted 896 clear and 128 affected traces. The sidecar consumed 1.448 CPU-seconds in the measurement window. Peak memory includes the process and its cgroup’s page cache. At this sustained throughput, 1,000 calls occupy 7.77 seconds of a provisioned replica. At a deployment price of `R` dollars per replica-hour, that time costs `7.77 × R / 3600` dollars, before storage and idle time. The pilot did not incur a metered infrastructure charge.
+
+Use a fresh scratch database and a separate client container. The measured sidecar was a statically linked Linux release binary mounted into an existing Alpine image. The normal release image can run the same workload.
+
+```sh
+docker build -t a2context:visibility .
+sidecar=$(docker run --rm -d --cpus=1 --memory=512m --memory-swap=512m \
+  a2context:visibility --db /state/visibility.sqlite --capture-content)
+docker exec "$sidecar" cat /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/cpu.max /sys/fs/cgroup/memory.max
+docker run --rm --network "container:$sidecar" -v "$PWD/scripts:/bench:ro" \
+  python:3.13-alpine python /bench/measure_finding_latency.py http://127.0.0.1:8040
+docker exec "$sidecar" cat /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory.events
+docker stop "$sidecar"
+```
+
+### Burst and retry recovery
 
 With the source drill-down enabled, ten warm reads of a category’s source groups followed by its leading group’s conversations took a median of **19.28 ms per pair**. The overview and first factor page took 17.13 ms per pair. The sidecar retained all 2,304 traces after 139 of 192 batches needed a retry. It peaked at **49.0 MiB** under the one-CPU, 512 MiB limit, with zero OOM events. The reads ran after the conflict-only burst finished. These timings measure dashboard access, not inference latency.
 
