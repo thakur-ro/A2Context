@@ -392,6 +392,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 "/api/sidecar/chat-config" => json!({"models":[]}),
                 "/api/sidecar/workflows" => json!({"workflows":store.workflows()?}),
                 "/api/sidecar/activity-search" => store.search_activity(&fields)?,
+                "/api/sidecar/recent-tool-names" => store.recent_tool_names(&fields)?,
                 "/api/sidecar/health" => json!({
                     "demo": demo, "content_capture": options.content || demo,
                     "otlp_http_endpoint": format!("http://{}/v1/traces", options.address),
@@ -709,6 +710,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
             (
                 "/context-network.js",
                 include_bytes!("../../ui/context-network.js"),
+            ),
+            (
+                "/interview-plan.js",
+                include_bytes!("../../ui/interview-plan.js"),
             ),
             (
                 "/sidecar-canvas.js",

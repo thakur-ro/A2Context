@@ -1,7 +1,7 @@
 "use strict";
 
 // The scores on a page share the recorded output prefix at each position.
-function tokenPath(card, {sharePosition = true, inline = false, filters = scope} = {}) {
+function tokenPath(card, {sharePosition = true, inline = false, filters = scope, position} = {}) {
   const {detail} = card.evidence;
   const {landmark, location: measured} = detail;
   const pageSize = 16;
@@ -145,8 +145,7 @@ function tokenPath(card, {sharePosition = true, inline = false, filters = scope}
     }
   }
   const linked = sharePosition && /^#output-token-([1-9]\d*)$/.exec(window.location.hash);
-  const position = linked ? linked[1] : linkedSelection.get("output-token");
-  const requested = Number(position)-1;
+  const requested = Number(position ?? (linked ? linked[1] : linkedSelection.get("output-token")))-1;
   load(Number.isSafeInteger(requested) && requested >= 0 && requested < landmark.total_tokens ? requested : landmark.token);
   return region;
 }

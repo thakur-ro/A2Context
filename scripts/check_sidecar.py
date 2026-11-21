@@ -233,6 +233,12 @@ def check_thread_calls(binary, folder):
         assert get(base, "activity-search", q="order rejected", org="another-org")["rows"] == []
         assert get(base, "activity-search", q="order rejected", after="2026-10-13")["rows"] == []
         assert get(base, "activity-search", q="order rejected cloudberry")["partial_match"]
+        assert get(base, "activity-search", q="order rejected cloudberry", match="all")["rows"] == []
+        assert get(base, "recent-tool-names", org="thread-test")["tools"] == ["update_order"]
+        assert get(base, "activity-search", q="update_order", tool="update_order")["rows"] == [hit]
+        assert get(base, "activity-search", q="update_order", tool="unknown")["rows"] == []
+        for restriction in [{"org": "another-org"}, {"after": "2026-10-13"}, {"user": "other"}]:
+            assert get(base, "recent-tool-names", **restriction)["tools"] == []
         assert get(base, "activity-search", q='"*"')["rows"] == []
         unthreaded = deepcopy(tool)
         unthreaded.update(traceId=f"{391:032x}", spanId=f"{391:016x}")

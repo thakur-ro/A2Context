@@ -44,6 +44,7 @@ try {
   });
   await page.goto(new URL("/", base).href);
   await page.getByRole("heading",{name:"What would you like to investigate?",exact:true}).waitFor();
+  if (model) await page.getByLabel("Analysis partner").selectOption(model);
 
   const encoder = spawn(process.env.FFMPEG || "ffmpeg", [
     "-hide_banner", "-loglevel", "error", "-n", "-f", "image2pipe", "-framerate", String(fps),
@@ -118,26 +119,21 @@ try {
   try {
     await read("The workspace briefing shows the conversations and what keeps coming up.", 3.3);
     caption = "";
-    await typeQuestion("What did verify_customer return?");
+    await typeQuestion(model ? "Was the shopper’s identity confirmed?" : "What did verify_customer return?");
     const canvas = page.getByRole("region",{name:"Answer canvas"});
     await canvas.getByRole("heading",{name:"Matching recorded activity"}).waitFor();
     await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
-    await read("Ask what a tool returned from the workspace.", 2.4, canvas, 66);
+    await read("The verification tool recorded a successful check.", 2.4, canvas, 66);
     caption = "";
-    await typeQuestion("Show call 1");
-    await canvas.getByRole("heading",{name:"Captured call 1",exact:true}).waitFor();
+    const example = /^Call (\d+)/.exec(await canvas.getByRole("heading",{name:/^Call \d/}).first().innerText())[1];
+    await typeQuestion("Show call " + example);
+    await canvas.getByRole("heading",{name:"Captured call " + example,exact:true}).waitFor();
     await read("The supporting call appears in the interview.", 2.2, canvas, 66);
     caption = "";
     await click(page.getByRole("navigation",{name:"Workflows"}).getByRole("link",{name:"Exchange agent",exact:true}));
     await page.getByRole("heading",{name:"Exchange agent",exact:true}).waitFor();
     await read("The exchange workflow has its own stats and a recommended investigation.", 2.6);
-    if (model) {
-      const picker = page.getByLabel("Analysis partner");
-      await click(picker);
-      await picker.press("Escape");
-      await picker.selectOption(model);
-      await read("Ask " + model + " about the evidence captured for this workflow.", 2);
-    }
+    if (model) await page.getByLabel("Analysis partner").selectOption(model);
     caption = "";
     await typeQuestion("Which instructions disagreed?");
     for (let i = 0; i < 15; i++) await frame();
@@ -162,11 +158,14 @@ try {
     caption = "";
     await click(page.getByRole("navigation",{name:"Workflows"}).getByRole("link",{name:"All workflows",exact:true}));
     await page.getByRole("heading",{name:"Welcome to NexusWeave",exact:true}).waitFor();
-    await typeQuestion("Show the token-position diagram in Returns demo");
+    await typeQuestion("Which words were sensitive to the refund policy in Returns demo?");
     const tokens = canvas.getByRole("table",{name:"Measured source edits by output token"});
     await tokens.waitFor();
-    await click(tokens.getByRole("button",{name:/Token 14 ·/}));
-    await read("The saved returns experiment shows how editing each source changed the score at this token.", 4.5, tokens, 114);
+    await read("Editing the refund policy changed the score for the number in the refund time.", 3, tokens, 114);
+    caption = "";
+    await typeQuestion("What about position 6?");
+    await canvas.getByRole("heading",{name:/Token 6 of 16/}).waitFor();
+    await read("At the earlier number, the largest measured change came from editing the returns policy.", 3.2, tokens, 114);
   } finally {
     encoder.stdin.end();
     const [status] = await done;

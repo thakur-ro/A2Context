@@ -6,6 +6,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROME_BINAR
 try {
   for (const [viewport, colorScheme] of [[{width:1152,height:740},"light"],[{width:390,height:844},"dark"]]) {
     const page = await browser.newPage({ viewport, colorScheme });
+    await page.route("**/api/sidecar/chat-config*",route => route.fulfill({json:{models:[]}}));
     const errors = [];
     const externalRequests = [];
     page.on("pageerror", error => errors.push(error.message));
@@ -152,6 +153,12 @@ try {
     assert.equal(page.url(),homeUrl);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
     if (process.env.CANVAS_CAPTURE) await page.screenshot({path:process.env.CANVAS_CAPTURE+"-tokens-"+viewport.width+".png"});
+    await submit("What about position 6?");
+    await canvas.getByRole("heading",{name:/Token 6 of 16/}).waitFor();
+    await canvas.getByText(/Editing returns-policy lowered this token’s probability/).waitFor();
+    await submit("Show position 17");
+    await canvas.getByRole("heading",{name:"Position outside the recorded answer"}).waitFor();
+    assert.equal(page.url(),homeUrl);
     await page.goto(new URL("/?explore=1&workflow=exchange-agent",base).href);
     const lead = page.getByRole("link", { name: /See what changed at dispatch/ });
     await lead.getByRole("heading", { name: "See what changed at dispatch", exact: true }).waitFor();
@@ -214,6 +221,61 @@ try {
     assert.deepEqual(externalRequests, []);
     await page.close();
   }
+  {
+    const page = await browser.newPage({reducedMotion:"reduce"});
+    await page.route("**/api/sidecar/chat-config*",route => route.fulfill({json:{models:["test-partner"]}}));
+    let plans = 0;
+    await page.route("**/api/chat/completions",async route => {
+      const packet = route.request().postDataJSON().messages[1].content;
+      let content;
+      if (packet.startsWith("Available reads:")) {
+        plans++;
+        if (packet.includes('Question: "Did the shopper pass identification?"')) {
+          content = /^(T\d+) = "Read the proposal or result for tool verify customer"/m.exec(packet)?.[1];
+        } else if (packet.includes('Question: "Was that actually completed?"')) content = "SHOWN";
+        else content = /^(F\d+) = "Compare both outcomes/m.exec(packet)?.[1];
+      } else {
+        const {calls} = JSON.parse(packet);
+        const results = calls.flatMap(call => call.lines).filter(line => line.text.includes('Tool result · verify_customer'));
+        content = JSON.stringify({sources:results.map(line => line.id),answer:"Model prose cannot supply chart values."});
+      }
+      assert.ok(content);
+      await route.fulfill({json:{choices:[{message:{content}}]}});
+    });
+    await page.goto(base.href);
+    const input = page.getByLabel("Question about workflow evidence");
+    const canvas = page.getByRole("region",{name:"Answer canvas"});
+    const submit = async q => {await input.fill(q); await input.press("Enter");};
+    await submit("Did the shopper pass identification?");
+    await canvas.getByText("Excerpts selected by test-partner").waitFor();
+    await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).waitFor();
+    await canvas.getByText("3 retrieved calls returned the same result. Showing one example.").waitFor();
+    assert.equal(await canvas.locator("a2ui-card").count(),1);
+    await submit("Was that actually completed?");
+    await canvas.getByRole("heading",{name:"From the recorded calls"}).waitFor();
+    await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
+    await submit("Lay the two endings side by side.");
+    await canvas.getByRole("region",{name:"Sandbox dispatch comparison"}).waitFor();
+    assert.equal(plans,3);
+    assert.equal(page.url(),base.href);
+    // A second experiment exercises disambiguation. Select the genuine recorded report to verify its path.
+    await page.route("**/api/sidecar/findings?*",async route => {
+      if (new URL(route.request().url()).searchParams.get("kind") !== "token") return route.continue();
+      const response = await route.fetch();
+      const payload = await response.json();
+      const other = structuredClone(payload.rows[0]);
+      other.evidence.detail.report_id = "other-experiment";
+      other.evidence.thread = "Other recorded answer";
+      await route.fulfill({json:{...payload,rows:[other,...payload.rows]}});
+    });
+    await submit("Show the token-position diagram");
+    await canvas.getByRole("heading",{name:"Which measured answer?"}).waitFor();
+    await submit("Show measurement 2");
+    await canvas.getByRole("table",{name:"Measured source edits by output token"}).waitFor();
+    await submit("What about position 6?");
+    await canvas.getByRole("heading",{name:/Token 6 of 16/}).waitFor();
+    await page.close();
+  }
   if (process.env.CHAT_MODEL) {
     const page = await browser.newPage();
     await page.goto(new URL("/?workflow=exchange-agent",base).href);
@@ -221,15 +283,14 @@ try {
     const input = page.getByLabel("Question about workflow evidence");
     const answer = page.getByRole("region",{name:"Answer canvas"});
     for (const [question,expected] of [
-      ["Which source supplied the value hold for the second order?",'"hold"'],
+      ["Was the shopper’s identity confirmed?",'Tool result · verify_customer · {"verified": true}'],
       ["What changed at dispatch?","exchange requested"],
       ["Where else did that repeat?","Wait on the second exchange"],
     ]) {
       await input.fill(question);
       await input.press("Enter");
       await answer.getByText(question,{exact:true}).waitFor({timeout:65000});
-      await answer.getByText(expected,{exact:true}).waitFor();
-      assert.equal(await answer.locator(".partner-name").innerText(), question.includes("dispatch") ? "Sandbox replay" : process.env.CHAT_MODEL);
+      await answer.getByText(expected,{exact:true}).first().waitFor({timeout:65000});
     }
     await page.close();
     console.log("Verified the live partner journey and the measured dispatch receipt.");

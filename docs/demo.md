@@ -14,7 +14,7 @@ cargo run --locked -- demo
 
 Open the address it prints. The demo loads saved telemetry and measurements into a temporary SQLite database. It requires no API key.
 
-From the workspace homepage, type **What did verify_customer return?** to find the tool result without knowing the conversation name. Ask **Show call 1** to read the supporting record in the interview.
+From the workspace homepage, type **What did verify_customer return?** to find the tool result without knowing the conversation name. With a model connected, ask **Was the shopper’s identity confirmed?** The recording uses a local model for that question. Type **Show call** and the number next to the result to read the supporting record. [Connect a model](chat-canvas.md#connect-a-model)
 
 1. The welcome page shows workspace totals and recurring themes. Choose **Exchange agent** for its stats and recommended investigation. Ask **Which instructions disagreed?** to compare the cached approval with the customer’s hold.
 2. Type **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
@@ -22,7 +22,7 @@ From the workspace homepage, type **What did verify_customer return?** to find t
 
 To follow the conversation directly, type **Read conversation “Wait on the second exchange”**. Start with the verification and order lookups, then ask **What happened next?** to see the next calls. Ask for a call by number to see its captured inputs and available results.
 
-From **All workflows**, ask **Show the token-position diagram in Returns demo**. The saved return-and-refund experiment opens in the interview. Select token 14 to see the effect of editing the refund policy. The chart compares probabilities at fixed output prefixes. [What the measurements support](research-preview.md#follow-a-source-through-a-workflow)
+From **All workflows**, ask **Which words were sensitive to the refund policy in Returns demo?** The saved experiment opens at position 14. Ask **What about position 6?** to see which edit changed the earlier number. The chart compares probabilities at fixed output prefixes. [What the measurements support](research-preview.md#follow-a-source-through-a-workflow)
 
 The recording uses **Workspace evidence**. The source comparison reads the two declarations, and the dispatch comparison reads the sandbox receipt. The exchange agent’s saved proposals came from Qwen. You can run the walkthrough without installing a model. [Connect a model](chat-canvas.md)
 

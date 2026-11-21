@@ -28,6 +28,8 @@ System appearance is the default. A light or dark selection persists for the wor
 
 Activity search indexes the same bounded excerpts the interview can show. SQLite FTS5 first requires all query terms, then tries any pair or any single term. The interview labels both fallbacks as partial matches. It ranks by BM25 and shows at most one call per conversation, or per trace when no conversation ID was recorded. It uses word matching and English stemming. Capture gaps, excerpt truncation, and paraphrases can prevent a match. A match shows where terms appeared. [SQLite FTS5](https://www.sqlite.org/fts5.html)
 
+With a model connected, an engineer can describe the task without knowing a tool or chart name. The partner can select a scoped read by ID or rewrite the question into two short searches. Each rewrite requires all its terms in the same recorded excerpt. The browser interleaves exact results and preserves the call references. For event questions the model can select recorded lines, and the interview quotes them with their roles. An assistant reply about a refund cannot establish which words depended on the refund policy. That question needs the scored intervention. Query reformulation here adapts the retrieval step of Ma et al. Their evaluation used other tasks and retrieval systems. [Query Rewriting in Retrieval-Augmented Large Language Models](https://aclanthology.org/2023.emnlp-main.322/)
+
 ## Delivery and checks
 
 1. Ship the briefing, question composer, scoped evidence replies, and theme controls. Keep bookmarked evidence and routes working during the change.
@@ -38,3 +40,26 @@ Activity search indexes the same bounded excerpts the interview can show. SQLite
 Browser checks cover the exchange fixture and a separate copy of 18,648 recorded Exgentic requests across 600 conversations and six workflows. The desktop and mobile checks compare the repeat counts for AppWorld and BrowseComp-Plus against the API (74 of 100 and 86 of 100), then open a recorded AppWorld conversation and check the exact call link on its second page. The exchange fixture checks activity with and without captured text. A local Gemma run answered a question about customer verification and cited the recorded tool result. Broader evaluation needs independently labeled questions, particularly ones that require finding relevant evidence across conversations without knowing their titles.
 
 The same sample found airline, AppWorld, and retail activity for three known-term queries entered without workflow names. Browser checks used both desktop and mobile layouts and verified the links against the stored calls. SQLite `dbstat` reported 8.2 MiB of pages for the index and its keys, excluding the write-ahead log. The three queries exercise retrieval and navigation. Estimating recall on unfamiliar questions requires a separate evaluation.
+
+### Questions phrased in the engineer’s own words
+
+Five development questions check whether the first excerpt contains evidence for the requested activity, or whether the interview renders the measured diagram. The script checks content and the recorded workflow where applicable. It also opens the selected call and resolves its ID against the sidecar. Two runs on this machine produced the same results.
+
+| Question | Workspace evidence | With local Gemma 3 4B |
+| --- | --- | --- |
+| Was the shopper’s identity confirmed? | Missed the tool result | Quoted the verification result |
+| Show requests to undo a plane booking. | Missed | Missed |
+| What peer-to-peer cash movements did people ask for in Venmo? | Found related activity | Found related activity |
+| Where did shoppers ask to swap a jigsaw? | Missed | Found an exchange involving a puzzle |
+| Which words were most sensitive to changing the refund instructions? | Showed the measurement | Showed the measurement |
+
+The airline sample illustrates the difference between finding a topic and answering a question. Cancellation policy and the agent’s account of a request appeared in the retrieved excerpts. The first excerpt did not establish a customer’s request. A read can search only what the exporter captured and the index retained. The five prompts informed development. They cannot estimate accuracy on new workflows.
+
+We then wrote five fresh questions and ran them before changing the router. Both modes met three of the five evidence checks. Both found a verification result and telecom activity about internet use abroad. Gemma selected the token experiment for a question about the numbers in an answer. Its rewrite missed the relevant software-test excerpt that workspace search found. Both missed the dispatch receipt when asked for the order database under two versions of an approval check. These checks score the evidence shown first. Finding a verification result alone does not establish when verification happened relative to another event.
+
+To repeat the comparison, run a model gateway for the exchange demo and a second gateway for the imported six-workflow sample. Pass their origins and the configured model ID to the browser check. Each JSON line includes the wording, whether the content check matched, the searches issued, and the number of model calls. [Build the public sample](scale-study.md#import-the-public-corpus) · [Configure the gateway](chat-canvas.md#connect-a-model)
+
+```sh
+node scripts/check_interview_questions.mjs "$DEMO_GATEWAY" "$SAMPLE_GATEWAY" "$MODEL_ID"
+node scripts/check_interview_questions.mjs "$DEMO_GATEWAY" "$SAMPLE_GATEWAY" "$MODEL_ID" transfer
+```

@@ -58,6 +58,26 @@ pub(super) fn cursor(conn: &Connection) -> rusqlite::Result<Option<String>> {
     )
 }
 
+/// A small sample of recorded tool names gives the question planner the local vocabulary.
+pub(super) fn tool_names(db: &Connection, filters: &BTreeMap<String, String>) -> Result<Value> {
+    let mut sql = "WITH recent AS (SELECT p.preview FROM captured_calls c
+        JOIN traces t ON t.id=c.trace_id
+        JOIN conversation_calls p ON (p.trace_id,p.call_id)=(c.trace_id,c.call_id) WHERE 1"
+        .to_owned();
+    let mut args = Vec::new();
+    append_scope(&mut sql, &mut args, filters)?;
+    append_window(&mut sql, &mut args, "c.started", filters)?;
+    sql.push_str(" ORDER BY c.started DESC,c.trace_id DESC,c.call_id DESC LIMIT 64)
+        SELECT j.value->>'label' AS name FROM recent,json_each(recent.preview,'$.outputs') j
+        WHERE j.value->>'kind' IN ('tool_call','tool_execution') AND length(j.value->>'label') BETWEEN 1 AND 100
+        GROUP BY name ORDER BY count(*) DESC,name LIMIT 16");
+    let mut stmt = db.prepare(&sql)?;
+    let names = stmt
+        .query_map(params_from_iter(args), |row| row.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(json!({"tools":names}))
+}
+
 pub(super) fn search(db: &Connection, filters: &BTreeMap<String, String>) -> Result<Value> {
     let query = filters.get("q").map(String::as_str).unwrap_or_default();
     if query.chars().count() > 240 {
@@ -83,6 +103,13 @@ pub(super) fn search(db: &Connection, filters: &BTreeMap<String, String>) -> Res
     let mut args = vec![terms.join(" AND ")];
     append_scope(&mut sql, &mut args, filters)?;
     append_window(&mut sql, &mut args, "c.started", filters)?;
+    if let Some(tool) = filters.get("tool") {
+        sql.push_str(
+            " AND EXISTS (SELECT 1 FROM json_each(p.preview,'$.outputs') j
+            WHERE j.value->>'kind' IN ('tool_call','tool_execution') AND j.value->>'label'=?)",
+        );
+        args.push(tool.clone());
+    }
     sql.push_str(" ORDER BY activity_terms.rank,c.started DESC,t.id,d.call_id LIMIT 48");
     let mut stmt = db.prepare(&sql)?;
     let mut read = |args: &[String]| -> Result<Vec<Value>> {
@@ -102,7 +129,9 @@ pub(super) fn search(db: &Connection, filters: &BTreeMap<String, String>) -> Res
         Ok(matches)
     };
     let mut rows = read(&args)?;
-    let partial = rows.is_empty() && terms.len() > 1;
+    let partial = rows.is_empty()
+        && terms.len() > 1
+        && !filters.get("match").is_some_and(|mode| mode == "all");
     if partial && terms.len() > 2 {
         // Prefer a shared pair over an isolated word when the full query misses.
         args[0] = terms

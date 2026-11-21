@@ -40,7 +40,7 @@ Open the address printed in the terminal. Ask **What did verify_customer return?
 
 ![Measured effects of three source edits across a generated answer about returns and refunds](docs/media/source-edits-by-token.png)
 
-In the demo, ask **Show the token-position diagram in Returns demo** from **All workflows**. Each cell compares the probability of the same next token with the preceding output held fixed. Select a cell to see the source edit, its measured score, and the freely generated replies. [Explore the measurements](docs/research-preview.md#follow-a-source-through-a-workflow)
+From **All workflows**, ask **Which words were sensitive to the refund policy in Returns demo?** Then ask **What about position 6?** Each cell compares the probability of the same next token with the preceding output held fixed. Select a cell to see the source edit, its measured score, and the freely generated replies. [Explore the measurements](docs/research-preview.md#follow-a-source-through-a-workflow)
 
 ## Ship it beside your service
 

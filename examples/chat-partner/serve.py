@@ -70,7 +70,10 @@ class Dashboard(BaseHTTPRequestHandler):
                         not isinstance(m, dict) or m.get("role") not in ("system", "user", "assistant")
                         or not isinstance(m.get("content"), str) for m in messages):
                     return self.error(400, "Invalid chat messages.")
-                body = json.dumps({"model": data["model"], "messages": messages, "max_tokens": 450}).encode()
+                max_tokens = data.get("max_tokens", 450)
+                if type(max_tokens) is not int or max_tokens < 1:
+                    return self.error(400, "Invalid response token limit.")
+                body = json.dumps({"model": data["model"], "messages": messages, "max_tokens": min(max_tokens, 450)}).encode()
                 if self.server.key:
                     headers["Authorization"] = "Bearer " + self.server.key
             endpoint = config.endpoint if partner else config.sidecar

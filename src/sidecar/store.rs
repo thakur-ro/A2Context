@@ -170,6 +170,10 @@ impl Store {
         super::activity_search::search(&self.0, filters)
     }
 
+    pub(super) fn recent_tool_names(&self, filters: &BTreeMap<String, String>) -> Result<Value> {
+        super::activity_search::tool_names(&self.0, filters)
+    }
+
     pub fn ingest(
         &mut self,
         doc: &Value,
