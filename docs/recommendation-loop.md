@@ -298,3 +298,47 @@ python scripts/review_mast_repeats.py data/scale/mast-95118ac \
 ```
 
 The first report reproduced exactly. Both one-word runs reproduced all 80 development verdicts and used the same witness pairs on transfer and on the human set. The optional reviewer uses the local completion endpoint and the same Gemma model files as the telecom study. Omit `--prompt` to select the prompt by development accuracy. Add `--structured` to test the original JSON contract. These studies make zero paid model calls.
+
+## Seventh pass: check when a failure becomes visible
+
+Who&When Pro injects a known mistake in a successful trajectory and rolls out the rest of the run. We used the two text frameworks that record actions and their observations in separate fields. The pinned release supplied 3,587 traces with 24,268 numbered steps. We used DABench and DACode for development and held out ALFWorld, DataBench, DSQA, KramaBench and TableBench. The script checks for repeated normalized task text across the split and reports both trace and per-task averages. [Who&When Pro paper](https://arxiv.org/abs/2607.09996v1) · [Pinned data](https://huggingface.co/datasets/Leoxx/whowhen_pro/tree/0bd196c8a040841c4ae167ab33cc8151de246f1f) · [Pinned step renderers](https://github.com/ag2ai/whowhen_pro/tree/2c0d925a224a0a207cdd9669ffed5db911d19abd/whowhen_eval/render)
+
+For smolagents, a populated `error.type` marks an explicit error. For ALFWorld, the exact observation `Nothing happens.` marks a rejected action. Before a new action, a check can see whether the previous step had such a result. Once a proposal is available, a check can see whether the last identical action was rejected. Only after the action can it see its own result. Each candidate keeps the original array index, native step coordinate and checksum of the source field. Reference answers and injection labels never enter the checks. We selected the earliest candidate per trace and counted an abstention as a miss for overall accuracy.
+
+| Signal on 2,954 held-out traces | Traces surfaced | First candidate matches injected step |
+| --- | ---: | ---: |
+| Previous step returned an error | 230 | 0 |
+| Proposed action repeats a rejected action | 27 | 0 |
+| Current step returned an error | 233 | 68 |
+| Last eligible step | 2,954 | 1,502 |
+
+Of the 336 held-out error signals, 68 came back on the injected step and 268 on later steps. No signal preceded it. The current-result check had 29.2% exact agreement among surfaced traces and 2.3% across the holdout. The final-step baseline hit 50.8% across the holdout and zero of 311 ALFWorld traces. The injected-error design starts from successful prefixes, and the last-step baseline shows where the injected labels cluster in some workflows. These data establish what an error signal can show in these recorded rollouts. Evaluating early warnings in production requires both failed and successful runs that preserve earlier nonfatal errors, actual request contents, and independently checked outcomes. The three signals stay out of automatic recommendation ranking.
+
+```sh
+archive=data/scale/whowhen-pro-0bd196c/text.jsonl
+mkdir -p "$(dirname "$archive")"
+curl -fL 'https://huggingface.co/datasets/Leoxx/whowhen_pro/resolve/0bd196c8a040841c4ae167ab33cc8151de246f1f/data/text.jsonl' -o "$archive"
+python3 scripts/study_action_evidence.py "$archive" --report data/scale/action-evidence.json
+```
+
+The [full Exgentic corpus](scale-study.md) supplies both successful and unsuccessful runs. All 241,473 spans in the pinned archive are chat calls. An explicit inference error ended before a later call started in 582 of 5,829 successful sessions and 422 of 4,227 unsuccessful sessions. Both rates round to 10.0%. They vary by workflow. On SWE-bench the counts were 243 of 1,803 successes and 85 of 156 failures. This signal records inference errors such as rate limits. It cannot locate a failed tool action or establish what context influenced a later call. Use these sessions to study recovery from inference errors. Testing warnings about tool state requires a source with captured tool executions and subsequent request inputs.
+
+```sh
+# Use the pinned Parquet shards from the scale study and an interpreter with PyArrow.
+python3 scripts/audit_exgentic_error_coverage.py data/scale/exgentic-v2/*.parquet \
+  --report data/scale/exgentic-error-coverage.json
+```
+
+### Read the outcome beside the action
+
+Threads now displays a captured tool result as its own entry. A model's proposed tool call still has a separate label. Result text does not change the recommendation ranking or establish which source influenced the proposal. Older databases recover these previews when opening the relevant page, including the absence of result text when content capture was off.
+
+To try the public ALFWorld cases, start a local sidecar with content capture and load the verified archive. Open **Threads** and select an `alfworld` conversation. The importer carries over the recorded step order and tool observations. It leaves timestamps, model inputs and failure labels unset. Eighteen observations have no corresponding action text and are excluded from this tool-span import.
+
+```sh
+cargo run --locked -- sidecar --db data/scale/whowhen-alfworld-observations.sqlite --listen 127.0.0.1:18064 --capture-content
+# In another terminal
+python3 scripts/import_alfworld_observations.py data/scale/whowhen-pro-0bd196c/text.jsonl --sidecar http://127.0.0.1:18064
+```
+
+The chronological evidence check matched all 9,312 imported actions in 311 conversations to the archive, including 51 explicit rejections with a recorded action. The evaluator reproduced its report byte for byte. Both runs made zero model calls.

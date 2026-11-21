@@ -1537,11 +1537,41 @@ impl Store {
                 }
             }
         }
-        let mut page = json!({"rows":rows,"next_offset":next});
         if view == "thread-calls" {
-            page["offset"] = json!(offset);
+            self.restore_tool_previews(&mut rows)?;
+            return Ok(json!({"rows":rows,"next_offset":next,"offset":offset}));
         }
-        Ok(page)
+        Ok(json!({"rows":rows,"next_offset":next}))
+    }
+
+    fn restore_tool_previews(&self, rows: &mut [Value]) -> Result<()> {
+        let mut runs = BTreeMap::<String, Option<Run>>::new();
+        for row in rows {
+            let dialogue = &row["dialogue"];
+            // Older exports indexed tool spans as empty previews. Read only
+            // candidate spans on the current page to avoid rebuilding the index.
+            if dialogue["output_count"] != 0
+                || !dialogue["model"].is_null()
+                || dialogue["inputs"] != 0
+            {
+                continue;
+            }
+            let trace = row["trace"].as_str().ok_or("missing trace")?;
+            let call = row["call"].as_str().ok_or("missing call")?;
+            let run = match runs.entry(trace.to_owned()) {
+                std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
+                std::collections::btree_map::Entry::Vacant(entry) => {
+                    entry.insert(load_run(&self.0, trace)?)
+                }
+            };
+            if let Some(call) = run
+                .as_ref()
+                .and_then(|run| run.calls.iter().find(|span| span.id == call))
+            {
+                row["dialogue"] = super::conversation::preview(call);
+            }
+        }
+        Ok(())
     }
 }
 

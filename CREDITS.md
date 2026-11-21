@@ -56,6 +56,8 @@ The scale study uses the Exgentic v2 corpus for captured model requests and the 
 
 The recommendation study compares model-guided diagnosis with checks and evidence from AgentRx, AgentDebugX, TRACE, REFLECT, and LangSmith Engine. Its local pilot uses the MLX Community quantization of Google’s Gemma 3 4B. [Recommendation research](docs/recommendation-loop.md) · [Gemma checkpoint](https://huggingface.co/mlx-community/gemma-3-4b-it-qat-4bit)
 
+The action-evidence study uses the Who&When Pro release by Jiale Liu and colleagues. The CC BY 4.0 text archive is downloaded separately at a pinned revision, and the study adapts the published coordinate rules for smolagents and ALFWorld. [Dataset and license](https://huggingface.co/datasets/Leoxx/whowhen_pro/blob/0bd196c8a040841c4ae167ab33cc8151de246f1f/README.md) · [Study](docs/recommendation-loop.md#seventh-pass-check-when-a-failure-becomes-visible)
+
 ## Interoperability
 
 The local stdio adapter uses the official Rust SDK for Model Context Protocol. [Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)

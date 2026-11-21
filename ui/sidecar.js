@@ -905,12 +905,17 @@ function callFinding(row, finding) {
 
 function dialogueCall(row, showUser, focus) {
   const d = row.dialogue;
+  const toolExecution = d.outputs.length > 0 && d.outputs.every(output => output.kind === "tool_execution");
   const messages = [
-    showUser && element("div", {className:"dialogue-user"},element("strong",{text:"Latest user text"}),
+    showUser && !toolExecution && element("div", {className:"dialogue-user"},element("strong",{text:"Latest user text"}),
       element("p",{text:d.user?.text ?? (d.user?.availability === "redacted" ? "Input was redacted." : "User text unavailable.")})),
-    ...d.outputs.map(output => element("div",{className:"dialogue-output"},
-      element("strong",{text:output.kind === "tool_call" ? "Proposed tool · " + output.label : "Assistant"}),
-      element("p",{text:output.text ?? "Output content unavailable."})))
+    ...d.outputs.map(output => {
+      const labels = {tool_call:"Proposed tool",tool_execution:"Tool result"};
+      const label = labels[output.kind];
+      return element("div",{className:"dialogue-output"},
+        element("strong",{text:label ? label + " · " + output.label : "Assistant"}),
+        element("p",{text:output.text ?? (output.kind === "tool_execution" ? "Result content unavailable." : "Output content unavailable.")}));
+    })
   ];
   if (!d.output_count) messages.push(element("p",{className:"label",text:"No answer or tool proposal captured."}));
   if (d.output_count > d.outputs.length) messages.push(element("p",{className:"label",text:"Showing " + d.outputs.length + " of " + plural(d.output_count,"captured output") + "."}));
@@ -919,8 +924,8 @@ function dialogueCall(row, showUser, focus) {
     element("div",{className:"dialogue-messages"},...messages),
     first ? element("div",{className:"dialogue-evidence"},callFinding(row,first),
       others.length ? element("details",{},element("summary",{text:"Other findings on this call"}),...others.map(f=>callFinding(row,f))) : null) :
-      element("p",{className:"label",text:"No finding recorded for this call."}),
-    element("footer",{},element("span",{text:[d.model, fullDate(row.started), d.included+" of "+plural(d.inputs,"context item")+" captured"].filter(Boolean).join(" · ")}),
+      !toolExecution && element("p",{className:"label",text:"No finding recorded for this call."}),
+    element("footer",{},element("span",{text:[d.model, fullDate(row.started), !toolExecution && d.included+" of "+plural(d.inputs,"context item")+" captured"].filter(Boolean).join(" · ")}),
       link("Open call",url({view:"traces",trace:row.trace,call:row.call}))));
 }
 

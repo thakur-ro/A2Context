@@ -201,6 +201,13 @@ def check_thread_calls(binary, folder):
                     startTimeUnixNano=str(CLOCK * 10**9 + index * 1000))
         span["attributes"] += attrs({"nexusweave.turn.id": f"turn-{index // 2}"})
         spans.append(span)
+    tool = spans[17]
+    tool["attributes"] = attrs({
+        "gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": "update_order",
+        "gen_ai.tool.call.id": "order-write", "gen_ai.tool.call.result": "Order write rejected",
+        "gen_ai.conversation.id": "thread-0", "nexusweave.organization.id": "thread-test",
+        "nexusweave.user.id": "case-owner", "nexusweave.turn.id": "turn-8",
+    })
     key = json.dumps(["otlp", "thread-test", "case-owner", "thread-0"], separators=(",", ":"))
     db = folder / "conversation.sqlite"
     flags = ("--capture-content", "--metadata", "deployment.environment.name")
@@ -216,6 +223,10 @@ def check_thread_calls(binary, folder):
         assert rows[0]["dialogue"]["turn"] == "turn-0"
         assert rows[0]["dialogue"]["user"]["text"] == "Alternative declaration for page"
         assert rows[0]["dialogue"]["output_count"] == 0 and rows[0]["findings"][0]["kind"] == "conflict"
+        assert rows[17]["dialogue"]["outputs"] == [{
+            "kind": "tool_execution", "label": "update_order", "text": "Order write rejected",
+        }]
+        assert not rows[17]["findings"]
         focus = {"focus_trace": rows[-1]["trace"], "focus_call": rows[-1]["call"]}
         assert get(base, "thread-calls", thread=key, **focus) == second
         for restriction in [{"user": "other"}, {"org": "other"}, {"workflow": "other"},
@@ -225,15 +236,20 @@ def check_thread_calls(binary, folder):
         for query in ["", "?thread="]:
             assert send(base, "/api/sidecar/thread-calls" + query, expected=None)[0] == 400
     with sqlite3.connect(db) as sql:
+        sql.execute("UPDATE conversation_calls SET preview=json_set(preview,'$.outputs',json('[]'),'$.output_count',0) WHERE call_id=?", (tool["spanId"],))
+    with server(binary, db, *flags) as base:
+        assert get(base, "thread-calls", thread=key, **focus) == second
+    with sqlite3.connect(db) as sql:
         sql.execute("DROP TABLE conversation_calls")
         sql.execute("PRAGMA user_version=22")
     with server(binary, db, *flags) as base:
         assert get(base, "thread-calls", thread=key, **focus) == second
     with server(binary, folder / "private-conversation.sqlite") as base:
-        send_traces(base, export(spans[0]))
-        row, = get(base, "thread-calls", thread=key)["rows"]
+        send_traces(base, export(spans[0], tool))
+        row, tool_row = get(base, "thread-calls", thread=key)["rows"]
         assert "Alternative declaration for page" not in json.dumps(row)
         assert not (row["dialogue"]["user"] or {}).get("text")
+        assert "Order write rejected" not in json.dumps(tool_row)
 
 
 def check_conversation_population(binary, db):

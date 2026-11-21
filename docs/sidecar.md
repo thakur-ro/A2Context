@@ -35,7 +35,7 @@ Repeated reports are grouped by workflow, model, runner, recorded action kind an
 
 ### Read a conversation turn by turn
 
-Open **See this call in its conversation** on a recommendation. The selected call has a focus outline. Read the preceding question, the proposed tool and the recorded answer in order. When the exporter supplies a turn ID, adjacent calls in that turn appear together. Otherwise each call has its own entry. The latest captured user text can come from earlier in the conversation.
+Open **See this call in its conversation** on a recommendation. The selected call has a focus outline. Read the preceding question, proposed tool, captured tool result, and recorded answer in order. The result comes from the tool's execution span when one was exported. When the exporter supplies a turn ID, adjacent calls in that turn appear together. Otherwise each call has its own entry. The latest captured user text can come from earlier in the conversation.
 
 In the jacket demo, the assistant first quotes a 30-day return window. On the next turn it proposes an order lookup and answers 60 days. Select **Declared instructions disagree** on that answer to compare the policy and FAQ. The conflict establishes that the instructions disagree. A controlled edit would be needed to test which one influenced that answer.
 

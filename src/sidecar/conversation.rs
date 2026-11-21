@@ -20,11 +20,13 @@ fn excerpt(text: &str) -> String {
     first + " … " + &tail.chars().rev().collect::<String>()
 }
 
-fn preview(call: &Call) -> Value {
-    let outputs = call
-        .decisions
-        .iter()
-        .filter(|d| matches!(d.kind.as_str(), "model_output" | "tool_call"));
+pub(super) fn preview(call: &Call) -> Value {
+    let outputs = call.decisions.iter().filter(|d| {
+        matches!(
+            d.kind.as_str(),
+            "model_output" | "tool_call" | "tool_execution"
+        )
+    });
     let shown: Vec<_> = outputs
         .clone()
         .take(3)
