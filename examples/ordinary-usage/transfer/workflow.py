@@ -1,32 +1,19 @@
 """Run one question through the public workflow with its default prompts."""
 
 from pathlib import Path
-import sqlite3
 import sys
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from history_db import readonly_engine
 
 
 def query_history(directory, endpoint, question):
     from langchain_community.agent_toolkits import create_sql_agent
     from langchain_community.utilities import SQLDatabase
     from langchain_openai import ChatOpenAI
-    from sqlalchemy import create_engine
 
-    def connect():
-        db = sqlite3.connect((directory / "history.db").as_uri() + "?mode=ro&immutable=1", uri=True)
-        db.execute("PRAGMA query_only=ON")
-
-        def authorize(op, name, argument, schema, caller):
-            allowed = op in (sqlite3.SQLITE_READ, sqlite3.SQLITE_SELECT, sqlite3.SQLITE_FUNCTION,
-                             sqlite3.SQLITE_RECURSIVE, sqlite3.SQLITE_TRANSACTION)
-            if op == sqlite3.SQLITE_PRAGMA:
-                allowed = name.lower() in {"table_info", "table_xinfo", "index_list", "index_info",
-                                           "index_xinfo", "foreign_key_list", "read_uncommitted"}
-            return sqlite3.SQLITE_OK if allowed else sqlite3.SQLITE_DENY
-
-        db.set_authorizer(authorize)
-        return db
-
-    db = SQLDatabase(create_engine("sqlite://", creator=connect))
+    db = SQLDatabase(readonly_engine(directory))
     llm = ChatOpenAI(base_url=endpoint, api_key="loopback", model="default_model",
                      max_tokens=512, disable_streaming=True, max_retries=0)
     agent = create_sql_agent(llm, db=db, agent_type="tool-calling", max_iterations=8)

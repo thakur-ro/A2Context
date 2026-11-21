@@ -1,0 +1,212 @@
+{
+  "sql": {
+    "sessions": [
+      {
+        "session": "sql-1",
+        "trace": "otlp:2a140c720a87486982973a00b35615bf",
+        "started": "2026-11-21T14:53:41.378760+00:00",
+        "closed": "2026-11-21T14:53:49.052881+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "6da5460ad0c54bb6",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "70a7ca62f288bcd4c0a8bd9ceccf38ee5bb08e60c675ed10946d71f7e7e9ec08"
+      },
+      {
+        "session": "sql-2",
+        "trace": "otlp:77adbcc7a0294f9ab4610f5bb33f1a35",
+        "started": "2026-11-21T14:53:49.249987+00:00",
+        "closed": "2026-11-21T14:53:50.857607+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "97cd75e86ffd4e3e",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "6367ba532be0db037258acf7a58c7af22399589c8199563346b7b70498de5577"
+      },
+      {
+        "session": "sql-3",
+        "trace": "otlp:90b262638e3c4684b27baf30cba60d1d",
+        "started": "2026-11-21T14:53:50.928164+00:00",
+        "closed": "2026-11-21T14:53:52.347240+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "ec9120f21bf846fb",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "9b5441ec94d05519ba4235885dce19fd88af5a4762d780dbcaf0b27c62043f77"
+      },
+      {
+        "session": "sql-4",
+        "trace": "otlp:9a2d1f92db594d8582a3a03a72ea640d",
+        "started": "2026-11-21T14:53:52.571558+00:00",
+        "closed": "2026-11-21T14:53:54.085451+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "d1f1a32adb8c4cfd",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "1781389ca5dd0e229b191a0659422e798b22ceb35565750f32f59f2cd92c0dd4"
+      },
+      {
+        "session": "sql-5",
+        "trace": "otlp:3f9173e949c34f0caf9852d17bb5dbc1",
+        "started": "2026-11-21T14:53:54.215847+00:00",
+        "closed": "2026-11-21T14:53:55.641293+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "3d1ac3f105bf4b40",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "c3451257be3ece435857d3486fe8360e5fbcf5be5fff7e4e6e96359f316fd632"
+      }
+    ],
+    "score": {
+      "check": "chat-tool-result-reference-v1",
+      "unit": "recorded trace",
+      "clear": 0,
+      "affected": 0,
+      "unresolved": 0,
+      "unknown_applicability": 0,
+      "outside": 5,
+      "pass_pct": null,
+      "coverage_pct": null,
+      "lower_pct": null,
+      "upper_pct": null,
+      "examples": []
+    },
+    "distinct_findings": 0,
+    "quiet_sample": [
+      "sql-5",
+      "sql-1",
+      "sql-2"
+    ],
+    "capture_errors": []
+  },
+  "citations": {
+    "sessions": [
+      {
+        "session": "citations-1",
+        "trace": "otlp:7c721b9718dc4b69b3ae84367a70a8b4",
+        "started": "2026-11-21T14:53:55.961119+00:00",
+        "closed": "2026-11-21T14:53:58.207814+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "77043cfb0c3e4611",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "0c7082d857eb92986a44b95d3a327ab74ca5ca20e1a89678276ea43093c0953d"
+      },
+      {
+        "session": "citations-2",
+        "trace": "otlp:a2d11329a8c340efa342de5c4cd7dade",
+        "started": "2026-11-21T14:53:58.309621+00:00",
+        "closed": "2026-11-21T14:53:59.579500+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "a1cbfe00ddd44b6e",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "0c7082d857eb92986a44b95d3a327ab74ca5ca20e1a89678276ea43093c0953d"
+      },
+      {
+        "session": "citations-3",
+        "trace": "otlp:a0543c820e474a8cb51e2bda812fc1c0",
+        "started": "2026-11-21T14:53:59.807182+00:00",
+        "closed": "2026-11-21T14:54:01.138143+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "e0a4b7ce334c4afb",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "0c7082d857eb92986a44b95d3a327ab74ca5ca20e1a89678276ea43093c0953d"
+      },
+      {
+        "session": "citations-4",
+        "trace": "otlp:6fa217162c69461fb0483fda2bfcf6fb",
+        "started": "2026-11-21T14:54:01.306430+00:00",
+        "closed": "2026-11-21T14:54:03.031882+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "e575c6f093754f3b",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "ed7c30561fb5dce656790fef932a7d0e5c44d5cc0cbaa736cdb19dc02c7e6ac5"
+      },
+      {
+        "session": "citations-5",
+        "trace": "otlp:860e40f6548f41f5a620f5fcb62cfb72",
+        "started": "2026-11-21T14:54:03.313318+00:00",
+        "closed": "2026-11-21T14:54:04.605104+00:00",
+        "exit": 0,
+        "calls": [
+          {
+            "span": "2739048bea4e4928",
+            "http": 200,
+            "output_captured": true,
+            "new_findings": []
+          }
+        ],
+        "log_sha256": "0c7082d857eb92986a44b95d3a327ab74ca5ca20e1a89678276ea43093c0953d"
+      }
+    ],
+    "score": {
+      "check": "chat-tool-result-reference-v1",
+      "unit": "recorded trace",
+      "clear": 0,
+      "affected": 0,
+      "unresolved": 0,
+      "unknown_applicability": 0,
+      "outside": 5,
+      "pass_pct": null,
+      "coverage_pct": null,
+      "lower_pct": null,
+      "upper_pct": null,
+      "examples": []
+    },
+    "distinct_findings": 0,
+    "quiet_sample": [
+      "citations-5",
+      "citations-4",
+      "citations-2"
+    ],
+    "capture_errors": []
+  }
+}

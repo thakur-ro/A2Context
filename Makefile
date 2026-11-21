@@ -26,6 +26,7 @@ check-sidecar:
 	$(PYTHON) tests/sidecar_baseline.py target/debug/a2context
 	$(PYTHON) tests/sidecar_tool_reference_score.py target/debug/a2context
 	$(PYTHON) tests/sidecar_context_claims.py target/debug/a2context
+	$(PYTHON) tests/sidecar_shared_identifiers.py target/debug/a2context
 	$(PYTHON) tests/sidecar_source_gaps.py target/debug/a2context
 	$(PYTHON) tests/sidecar_source_history.py target/debug/a2context
 	$(PYTHON) tests/sidecar_prefix_experiment.py target/debug/a2context
@@ -48,6 +49,7 @@ check-release: check check-ui check-bundles verify-image
 check-qa:
 	$(PYTHON) examples/ordinary-usage/check.py
 	$(PYTHON) examples/ordinary-usage/transfer/check_results.py
+	$(PYTHON) examples/ordinary-usage/collector/check.py
 	$(PYTHON) examples/public-qa/compare_orders.py
 	$(PYTHON) examples/public-qa/check_holdout.py
 	$(PYTHON) examples/public-qa/annotation_gap.py --check-saved

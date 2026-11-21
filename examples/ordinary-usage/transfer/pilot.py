@@ -14,26 +14,27 @@ from check_sidecar import server
 from run import prepare
 
 
-def run(args):
+def run(args, study=HERE, workflows=(("sql", "tools"), ("citations", "papers")), prepare_corpus=prepare, questions=None):
     root = args.directory.resolve()
     root.mkdir(parents=True, exist_ok=False)
     env = {k: os.environ[k] for k in ("HOME", "PATH", "LANG", "TMPDIR") if k in os.environ}
     env.update(HF_HUB_OFFLINE="1", NO_PROXY="127.0.0.1,localhost", TOKENIZERS_PARALLELISM="false",
                NUMBA_CACHE_DIR=str(root / "cache"))
-    table = [line.split("|") for line in (HERE / "protocol.md").read_text().splitlines()]
-    questions = [row[2:4] for row in table if len(row) == 5 and row[1].strip().isdigit()]
+    if questions is None:
+        table = [line.split("|") for line in (study / "protocol.md").read_text().splitlines()]
+        questions = [row[2:4] for row in table if len(row) == 5 and row[1].strip().isdigit()]
     assert len(questions) == 5
-    for column, (workflow, corpus) in enumerate([("sql", "tools"), ("citations", "papers")]):
+    for column, (workflow, corpus) in enumerate(workflows):
         directory = root / workflow
         directory.mkdir()
-        prepare(corpus, directory)
+        prepare_corpus(corpus, directory)
         journal = directory / "events.jsonl"
         with server(args.binary.resolve(), directory / "sidecar.sqlite", "--capture-content") as base:
             assert get(base, "health")["coverage"]["traces"] == 0
             for n, row in enumerate(questions, 1):
                 run_id = f"{workflow}-{n}"
                 with capture(base, args.model_port, workflow, run_id, journal) as endpoint:
-                    command = [args.python.absolute(), HERE / "workflow.py", workflow, directory, endpoint, row[column].strip()]
+                    command = [args.python.absolute(), study / "workflow.py", workflow, directory, endpoint, row[column].strip()]
                     with (directory / (run_id + ".log")).open("w") as log:
                         try:
                             status = subprocess.run(command, cwd=directory, env=env, stdout=log, stderr=log,

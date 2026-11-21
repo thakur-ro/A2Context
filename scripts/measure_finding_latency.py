@@ -12,11 +12,26 @@ from check_sidecar import attrs, export, get, send
 CALLS_PER_BATCH = 8
 
 
+def reference_span(trace, user, index):
+    # The final answer cites the shared label. All seven earlier calls supply comparison material.
+    text = "Reference format: (doc-42)\nQuestion " + str(index) + "\nDocument: " + "x" * 4096
+    reply = "See (doc-42)." if index == CALLS_PER_BATCH - 1 else "Recorded."
+    started = time.time_ns()
+    fields = {"gen_ai.operation.name":"chat", "gen_ai.request.model":"fixture", "a2context.user.id":user,
+              "gen_ai.conversation.id":trace, "a2context.request.body":json.dumps({"messages":[{"role":"user","content":text}]}),
+              "gen_ai.output.messages":json.dumps([{"role":"assistant","parts":[{"type":"text","content":reply}]}])}
+    return {"traceId":trace, "spanId":"1111111111111111", "name":"chat", "startTimeUnixNano":str(started),
+            "endTimeUnixNano":str(started + 1), "attributes":attrs(fields)}
+
+
 def measure_batch(base, batch, kind):
     user = f"batch-{batch}"
     spans = []
     for index in range(CALLS_PER_BATCH):
         trace_id = f"{1 + batch * CALLS_PER_BATCH + index:032x}"
+        if kind == "shared_identifier":
+            spans.append(reference_span(trace_id, user, index))
+            continue
         messages = [{"role": "user", "content": "Look up the record."}]
         if index or kind == "missing_tool_argument":
             messages.append({"role": "assistant", "tool_calls": [{"id": "lookup", "type": "function",
@@ -43,11 +58,15 @@ def measure_batch(base, batch, kind):
         time.sleep(0.02 * 2**retry)
     card, = get(base, "findings", user=user)["rows"]
     elapsed = 1000 * (time.perf_counter() - started)
-    assert card["kind"] == kind and card["evidence"]["trace_id"] == "otlp:" + spans[0]["traceId"]
+    target = spans[-1] if kind == "shared_identifier" else spans[0]
+    assert card["kind"] == kind and card["evidence"]["trace_id"] == "otlp:" + target["traceId"]
     detail = card["evidence"]["detail"]
     if kind == "missing_tool_argument":
         assert detail["check"]["schema_pointer"] == "/tools/0/function/parameters/required/0"
         assert detail["check"]["argument_pointer"] == "/id" and detail["decision"] == "output:0:0"
+    elif kind == "shared_identifier":
+        assert [m["key"] for m in detail["matches"]] == ["doc-42"]
+        assert detail["peer"]["trace"] == "otlp:" + spans[-2]["traceId"]
     else:
         assert detail["reference"]["pointer"] == "/messages/1"
     return elapsed, retry
@@ -58,7 +77,7 @@ def main():
     parser.add_argument("endpoint", help="Fresh sidecar started with --capture-content")
     parser.add_argument("--batches", type=int, default=128)
     parser.add_argument("--batches-per-second", type=float, default=16)
-    parser.add_argument("--finding", choices=["tool_reference","missing_tool_argument"], default="tool_reference")
+    parser.add_argument("--finding", choices=["tool_reference","missing_tool_argument","shared_identifier"], default="tool_reference")
     args = parser.parse_args()
     if args.batches < 2 or args.batches_per_second <= 0:
         parser.error("specify at least two batches and a positive send rate")
@@ -78,7 +97,10 @@ def main():
     score = get(args.endpoint, "tool-reference-score")
     calls = CALLS_PER_BATCH * args.batches
     orphan_count = args.batches if args.finding == "tool_reference" else 0
-    assert (score["clear"], score["affected"]) == (calls - orphan_count, orphan_count)
+    if args.finding == "shared_identifier":
+        assert score["outside"] == calls and score["pass_pct"] is None
+    else:
+        assert (score["clear"], score["affected"]) == (calls - orphan_count, orphan_count)
     assert health["coverage"]["with_request"] == calls and health["accepted_batches"] == args.batches
     print(json.dumps({"finding":args.finding, "calls": calls, "batches": args.batches, "wall_seconds": round(seconds, 3),
                       "observed_calls_per_second": round(calls / seconds, 2),
