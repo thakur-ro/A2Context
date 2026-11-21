@@ -136,10 +136,15 @@ function adjacentCallRequest(question) {
   return null;
 }
 
-async function planInterview(model, question, candidates, {subject, lastQuestion, hasCalls, tools, conversations = [], chart}, signal) {
+async function planInterview(model, question, candidates, {subject, lastQuestion, hasCalls, tools, conversations = [], chart, activityMatches = []}, signal) {
   const options = new Map();
   function add(id, label, plan) {
     options.set(id,{label,plan});
+  }
+  if (activityMatches.length) {
+    const titles = activityMatches.slice(0,4).map(row => [row.workflow,row.thread].filter(Boolean).join(" · ").slice(0,140));
+    add("MATCHES","Read the matching recorded messages and tool activity to answer what happened. Matching calls: " + titles.join(" | "),
+      {view:"search",queries:[]});
   }
   tools.forEach((name,i) => add("T" + (i+1),"Read the proposal or result for tool " + name.replaceAll("_"," "),
     {view:"search",tool:name}));
@@ -220,9 +225,9 @@ function parsePartnerJson(content) {
   return JSON.parse(content.trim().replace(/^```(?:json)?\s*|\s*```$/gi,""));
 }
 
-async function retrieveActivity(filters, query, rewrites, signal, tool) {
+async function retrieveActivity(filters, query, rewrites, signal, tool, initial) {
   if (tool) return api("activity-search",{...filters,q:tool,tool,match:"all"});
-  const original = await api("activity-search",{...filters,q:query});
+  const original = initial || await api("activity-search",{...filters,q:query});
   if (!rewrites?.length || signal.aborted) return original;
   const batches = [];
   if (!original.partial_match && original.rows.length) batches.push(original);

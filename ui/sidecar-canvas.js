@@ -548,8 +548,8 @@ function investigationCanvas(impact, page, models) {
     suggest(activity?.next == null ? [] : ["What happened next?"]);
   }
 
-  async function searchActivity(question, search, filters, model, signal) {
-    const {rows,index_ready,partial_match} = await retrieveActivity(filters,search.q,search.queries,signal,search.tool);
+  async function searchActivity(question, search, filters, model, signal, initial) {
+    const {rows,index_ready,partial_match} = await retrieveActivity(filters,search.q,search.queries,signal,search.tool,initial);
     if (signal.aborted || (!rows.length && !search.explicit && !search.queries && !search.tool && index_ready)) return false;
     const sections = rows.map((row,i) => ({
       title:["Call " + (i+1),row.thread || "Unthreaded call",row.workflow && workflowName(row.workflow)].filter(Boolean).join(" · "),
@@ -1206,11 +1206,14 @@ function investigationCanvas(impact, page, models) {
       }
       const directFinding = !asksForSeveralReads(question) && answer.focused && answer.direct &&
         (!visibleCalls.length || (answer.record?.dispatch && /\b(dispatch|sandbox)\b/i.test(question)));
+      let initialActivity;
       if (!plan && model && !selected && !corrected && !directFinding) {
         try {
-          const {tools} = await api("recent-tool-names",activityScope);
+          const [catalog,matches] = await Promise.all([api("recent-tool-names",activityScope),
+            search.q ? api("activity-search",{...activityScope,q:search.q}) : null]);
           if (signal.aborted) return;
-          plan = await planInterview(model,question,candidates,{subject,tools,hasCalls:!named && !!visibleCalls.length,
+          initialActivity = matches;
+          plan = await planInterview(model,question,candidates,{subject,tools:catalog.tools,activityMatches:matches?.rows,hasCalls:!named && !!visibleCalls.length,
             lastQuestion:!named ? history.at(-1)?.question : undefined,conversations:!named && listed ? listed.sections : [],chart:!named ? chart : null},signal);
         } catch (error) { if (signal.aborted) return; usedFallback = true; }
         if (signal.aborted) return;
@@ -1261,7 +1264,7 @@ function investigationCanvas(impact, page, models) {
         return;
       }
       if (plan?.view === "search" || (!plan && !selected && !corrected && !answer.direct && search.q)) {
-        const found = await searchActivity(question,{...search,queries:plan?.queries,tool:plan?.tool},activityScope,usedFallback ? "" : model,signal);
+        const found = await searchActivity(question,{...search,queries:plan?.queries,tool:plan?.tool},activityScope,usedFallback ? "" : model,signal,initialActivity);
         if (signal.aborted || found) {
           if (!signal.aborted) status.textContent = usedFallback ? "The planner was unavailable. Searched with your original wording." : "";
           return;

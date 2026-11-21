@@ -24,6 +24,8 @@ Put the question first on the workspace homepage. Each recurrence row is a keybo
 
 The composer stays available through the investigation. Follow-up questions can refer to the previous example. A question about another workflow can scope the answer without leaving the workspace. Supporting calls, conversations, and replay states appear in the interview when requested. Existing saved URLs still resolve.
 
+We checked the workspace with a newly recorded observatory workflow. Two sites had different dome reopening times, while an unrelated workflow contained the only conflict. Local Gemma initially selected that conflict. The planner now sees the names of matching conversations before it chooses a read. Asked when Kestrel Ridge reopened, it selected the assistant’s recorded “03:41 UTC” line. Typing “What supports that?” opened the originating call. This tests retrieval and source identity on one unfamiliar topic. [Planner regression](../tests/chat-canvas.test.mjs) · [Cross-workflow browser checks](../scripts/check_conversation_drilldown.mjs)
+
 A numbered search result identifies an example. Its number can differ from the call’s position in the recording. When someone asks what came before or after an example, the interview locates its trace and call IDs and reads the neighbor in the same database snapshot. It asks which call to use when several are visible. If a conversation ID is missing, it can follow calls within the same trace. Missing or tied timestamps are labeled. Recorded order alone cannot establish that an earlier event caused a later decision.
 
 ## Evidence and presentation

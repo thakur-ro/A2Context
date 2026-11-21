@@ -72,6 +72,21 @@ test("the partner can select only a conversation offered in the answer",async ()
   assert.equal(name('What did the customer say?',options.conversations),null);
 });
 
+test("a factual question can read matching conversations before choosing an unrelated finding",async () => {
+  const rows = ["Kestrel Ridge","Cedar Ridge","East","West","Fifth"].map(thread =>
+    ({workflow:"observatory",thread,dialogue:{user:{text:"private message body"}}}));
+  const env = context("MATCHES",packet => {
+    assert.match(packet,/MATCHES = .*observatory · Kestrel Ridge/);
+    assert.doesNotMatch(packet,/Fifth|private message body/);
+  });
+  const plan = await env.planInterview("local","When did the dome reopen at Kestrel Ridge?",records,{tools:[],activityMatches:rows});
+  assert.equal(plan.view,"search");
+  const page = {rows};
+  assert.equal(await env.retrieveActivity({},"dome",plan.queries,{aborted:false},null,page),page);
+  await assert.rejects(context("MATCHES",packet => assert.doesNotMatch(packet,/MATCHES =/))
+    .planInterview("local","Which dome?",records,{tools:[]}),/could not select evidence/);
+});
+
 test("a chart read carries the filters that produced it and leaves a tied count unresolved",async () => {
   const chart = {filters:{workflow:"orders",user:"a"},themes:[{kind:"conflict",conversations:2},{kind:"duplicate",conversations:2}]};
   const env = context("K2",packet => assert.match(packet,/K2 = "List the recorded conversations counted under Exact repetition/));
