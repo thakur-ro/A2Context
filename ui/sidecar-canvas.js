@@ -120,7 +120,8 @@ function canvasAnswer(question, records, previous) {
   const followup = /\b(it|this|that|those|next|again|often|recur\w*|conversations?|sessions?|repeat\w*)\b/.test(q);
   const sourceQuestion = /\b(exact inputs|captured inputs|recorded inputs|what did the model receive|show (?:the )?sources|what supports that|show the supporting evidence|how do we know (?:that|this))\b/.test(q);
   const priority = /\b(attention|recommendations?|priorit\w*|test next)\b/.test(q);
-  const record = byKind ? records.find(byKind[1]) : (followup || sourceQuestion) && previous ? previous :
+  const refersToPrevious = previous && /\b(that|this|those|it)\b/.test(q);
+  const record = byKind ? (refersToPrevious && byKind[1](previous) ? previous : records.find(byKind[1])) : (followup || sourceQuestion) && previous ? previous :
     scored[0]?.score ? scored[0].record : priority ? records[0] : null;
   const view = sourceQuestion ? "sources" : /\b(next|recommend|test next|should)\b/.test(q) ? "action" :
     !repeatedInputs && /\b(often|across|recurr\w*|conversations?|sessions?|repeat\w*)\b/.test(q) ? "recurrence" : "evidence";
@@ -280,7 +281,7 @@ function investigationCanvas(impact, page, models) {
   let currentImpact = impact;
   let records = [], history = [], previous, active, moreEvidence = false;
   let activity, comparison, measurements, experiments, nearby, visibleCalls = [];
-  let userQuestion;
+  let userQuestion, conversationList, visibleChart;
   const corrections = new Map();
   const normalize = q => q.trim().toLowerCase().replace(/[?.!]+$/, "");
   past.hidden = true;
@@ -290,6 +291,7 @@ function investigationCanvas(impact, page, models) {
   }
 
   function themeChart(summary,workflow) {
+    visibleChart = {filters:workflow ? {...scope,workflow} : scope,themes:summary.themes};
     return A2ContextA2UI.themeFrequency(summary.captured_conversations,summary.themes.map(({kind,conversations,groups}) =>
       ({label:kindLabels[kind] || kind,conversations,groups})),label =>
         ask("Show an example of " + label + (workflow ? " in " + workflowName(workflow) : "")));
@@ -335,7 +337,9 @@ function investigationCanvas(impact, page, models) {
     } else if (scope.user && !summary.captured_conversations) {
       evidenceSections("no-themes","No recorded conversations for this user",title + " · No captured conversation in this scope has the requested user ID.");
     } else evidenceSections("no-themes",title,plural(summary.captured_conversations,"captured conversation") + " in this scope. No finding groups were recorded.");
-    if (scope.user) suggest(["Show recorded activity","Show all users"]);
+    const first = summary.themes?.[0];
+    suggest([...(first?.conversations ? ["Which conversations had " + (kindLabels[first.kind] || first.kind).toLowerCase() +
+      (named ? " in " + title : "") + "?"] : []),"Show recorded activity",...(scope.user ? ["Show all users"] : [])]);
     previous = activity = comparison = null;
     visibleCalls = [];
     remember(question,null,"themes","Checked recurring finding types for " + title + ".");
@@ -442,29 +446,82 @@ function investigationCanvas(impact, page, models) {
     suggest([...(suggested ? ["Show call " + suggested] : []),...(page.next_offset == null ? [] : ["What happened next?"])]);
   }
 
-  function conversationSection(row, filters, lines = []) {
-    const title = row.thread || "Recorded conversation";
-    return {title,lines,action:"Read " + title,
-      onAction:() => ask("Read “" + title + "”",null,{thread:{...row,id:row.thread_key || row.id},filters,
-        focus:row.trace && row.call ? {trace:row.trace,call:row.call} : null})};
+  async function readListedConversation(reference,question,signal) {
+    const {thread,filters,focus} = reference;
+    await showConversation(thread,filters,0,signal,focus);
+    if (!signal.aborted) remember(question,null,"activity","Read " + thread.thread + ".");
   }
 
-  async function findConversations(name, filters, signal) {
-    const result = await api("threads",{...filters,name});
+  async function showConversationList(request,offset,signal) {
+    const page = await readConversationChoices(request,offset);
     if (signal.aborted) return;
-    const exact = result.rows.filter(row => row.thread.toLowerCase() === name.toLowerCase());
-    const matches = exact.length ? exact : result.rows;
-    if (matches.length === 1 && (exact.length || result.next_offset == null)) {
-      await showConversation(matches[0],filters,0,signal);
+    if (page.unique) {
+      await showConversation(page.unique,request.filters,0,signal);
       return;
     }
-    activity = null;
-    comparison = null;
-    previous = null;
+    activity = comparison = null;
+    if (!request.match.group) previous = null;
     visibleCalls = [];
-    evidenceSections("conversation-search",matches.length ? "Matching conversations" : "No matching conversation",
-      matches.length ? "Use a more specific name or open one of the matches." : "Try using part of the recorded conversation name.",
-      matches.slice(0,3).map(row => conversationSection(row,filters,[row.org,row.user,fullDate(row.start)].filter(Boolean))));
+    const sections = page.sections.map(section => ({...section,onAction:() => ask(section.action,null,section.conversation)}));
+    evidenceSections("conversation-list",page.title,page.description,sections);
+    conversationList = sections.length ? {sections,more:page.more} : null;
+    if (!sections.length && !Object.keys(request.match).length) suggest(["Show overview"]);
+    else suggestConversations();
+  }
+
+  function suggestConversations() {
+    suggest(conversationList ? ["Open the first conversation",...(conversationList.more ? ["Show more conversations"] : [])] : ["Show recorded activity"]);
+  }
+
+  async function showThemeConversations(kind,filters,question,signal) {
+    const title = "Conversations with " + (kindLabels[kind] || kind).toLowerCase() + (filters.workflow ? " in " + workflowName(filters.workflow) : "");
+    await showConversationList({filters,match:{kind},title},0,signal);
+    if (!signal.aborted) remember(question,null,"activity",title);
+  }
+
+  async function followConversationList(question,displayQuestion,listed,chart,signal) {
+    const chartRequest = chartConversationRequest(question,chart);
+    if (chartRequest) {
+      const matches = chartRequest.themes;
+      if (matches.length === 1) await showThemeConversations(matches[0].kind,chart.filters,displayQuestion,signal);
+      else {
+        const choices = matches.length ? matches : chart.themes;
+        visibleChart = {...chart,themes:choices,choosing:true};
+        const description = chartRequest.count == null ? "Choose the theme whose conversations you want to read." :
+          matches.length ? plural(matches.length,"theme") + " have that count. Which group would you like to read?" :
+          "None of the displayed themes has that count. Choose one to see its conversations.";
+        evidenceSections("choose-theme","Which theme?",description);
+        suggest(choices.map(row => kindLabels[row.kind] || row.kind));
+      }
+      return true;
+    }
+    const index = listed && (listedConversationName(question,listed.sections) ?? listedConversationIndex(question,listed.sections.length));
+    if (listed && index != null) {
+      const entry = listed.sections[index];
+      if (entry) await readListedConversation(entry.conversation,displayQuestion,signal);
+      else {
+        evidenceSections("choose-conversation","Which listed conversation?",plural(listed.sections.length,"conversation") + " shown.",listed.sections);
+        conversationList = listed;
+        suggestConversations();
+      }
+      return true;
+    }
+    if (listed && /^(?:show (?:me )?(?:the )?)?(?:more|next)(?: \d+)? conversations$/.test(normalize(question))) {
+      if (listed.more) await showConversationList(listed.more.request,listed.more.offset,signal);
+      else {
+        evidenceSections("listed-conversations","End of the list","You can open any of these conversations.",listed.sections);
+        conversationList = listed;
+        suggestConversations();
+      }
+      if (!signal.aborted) remember(displayQuestion,null,"activity",listed.more ? "Read the next page of conversations." : "Reached the end of the conversation list.");
+      return true;
+    }
+    if (!listed && /\b(?:conversation|one|result|example)$/.test(normalize(question)) && listedConversationIndex(question,0) !== null) {
+      evidenceSections("choose-conversation","Which conversation?","Ask to see recorded activity or give the conversation name.");
+      suggest(["Show recorded activity"]);
+      return true;
+    }
+    return false;
   }
 
   async function describeActivity(model, question, sections, signal) {
@@ -772,10 +829,9 @@ function investigationCanvas(impact, page, models) {
     if (intervening) output.append(intervening);
     if (view === "recurrence") {
       if (record.trend?.length) output.append(trend(record.trend));
-      const result = await api("occurrences",{...record.filters,group:facts.id,by_thread:1});
+      await showConversationList({filters:record.filters,match:{group:facts.id},
+        title:record.duplicate ? "Conversations with this match" : "Affected conversations"},0,signal);
       if (signal.aborted) return;
-      const examples = result.rows.slice(0,3).map(row => conversationSection(row,record.filters));
-      if (examples.length) evidenceSections("recurring-examples",record.duplicate ? "Conversations with this match" : "Affected conversations",null,examples);
     }
     output.append(element("p",{className:"canvas-answer-foot",text:count}));
     const followups = [];
@@ -785,7 +841,7 @@ function investigationCanvas(impact, page, models) {
     if (view !== "sources") followups.push("Show the exact inputs");
     if (view !== "recurrence" && facts.conversations > 1) followups.push("Where else did that repeat?");
     if (view !== "action") followups.push("What should I test next?");
-    suggest(followups.slice(0,2));
+    if (view !== "recurrence") suggest(followups.slice(0,2));
   }
   async function ask(question, selected, selectedConversation) {
     if (!question.trim()) return;
@@ -806,6 +862,10 @@ function investigationCanvas(impact, page, models) {
     status.textContent = "Looking up evidence…";
     let choices = measurements, replayChoices = experiments, related = nearby;
     const awaitingUser = userQuestion;
+    let listed = conversationList;
+    let chart = visibleChart;
+    conversationList = null;
+    visibleChart = null;
     userQuestion = null;
     measurements = null;
     experiments = null;
@@ -831,6 +891,8 @@ function investigationCanvas(impact, page, models) {
           else filters.user = owner.user;
           if (!await changeScope(filters,signal)) return;
           choices = replayChoices = related = null;
+          listed = null;
+          chart = null;
         }
         if (!owner.question) {
           output.replaceChildren();
@@ -873,13 +935,15 @@ function investigationCanvas(impact, page, models) {
         }
       }
       if (selectedConversation) {
-        const {thread,filters,focus} = selectedConversation;
-        await showConversation(thread,filters,0,signal,focus);
-        if (signal.aborted) return;
-        remember(question,null,"activity","Read captured calls in the conversation.");
-        status.textContent = "";
+        await readListedConversation(selectedConversation,displayQuestion,signal);
+        if (!signal.aborted) status.textContent = "";
         return;
       }
+      if (!selected && await followConversationList(question,displayQuestion,listed,chart,signal)) {
+        if (!signal.aborted) status.textContent = "";
+        return;
+      }
+      if (signal.aborted) return;
       const names = knownWorkflows === workspaceWorkflows ? workspaceWorkflows : [...new Set([...knownWorkflows,...workspaceWorkflows])];
       const mentions = selected ? [] : workflowsInQuestion(question,names);
       const named = mentions.length === 1 && mentions[0] !== scope.workflow ? mentions[0] : null;
@@ -1014,15 +1078,23 @@ function investigationCanvas(impact, page, models) {
         return;
       }
       const query = question.trim().replace(/[?!]+$/, "");
-      const suffix = named && [named,workflowName(named)].flatMap(name => [" in "," for "].map(prefix => prefix + name.toLowerCase()))
+      const mentioned = mentions.length === 1 && mentions[0];
+      const suffix = mentioned && [mentioned,workflowName(mentioned)].flatMap(name => [" in "," for "].map(prefix => prefix + name.toLowerCase()))
         .find(ending => query.toLowerCase().endsWith(ending));
       const activityQuestion = suffix ? query.slice(0,-suffix.length) : query;
       const activityScope = named ? {...scope,workflow:named} : scope;
+      const theme = !selected && conversationTheme(activityQuestion);
+      if (theme) {
+        await showThemeConversations(theme,!mentioned && chart ? chart.filters : activityScope,displayQuestion,signal);
+        if (!signal.aborted) status.textContent = "";
+        return;
+      }
       let conversation = !selected && conversationQuestion(activityQuestion);
       if (conversation) {
         conversation = conversation.replace(/^["'“]|["'”]$/g, "").trim();
         if (conversation.length && conversation.length <= 160) {
-          await findConversations(conversation,activityScope,signal);
+          await showConversationList({filters:activityScope,match:{name:conversation},title:"Matching conversations",
+            description:"You can use a more specific name or open a listed conversation."},0,signal);
           if (signal.aborted) return;
           remember(question,null,"activity","Searched the captured conversation names.");
           status.textContent = "";
@@ -1036,18 +1108,14 @@ function investigationCanvas(impact, page, models) {
         return;
       }
       if (!selected && /^(?:show (?:me )?|list )?(?:recorded activity|recent conversations|captured conversations)$/.test(normalize(activityQuestion))) {
-        const [result, total] = await Promise.all([api("threads",activityScope), named ? api("summary",activityScope) : currentImpact]);
+        const total = named ? await api("summary",activityScope) : currentImpact;
         if (signal.aborted) return;
-        activity = null;
-        comparison = null;
-        previous = null;
-        const examples = result.rows.slice(0,3).map(row => conversationSection(row,activityScope,
-          [plural(row.trace_count,"recorded request") + (row.start ? " · " + fullDate(row.start) : "")]));
-        visibleCalls = [];
-        evidenceSections("recorded-activity","Recorded activity",plural(total.captured_conversations,"captured conversation") +
-          (named ? " in " + workflowName(named) : ""),examples);
-        suggest(named ? ["Focus on " + workflowName(named)] : records.length ? ["What needs attention first?"] : []);
-        status.textContent = "";
+        const description = plural(total.captured_conversations,"captured conversation") + (named ? " in " + workflowName(named) : "");
+        await showConversationList({filters:activityScope,match:{},title:"Recorded activity",description},0,signal);
+        if (!signal.aborted) {
+          remember(displayQuestion,null,"activity",description);
+          status.textContent = "";
+        }
         return;
       }
       if (!selected && /^(?:(?:show|open|draw)(?: me)? (?:the |a )?)?(?:context|evidence) (?:map|graph|network)$/i.test(normalize(question))) {
@@ -1115,9 +1183,19 @@ function investigationCanvas(impact, page, models) {
           const {tools} = await api("recent-tool-names",activityScope);
           if (signal.aborted) return;
           plan = await planInterview(model,question,candidates,{subject,tools,hasCalls:!named && !!visibleCalls.length,
-            lastQuestion:!named ? history.at(-1)?.question : undefined},signal);
+            lastQuestion:!named ? history.at(-1)?.question : undefined,conversations:!named && listed ? listed.sections : [],chart:!named ? chart : null},signal);
         } catch (error) { if (signal.aborted) return; usedFallback = true; }
         if (signal.aborted) return;
+      }
+      if (plan?.view === "themeConversations") {
+        await showThemeConversations(plan.kind,plan.filters,displayQuestion,signal);
+        if (!signal.aborted) status.textContent = "";
+        return;
+      }
+      if (plan?.view === "conversation") {
+        await readListedConversation(plan.reference,displayQuestion,signal);
+        if (!signal.aborted) status.textContent = "";
+        return;
       }
       if (plan?.view === "chooseReplay") {
         chooseReplay(plan);

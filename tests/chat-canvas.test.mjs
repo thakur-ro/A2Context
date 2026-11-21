@@ -3,7 +3,7 @@ import {readFile} from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
 
-const source = (await Promise.all(["interview-plan","sidecar-canvas"].map(name =>
+const source = (await Promise.all(["interview-conversations","interview-plan","sidecar-canvas"].map(name =>
   readFile(new URL(`../ui/${name}.js`,import.meta.url),"utf8")))).join("\n");
 const records = [
   {facts:{id:"first", title:"Compare dispatch", kind:"Proposal trials"},dispatch:true},
@@ -55,6 +55,32 @@ test("a model can name a finding in its own language and the canvas still shows 
 test("a partner cannot cite a finding outside the selected scope", async () => {
   const env = context({id:"R3",view:"action",answer:"Inspect this result."});
   await assert.rejects(env.partnerAnswer("my-model","Another?",records,[{id:"first"}]),/invalid answer or evidence reference/);
+});
+
+test("the partner can select only a conversation offered in the answer",async () => {
+  const ref = {thread:{id:"scoped-key",thread:"Hold the puzzle"},filters:{user:"support-17"},focus:{trace:"trace",call:"call"}};
+  const options = {tools:[],conversations:[{title:"Hold the puzzle",conversation:ref}]};
+  const choose = reply => context(reply,packet => {
+    assert.match(packet,/C1 = "Open displayed conversation 1 · Hold the puzzle"/);
+    assert.ok(!packet.includes("scoped-key"));
+  }).planInterview("local","Take me back to the jigsaw order",[],options);
+  assert.equal((await choose("C1")).reference,ref);
+  await assert.rejects(choose("C2"),/could not select evidence/);
+  const {listedConversationName:name} = context();
+  assert.equal(name('Read “Hold the puzzle”',options.conversations),0);
+  assert.equal(name('Read “Hold the puzzle”',[...options.conversations,...options.conversations]),-1);
+  assert.equal(name('What did the customer say?',options.conversations),null);
+});
+
+test("a chart read carries the filters that produced it and leaves a tied count unresolved",async () => {
+  const chart = {filters:{workflow:"orders",user:"a"},themes:[{kind:"conflict",conversations:2},{kind:"duplicate",conversations:2}]};
+  const env = context("K2",packet => assert.match(packet,/K2 = "List the recorded conversations counted under Exact repetition/));
+  const read = await env.planInterview("local","Find requests that got copied",[],{tools:[],chart});
+  assert.equal(read.kind,"duplicate");
+  assert.equal(read.filters,chart.filters);
+  assert.equal(env.chartConversationRequest("Which two conversations?",chart).themes.length,2);
+  assert.equal(env.chartConversationRequest("Which 3 conversations?",chart).themes.length,0);
+  assert.equal(env.chartConversationRequest("Can you show the 2nd one?",{...chart,choosing:true}).themes[0].kind,"duplicate");
 });
 
 test("the interview can choose a measured view only for a supplied measurement", async () => {

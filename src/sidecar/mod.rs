@@ -713,6 +713,10 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 include_bytes!("../../ui/context-network.js"),
             ),
             (
+                "/interview-conversations.js",
+                include_bytes!("../../ui/interview-conversations.js"),
+            ),
+            (
                 "/interview-plan.js",
                 include_bytes!("../../ui/interview-plan.js"),
             ),

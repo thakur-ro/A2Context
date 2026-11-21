@@ -22,6 +22,8 @@ Start the gallery with `cargo run --locked -- sidecar --demo --listen 127.0.0.1:
 
 You can also name the user in your first question. Try **Which patterns repeat across support-17’s conversations?** IDs come from recorded metadata and can include spaces. An ID with no captured conversations gets a different answer from a user with recorded conversations and zero findings. **Show all users** clears the user while keeping the workflow and other active filters.
 
+Ask **Which four conversations?** Both candidate scores and proposal trials appear in four conversations, so the interview asks which theme you mean. Answer **Candidate scores**. **Show more conversations** retrieves the next three or fewer. **Open the first one** opens the first conversation on the page you just saw, at the call where the evidence was recorded. You can also ask **Which conversations had candidate scores?** directly.
+
 ## Connect a model
 
 **Workspace evidence** uses the local sidecar to retrieve findings and recorded excerpts. To interpret the retrieved evidence in plain language, run the optional Python gateway on the same host as the sidecar. It accepts a model server’s Chat Completions endpoint. This example assumes a model already served on loopback. Substitute the sidecar origin printed by the demo and a model ID your server accepts.

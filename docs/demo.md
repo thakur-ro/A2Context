@@ -18,7 +18,7 @@ From the workspace homepage, type **What did verify_customer return?** to find t
 
 1. Choose **Rule conflict** under **Recurring themes**. Two of four conversations contain a conflict. The example compares the cached approval with the customer's hold. Choose **Exchange agent** in the sidebar to see its recommended investigation.
 2. Type **What did the customer ask for, and did the approval check change the outcome?** Read the customer’s hold and the two sandbox outcomes together. Without the check, the puzzle order changed to `exchange_requested`. With the check, it stayed `delivered`.
-3. Type **Where else did that repeat?** Two conversations contributed to this finding. Read an example in the interview, or ask **Show the order states** to see that the earlier boots exchange stayed in place under both conditions.
+3. Ask **Show the order states** to see that the earlier boots exchange stayed in place under both conditions. Type **Where else did that repeat?** Two conversations contributed to the finding. **Open the second one** brings up the matching call in the second listed conversation.
 
 To follow the conversation directly, type **Read conversation “Wait on the second exchange”**. Ask **What happened before call 2?** to see the verification result, then **What happened after that call?** to return to the lookup. **Show call 2** opens its inputs and results in place.
 

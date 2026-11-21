@@ -29,6 +29,31 @@ try {
     assert.deepEqual(await chart.locator("progress").evaluateAll(bars => bars.map(b => [b.value,b.max])),
       summary.themes.map(t => [t.conversations,summary.captured_conversations]));
     const sample = (await read("findings",{...user,kind:summary.themes[0].kind,limit:1})).rows[0];
+    const all = (await read("occurrences",{...user,kind:"candidate",by_thread:"1"})).rows;
+    assert.equal(all.length,4);
+    const refs = await read("occurrences",{...user,kind:"candidate",by_thread:"1",fields:"reference",limit:"3"});
+    assert.equal(refs.next_offset,3);
+    assert.deepEqual(refs.rows,all.slice(0,3).map(({detail,...reference}) => reference));
+    await ask("Which four conversations?");
+    await answer.getByRole("heading",{name:"Which theme?",exact:true}).waitFor();
+    assert.deepEqual((await page.locator(".canvas-prompts button").allTextContents()).map(s => s.trim()),["Candidate scores","Proposal trials"]);
+    await ask("Candidate scores");
+    const readButtons = answer.getByRole("button",{name:/^Read /});
+    await readButtons.first().waitFor();
+    assert.deepEqual((await readButtons.allTextContents()).map(s => s.trim()),all.slice(0,3).map(row => "Read "+row.thread));
+    await ask("Open the fifth one");
+    await answer.getByRole("heading",{name:"Which listed conversation?"}).waitFor();
+    await ask("Show more conversations");
+    await answer.getByRole("button",{name:"Read "+all[3].thread,exact:true}).waitFor();
+    assert.equal(await readButtons.count(),1);
+    const lookup = page.waitForRequest(r => new URL(r.url()).pathname.endsWith("/thread-calls"));
+    await ask("Open the first one");
+    const query = new URL((await lookup).url()).searchParams;
+    for (const [key,id] of Object.entries({thread:all[3].thread_key,focus_trace:all[3].trace,focus_call:all[3].call,user:user.user})) {
+      assert.equal(query.get(key),id);
+    }
+    await answer.getByRole("heading",{name:all[3].thread,exact:true}).waitFor();
+    await ask("Which issues keep coming up?");
     await chart.getByRole("button").first().click();
     await answer.locator(`[data-group="${sample.id}"]`).waitFor();
     assert.equal(await answer.locator("[data-group]").getAttribute("data-call"),sample.evidence.call_id);
@@ -50,6 +75,8 @@ try {
     await ask('Which issues keep coming up for user "no-recorded-user-598"?');
     await answer.getByRole("heading",{name:"No recorded conversations for this user"}).waitFor();
     assert.equal(await chart.count(),0);
+    await ask("Open the second one");
+    await answer.getByRole("heading",{name:"Which conversation?",exact:true}).waitFor();
     await page.reload();
     await input.waitFor();
     await page.locator(".canvas-home").getByText("User · no-recorded-user-598",{exact:true}).waitFor();

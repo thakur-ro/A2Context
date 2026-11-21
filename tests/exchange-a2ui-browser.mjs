@@ -92,6 +92,22 @@ try {
     assert.deepEqual(await scopedChart.locator("progress").evaluateAll(bars => bars.map(bar => [bar.value,bar.max])),
       summary.themes.map(t => [t.conversations,summary.captured_conversations]));
     assert.equal(await page.getByRole("region",{name:"Recurring themes"}).count(),1);
+    await submit("Which conversations had rule conflicts?");
+    await mixed.getByRole("heading",{name:"Conversations with rule conflict in Exchange agent"}).waitFor();
+    const conflictsByThread = await page.request.get(new URL("/api/sidecar/occurrences?workflow=exchange-agent&kind=conflict&by_thread=1",base).href).then(r => r.json());
+    assert.equal(conflictsByThread.rows.length,2);
+    const second = conflictsByThread.rows[1];
+    const openRequest = page.waitForRequest(request => new URL(request.url()).pathname.endsWith("/thread-calls"));
+    await submit("Open the second one");
+    const openParams = new URL((await openRequest).url()).searchParams;
+    assert.equal(openParams.get("workflow"),"exchange-agent");
+    assert.equal(openParams.get("thread"),second.thread_key);
+    assert.equal(openParams.get("focus_trace"),second.trace);
+    assert.equal(openParams.get("focus_call"),second.call);
+    await mixed.getByRole("heading",{name:second.thread,exact:true}).waitFor();
+    await mixed.getByText(/The finding occurred at call \d+/).waitFor();
+    await submit("Which issues keep coming up in Exchange agent?");
+    await scopedChart.waitFor();
     await submit("What did verify_customer return?");
     const search = page.getByRole("region",{name:"Answer canvas"});
     await search.getByRole("heading",{name:"Matching recorded activity"}).waitFor();

@@ -826,7 +826,10 @@ impl Store {
             .map(|offset| offset.parse::<u32>())
             .transpose()?
             .unwrap_or(0);
-        let mut page_size = if view == "thread-calls" {
+        let mut page_size = if matches!(
+            view,
+            "thread-calls" | "threads" | "occurrences" | "findings"
+        ) {
             filters
                 .get("limit")
                 .map(|limit| limit.parse::<usize>())
@@ -1431,12 +1434,21 @@ impl Store {
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
             "occurrences" => {
                 let by_thread = filters.get("by_thread").is_some_and(|value| value == "1");
+                let references = filters.get("fields").is_some_and(|value| value == "reference");
                 if by_thread {
-                    sql.push_str(", examples AS (SELECT *,row_number() OVER (PARTITION BY thread_key
+                    sql.push_str(", examples AS (SELECT trace_id,call_id,thread_key,thread,observed,kind,n");
+                    if !references {
+                        sql.push_str(",detail");
+                    }
+                    sql.push_str(",row_number() OVER (PARTITION BY thread_key
                         ORDER BY observed DESC,trace_id,call_id,n) AS sample FROM events WHERE thread_key IS NOT NULL)");
                 }
                 sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
-                    'thread_key',thread_key,'observed',observed,'kind',kind,'detail',json(detail)) ");
+                    'thread_key',thread_key,'observed',observed,'kind',kind");
+                if !references {
+                    sql.push_str(",'detail',json(detail)");
+                }
+                sql.push_str(") ");
                 if by_thread {
                     sql.push_str("FROM examples WHERE sample=1");
                 } else {

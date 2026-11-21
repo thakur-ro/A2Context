@@ -89,13 +89,18 @@ function adjacentCallRequest(question) {
   return null;
 }
 
-async function planInterview(model, question, candidates, {subject, lastQuestion, hasCalls, tools}, signal) {
+async function planInterview(model, question, candidates, {subject, lastQuestion, hasCalls, tools, conversations = [], chart}, signal) {
   const options = new Map();
   function add(id, label, plan) {
     options.set(id,{label,plan});
   }
   tools.forEach((name,i) => add("T" + (i+1),"Read the proposal or result for tool " + name.replaceAll("_"," "),
     {view:"search",tool:name}));
+  conversations.forEach((section,i) => add("C" + (i+1),"Open displayed conversation " + (i+1) + " · " + section.title.slice(0,160),
+    {view:"conversation",reference:section.conversation}));
+  chart?.themes.forEach((row,i) => add("K" + (i+1),"List the recorded conversations counted under " +
+    (kindLabels[row.kind] || row.kind) + " in the displayed chart (" + row.conversations + ")",
+    {view:"themeConversations",kind:row.kind,filters:chart.filters}));
   const records = subject ? [subject,...candidates.filter(r => r.facts.id !== subject.facts.id)] : candidates;
   const labels = new Set();
   function finding(label,view,record) {

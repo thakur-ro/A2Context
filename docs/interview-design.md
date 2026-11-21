@@ -28,6 +28,22 @@ A numbered search result identifies an example. Its number can differ from the c
 
 ## Evidence and presentation
 
+### Following a chart into a conversation
+
+In the exchange demo, the interview used to list two conversations with a conflict and then answer “Open the second one” with a search result from a third conversation. The displayed choices now carry their conversation IDs. For a finding, each choice also carries its trace and call IDs. Typing an ordinal or an exact title uses the same reference as selecting the row. A connected model can choose a listed conversation by its short-lived ID. The model receives the title and position. The host supplies the filters and resolves the stored IDs.
+
+A chart counts distinct conversations across all finding groups of the given kind. A single finding has its own, narrower set of occurrences. The interview queries the relevant set, returns one matching call per identified conversation and pages three at a time. A count shared by two chart rows prompts the user to choose a theme. A reference to “the second one” uses the order on the page currently in view.
+
+We tested this on the six-workflow Exgentic sample. In AppWorld, 74 conversations contained 3,300 distinct repeated-input groups. Across all six workflows, the browser matched the first two pages to the sidecar, opened the second conversation on page two, and checked its trace and call IDs against the stored occurrence. The gallery test covers tied counts, missing user IDs and named-user scope at two viewport widths. In a separate exchange-demo run, local Gemma resolved “the one whose title asks to hold the jigsaw” to **Hold the puzzle** and opened call 6. That run checks one paraphrase. [Public sample](scale-study.md#import-the-public-corpus) · [Six-workflow check](../scripts/check_conversation_drilldown.mjs) · [Gallery check](../tests/interview-user-browser.mjs)
+
+Run the public-sample check against a sidecar serving the imported recordings. It needs Playwright and Chromium.
+
+```sh
+node scripts/check_conversation_drilldown.mjs http://127.0.0.1:18052
+```
+
+### Renderer
+
 A2Context ships the A2UI 1.0 protocol with the Lit renderer and web core pinned to 0.15.0. The protocol describes each surface. The host chooses the layout, type, color and keyboard behavior. The recurrence chart is a custom catalog component with a bounded action that selects a recorded finding. Its counts describe kinds of evidence. For example, a proposal trial records a comparison, and a rule conflict records a disagreement in the inputs. [A2UI 1.0 release](https://developers.googleblog.com/a2ui-10-build-delightful-fast-reliable-agentic-experiences/) · [Renderer package pins](../ui/a2ui/package.json)
 
 The Rust sidecar keeps counts and evidence references authoritative. Without a model, the browser answers a bounded set of question types using those records. A configured model can interpret open-ended questions and choose evidence and views. It works with a bounded catalog of references and cannot supply arbitrary links or overwrite measured values. The A2UI Lit renderer receives the components for each answer. Inferences about source influence need measured evidence under the tested conditions. [A2UI messages](https://a2ui.org/reference/messages/) · [A2UI Basic Catalog](https://a2ui.org/concepts/catalogs/)
