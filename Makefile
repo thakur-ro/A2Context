@@ -45,6 +45,7 @@ check-release: check check-ui check-bundles verify-image
 	cargo package --locked
 
 check-qa:
+	$(PYTHON) examples/ordinary-usage/check.py
 	$(PYTHON) examples/public-qa/compare_orders.py
 	$(PYTHON) examples/public-qa/check_holdout.py
 	$(PYTHON) examples/public-qa/annotation_gap.py --check-saved

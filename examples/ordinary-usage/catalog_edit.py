@@ -14,22 +14,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from check_sidecar import send
 
 
-def compare(call, endpoint, number, seed):
-    body = call["recorded_request"]["body"]
-    original = json.loads(body) if isinstance(body, str) else body
-    original.update(temperature=0.5, seed=seed, max_tokens=512)
-    edited = deepcopy(original)
-    tool = edited["tools"][0]["function"]
-    sentence = "Use list_databases to see available database names."
-    assert tool["name"] == "SQLite_query" and tool["description"].count(sentence) == 1
-    tool["description"] = tool["description"].replace(sentence, "Use SQLite_schema to inspect the attached database schema.")
-    names = {item["function"]["name"] for item in original["tools"]}
-    arms = ["original", "repeat", "edit"]
+def replay_arms(call, endpoint, number, seed, variants):
+    names = {item["function"]["name"] for item in variants["original"]["tools"]}
+    arms = list(variants)
     random.Random(f"{number}/{seed}").shuffle(arms)
     row = {"session": f"tools-{number}", "call": call["id"], "seed": seed, "order": arms}
     for arm in arms:
         try:
-            status, reply = send(endpoint, "/v1/chat/completions", edited if arm == "edit" else original, expected=None)
+            request = dict(variants[arm], temperature=0.5, seed=seed, max_tokens=512)
+            status, reply = send(endpoint, "/v1/chat/completions", request, expected=None)
             if status != 200:
                 row[arm] = {"status": status}
                 continue
@@ -40,6 +33,17 @@ def compare(call, endpoint, number, seed):
         except (URLError, TimeoutError) as exc:
             row[arm] = {"error": str(exc)}
     return row
+
+
+def compare(call, endpoint, number, seed):
+    body = call["recorded_request"]["body"]
+    original = json.loads(body) if isinstance(body, str) else body
+    edited = deepcopy(original)
+    tool = edited["tools"][0]["function"]
+    sentence = "Use list_databases to see available database names."
+    assert tool["name"] == "SQLite_query" and tool["description"].count(sentence) == 1
+    tool["description"] = tool["description"].replace(sentence, "Use SQLite_schema to inspect the attached database schema.")
+    return replay_arms(call, endpoint, number, seed, {"original": original, "repeat": original, "edit": edited})
 
 
 def main():

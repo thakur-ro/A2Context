@@ -25,3 +25,15 @@ On the score question, both candidate arms supplied the correct formula to the s
 ## Follow-up on the summary step
 
 Use each of the two saved candidate-arm final requests for the score question, with its original seed and sampler. Compare four arms in shuffled order: the original, an unchanged repeat, replacing only the candidate summary with its complete verified source passage, and replacing that summary with the first other passage by source-name order captured in the same trial. Use the control passage verbatim and report the character lengths of both replacements. Leave source IDs, wrapper text and the other two summaries fixed. This tests a passage swap in the final input. Only the final generation is rerun. Reuse the score criterion and grade all eight answers with arm IDs concealed. The two seeds belong to one question.
+
+**Result.** All eight requests completed. None met the score criterion. Both unchanged repeats gave the same judgments as their originals. The inserted source passage contained 5,424 characters, compared with 5,464 for the control passage and 364 or 449 for the original summary. Sending the formula verbatim changed both answer texts, yet neither explained that coverage can drop while the assessed pass rate holds. A recommendation to preserve the formula as a fix for this model and question would go beyond the observations. [Blinded answers](summary-review.json) · [Assignments and replacement lengths](summary-arms.json)
+
+To reproduce from a finished public pilot, use Python from the PaperQA environment for the application replay and the same local model server as the pilot. The replay scripts require new output directories.
+
+```sh
+python3 examples/ordinary-usage/retrieval_check.py data/ordinary-usage/papers
+/tmp/a2-papers/bin/python examples/ordinary-usage/replay_passages.py data/ordinary-usage/papers \
+  data/ordinary-usage/passage-comparison --model-port 18742 --binary /path/to/frozen/a2context
+python3 examples/ordinary-usage/replay_summary.py data/ordinary-usage/passage-comparison \
+  data/ordinary-usage/summary-comparison --model-port 18742
+```

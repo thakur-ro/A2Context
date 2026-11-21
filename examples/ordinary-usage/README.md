@@ -18,6 +18,8 @@ The project owner delegated validation to Codex. Review against the attached dat
 
 We tested one possible explanation after the pilot. One tool description referred to an unavailable tool. Correcting the description produced fewer first-step tool proposals on the same inputs. [Controlled edit, including unchanged repeats](catalog-edit.md)
 
+Two further tests looked for useful context in earlier sessions. In PaperQA, the search recovered a relevant formula and traced its omission to a summary. Passing the whole source passage to the final model still yielded an incorrect explanation at both tested seeds. In SQLite, adding a verified description of the database failed to elicit a tool proposal on the one eligible later question. Run `python3 examples/ordinary-usage/check.py` to verify published counts and evidence references offline. [Retrieval and summary experiments](retrieval-check.md) · [SQLite schema comparison](earlier-schema.md)
+
 ## Reproduce
 
 Use the current pilot scripts and build the sidecar binary from the revision pinned in the protocol. Start a loopback MLX server with `lmstudio-community/LFM2.5-1.2B-Instruct-MLX-8bit` loaded as its default model. The original run used a 512-token server default. The capture listener forwards only chat completions to that local port. It records model traffic and application exits. Tool execution inside the SQLite plugin and PaperQA’s local search operations have no execution spans in this setup.
