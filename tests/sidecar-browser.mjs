@@ -354,6 +354,10 @@ try {
       await required.getByText(digest,{exact:true}).waitFor();
     } else {
       await required.getByRole("heading",{name:"Sources captured for Authorized payment method"}).waitFor();
+      await required.getByText("Inspect checked fragments",{exact:true}).click();
+      await required.getByText("/messages/0/content",{exact:true}).waitFor();
+      await required.getByText("Expected text matched",{exact:true}).waitFor();
+      await required.getByText(/UTF-8 bytes \[426, 435\)/).waitFor();
     }
   }
   const declarations = missingRule.attributes["nexusweave.context.semantics"].request_sources;

@@ -1,5 +1,5 @@
 use super::findings::{self, Observation};
-use nexusweave::{activation, pending, replay, Call, Run};
+use nexusweave::{activation, pending, replay, Availability, Call, Run};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -8,6 +8,26 @@ pub struct Action {
     title: &'static str,
     next: &'static str,
     basis: &'static str,
+}
+
+fn checked_source_fragments(
+    call: &Call,
+    coverage: &nexusweave::preflight::SourceCoverage,
+) -> Vec<Value> {
+    call.context
+        .iter()
+        .filter(|item| item.availability == Availability::Included)
+        .filter_map(|item| {
+            let source = item.source_id.as_ref()?;
+            let range = item.request_fragment.as_ref()?;
+            let expected = coverage.expected_text_sha256.get(source)?;
+            let captured = findings::digest(item.text.as_ref()?);
+            Some(json!({
+                "id": item.id, "source": source, "version": item.source_version,
+                "request_fragment": range, "captured_text_sha256": captured, "matches": captured == *expected,
+            }))
+        })
+        .collect()
 }
 
 /// Recommend a follow-up only from the eligible trials on this occurrence.
@@ -381,6 +401,12 @@ pub fn preview(
             (!paths.is_empty()).then(|| json!(paths))
         })
         .collect();
+    let checked_sources = preflight
+        .source_coverage
+        .as_ref()
+        .map_or_else(Vec::new, |coverage| {
+            checked_source_fragments(call, coverage)
+        });
     let unverified = candidates
         .into_iter()
         .filter_map(|probe| match probe.verification {
@@ -402,6 +428,7 @@ pub fn preview(
         "screen_suggestion":screen.ok().flatten(), "target_checks":target_checks, "continuation_paths":paths, "prefix_reviews":prefix_reviews,
         "version": 1, "model": call.model, "captured_inputs": call.context.len(),
         "scope_coverage": preflight.scope_coverage, "source_coverage": preflight.source_coverage,
+        "checked_source_fragments": checked_sources,
         "anchor_overlap": preflight.anchor_overlap, "tool_scope":tool_scope,"tool_map":tool_map,"render_check":render_check,
         "total": total, "recommendations": items, "unverified_probes": unverified, "history":history, "prefill":prefill,
     }))

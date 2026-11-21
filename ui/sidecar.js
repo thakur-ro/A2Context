@@ -227,12 +227,17 @@ function requiredSourceList(coverage) {
 
 function sourceMismatchEvidence(detail) {
   const fragments = detail.sources.filter(source => source.request_fragment && source.captured_text_sha256);
+  return checkedFragmentDetails(detail.coverage, fragments, "Inspect differing fragments");
+}
+
+function checkedFragmentDetails(coverage, fragments, label) {
   if (!fragments.length) return null;
-  return element("details", {}, element("summary", {text:"Inspect differing fragments"}), ...fragments.map(source => {
+  return element("details", {}, element("summary", {text:label}), ...fragments.map(source => {
     const {pointer, text_range} = source.request_fragment;
     return element("div", {}, element("strong", {text:sourceName(source)}),
+      source.matches !== undefined && element("p", {text:source.matches ? "Expected text matched" : "Captured text differs"}),
       element("p", {}, element("code", {text:pointer}), " · UTF-8 bytes ["+text_range.start_byte+", "+text_range.end_byte+")"),
-      element("p", {}, "Expected SHA-256 ", element("code", {text:detail.coverage.expected_text_sha256[source.source]})),
+      element("p", {}, "Expected SHA-256 ", element("code", {text:coverage.expected_text_sha256[source.source]})),
       element("p", {}, "Captured SHA-256 ", element("code", {text:source.captured_text_sha256})));
   }));
 }
@@ -2084,6 +2089,9 @@ function pendingPreview() {
       const history = priorEdits(report.history, current.length > 0 || Boolean(report.prefill));
       const coverage = report.scope_coverage;
       const sources = report.source_coverage;
+      const checkedFragments = report.checked_source_fragments || [];
+      const fragmentLabel = checkedFragments.every(fragment => !fragment.matches)
+        ? "Inspect differing fragments" : "Inspect checked fragments";
       const gap = coverage && (!coverage.declarations || coverage.known_values < coverage.declarations);
       const opening = report.prefill?.ranked[0]?.opening_changed !== undefined;
       output.replaceChildren(...[
@@ -2097,7 +2105,7 @@ function pendingPreview() {
           requiredSourceList(sources),
           sourceGap && element("h3",{text:sourceGap.action.title}),
           sourceGap && element("p",{text:sourceGap.action.next}),
-          sourceGap && sourceMismatchEvidence(sourceGap.detail)),
+          checkedFragmentDetails(sources, checkedFragments, fragmentLabel)),
         gap && element("section",{className:"panel","aria-label":"Rule capture gap"},
           element("h2",{text:"Check capture for " + coverage.scope.key}),
           element("p",{text:coverage.declarations ? coverage.known_values + " of " + coverage.declarations +

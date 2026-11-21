@@ -59,6 +59,11 @@ def verify(binary):
                     coverage = preview["source_coverage"]
                     assert coverage == local["source_coverage"]
                     assert coverage["matched"] == (arm != "lookup")
+                    checked, = preview["checked_source_fragments"]
+                    assert checked["source"] == "payment-lookup"
+                    assert checked["matches"] == coverage["matched"]
+                    assert checked["request_fragment"]["pointer"] == "/messages/0/content"
+                    assert (checked["captured_text_sha256"] == coverage["expected_text_sha256"]["payment-lookup"]) == checked["matches"]
                     cards = [r for r in preview["recommendations"] if r["kind"] == "source_gap"]
                     assert len(cards) == int(arm == "lookup")
                     if cards:
