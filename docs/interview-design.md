@@ -64,6 +64,8 @@ The airline sample illustrates the difference between finding a topic and answer
 
 We then wrote five fresh questions and ran them before changing the router. Both modes met three of the five evidence checks. Both found a verification result and telecom activity about internet use abroad. Gemma selected the token experiment for a question about the numbers in an answer. Its rewrite missed the relevant software-test excerpt that workspace search found. Both missed the dispatch receipt when asked for the order database under two versions of an approval check. These checks score the evidence shown first. Finding a verification result alone does not establish when verification happened relative to another event.
 
+On the redesigned dashboard at `7acd93d`, we repeated those five questions. Workspace evidence opened the expected evidence for four. It missed the token experiment when the question described “the numbers in the response.” Local Gemma 3 4B opened the expected evidence for all five. These are now regression checks because the team has seen the questions. They measure which evidence appeared first. We have yet to test whether engineers understand that evidence more quickly with the new layout.
+
 To repeat the comparison, run a model gateway for the exchange demo and a second gateway for the imported six-workflow sample. Pass their origins and the configured model ID to the browser check. Each JSON line includes the wording, whether the content check matched, the searches issued, and the number of model calls. [Build the public sample](scale-study.md#import-the-public-corpus) · [Configure the gateway](chat-canvas.md#connect-a-model)
 
 ```sh
