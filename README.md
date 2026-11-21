@@ -26,6 +26,7 @@ Open the printed address and ask **What should we test before the next exchange?
 
 | Your question | Evidence A2Context uses |
 | --- | --- |
+| Why did a tool proposal stop the workflow? | Compare the proposed fields with the schema the model received. Check the arguments before dispatch or open the recurring finding in the feed. [See the LangChain pilot](examples/ordinary-usage/transfer/README.md#what-the-next-detector-caught) |
 | Did my chat template drop the previous tool call? | Remove one structured field and compare the exact input token IDs before calling the model. [Try the inventory rendering check](examples/local-mlx-tool/rendering/README.md) |
 | Can a quote request expose booking tools? | Compare named functions in the assembled catalog with the permissions your workflow supplies. The card shows each mismatch and its location in the request. [Try a tool-scope check](docs/guide.md#check-the-advertised-tools-before-inference) |
 | What repeats across one user’s conversations? | Ask for their recurring themes, then choose a chart row to inspect a recorded example. [Try the six-conversation walkthrough](docs/chat-canvas.md#find-patterns-for-one-user) |

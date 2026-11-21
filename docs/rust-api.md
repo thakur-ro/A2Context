@@ -25,6 +25,26 @@ cargo doc --locked --no-deps --open
 cargo test --locked --doc
 ```
 
+## Check a tool proposal before dispatch
+
+Use the request that was sent to the provider and the complete proposed arguments. The same function runs in the background when the sidecar receives a captured request and tool proposal. An application can also call it immediately after receiving the proposal.
+
+```rust
+use a2context::tool_contract::{Assessment, Catalog};
+use serde_json::json;
+
+let request = json!({"tools":[{"type":"function","name":"lookup","parameters":{
+    "type":"object","properties":{"id":{"type":"string"}},"required":["id"]
+}}]});
+let catalog = Catalog::from_request(&request);
+let result = catalog.check("lookup", &json!({"location":"aisle 3"}));
+assert!(matches!(result, Assessment::MissingRequired { field, .. } if field == "id"));
+```
+
+For another language, POST `{"request": …, "tool": "lookup", "arguments": …}` to `/api/sidecar/check-proposal`. The endpoint returns the first missing field, its JSON Pointer in the arguments and the pointer to its declaration in the request. It accepts object arguments or a JSON-encoded object string. It keeps no record of this check and never dispatches a tool. Captured OTLP spans separately populate the feed.
+
+The check follows unconditional required fields, directly declared object properties, and homogeneous array items. It accepts Chat Completions, Responses and Anthropic-style tool catalogs. Ambiguous tool names, unusable arguments and root schema references yield `unassessed`. A `no_missing_field_observed` result covers only the inspected paths. A dispatcher can enforce additional constraints. If a top-level supplied key is absent from the selected tool’s declared properties, the check can show up to three other advertised declarations of the same name among the first eight supplied fields. A controlled source edit is needed to test influence. [Validation and source-edit results](../examples/ordinary-usage/transfer/README.md#what-the-next-detector-caught)
+
 ## Trace a finding in Rust
 
 The crate-level example uses a pending request with a 30-day company policy and a 60-day archived FAQ. The saved LangSmith span records the same request and a 60-day answer. [Read the tested example](../src/lib.rs) · [Pending request](../examples/preflight-returns.json) · [Saved LangSmith span](../examples/preflight-returns-langsmith.json)

@@ -12,21 +12,26 @@ from check_sidecar import attrs, export, get, send
 CALLS_PER_BATCH = 8
 
 
-def measure_batch(base, batch):
+def measure_batch(base, batch, kind):
     user = f"batch-{batch}"
     spans = []
     for index in range(CALLS_PER_BATCH):
         trace_id = f"{1 + batch * CALLS_PER_BATCH + index:032x}"
         messages = [{"role": "user", "content": "Look up the record."}]
-        if index:
+        if index or kind == "missing_tool_argument":
             messages.append({"role": "assistant", "tool_calls": [{"id": "lookup", "type": "function",
                              "function": {"name": "lookup", "arguments": "{}"}}]})
         messages.append({"role": "tool", "tool_call_id": "lookup", "content": "x" * 4096})
+        request = {"messages":messages}
+        fields = {"gen_ai.operation.name":"chat", "gen_ai.request.model":"fixture", "a2context.user.id":user}
+        if kind == "missing_tool_argument":
+            request["tools"] = [{"type":"function", "function":{"name":"lookup", "parameters":{
+                "type":"object", "properties":{"id":{"type":"string"}}, "required":["id"]}}}]
+            fields["gen_ai.output.messages"] = json.dumps([{"role":"assistant","parts":[{"type":"tool_call",
+                "name":"lookup","id":"next","arguments":{"id":"123"} if index else {"key":"123"}}]}])
+        fields["a2context.request.body"] = json.dumps(request)
         spans.append({"traceId": trace_id, "spanId": "1111111111111111", "name": "chat",
-                      "startTimeUnixNano": str(time.time_ns()), "attributes": attrs({
-                          "gen_ai.operation.name": "chat", "gen_ai.request.model": "fixture",
-                          "a2context.user.id": user, "a2context.request.body": json.dumps({"messages": messages}),
-                      })})
+                      "startTimeUnixNano": str(time.time_ns()), "attributes": attrs(fields)})
     payload = export(*spans)
     started = time.perf_counter()
     for retry in range(6):
@@ -38,8 +43,13 @@ def measure_batch(base, batch):
         time.sleep(0.02 * 2**retry)
     card, = get(base, "findings", user=user)["rows"]
     elapsed = 1000 * (time.perf_counter() - started)
-    assert card["kind"] == "tool_reference" and card["evidence"]["trace_id"] == "otlp:" + spans[0]["traceId"]
-    assert card["evidence"]["detail"]["reference"]["pointer"] == "/messages/1"
+    assert card["kind"] == kind and card["evidence"]["trace_id"] == "otlp:" + spans[0]["traceId"]
+    detail = card["evidence"]["detail"]
+    if kind == "missing_tool_argument":
+        assert detail["check"]["schema_pointer"] == "/tools/0/function/parameters/required/0"
+        assert detail["check"]["argument_pointer"] == "/id" and detail["decision"] == "output:0:0"
+    else:
+        assert detail["reference"]["pointer"] == "/messages/1"
     return elapsed, retry
 
 
@@ -48,6 +58,7 @@ def main():
     parser.add_argument("endpoint", help="Fresh sidecar started with --capture-content")
     parser.add_argument("--batches", type=int, default=128)
     parser.add_argument("--batches-per-second", type=float, default=16)
+    parser.add_argument("--finding", choices=["tool_reference","missing_tool_argument"], default="tool_reference")
     args = parser.parse_args()
     if args.batches < 2 or args.batches_per_second <= 0:
         parser.error("specify at least two batches and a positive send rate")
@@ -59,16 +70,17 @@ def main():
         futures = []
         for i in range(args.batches):
             time.sleep(max(0, started + i / args.batches_per_second - time.perf_counter()))
-            futures.append(pool.submit(measure_batch, args.endpoint, i))
+            futures.append(pool.submit(measure_batch, args.endpoint, i, args.finding))
         results = [future.result() for future in futures]
     seconds = time.perf_counter() - started
     durations, retries = zip(*results)
     health = get(args.endpoint, "health")
     score = get(args.endpoint, "tool-reference-score")
     calls = CALLS_PER_BATCH * args.batches
-    assert (score["clear"], score["affected"]) == (calls - args.batches, args.batches)
+    orphan_count = args.batches if args.finding == "tool_reference" else 0
+    assert (score["clear"], score["affected"]) == (calls - orphan_count, orphan_count)
     assert health["coverage"]["with_request"] == calls and health["accepted_batches"] == args.batches
-    print(json.dumps({"calls": calls, "batches": args.batches, "wall_seconds": round(seconds, 3),
+    print(json.dumps({"finding":args.finding, "calls": calls, "batches": args.batches, "wall_seconds": round(seconds, 3),
                       "observed_calls_per_second": round(calls / seconds, 2),
                       "send_to_visible_ms": {"first": round(durations[0], 3), "median": round(median(durations), 3),
                                              "p95": round(quantiles(durations, n=20, method="inclusive")[18], 3)},

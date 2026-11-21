@@ -83,6 +83,7 @@ pub mod replay_effects;
 mod scoped_calls;
 pub mod source_profiles;
 mod span_metadata;
+pub mod tool_contract;
 mod tool_patterns;
 pub mod turn_evidence;
 

@@ -20,6 +20,7 @@ mod store;
 mod target_patterns;
 mod targets;
 mod tool_handoffs;
+mod tool_proposal;
 mod tool_reference_score;
 mod variation;
 
@@ -225,9 +226,15 @@ fn start(mut options: Options) -> Result<()> {
                     | "/api/replay-reports"
                     | "/api/activation-reports"
                     | "/api/sidecar/preview"
+                    | "/api/sidecar/check-proposal"
             )
         {
-            if demo && request.url() != "/api/sidecar/preview" {
+            if demo
+                && !matches!(
+                    request.url(),
+                    "/api/sidecar/preview" | "/api/sidecar/check-proposal"
+                )
+            {
                 respond(
                     request,
                     405,
@@ -316,9 +323,16 @@ fn work(
             metrics
                 .lag_ms
                 .store(enqueued.elapsed().as_millis() as usize, Relaxed);
-        } else if request.url() == "/api/sidecar/preview" {
-            let reply = replay_http::read_json(&mut request, LIMIT)
-                .and_then(|input| recommendations::preview(&store, input));
+        } else if matches!(
+            request.url(),
+            "/api/sidecar/preview" | "/api/sidecar/check-proposal"
+        ) {
+            let reply = if request.url() == "/api/sidecar/check-proposal" {
+                replay_http::read_json(&mut request, LIMIT).map(tool_proposal::check)
+            } else {
+                replay_http::read_json(&mut request, LIMIT)
+                    .and_then(|input| recommendations::preview(&store, input))
+            };
             let (status, body) = match reply {
                 Ok(body) => (200, body),
                 Err((status, message)) => (status, json!({"message": message})),

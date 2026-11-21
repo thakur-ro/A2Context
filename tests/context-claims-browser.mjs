@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 
 const {chromium} = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
-const [base, toolsWorkflow, papersWorkflow] = process.argv.slice(2);
+const [base, toolsWorkflow, papersWorkflow, contractWorkflow] = process.argv.slice(2);
 const browser = await chromium.launch({executablePath:process.env.CHROME_BINARY});
 try {
   for (const width of [390, 1200]) {
     for (const [workflow, kind, label, action] of [
       [toolsWorkflow, "capability_claim", "Reported tool limitation", "Inspect comparison call"],
+      ...(contractWorkflow ? [[contractWorkflow, "missing_tool_argument", "Missing tool argument", "Inspect this call"]] : []),
       [papersWorkflow, "example_citation", "Citation from an example", "Inspect this call"],
     ]) {
       const page = await browser.newPage({viewport:{width,height:850}});
@@ -26,13 +27,13 @@ try {
       await ref.waitFor({state:"attached"});
       assert.equal(await ref.getAttribute("data-trace"),comparison?.trace || card.evidence.trace_id);
       assert.equal(await ref.getAttribute("data-call"),comparison?.call || card.evidence.call_id);
-      await answer.getByText(comparison?.result || card.evidence.detail.citation,{exact:true}).first().waitFor();
+      await answer.getByText(comparison?.result || card.evidence.detail.check?.schema_pointer || card.evidence.detail.citation,{exact:true}).first().waitFor();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       assert.deepEqual(errors,[]);
       await page.close();
     }
   }
-  console.log("Both recommendations opened the recorded evidence on desktop and mobile.");
+  console.log("Recommendations opened the recorded evidence on desktop and mobile.");
 } finally {
   await browser.close();
 }

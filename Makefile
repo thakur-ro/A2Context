@@ -47,6 +47,7 @@ check-release: check check-ui check-bundles verify-image
 
 check-qa:
 	$(PYTHON) examples/ordinary-usage/check.py
+	$(PYTHON) examples/ordinary-usage/transfer/check_results.py
 	$(PYTHON) examples/public-qa/compare_orders.py
 	$(PYTHON) examples/public-qa/check_holdout.py
 	$(PYTHON) examples/public-qa/annotation_gap.py --check-saved

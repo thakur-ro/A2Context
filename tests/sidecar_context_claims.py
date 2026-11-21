@@ -9,7 +9,7 @@ import sys
 from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from check_sidecar import attrs, export, get, send_traces, server
+from check_sidecar import attrs, export, get, send, send_traces, server
 from sidecar_tool_reference_score import call
 
 
@@ -48,6 +48,8 @@ def check(binary, browser=False):
                span(10, {"messages":[{"role":"user","content":PROMPT.replace("## Citation examples", "More text")}]}, ANSWER),
                span(11, {"messages":[{"role":"system","content":"ref-ff9999: another passage"}, *cited["messages"]]}, ANSWER)]
     target = span(12, cited, ANSWER)
+    contract = dict(offer, tools=[lookup])
+    missing = span(16, contract, "", proposed=True)
     # No cross-user or changed-catalog example may be returned to the dev report.
     foreign = span(13, paired, "OK", user="another-user")
     changed = span(14, dict(paired,tools=[dict(TOOL,revision=2)]), "OK")
@@ -56,12 +58,37 @@ def check(binary, browser=False):
     with TemporaryDirectory() as tmp:
         db = Path(tmp) / "claims.sqlite"
         with server(binary, db, *flags) as base:
-            batch = export(*declines, *exclude, target, foreign, changed)
+            batch = export(*declines, *exclude, target, foreign, changed, missing)
             send_traces(base, batch)
             send_traces(base, batch)
             def card(kind, **scope):
                 row, = get(base, "findings", kind=kind, user="usr", **scope)["rows"]
                 return row
+            proposal = card("missing_tool_argument")
+            witness = proposal["evidence"]["detail"]
+            assert proposal["occurrences"] == 1 and witness["check"]["argument_pointer"] == "/item"
+            def check_args(tool, args, catalog=None):
+                return send(base, "/api/sidecar/check-proposal", {
+                    "request": {"tools": [tool] if catalog is None else catalog},
+                    "tool": "catalog_list", "arguments": args})[1]
+            assert check_args(lookup, {}) == witness["check"]
+            for value in ({"item":None}, '{"item":0}'):
+                assert check_args(lookup, value)["status"] == "no_missing_field_observed"
+            for value in (None, "incomplete", []):
+                assert check_args(lookup, value)["status"] == "unassessed"
+            assert check_args(lookup, {}, [lookup,lookup])["status"] == "unassessed"
+            sibling = {"type":"function","name":"search","parameters":{"properties":{"tag":{"type":"string"}}}}
+            result = check_args(lookup, {"tag":"x"}, [lookup,sibling])
+            assert result["other_declarations"] == [{"field":"tag","tool":"search","pointer":"/tools/1/parameters/properties/tag"}]
+            assert check_args(lookup, {"tag":"x"}, [lookup,sibling,sibling])["other_declarations"] == []
+            nested = {"properties":{"batches":{"items":{"properties":{"opts":{"required":["a~/b"]}}}}}}
+            for tool, path in [
+                ({"type":"function","name":"catalog_list","parameters":nested},"parameters"),
+                ({"name":"catalog_list","input_schema":nested},"input_schema"),
+            ]:
+                issue = check_args(tool, {"batches":[{},{"opts":{"other":123}}]})
+                assert issue["schema_pointer"] == "/tools/0/" + path + "/properties/batches/items/properties/opts/required/0"
+                assert issue["argument_pointer"] == "/batches/1/opts/a~0~1b" and issue["supplied_fields"] == ["other"]
             report = card("capability_claim")
             assert report["occurrences"] == report["threads"] == 2 and report["discovery_example"] is None
             evidence = report["evidence"]["detail"]
@@ -78,15 +105,22 @@ def check(binary, browser=False):
                 start, end = detail[field]
                 assert value.encode()[start:end].decode() == detail["key"] == "ref-ff9999"
         with sqlite3.connect(db) as con:
-            con.execute("DELETE FROM observations WHERE kind IN ('example_citation','capability_claim')")
+            con.execute("DELETE FROM observations WHERE kind IN ('example_citation','capability_claim','missing_tool_argument')")
             con.execute("DROP TABLE discovery_uses")
             con.execute("PRAGMA user_version=36")
         with server(binary, db, *flags) as base:
+            assert card("missing_tool_argument") == proposal
             assert card("example_citation") == citation
             assert card("capability_claim")["discovery_example"] == comparison
             if browser:
                 script = Path(__file__).with_name("context-claims-browser.mjs")
-                subprocess.run(["node", script, base, "policy-workflow", "policy-workflow"], check=True)
+                subprocess.run(["node", script, base, "policy-workflow", "policy-workflow", "policy-workflow"], check=True)
+        with sqlite3.connect(db) as con:
+            con.execute("DELETE FROM observations WHERE kind='missing_tool_argument'")
+            con.execute("PRAGMA user_version=37")
+        with server(binary, db, *flags) as base:
+            assert card("missing_tool_argument") == proposal
+            assert card("capability_claim")["discovery_example"] == comparison
         with server(binary, Path(tmp)/"redacted.sqlite") as base:
             send_traces(base, batch)
             assert not get(base,"findings")["rows"]

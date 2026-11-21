@@ -1,0 +1,18 @@
+{
+  "model_revision": "eaa56b503cc0a8a4d15de1dd8bd2a7e95a716be2",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "torch": "2.11.0",
+  "transformers": "4.57.6",
+  "otel_sdk": "1.45.2",
+  "baseline_async_exporter": {
+    "n": 72,
+    "median_ms": 89.108,
+    "p95_ms": 92.667
+  },
+  "with_additional_sidecar_exporter": {
+    "n": 72,
+    "median_ms": 89.279,
+    "p95_ms": 95.052
+  },
+  "median_delta_ms": 0.171
+}

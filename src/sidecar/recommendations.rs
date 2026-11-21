@@ -97,6 +97,16 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Inspect the unconfirmed IDs for one alternative. Verify that the builder included those inputs and exported their named fragments, then repeat preflight.",
             "No configured alternative had all its required source fragments",
         ),
+        "missing_tool_argument" if detail["check"]["other_declarations"].as_array().is_some_and(|rows| !rows.is_empty()) => (
+            "Compare the two tool definitions",
+            "Check the dispatcher response. To test whether the other definition influenced this proposal, rename its field in an isolated replay and compare with unchanged repeats.",
+            "The proposal omitted a required field and supplied a name declared by another advertised tool.",
+        ),
+        "missing_tool_argument" => (
+            "Check the proposed tool arguments",
+            "Compare the proposed fields with the advertised schema. Inspect the dispatcher response to see whether it rejected or repaired the proposal.",
+            "An argument object omitted a field required by the tool definition in the same request.",
+        ),
         "example_citation" => (
             "Check where this citation points",
             "Compare the cited key with the labeled passages. Check whether the application displays or removes it, then test a citation example drawn from the current passages.",

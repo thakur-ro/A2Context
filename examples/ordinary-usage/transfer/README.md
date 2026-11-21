@@ -27,6 +27,14 @@ Codex reviewed the six sessions selected by trace-ID hash. Each had a concrete i
 
 The worked example is a useful comparison with PaperQA. In one workflow, the model copied a formatting identifier. In the other, its answer repeated an irrelevant topic from a demonstration. A detector restricted to opaque citation keys missed the second case. The raw tool proposals exposed a different opportunity: compare the proposed arguments with the actual schema in the same request, then distinguish a predicted validation failure from an observed application rejection.
 
+## What the next detector caught
+
+A fresh sidecar running the subsequent revision displayed one recommendation across four SQL conversations. It surfaced after the fourth exported span. Before dispatch, the same check identified all four proposals that LangChain’s own argument validator rejected. The other ten proposals passed the framework validator and the sidecar reported no missing field. Three of the four rejected proposals supplied a field declared on a different tool in the same request. The dashboard links the required field, the actual proposal and that competing declaration when present. The retrieval feed remained empty. This second pass used the development captures that informed the detector. [All 14 comparisons](proposal-checks.jsonl)
+
+We tested two actions an engineer could take. Telling the model the missing field produced more schema-valid proposals than a generic error. Every resulting query still failed to compile. Renaming a field on the neighboring tool produced no measured transfer of that name. [Repair experiment](repair.md) · [Neighboring tool experiment](sibling-field.md)
+
+To replay both workflows into an empty current sidecar, run `python3 examples/ordinary-usage/replay_feed.py data/ordinary-usage/transfer-frozen --workflows sql citations --port 18474`. To check each proposal with the independently shipped validator, use the pilot’s Python environment to run `python examples/ordinary-usage/transfer/check_proposals.py data/ordinary-usage/transfer-frozen/sql --port 18474`.
+
 ## Reproduce
 
 The pilot used Python 3.13, a read-only SQLite connection, the engine’s BM25 retriever, a local LFM2.5-1.2B-Instruct model and the documents from the [original pilot](../protocol.md). The workflow environment used the following direct dependencies.

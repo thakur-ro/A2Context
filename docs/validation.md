@@ -162,6 +162,14 @@ docker exec "$sidecar" cat /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/memory.peak /s
 docker stop "$sidecar"
 ```
 
+### Time until a missing tool argument is visible
+
+The missing-argument workload uses the same rate, one-CPU limit, 512 MiB memory cap and batch size as the tool-reference measurement above. Every request includes a matched invocation and a 4 KiB tool result. Seven of eight new proposals supply the required field. The eighth omits it. The client checks the affected trace, proposal ID, missing field and schema pointer. Add `--finding missing_tool_argument` to the benchmark command on a fresh database.
+
+Across 1,024 proposals, send to readable recommendation took **16.629 ms median and 19.020 ms p95**. The sidecar processed 128.5 calls per second, used 1.941 CPU-seconds per 1,000 calls and peaked at 36.58 MiB of cgroup memory. There were zero queue drops, retries or OOM kills. Automatic checks made zero model calls. The client ran outside the sidecar cgroup. These figures measure the background feed after export. An application that explicitly waits for the optional pre-dispatch HTTP check incurs a separate round trip. [Benchmark results and cgroup counters](../examples/ordinary-usage/transfer/visibility-cost.json)
+
+On a separate macOS arm64 host run, the same local Qwen workflow made 72 measured inference calls per arm. With its existing asynchronous exporter, median latency was 89.108 ms and p95 was 92.667 ms. With a second asynchronous exporter targeting the release sidecar, median was 89.279 ms and p95 was 95.052 ms. The observed differences were +0.171 ms and +2.385 ms respectively. This single interleaved host run includes scheduling noise. [Exporter measurements and runtime versions](../examples/ordinary-usage/transfer/exporter-cost.json)
+
 ### Burst and retry recovery
 
 With the source drill-down enabled, ten warm reads of a category’s source groups followed by its leading group’s conversations took a median of **19.28 ms per pair**. The overview and first factor page took 17.13 ms per pair. The sidecar retained all 2,304 traces after 139 of 192 batches needed a retry. It peaked at **49.0 MiB** under the one-CPU, 512 MiB limit, with zero OOM events. The reads ran after the conflict-only burst finished. These timings measure dashboard access, not inference latency.

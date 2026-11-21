@@ -1,4 +1,23 @@
 // A question selects a view of scoped evidence. Only captured records supply chart values and destinations.
+function proposalFieldNames(check) {
+  const names = check.supplied_fields.map(name => JSON.stringify(name));
+  if (check.supplied_count > names.length) names.push("and " + (check.supplied_count - names.length) + " more");
+  return names.join(", ") || "Empty object";
+}
+
+function proposalSections(detail) {
+  const check = detail.check;
+  const sections = [
+    {title:"Required by " + detail.tool,lines:[check.argument_pointer,check.schema_pointer]},
+    {title:"Fields supplied in the proposal",lines:[proposalFieldNames(check),detail.decision]},
+  ];
+  if (check.other_declarations?.length) sections.push({
+    title:"Also declared on another tool",
+    lines:check.other_declarations.map(row => JSON.stringify(row.field) + " on " + row.tool + " · " + row.pointer),
+  });
+  return sections;
+}
+
 function canvasRecord(card, filters = scope) {
   const { detail, trace_id: trace, call_id: call } = card.evidence;
   const dispatch = detail.sandbox_dispatch;
@@ -19,6 +38,10 @@ function canvasRecord(card, filters = scope) {
     ] };
     facts.observed = "Without the check, " + target.key + " ended in “" + state(target.without_guard) + "”. With the check, it " +
       (target.before === target.with_guard ? "stayed" : "ended") + " in “" + state(target.with_guard) + "”.";
+  } else if (card.kind === "missing_tool_argument") {
+    facts.observed = findingDetail(card.kind,detail);
+    map = {root:detail.tool,arms:[{label:"Required argument",value:detail.check.argument_pointer},
+      {label:"Fields supplied here",value:proposalFieldNames(detail.check)}]};
   } else if (card.kind === "example_citation") {
     facts.observed = findingDetail(card.kind,detail);
     map = {root:"Citations in this call",arms:[
@@ -78,6 +101,7 @@ function canvasRecord(card, filters = scope) {
   return { facts, filters, trend:card.trend, capture:{trace,call,workflow:card.evidence.workflow,thread:card.evidence.thread_key,sources:detail.sources.map(source => source.id)},
     dispatch:!!target, receipt:target ? dispatch : null, report:detail.report_id,
     capability:card.kind === "capability_claim" ? {claim:detail,example:card.discovery_example} : null,
+    missingArgument:card.kind === "missing_tool_argument" ? detail : null,
     citation:card.kind === "example_citation" ? detail : null,
     proposal:detail.response_pair?.original && detail.response_pair.edited ? detail.response_pair : null,
     tokenCard:card.kind === "token" ? card : null,
@@ -658,6 +682,9 @@ function investigationCanvas(impact, page, models) {
     if (ref.row.invocation && ref.row.result) sections.unshift({title:"Recorded invocation and result",lines:[
       ref.row.invocation, ref.row.result,
     ]});
+    for (const finding of captured?.findings || []) {
+      if (finding.call_id === call && finding.kind === "missing_tool_argument") sections.unshift(...proposalSections(finding.detail));
+    }
     const claim = captured?.findings.find(row => row.call_id === call && row.kind === "capability_claim")?.detail;
     if (claim) sections.unshift({title:"Reported tool limitation",lines:[
       claim.reply, claim.tool + " · " + claim.description, claim.pointer, claim.decision,
@@ -838,6 +865,14 @@ function investigationCanvas(impact, page, models) {
         description:records.length ? "I couldn’t match that question to captured evidence. Try naming a source, tool, or finding." :
           "This scope has no matching findings. Ask to see recorded activity."}));
       suggest(records.length ? ["What needs attention first?"] : []);
+      return;
+    }
+    if (record.missingArgument && (view === "evidence" || view === "sources")) {
+      visibleCalls = [{row:{trace:record.capture.trace,call:record.capture.call,thread:facts.example},number:1,filters:record.filters}];
+      const sections = proposalSections(record.missingArgument);
+      sections.push({title:"Check dispatch",lines:[facts.next],action:"Inspect this call",onAction:() => ask("Show call 1")});
+      evidenceSections("missing-tool-argument",facts.title,facts.observed,sections);
+      suggest(["Where else did that repeat?","What should I test next?"]);
       return;
     }
     if (record.citation && (view === "evidence" || view === "sources")) {
