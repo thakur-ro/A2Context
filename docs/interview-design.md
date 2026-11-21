@@ -2,7 +2,7 @@
 
 Welcome the user to an all-workflows briefing. Show how many conversations were captured, how many contain findings, and the most common finding types by affected conversation count. Ask **What would you like to investigate?** Offer two or three questions grounded in that briefing. A user can type a different question at any point.
 
-The sidebar lists recorded workflows. Each has a homepage with the same briefing and composer scoped to its conversations. The workspace homepage can investigate across scopes. A user can also name a workflow in the composer.
+The workspace homepage helps an engineer decide which workflow or problem to investigate. Each workflow homepage shows its own capture stats and one recommended investigation grounded in its highest-ranked finding. Users can start there or type a different question. The workspace can investigate across scopes, including a named workflow.
 
 ## How the interview works
 
@@ -12,12 +12,13 @@ The sidebar lists recorded workflows. Each has a homepage with the same briefing
 | What happened here? | An example and the inputs or results relevant to the question | Recorded turns, source locations, and tool observations |
 | Compare two workflows | Counts and coverage in one answer, optionally narrowed to one finding type | A scoped summary for each named workflow |
 | Find and read a recorded conversation | Up to three chronological calls and a prompt for the next calls | Literal search of captured conversation names and paged stored excerpts |
-| Find activity when the title is unknown | Up to four matching excerpts with exact call links | Full-text search of captured user, assistant, and tool previews |
+| Find activity when the title is unknown | Up to four matching excerpts, with a follow-up that shows the supporting call | Full-text search of captured user, assistant, and tool previews |
 | Did this happen elsewhere? | A count, a trend when dates are available, and representative conversations | Observations grouped by matching evidence |
 | Did a change help? | A comparison and a short explanation of the measured outcome | Original and edited trials, including incomplete evidence |
+| Which source mattered at this word? | An interactive token-position diagram when a scored experiment exists | Measured log probabilities for the same output token and preceding output |
 | What should I try next? | One suggested check or experiment | The verified limits of the evidence already shown |
 
-The composer stays available through the investigation. Follow-up questions can refer to the previous example. A question about another workflow should change scope in the conversation. Shared links can carry an exact scope and evidence location. The main interview needs no filter form or timeline navigation. Exact evidence pages remain available when a user wants to check a claim.
+The composer stays available through the investigation. Follow-up questions can refer to the previous example. A question about another workflow can scope the answer without leaving the workspace. Supporting calls, conversations, and replay states appear in the interview when requested. Existing saved URLs still resolve.
 
 ## Evidence and presentation
 

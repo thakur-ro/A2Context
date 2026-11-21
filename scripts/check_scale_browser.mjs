@@ -31,7 +31,7 @@ try {
       url.searchParams.set("workflow", workflow);
       const start = performance.now();
       await page.goto(url.href);
-      await page.locator(".canvas-lead h2").waitFor({timeout:60000});
+      await page.locator(".workflow-home .canvas-lead a2ui-basic-row").waitFor({timeout:60000});
       const readyMs = Math.round(performance.now() - start);
       const openingApi = {...api};
       const ask = page.getByRole("textbox",{name:"Question about workflow evidence"});
@@ -42,17 +42,16 @@ try {
         const open = performance.now();
         await ask.fill("Which inputs were repeated?");
         await ask.press("Enter");
-        const evidence = page.getByRole("link",{name:"Open exact evidence →"});
+        const evidence = page.locator(".canvas-answer .canvas-result[data-call]");
         await evidence.waitFor();
         matchingLocations = await page.getByText("Two matching locations in this request",{exact:true}).isVisible();
-        const evidenceUrl = new URL(await evidence.getAttribute("href"),origin);
-        assert.equal(evidenceUrl.searchParams.get("workflow"),workflow);
+        assert.equal(new URL(page.url()).searchParams.get("workflow"),workflow);
+        const ref = await evidence.evaluate(node => ({trace:node.dataset.trace,call:node.dataset.call,group:node.dataset.group}));
         const verificationStart = performance.now();
         if (matchingLocations) {
           const detail = await page.request.get(new URL("/api/sidecar/trace",origin).href,
-            {params:{id:evidenceUrl.searchParams.get("trace")}}).then(response => response.json());
-          const repeat = detail.findings.find(item => item.group === evidenceUrl.searchParams.get("recommendation") &&
-            item.call_id === evidenceUrl.searchParams.get("call"));
+            {params:{id:ref.trace}}).then(response => response.json());
+          const repeat = detail.findings.find(item => item.group === ref.group && item.call_id === ref.call);
           assert.equal(repeat.kind,"duplicate");
           const context = detail.trace.calls.find(call => call.id === repeat.call_id).context;
           const copies = repeat.detail.sources.map(source => context.find(item => item.id === source.id));
@@ -69,9 +68,10 @@ try {
           }
         }
         const verificationMs = performance.now() - verificationStart;
-        await evidence.click();
-        await page.getByRole("heading",{name:"Recommendation",exact:true}).waitFor({timeout:60000});
-        assert.ok(new URL(page.url()).searchParams.get("call"));
+        await ask.fill("Show the exact inputs");
+        await ask.press("Enter");
+        await evidence.getByRole("heading",{name:"Inputs in the recorded request",exact:true}).waitFor({timeout:60000});
+        assert.equal(await evidence.getAttribute("data-call"),ref.call);
         evidenceMs = Math.round(performance.now() - open - verificationMs);
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);

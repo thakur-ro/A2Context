@@ -122,11 +122,15 @@ try {
     const canvas = page.getByRole("region",{name:"Answer canvas"});
     await canvas.getByRole("heading",{name:"Matching recorded activity"}).waitFor();
     await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
-    await read("Ask what a tool returned from the workspace. Each match links to the recorded call.", 2.6, canvas, 66);
+    await read("Ask what a tool returned from the workspace.", 2.4, canvas, 66);
+    caption = "";
+    await typeQuestion("Show call 1");
+    await canvas.getByRole("heading",{name:"Captured call 1",exact:true}).waitFor();
+    await read("The supporting call appears in the interview.", 2.2, canvas, 66);
     caption = "";
     await click(page.getByRole("navigation",{name:"Workflows"}).getByRole("link",{name:"Exchange agent",exact:true}));
     await page.getByRole("heading",{name:"Exchange agent",exact:true}).waitFor();
-    await read("A customer approved one exchange, then put the second order on hold.", 2.2);
+    await read("The exchange workflow has its own stats and a recommended investigation.", 2.6);
     if (model) {
       const picker = page.getByLabel("Analysis partner");
       await click(picker);
@@ -149,11 +153,20 @@ try {
     caption = "";
     await click(page.getByRole("button",{name:"Switch to dark mode"}));
     await typeQuestion("Where else did that repeat?");
-    await canvas.getByRole("link",{name:"Wait on the second exchange"}).waitFor();
-    await read("Two conversations had this finding. Each links back to the affected request.", 3, canvas, 60);
-    await click(canvas.getByRole("link",{name:"See affected requests →"}));
+    await canvas.getByRole("button",{name:"Read Wait on the second exchange"}).waitFor();
+    await read("Two conversations had this finding. Read either one here.", 2.7, canvas, 60);
+    caption = "";
+    await typeQuestion("Show the order states");
     const dispatch = page.getByRole("region",{name:"Sandbox dispatch comparison"}).first();
-    await read("The replay receipt shows that the first exchange stayed in place in both runs.", 4.4, dispatch, 115);
+    await read("The replay receipt shows that the first exchange stayed in place in both runs.", 3, dispatch, 96);
+    caption = "";
+    await click(page.getByRole("navigation",{name:"Workflows"}).getByRole("link",{name:"All workflows",exact:true}));
+    await page.getByRole("heading",{name:"Welcome to NexusWeave",exact:true}).waitFor();
+    await typeQuestion("Show the token-position diagram in Returns demo");
+    const tokens = canvas.getByRole("table",{name:"Measured source edits by output token"});
+    await tokens.waitFor();
+    await click(tokens.getByRole("button",{name:/Token 14 ·/}));
+    await read("The saved returns experiment shows how editing each source changed the score at this token.", 4.5, tokens, 114);
   } finally {
     encoder.stdin.end();
     const [status] = await done;

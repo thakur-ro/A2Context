@@ -1,7 +1,7 @@
 "use strict";
 
 // The scores on a page share the recorded output prefix at each position.
-function tokenPath(card, {sharePosition = true} = {}) {
+function tokenPath(card, {sharePosition = true, inline = false, filters = scope} = {}) {
   const {detail} = card.evidence;
   const {landmark, location: measured} = detail;
   const pageSize = 16;
@@ -10,8 +10,9 @@ function tokenPath(card, {sharePosition = true} = {}) {
   const percent = new Intl.NumberFormat(undefined, {style:"percent", maximumSignificantDigits:4});
   const region = element("section", {className:"panel answer-path", "aria-label":"Source edits along the answer"});
   const title = element("h2", {text:"How did source edits affect this answer?"});
+  const headline = element("p", {className:"token-finding","aria-live":"polite"});
   const result = element("div", {"aria-live":"polite", text:"Loading token measurements…"});
-  region.append(title, result);
+  region.append(title, ...(inline ? [headline] : []), result);
   let currentRequest = 0;
   const linkedSelection = new URLSearchParams(sharePosition ? location.hash.slice(1) : "");
   let linkedGeneration = linkedSelection.get("generation");
@@ -21,7 +22,7 @@ function tokenPath(card, {sharePosition = true} = {}) {
     const offset = Math.floor(index / pageSize) * pageSize;
     result.setAttribute("aria-busy", "true");
     try {
-      const page = await api("token-path", {...scope, trace:measured.run_id, call:measured.call_id,
+      const page = await api("token-path", {...filters, trace:measured.run_id, call:measured.call_id,
         decision:measured.decision_id, report:detail.report_id, group:card.id, factor:detail.factor,
         offset, block:landmark.block});
       if (request !== currentRequest) return;
@@ -93,11 +94,12 @@ function tokenPath(card, {sharePosition = true} = {}) {
         const other = row.other_occurrence;
         const compare = other == null ? null : element("button", {type:"button", text:"Compare the same token at position " + (other + 1)});
         if (compare) compare.addEventListener("click", () => goTo(other));
-        readout.replaceChildren(element("h3", {text:tokenLabel}), element("p", {className:"token-finding", text:finding}),
+        if (inline) headline.textContent = finding;
+        readout.replaceChildren(element("h3", {text:tokenLabel}), ...(!inline ? [element("p", {className:"token-finding", text:finding})] : []),
           element("p", {text:"Edits are ordered by the absolute change in log probability. Earlier output tokens stay fixed."}),
           element("div", {className:"edit-result label", "aria-hidden":"true"},
-            element("span", {text:"Source edited"}), element("span", {text:"Edited probability"}), element("span", {text:"Change"})), ranks,
-          link("Inspect decoder-block measurements for this token", "/details?" + new URLSearchParams({run:measured.run_id}) + row.inspector_path.slice(row.inspector_path.indexOf("#"))));
+            element("span", {text:"Source edited"}), element("span", {text:"Edited probability"}), element("span", {text:"Change"})), ranks);
+        if (!inline) readout.append(link("Inspect decoder-block measurements for this token", "/details?" + new URLSearchParams({run:measured.run_id}) + row.inspector_path.slice(row.inspector_path.indexOf("#"))));
         if (compare) {
           const comparison = element("div", {className:"repeat-token"});
           if (ties === 1) comparison.append(element("p", {text:"For the " + sourceName(strongest.edit.source) +
@@ -130,7 +132,7 @@ function tokenPath(card, {sharePosition = true} = {}) {
       const untestedList = untested ? element("details", {}, element("summary", {text:untested + " captured inputs without a source-edit measurement"}),
         element("p", {text:page.untested_examples.map(sourceName).join(", ") + (untested > page.untested_examples.length ? " …" : "")})) : null;
       result.replaceChildren(coverage, map,
-        element("p",{className:"token-map-key",text:"↑ Raised · ↓ Lowered · = No change. Darker cells show a larger absolute change in log probability across this answer. Select a cell to inspect the edit."}),
+        element("p",{className:"token-map-key",text:"↑ Raised · ↓ Lowered · = No change. Stronger color shows a larger absolute change in log probability. Select a cell to inspect the edit."}),
         nav, readout);
       if (untestedList) result.append(untestedList);
       const selected = page.tokens.find(row => row.output_token === index);

@@ -13,18 +13,17 @@ function makeContextNetwork(rows) {
     seen.add(key);
   }
   for (const card of rows) {
-    const record = canvasRecord(card);
-    const {facts} = record;
+    const {facts} = canvasRecord(card);
     const detail = card.evidence.detail;
     const probe = ["prefill","candidate","token"].includes(card.kind) ? card : null;
     const coverage = card.kind === "source_gap" ? detail.coverage : null;
     const finding = add("finding:"+card.id,{type:"finding",name:facts.title,description:facts.observed,
-      href:record.href,kind:facts.kind,probe,coverage});
+      kind:facts.kind,probe,coverage});
     if (card.kind === "source_gap") {
       for (const name of facts.unconfirmed_sources) {
         if (coverage.text_mismatches?.includes(name)) continue;
         const id = add("unconfirmed:"+JSON.stringify([card.id,name]),{type:"unconfirmed",name,
-          description:"No matching source anchor in this request", href:record.href});
+          description:"No matching source anchor in this request"});
         connect(id,finding,"required anchor unconfirmed");
       }
     }
@@ -33,13 +32,13 @@ function makeContextNetwork(rows) {
       const {producer, organization, workflow, trace_id, call_id} = card.evidence;
       const identity = [producer, organization, workflow, source.source ?? [trace_id,call_id,source.id],
         source.version ?? null,source.role ?? null];
-      const id = add("source:"+JSON.stringify(identity),{type:"source",name,sourceKey:source.source ? JSON.stringify(identity) : null,caption:[source.role,source.version].filter(Boolean).join(" · "),
+      const id = add("source:"+JSON.stringify(identity),{type:"source",name,caption:[source.role,source.version].filter(Boolean).join(" · "),
         description:[workflow,source.role,source.version && "Version "+source.version].filter(Boolean).join(" · ") || "Version and role unavailable"});
       connect(id,finding,coverage?.text_mismatches?.includes(source.source) ? "text differs from expected digest" : "named in evidence");
     }
     for (const [i,arm] of (facts.map?.arms || []).entries()) {
       const id = add("arm:"+card.id+":"+i,{type:"outcome",name:arm.value,kind:arm.label,
-        description:facts.map.root,href:record.href});
+        description:facts.map.root});
       const relation = {conflict:"reports a declared value",candidate:"compares candidate log odds",token:"compares token probabilities"};
       connect(finding,id,relation[card.kind] || "compares outcomes");
     }
@@ -272,7 +271,7 @@ function networkOverview(graph, choose) {
       ". Select a node to inspect its neighbors. Distance is for layout only."}));
 }
 
-function contextNetwork(rows, {focusId, onNext, total} = {}) {
+function contextNetwork(rows, {focusId, onNext, total, filters} = {}) {
   const root = element("section",{className:"context-network","aria-label":"Context map"});
   const graph = makeContextNetwork(rows);
   if (!graph.nodes.size) return element("p",{className:"empty",text:"No findings match this scope."});
@@ -351,9 +350,7 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
     const drawing = renderNeighborhood(graph,node,page, next => show(next,0,true), next => show(id,next,true));
     body.replaceChildren(drawing,element("div",{className:"network-readout"},
       element("strong",{text:node.name}),element("span",{text:node.description}),
-      element("small",{text:plural(neighbors.length,"connection")+" · "+relations}),
-      node.href && link("Inspect this evidence →",node.href),
-      node.sourceKey && link("Follow this source across conversations",url({source_key:node.sourceKey}))));
+      element("small",{text:plural(neighbors.length,"connection")+" · "+relations})));
     const parent = hierarchy.parents.get(id);
     if (parent) {
       const group = hierarchy.nodes.get(parent);
@@ -374,7 +371,7 @@ function contextNetwork(rows, {focusId, onNext, total} = {}) {
         const path = element("details",{className:"network-answer-path"},
           element("summary",{text:"Follow source edits across this answer"}));
         path.addEventListener("toggle",() => {
-          if (path.open && !path.querySelector(".answer-path")) path.append(tokenPath(node.probe,{sharePosition:false}));
+          if (path.open && !path.querySelector(".answer-path")) path.append(tokenPath(node.probe,{sharePosition:false,inline:true,filters}));
         });
         body.append(path);
       }

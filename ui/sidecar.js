@@ -2487,8 +2487,7 @@ async function render(refresh = false) {
         if (!calls && impact.captured_conversations) {
           guidance = panel("Captured activity",
             element("p", {text:plural(impact.captured_conversations, "conversation") +
-              " with recorded spans. Recommendations appear when supported inference evidence arrives."}),
-            link("Browse conversations", url({view:"threads"}), "action"));
+              " with recorded spans. Recommendations appear when supported inference evidence arrives."}));
         } else if (unfiltered) {
           const heading = traces ? "Telemetry received" : "Connect your workflow";
           const next = !traces ? "Configure your workflow’s OpenTelemetry batch exporter, then send one model request." :
@@ -2502,7 +2501,6 @@ async function render(refresh = false) {
               "export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + health.otlp_http_endpoint})),
             !traces && link("Inspect a sample exchange request",url({view:"preview",scenario:"exchange-approval"})),
             traces > 0 && element("p",{text:plural(traces,"trace")+" · "+plural(calls,"inference span")}),
-            traces > 0 && link("Threads",url({view:"threads"})),
             element("p",{},link("Check receiver status","/api/sidecar/health")));
           if (!impact.captured_conversations) {
             byId("title").textContent = "Welcome to NexusWeave";

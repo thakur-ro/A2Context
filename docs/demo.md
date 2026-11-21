@@ -14,13 +14,15 @@ cargo run --locked -- demo
 
 Open the address it prints. The demo loads saved telemetry and measurements into a temporary SQLite database. It requires no API key.
 
-From the workspace homepage, type **What did verify_customer return?** to find the tool result without knowing the conversation name.
+From the workspace homepage, type **What did verify_customer return?** to find the tool result without knowing the conversation name. Ask **Show call 1** to read the supporting record in the interview.
 
-1. The welcome page shows the workspace totals and recurring themes. Choose **Exchange agent** in the sidebar for its own briefing. Ask **Which instructions disagreed?** to compare the cached approval with the customer’s hold.
+1. The welcome page shows workspace totals and recurring themes. Choose **Exchange agent** for its stats and recommended investigation. Ask **Which instructions disagreed?** to compare the cached approval with the customer’s hold.
 2. Type **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
-3. Type **Where else did that repeat?** Two conversations contributed to this finding. **See affected requests** opens the evidence. The state table shows that the earlier boots exchange stayed in place under both conditions.
+3. Type **Where else did that repeat?** Two conversations contributed to this finding. Read an example in the interview, or ask **Show the order states** to see that the earlier boots exchange stayed in place under both conditions.
 
-To follow the recorded conversation directly, type **Open conversation “Wait on the second exchange”**. Start with the verification and order lookups, then ask **What happened next?** to see the next calls. Each result links to its captured call.
+To follow the conversation directly, type **Read conversation “Wait on the second exchange”**. Start with the verification and order lookups, then ask **What happened next?** to see the next calls. Ask for a call by number to see its captured inputs and available results.
+
+From **All workflows**, ask **Show the token-position diagram in Returns demo**. The saved return-and-refund experiment opens in the interview. Select token 14 to see the effect of editing the refund policy. The chart compares probabilities at fixed output prefixes. [What the measurements support](research-preview.md#follow-a-source-through-a-workflow)
 
 The recording uses **Workspace evidence**. The source comparison reads the two declarations, and the dispatch comparison reads the sandbox receipt. The exchange agent’s saved proposals came from Qwen. You can run the walkthrough without installing a model. [Connect a model](chat-canvas.md)
 

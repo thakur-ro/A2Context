@@ -61,11 +61,8 @@ function canvasRecord(card, filters = scope) {
     facts.observed = findingDetail(card.kind, detail);
   }
   if (map) facts.map = map;
-  const baseline = card.kind === "baseline_check" ? detail.measurement : null;
   return { facts, filters, trend:card.trend, capture:{trace,call,sources:detail.sources.map(source => source.id)},
-    href:url({recommendation:card.id, factor:detail.factor, trace, call, report:detail.report_id,
-      replay:baseline?.replay_id, decision:baseline?.location.decision_id},filters),
-    group:url({recommendation:card.id,factor:detail.factor},filters), dispatch:!!target,
+    dispatch:!!target, receipt:dispatch, tokenCard:card.kind === "token" ? card : null,
     duplicate:card.kind === "duplicate" ? {trace,call,sources:detail.sources.map(source => source.id)} : null };
 }
 
@@ -119,7 +116,7 @@ function canvasAnswer(question, records, previous) {
   const scored = records.map(record => ({record, score:words.filter(word =>
     JSON.stringify(Object.values(record.facts)).toLowerCase().includes(word)).length})).sort((a,b) => b.score - a.score);
   const followup = /\b(it|this|that|those|next|again|often|recur\w*|conversations?|sessions?|repeat\w*)\b/.test(q);
-  const sourceQuestion = /\b(exact inputs|captured inputs|recorded inputs|what did the model receive|show (?:the )?sources)\b/.test(q);
+  const sourceQuestion = /\b(exact inputs|captured inputs|recorded inputs|what did the model receive|show (?:the )?sources|what supports that|show the supporting evidence|how do we know (?:that|this))\b/.test(q);
   const priority = /\b(attention|recommendations?|priorit\w*|test next)\b/.test(q);
   const record = byKind ? records.find(byKind[1]) : (followup || sourceQuestion) && previous ? previous :
     scored[0]?.score ? scored[0].record : priority ? records[0] : null;
@@ -245,7 +242,7 @@ function investigationCanvas(impact, page, models) {
   let loadedPage = page, currentTotal = impact.recommendations;
   let activeScope = {...scope}, currentImpact = impact;
   let records = [], history = [], previous, active, moreEvidence = false;
-  let activity, comparison;
+  let activity, comparison, visibleCalls = [];
   const corrections = new Map();
   const normalize = q => q.trim().toLowerCase().replace(/[?.!]+$/, "");
   past.hidden = true;
@@ -255,22 +252,29 @@ function investigationCanvas(impact, page, models) {
   }
 
   function showBriefing() {
-    heading.textContent = activeScope.workflow ? workflowName(activeScope.workflow) : "Welcome to NexusWeave";
-    input.placeholder = activeScope.workflow ? "Ask about " + workflowName(activeScope.workflow).toLowerCase() + "…" : "Ask about any recorded workflow…";
-    lead.replaceChildren(NexusWeaveA2UI.briefing({
-      metrics: [{value:currentImpact.captured_conversations.toLocaleString(),label:"Conversations captured"},
+    const workflow = activeScope.workflow;
+    heading.textContent = workflow ? workflowName(workflow) : "Welcome to NexusWeave";
+    input.placeholder = workflow ? "Ask about " + workflowName(workflow) + "…" : "Ask about any recorded workflow…";
+    home.classList.toggle("workflow-home",Boolean(workflow));
+    const metrics = [{value:currentImpact.captured_conversations.toLocaleString(),label:"Conversations captured"},
         {value:currentImpact.conversations.toLocaleString(),label:"With findings"},
-        {value:currentImpact.recommendations.toLocaleString(),label:"Finding groups"}],
+        {value:currentImpact.recommendations.toLocaleString(),label:"Finding groups"}];
+    const recommended = records[0];
+    lead.replaceChildren(workflow ? NexusWeaveA2UI.workflowBriefing({metrics,recommendation:recommended && {
+      title:recommended.facts.title,summary:recommended.facts.next,
+    }},() => recommended.tokenCard ? ask("Show the token-position diagram") : ask(recommended.facts.title,recommended)) : NexusWeaveA2UI.briefing({
+      metrics,
       themes: (currentImpact.themes || []).map(({kind,conversations,groups}) =>
         (kindLabels[kind] || kind) + " · " + (conversations ? plural(conversations,"conversation") : plural(groups,"group"))),
     }));
     lead.hidden = false;
     const questions = [];
-    if (records.some(record => record.facts.kind === kindLabels.conflict)) questions.push("Which instructions disagreed?");
-    if (records.some(record => record.dispatch)) questions.push("What changed at dispatch?");
+    if (workflow && currentImpact.themes?.some(theme => theme.kind === "token")) questions.push("Show the token-position diagram");
+    if (records.some(record => record.facts.kind === kindLabels.conflict) && !(workflow && recommended?.facts.kind === kindLabels.conflict)) questions.push("Which instructions disagreed?");
+    if (records.some(record => record.dispatch) && !(workflow && recommended?.dispatch)) questions.push("What changed at dispatch?");
     if (!questions.length && records.some(record => record.duplicate)) questions.push("Which inputs were repeated?");
     if (!activeScope.workflow && workspaceWorkflows.length > 1) questions.push("Compare all workflows");
-    if (records.length) questions.push("What should I test next?");
+    if (!workflow && records.length) questions.push("What should I test next?");
     else if (currentImpact.captured_conversations) questions.push("Show recorded activity");
     suggest(questions.slice(0,3));
   }
@@ -310,34 +314,46 @@ function investigationCanvas(impact, page, models) {
           "No conversations captured in this scope",
         plural(groups,"finding group"),
         ...(leading && !kind ? ["Most frequent finding type · " + (kindLabels[leading.kind] || leading.kind)] : []),
-      ],href:url({workflow},filters),action:"Open workflow briefing"};
+      ],onAction:() => ask("Focus on " + workflow),action:"Investigate " + workflowName(workflow)};
     });
     const coverage = "Counts are based on captured conversations in the selected scope. Workflows can differ in what they capture.";
     evidenceSections("workflow-comparison","Workflow comparison",ids.length > selected.length ?
       `Showing ${selected.length} of ${ids.length} workflows. Name specific workflows to narrow the comparison. ${coverage}` : coverage,sections);
     activity = null;
     previous = null;
+    visibleCalls = [];
     comparison = {ids,kind};
     suggest(selected.slice(0,2).map(workflow => "Focus on " + workflowName(workflow)));
   }
 
-  async function showConversation(thread, filters, offset, signal) {
-    const page = await api("thread-calls",{...filters,thread:thread.id,offset,limit:3});
+  async function showConversation(thread, filters, offset, signal, focus) {
+    const page = await api("thread-calls",{...filters,thread:thread.id,offset,limit:3,
+      ...(focus && {focus_trace:focus.trace,focus_call:focus.call})});
     if (signal.aborted) return;
     const sections = page.rows.map((row,i) => {
       const {turn} = row.dialogue;
       const lines = activityLines(row.dialogue,page.rows[i-1]?.dialogue.user);
       if (!lines.length) lines.push("Message and result text unavailable");
-      return {title:turn ? "Turn " + turn : "Call " + (page.offset+i+1),lines,
-        href:url({view:"traces",trace:row.trace,call:row.call},filters),action:"Open exact call"};
+      const number = page.offset+i+1;
+      return {title:"Call " + number + (turn ? " · " + turn : ""),lines,ref:{row,number}};
     });
     const description = sections.length > 1 ? `Captured calls ${page.offset+1}–${page.offset+sections.length} in order.` :
-      sections.length ? `Captured call ${page.offset+1}.` : "No calls are available in this scope.";
-    evidenceSections("conversation-activity",thread.thread,description,sections);
+      sections.length ? `Captured call ${page.offset+1}.` : focus ? "The matching call is no longer available." : "No calls are available in this scope.";
+    const matched = focus && sections.find(({ref:{row}}) => row.trace === focus.trace && row.call === focus.call)?.ref.number;
+    evidenceSections("conversation-activity",thread.thread,description + (matched ? ` The finding occurred at call ${matched}.` : ""),sections);
     activity = {thread,filters,next:page.next_offset,sections};
+    visibleCalls = sections.map(section => section.ref);
     comparison = null;
     previous = null;
-    suggest(page.next_offset == null ? [] : ["What happened next?"]);
+    const suggested = matched || sections[0]?.ref.number;
+    suggest([...(suggested ? ["Show call " + suggested] : []),...(page.next_offset == null ? [] : ["What happened next?"])]);
+  }
+
+  function conversationSection(row, filters, lines = []) {
+    const title = row.thread || "Recorded conversation";
+    return {title,lines,action:"Read " + title,
+      onAction:() => ask("Read “" + title + "”",null,{thread:{...row,id:row.thread_key || row.id},filters,
+        focus:row.trace && row.call ? {trace:row.trace,call:row.call} : null})};
   }
 
   async function findConversations(name, filters, signal) {
@@ -352,11 +368,10 @@ function investigationCanvas(impact, page, models) {
     activity = null;
     comparison = null;
     previous = null;
+    visibleCalls = [];
     evidenceSections("conversation-search",matches.length ? "Matching conversations" : "No matching conversation",
       matches.length ? "Use a more specific name or open one of the matches." : "Try using part of the recorded conversation name.",
-      matches.slice(0,3).map(row => ({title:row.thread,
-        lines:[row.org,row.user,fullDate(row.start)].filter(Boolean),
-        href:url({view:"threads",thread:row.id},filters),action:"Open conversation"})));
+      matches.slice(0,3).map(row => conversationSection(row,filters,[row.org,row.user,fullDate(row.start)].filter(Boolean))));
   }
 
   async function describeActivity(model, question, sections, signal) {
@@ -370,11 +385,9 @@ function investigationCanvas(impact, page, models) {
   async function searchActivity(question, search, filters, model, signal) {
     const {rows,index_ready,partial_match} = await api("activity-search",{...filters,q:search.q});
     if (signal.aborted || (!rows.length && !search.explicit && index_ready)) return false;
-    const sections = rows.map(row => ({
-      title:[row.thread || "Unthreaded call",row.workflow && workflowName(row.workflow)].filter(Boolean).join(" · "),
-      lines:activityLines(row.dialogue),
-      href:url({view:"traces",trace:row.trace,call:row.call,workflow:row.workflow || filters.workflow},filters),
-      action:"Open exact call",
+    const sections = rows.map((row,i) => ({
+      title:["Call " + (i+1),row.thread || "Unthreaded call",row.workflow && workflowName(row.workflow)].filter(Boolean).join(" · "),
+      lines:activityLines(row.dialogue),ref:{row,number:i+1},
     }));
     const reply = await describeActivity(model,question,sections,signal);
     if (signal.aborted) return false;
@@ -382,15 +395,42 @@ function investigationCanvas(impact, page, models) {
     const found = rows.length ? (partial_match ? "These excerpts match some of the search terms." : plural(rows.length,"matching excerpt") + " shown.") :
       "No matching excerpts in indexed user messages, assistant replies, or tool activity.";
     const description = (reply ? reply.answer + (partial_match ? " The excerpts match some of the search terms." : "") : found) + coverage;
-    evidenceSections("activity-search",rows.length ? "Matching recorded activity" : "No matching activity",description,reply?.evidence || sections);
+    const shown = reply?.evidence || sections;
+    evidenceSections("activity-search",rows.length ? "Matching recorded activity" : "No matching activity",description,shown);
     if (reply) output.append(element("p",{className:"label",text:"Interpretation by " + model}));
     activity = null;
     comparison = null;
     previous = null;
+    visibleCalls = shown.map(section => section.ref);
     remember(question,null,"activity",description);
-    suggest(rows.filter(row => row.thread && !row.thread.includes('"') && row.thread.length <= 120).slice(0,2).map(row =>
-      'Open conversation "' + row.thread + '"' + (!activeScope.workflow && row.workflow ? " in " + workflowName(row.workflow) : "")));
+    const example = visibleCalls[0];
+    const suggestions = example ? ["Show call " + example.number] : [];
+    const row = example?.row;
+    if (row?.thread && !row.thread.includes('"') && row.thread.length <= 120) {
+      suggestions.push('Read conversation "' + row.thread + '"' + (!activeScope.workflow && row.workflow ? " in " + workflowName(row.workflow) : ""));
+    }
+    suggest(suggestions);
     return true;
+  }
+
+  async function showCall(ref, signal) {
+    const {trace,call,dialogue,thread} = ref.row;
+    const captured = await api("trace",{id:trace,call},true);
+    if (signal.aborted) return;
+    const evidence = captured?.trace.calls.find(row => row.id === call);
+    const context = evidence?.context || [];
+    const inputs = context.filter(item => item.text != null);
+    const lines = dialogue ? activityLines(dialogue) : [];
+    const sections = inputs.slice(0,5).map(item => ({
+      title:sourceName(item),lines:[item.role,item.evidence.field,boundedExcerpt(item.text,360)].filter(Boolean),
+    }));
+    if (lines.length) sections.unshift({title:"Captured activity",lines});
+    const coverage = inputs.length ? `Showing ${Math.min(5,inputs.length)} of ${inputs.length} inputs with captured text.` : "Input text is unavailable for this call.";
+    evidenceSections("captured-call","Captured call " + ref.number,[thread,evidence?.model,coverage].filter(Boolean).join(" · "),sections);
+    const reference = element("details",{className:"canvas-reference","data-trace":trace,"data-call":call},
+      element("summary",{text:"Captured call reference"}),element("code",{text:trace + " / " + call}));
+    output.append(reference);
+    suggest(activity?.next == null ? [] : ["What happened next?"]);
   }
 
   async function inspect(record, view, question, text, author, signal) {
@@ -441,6 +481,7 @@ function investigationCanvas(impact, page, models) {
     const surface = NexusWeaveA2UI.answerSurface({title:name,description:text ? null : description,
       map,detail:view === "evidence" ? facts.comparison : null}, () => {});
     surface.view.className = "canvas-result";
+    Object.assign(surface.view.dataset,{trace:record.capture.trace,call:record.capture.call,group:facts.id});
     output.append(surface.view);
     for (const update of surface.steps) {
       if (!matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise(resolve => setTimeout(resolve, 160));
@@ -452,19 +493,19 @@ function investigationCanvas(impact, page, models) {
       if (record.trend?.length) output.append(trend(record.trend));
       const result = await api("occurrences",{...record.filters,group:facts.id,by_thread:1});
       if (signal.aborted) return;
-      const examples = result.rows.slice(0,3).map(row => link(row.thread || "Open conversation",
-        url({view:"threads",thread:row.thread_key,focus_trace:row.trace,focus_call:row.call},record.filters)));
-      if (examples.length) output.append(element("div",{className:"canvas-examples"},element("span",{text:record.duplicate ? "Conversations with this match" : "Affected conversations"}),...examples));
+      const examples = result.rows.slice(0,3).map(row => conversationSection(row,record.filters));
+      if (examples.length) evidenceSections("recurring-examples",record.duplicate ? "Conversations with this match" : "Affected conversations",null,examples);
     }
-    output.append(element("div",{className:"canvas-answer-foot"},element("span",{text:count}),
-      link(view === "recurrence" ? (record.duplicate ? "See matching requests →" : "See affected requests →") : "Open exact evidence →",view === "recurrence" ? record.group : record.href)));
+    output.append(element("p",{className:"canvas-answer-foot",text:count}));
     const followups = [];
+    if (view === "evidence" && record.receipt) followups.push("Show the dispatch states");
+    if (view === "evidence" && record.tokenCard) followups.push("Show the token-position diagram");
     if (view !== "sources") followups.push("Show the exact inputs");
     if (view !== "recurrence" && facts.conversations > 1) followups.push("Where else did that repeat?");
     if (view !== "action") followups.push("What should I test next?");
     suggest(followups.slice(0,2));
   }
-  async function ask(question, selected) {
+  async function ask(question, selected, selectedConversation) {
     if (!question.trim()) return;
     active?.abort();
     active = new AbortController();
@@ -479,6 +520,14 @@ function investigationCanvas(impact, page, models) {
     input.focus({preventScroll:true});
     status.textContent = "Looking up evidence…";
     try {
+      if (selectedConversation) {
+        const {thread,filters,focus} = selectedConversation;
+        await showConversation(thread,filters,0,signal,focus);
+        if (signal.aborted) return;
+        remember(question,null,"activity","Read captured calls in the conversation.");
+        status.textContent = "";
+        return;
+      }
       const mentions = selected ? [] : workflowsInQuestion(question,workspaceWorkflows);
       const named = !activeScope.workflow && mentions.length === 1 ? mentions[0] : null;
       const focus = !selected && /^(?:focus on|switch to|investigate workflow)\s+(.+)$/i.exec(question.trim().replace(/[?.!]+$/, ""));
@@ -502,6 +551,7 @@ function investigationCanvas(impact, page, models) {
           previous = null;
           activity = null;
           comparison = null;
+          visibleCalls = [];
           history = [];
           past.hidden = true;
           corrections.clear();
@@ -515,6 +565,49 @@ function investigationCanvas(impact, page, models) {
       if (!selected && /^(?:show (?:me )?(?:the )?)?(?:workspace )?(?:briefing|overview|summary)$/.test(normalize(question))) {
         output.replaceChildren();
         showBriefing();
+        status.textContent = "";
+        return;
+      }
+      const requestedCall = !selected && /^(?:show|read|inspect)(?: me)? (?:the )?(?:captured )?call (\d+)$/.exec(normalize(question));
+      const supportingCall = !selected && visibleCalls.length &&
+        /^(?:(?:show|read|inspect) (?:me )?(?:that|the) call|what supports that|show the supporting evidence)$/.test(normalize(question));
+      if (requestedCall || supportingCall) {
+        const ref = requestedCall ? visibleCalls.find(item => item.number === Number(requestedCall[1])) :
+          visibleCalls.length === 1 ? visibleCalls[0] : null;
+        if (ref) {
+          await showCall(ref,signal);
+          if (!signal.aborted) remember(question,null,"activity","Read the supporting captured call.");
+        } else if (visibleCalls.length) {
+          evidenceSections("choose-call","Which call would you like to inspect?",null,visibleCalls.map(({number,row}) => ({
+            title:"Call " + number,lines:[row.thread].filter(Boolean),
+          })));
+          suggest(visibleCalls.slice(0,3).map(({number}) => "Show call " + number));
+        } else evidenceSections("missing-call","Call unavailable","Ask to read a recorded conversation or find matching activity first.");
+        if (!signal.aborted) status.textContent = "";
+        return;
+      }
+      if (!selected && /\b(token[- ](?:position|level|map|chart|diagram)|source edits (?:across|along) (?:the|this) answer|which source mattered at this (?:word|token))\b/i.test(question)) {
+        const filters = named ? {...activeScope,workflow:named} : (previous?.tokenCard ? previous.filters : activeScope);
+        let card = !named && previous?.tokenCard;
+        if (!card) {
+          const result = await api("findings",{...filters,kind:"token"});
+          if (signal.aborted) return;
+          [card] = result.rows;
+        }
+        if (card) output.append(tokenPath(card,{sharePosition:false,inline:true,filters}));
+        else evidenceSections("token-unavailable","No token measurements in this workflow",
+          "The token diagram needs a recorded experiment that scored the same output positions after an input edit.");
+        suggest(card ? ["Show the exact inputs"] : []);
+        if (card) previous = canvasRecord(card,filters);
+        activity = null;
+        comparison = null;
+        visibleCalls = [];
+        status.textContent = "";
+        return;
+      }
+      if (!selected && previous?.receipt && /^(?:show (?:me )?(?:the )?)?(?:order states|dispatch states|sandbox receipt|replay details)$/.test(normalize(question))) {
+        output.append(sandboxDispatch(previous.receipt));
+        suggest(["Where else did that repeat?"]);
         status.textContent = "";
         return;
       }
@@ -534,7 +627,7 @@ function investigationCanvas(impact, page, models) {
         status.textContent = "";
         return;
       }
-      if (!selected && activity && /^(?:what happened next|show (?:the )?next (?:steps|calls)|continue (?:the )?conversation)$/.test(normalize(question))) {
+      if (!selected && activity && /^(?:what happened (?:next|after that)|then what|show (?:the )?next (?:steps|calls)|continue (?:the )?conversation)$/.test(normalize(question))) {
         if (activity.next == null) evidenceSections("conversation-end","End of the captured conversation","The selected scope contains no later calls.");
         else await showConversation(activity.thread,activity.filters,activity.next,signal);
         if (signal.aborted) return;
@@ -570,13 +663,11 @@ function investigationCanvas(impact, page, models) {
         activity = null;
         comparison = null;
         previous = null;
-        const examples = result.rows.slice(0,3).map(row => ({title:row.thread,
-          href:url({view:"threads",thread:row.id},activityScope),
-          summary:plural(row.trace_count,"trace") + (row.start ? " · " + fullDate(row.start) : "")}));
-        output.append(NexusWeaveA2UI.recommendation("recorded-activity", {
-          title:"Recorded activity",heading:"h2",
-          description:plural(total.captured_conversations,"captured conversation") + (named ? " in " + workflowName(named) : ""),evidence:examples,
-        }));
+        const examples = result.rows.slice(0,3).map(row => conversationSection(row,activityScope,
+          [plural(row.trace_count,"recorded request") + (row.start ? " · " + fullDate(row.start) : "")]));
+        visibleCalls = [];
+        evidenceSections("recorded-activity","Recorded activity",plural(total.captured_conversations,"captured conversation") +
+          (named ? " in " + workflowName(named) : ""),examples);
         suggest(named ? ["Focus on " + workflowName(named)] : records.length ? ["What needs attention first?"] : []);
         status.textContent = "";
         return;
@@ -590,8 +681,9 @@ function investigationCanvas(impact, page, models) {
         }
         const host = element("div",{});
         function draw(focusId) {
-          host.replaceChildren(contextNetwork(rows,{focusId,total:currentTotal,onNext:offset == null ? null : async id => {
+          host.replaceChildren(contextNetwork(rows,{focusId,total:currentTotal,filters:activeScope,onNext:offset == null ? null : async id => {
             const result = await api("findings",{...activeScope,offset});
+            if (signal.aborted) return;
             rows = [...new Map([...rows,...result.rows].map(row=>[row.id,row])).values()];
             offset = result.next_offset;
             draw(id);
@@ -616,6 +708,7 @@ function investigationCanvas(impact, page, models) {
           evidence = reply.evidence;
         }
         evidenceSections("conversation-answer",thread.thread,description,evidence);
+        visibleCalls = evidence.map(section => section.ref);
         if (reply) output.append(element("p",{className:"label",text:"Interpretation by " + model}));
         remember(question,null,"activity",description);
         suggest(next == null ? [] : ["What happened next?"]);
@@ -663,6 +756,7 @@ function investigationCanvas(impact, page, models) {
         activity = null;
         comparison = null;
       }
+      visibleCalls = [];
       await inspect(answer.record,answer.view,question,answer.text,answer.author || model,signal);
       if (signal.aborted) return;
       remember(question,answer.record?.facts.id || null,answer.view,

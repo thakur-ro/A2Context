@@ -813,10 +813,7 @@ impl Store {
             .map(|offset| offset.parse::<u32>())
             .transpose()?
             .unwrap_or(0);
-        let page_size = if view == "thread-calls"
-            && !filters.contains_key("focus_trace")
-            && !filters.contains_key("focus_call")
-        {
+        let page_size = if view == "thread-calls" {
             filters
                 .get("limit")
                 .map(|limit| limit.parse::<usize>())
@@ -1552,7 +1549,7 @@ impl Store {
                     let Some(position) = position else {
                         return Ok(json!({"rows":[],"offset":0,"next_offset":null}));
                     };
-                    offset = position / PAGE as u32 * PAGE as u32;
+                    offset = position / page_size as u32 * page_size as u32;
                 }
                 sql.push_str(", call_page AS MATERIALIZED (SELECT * FROM thread_calls ORDER BY ");
                 sql.push_str(order);

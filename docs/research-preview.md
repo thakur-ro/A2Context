@@ -6,11 +6,11 @@ A workflow engineer can check that the pending request contains a declared rule,
 
 ![The returns workflow branches into 12 replay findings, three replacement comparisons and two exact repetitions](media/context-workflows.png)
 
-Ask **Show the context map**. For up to 120 loaded nodes, the overview draws the relationships between sources, findings and outcomes. Larger maps open by workflow. Each branch counts every loaded finding once, using the workflow of the card’s representative evidence. Follow a workflow to a finding type, select a finding, then open the exact call. Loading another page updates counts in the current scope.
+Ask **Show the context map**. For up to 120 loaded nodes, the overview draws the relationships between sources, findings and outcomes. Larger maps open by workflow. Each branch counts every loaded finding once, using the workflow of the card’s representative evidence. Select a finding to see its evidence in the interview. Loading another page updates counts in the current scope.
 
 Select a source to see other findings that cite it. Matching a source uses its producer, organization, workflow, identifier, revision and role. Unnamed items stay tied to their call. Declared values come from captured instructions. Trial outcomes come from attached comparisons.
 
-Choose a named source, then **Follow this source across conversations**. In the exchange demo, the confirmation cache appears in findings on two calls. Open either conversation to see which turn cited it, which checks ran, and the captured conversation at that call. This view queries retained observations, including examples behind grouped cards. A call with both a conflict and a proposal comparison counts once.
+Ask **Which instructions disagreed?** in the exchange demo, then **Where else did that repeat?**. The confirmation cache appears in findings on two calls. Read either conversation in the interview to see its recorded activity. A call with both a conflict and a proposal comparison counts once in the source history shown here.
 
 ![The confirmation cache connects to two conversations whose findings cite it](media/source-conversations.png)
 
@@ -18,7 +18,7 @@ Select a first-token finding to compare the source edits before generation. For 
 
 ![Context map showing the original and edited probabilities for the token 4 and the measured decoder-block swap](media/context-token.png)
 
-Choose **Follow source edits across this answer** to see which edits mattered at different points in the same generation. In the recorded sentence, **returns-policy** has the largest measured effect on the return-window number at position 6. **refund-policy** has the largest effect on the refund time at position 14. Selecting a cell shows the exact edit, the score change at that prefix and both freely generated answers. Untested inputs appear below the measurements. From the recommendation detail page, the address includes the selected token and source edit so another engineer can open the same comparison.
+Ask **Show the token-position diagram in Returns demo** from the workspace homepage. In the recorded sentence, **returns-policy** has the largest measured effect on the return-window number at position 6. **refund-policy** has the largest effect on the refund time at position 14. Selecting a cell shows the exact edit, the score change at that prefix and both freely generated answers. Untested inputs appear below the measurements.
 
 ![Three source edits across the sixteen tokens of a returns answer, with the refund time selected](media/source-edits-by-token.png)
 

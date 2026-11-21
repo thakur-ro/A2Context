@@ -16,7 +16,7 @@ cd NexusWeave
 cargo run --locked -- demo
 ```
 
-Open the address printed in the terminal. Ask **What did verify_customer return?** from the workspace briefing to find the recorded result. Choose **Exchange agent** in the sidebar for its own briefing. Ask **Which instructions disagreed?**, **What changed at dispatch?**, and **Where else did that repeat?** to follow the held exchange. Press Ctrl+C to stop.
+Open the address printed in the terminal. Ask **What did verify_customer return?** to find the result, then **Show call 1** to see the supporting record in the same conversation. Choose **Exchange agent** in the sidebar for its stats and recommended investigation. Ask **What changed at dispatch?** and **Show the order states** to inspect the saved comparison. Press Ctrl+C to stop.
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 
@@ -40,7 +40,7 @@ Open the address printed in the terminal. Ask **What did verify_customer return?
 
 ![Measured effects of three source edits across a generated answer about returns and refunds](docs/media/source-edits-by-token.png)
 
-On this recorded answer, editing the returns policy had the largest measured effect on the return-window number. Editing the refund policy had the largest effect on the refund time. Each cell compares the probability of the same next token with the preceding output held fixed. Select a cell in the dashboard to see the edit and the two freely generated replies. [Explore the measurements](docs/research-preview.md#follow-a-source-through-a-workflow)
+In the demo, ask **Show the token-position diagram in Returns demo** from **All workflows**. Each cell compares the probability of the same next token with the preceding output held fixed. Select a cell to see the source edit, its measured score, and the freely generated replies. [Explore the measurements](docs/research-preview.md#follow-a-source-through-a-workflow)
 
 ## Ship it beside your service
 

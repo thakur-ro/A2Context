@@ -252,6 +252,8 @@ def check_thread_calls(binary, folder):
         assert partial["partial_match"] and [row["call"] for row in partial["rows"]] == [unthreaded["spanId"]]
         focus = {"focus_trace": rows[-1]["trace"], "focus_call": rows[-1]["call"]}
         assert get(base, "thread-calls", thread=key, **focus) == second
+        compact = get(base, "thread-calls", thread=key, limit=3, **focus)
+        assert compact["offset"] == 18 and compact["rows"] == rows[18:]
         for restriction in [{"user": "other"}, {"org": "other"}, {"workflow": "other"},
                             {"meta_key": "deployment.environment.name", "meta_value": "other"},
                             {"after": "2026-10-13"}, {"focus_call": "unknown", "focus_trace": rows[0]["trace"]}]:

@@ -169,6 +169,8 @@ fn start(mut options: Options) -> Result<()> {
             writer
                 .ingest(&batch, &policy, now())
                 .map_err(|(_, message)| message)?;
+            let (run, report) = return_measurement()?;
+            writer.seed(&[run], &[], &[], &[report], now())?;
         }
         None => {}
     }
@@ -876,6 +878,20 @@ fn journal_example(name: &str) -> Result<serde_json::Value> {
     Ok(envelope)
 }
 
+fn return_measurement() -> Result<(Run, activation::Report)> {
+    let report: activation::Report = serde_json::from_str(include_str!(
+        "../../examples/runtime-comparison/generation-branches-transformers.json"
+    ))?;
+    let runs: Vec<Run> = serde_json::from_str(include_str!(
+        "../../examples/runtime-comparison/evidence.json"
+    ))?;
+    let run = runs
+        .into_iter()
+        .find(|run| run.id == report.location().run_id)
+        .ok_or("missing saved return-and-refund run")?;
+    Ok((run, report))
+}
+
 fn seed(store: &mut Store) -> Result<()> {
     let mut runs: Vec<Run> =
         serde_json::from_str(include_str!("../../fixtures/conversation.json"))?;
@@ -958,17 +974,8 @@ fn seed(store: &mut Store) -> Result<()> {
     routing_runs.extend(nexusweave::langsmith::import(&serde_json::from_str(
         sampled,
     )?)?);
-    let activation: activation::Report = serde_json::from_str(include_str!(
-        "../../examples/runtime-comparison/generation-branches-transformers.json"
-    ))?;
-    let measured_runs: Vec<Run> = serde_json::from_str(include_str!(
-        "../../examples/runtime-comparison/evidence.json"
-    ))?;
-    runs.extend(
-        measured_runs
-            .into_iter()
-            .filter(|run| run.id == activation.location().run_id),
-    );
+    let (measured_run, activation) = return_measurement()?;
+    runs.push(measured_run);
     let tool_report = serde_json::from_str(include_str!(
         "../../examples/local-mlx-routing/output-token-report.json"
     ))?;

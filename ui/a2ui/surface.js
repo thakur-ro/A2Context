@@ -111,6 +111,31 @@ export function briefing({ metrics, themes }) {
   return surface("briefing", components, new Map());
 }
 
+export function workflowBriefing({metrics, recommendation}, investigate) {
+  const children = ["stats"];
+  const components = [{id:"root",component:"Column",children},
+    {id:"stats",component:"Row",children:metrics.map((_,i) => `stat${i}`)},
+    ...metrics.flatMap(({value,label},i) => [
+      {id:`stat${i}`,component:"Card",child:`valueGroup${i}`},
+      {id:`valueGroup${i}`,component:"Column",children:[`value${i}`,`label${i}`]},
+      {id:`value${i}`,component:"Text",text:"### " + value},
+      {id:`label${i}`,component:"Text",text:literal(label),variant:"caption"},
+    ])];
+  const actions = new Map();
+  if (recommendation) {
+    children.push("recommendation");
+    components.push({id:"recommendation",component:"Card",child:"recommendationBody"},
+      {id:"recommendationBody",component:"Column",children:["recommendationLabel","recommendationTitle","recommendationSummary","investigate"]},
+      {id:"recommendationLabel",component:"Text",text:"Recommended investigation",variant:"caption"},
+      {id:"recommendationTitle",component:"Text",text:"## " + recommendation.title},
+      {id:"recommendationSummary",component:"Text",text:literal(recommendation.summary)},
+      {id:"investigate",component:"Button",child:"investigateLabel",action:{event:{name:"openEvidence"}}},
+      {id:"investigateLabel",component:"Text",text:"Investigate"});
+    actions.set("investigate", investigate);
+  }
+  return surface("workflow-briefing",components,actions);
+}
+
 export function evidenceSections(surfaceId, {title, description, sections}) {
   const children = ["heading"];
   const components = [{id:"root",component:"Column",children},
@@ -132,12 +157,12 @@ export function evidenceSections(surfaceId, {title, description, sections}) {
       content.push(id);
       components.push({id,component:"Text",text:literal(text)});
     }
-    if (section.href) {
+    if (section.onAction) {
       const id = `${prefix}Action`;
       content.push(id);
       components.push({id,component:"Button",child:`${id}Label`,action:{event:{name:"openEvidence"}}},
         {id:`${id}Label`,component:"Text",text:literal(section.action)});
-      destinations.set(id,section.href);
+      destinations.set(id,section.onAction);
     }
   }
   return surface(surfaceId,components,destinations);
@@ -156,7 +181,9 @@ function create(surfaceId, handleAction) {
 function surface(surfaceId, components, destinations) {
   const { view, update } = create(surfaceId, ({ name, sourceComponentId }) => {
     const destination = destinations.get(sourceComponentId);
-    if (name === "openEvidence" && destination?.startsWith("?")) location.assign(destination);
+    if (name !== "openEvidence") return;
+    if (typeof destination === "function") destination();
+    else if (destination?.startsWith("?")) location.assign(destination);
   });
   update(components);
   return view;

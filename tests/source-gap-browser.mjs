@@ -15,6 +15,9 @@ try {
     const answer = page.getByRole("region",{name:"Answer canvas"});
     await answer.getByRole("heading",{name:"Check sources for Exchange authorization"}).waitFor();
     await answer.getByText(/2 conversations/).waitFor();
+    const reference = answer.locator(".canvas-result");
+    const traceId = await reference.getAttribute("data-trace");
+    const callId = await reference.getAttribute("data-call");
     await ask("Show the context map");
     const map = page.getByRole("region",{name:"Context map"});
     await map.getByLabel("Focus a node").selectOption({label:"finding · Check sources for Exchange authorization"});
@@ -24,14 +27,13 @@ try {
     if (width > 1000 && process.env.SOURCE_GAP_CAPTURE) await map.screenshot({path:process.env.SOURCE_GAP_CAPTURE});
     await map.getByRole("button",{name:"unconfirmed · latest-customer-message"}).click();
     await map.getByText("No matching source anchor in this request",{exact:true}).last().waitFor();
-    await map.getByRole("link",{name:"Inspect this evidence →"}).click();
-    await page.getByText(/Still unconfirmed: latest-customer-message/).first().waitFor();
+    assert.equal(await map.getByRole("link").count(),0);
     const selected = new URL(page.url()).searchParams;
     assert.equal(selected.get("user"),"exchange-customer");
-    const response = await page.request.get(new URL("/api/sidecar/trace",base).href,{params:{id:selected.get("trace")}});
+    const response = await page.request.get(new URL("/api/sidecar/trace",base).href,{params:{id:traceId}});
     assert.ok(response.ok());
     const {trace} = await response.json();
-    const call = trace.calls.find(row => row.id === selected.get("call"));
+    const call = trace.calls.find(row => row.id === callId);
     assert.ok(call.context.some(source => source.role === "user" && /hold the puzzle|don't swap the puzzle/.test(source.text)));
     assert.ok(call.context.every(source => source.source_id !== "latest-customer-message"));
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -57,7 +59,7 @@ try {
     assert.deepEqual(errors,[]);
     await page.close();
   }
-  console.log("Verified source-gap cards, distinct unconfirmed nodes and exact call links at two viewport widths.");
+  console.log("Verified source-gap cards, distinct unconfirmed nodes and captured call references at two viewport widths.");
 } finally {
   await browser.close();
 }

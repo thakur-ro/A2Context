@@ -37,7 +37,7 @@ try {
     for (let p=1; p<5; p++) await tree.getByRole("button",{name:"Next",exact:true}).click();
     await tree.locator("li button").last().click();
     assert.equal(await focus.inputValue(),"finding:2399");
-    await map.getByRole("link",{name:"Inspect this evidence →"}).waitFor();
+    assert.equal(await map.getByRole("link").count(),0);
     const query = map.getByRole("searchbox");
     await query.fill("policy-");
     await map.getByText(/first 30 listed/).waitFor();

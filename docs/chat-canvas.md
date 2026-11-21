@@ -1,14 +1,14 @@
 # Ask about a workflow
 
-Open the sidecar dashboard to see the workspace briefing. It shows captured conversations, affected conversations, and recurring themes. Pick a suggested question or type your own. Choose a workflow in the sidebar for its briefing, or type **Focus on** followed by its name. Type **Show all workflows** to return to the workspace. A conversation can contribute to several finding groups.
+Open the sidecar dashboard to see workspace totals and recurring themes. Pick a suggested question or type your own. Choose a workflow in the sidebar for its stats and recommended investigation, or type **Focus on** followed by its name. Type **Show all workflows** to return to the workspace. A conversation can contribute to several finding groups.
 
-Ask “Which instructions disagreed?” to compare the values declared by two sources. Ask “Show the exact inputs” for the captured excerpts behind that answer, or “Where else did that repeat?” for counts and representative conversations. A sandbox receipt opens as a diagram with the same proposal on both branches. **Open exact evidence** takes you to the recorded call. The appearance control switches between light and dark and remembers the setting on that origin. [Interview design](interview-design.md)
+Ask “Which instructions disagreed?” to compare the values declared by two sources. Ask “Show the exact inputs” for the captured excerpts behind that answer, or “Where else did that repeat?” for counts and representative conversations. A sandbox comparison shows both branches of the same proposal. Ask “Show the order states” for the saved receipt. The appearance control switches between light and dark and remembers the setting on that origin. [Interview design](interview-design.md)
 
 From the workspace briefing, type **Compare** followed by two workflow names. The answer shows captured conversations with findings, the denominator, and the most common finding type. Add **by repeated inputs**, **rule conflicts**, or **source capture gaps** to compare one class. The percentages describe captured evidence. Different workflows can record different amounts of evidence.
 
-Ask **Show recent conversations in** followed by a workflow name to find activity from the workspace homepage. Type **Find conversation** followed by part of its recorded name. A unique match opens up to three captured calls in the interview, including recorded tool results when available. Type **What happened next?** to read the next calls or ask **What did the tool return?** for the visible results. This works for conversations without a finding. When a model is connected, it can interpret the calls in view and cite them. Each evidence link comes from the store.
+Ask **Show recent conversations in** followed by a workflow name to find activity from the workspace homepage. Type **Find conversation** followed by part of its recorded name. A unique match opens up to three captured calls in the interview, including recorded tool results when available. Type **What happened next?** to read the next calls or ask **What did the tool return?** for the visible results. This works for conversations without a finding. When a model is connected, it can interpret the calls in view and cite them. Ask for a call by number to see the stored record.
 
-When you don’t know the conversation name, ask about a recorded phrase, entity, or tool. In the exchange demo, try **What did verify_customer return?** from the workspace homepage. The answer shows the matching excerpt and links to the exact call. **Search for** followed by a few words explicitly searches captured activity. Add a workflow name after **in** to narrow the search.
+When you don’t know the conversation name, ask about a recorded phrase, entity, or tool. In the exchange demo, try **What did verify_customer return?** from the workspace homepage. Ask **Show call 1** to see the supporting record inline. **Search for** followed by a few words searches captured activity. Add a workflow name after **in** to narrow the search.
 
 ## Connect a model
 
@@ -33,7 +33,7 @@ A question sent to a partner makes one request. A direct question about a unique
 
 **Choose different evidence** corrects a match for the same question on the open page. Refreshing or switching scope clears that correction and the conversation. This lets an engineer recover a bad match without changing ranking for other users.
 
-The browser regression replays the exchange questions, checks the linked call and report, and checks that a corrected question opens the selected evidence. It also checks a query with no matching evidence. The exchange fixture exercises this path on two affected conversations. Broader claims about routing accuracy require a separately labeled question set. [Exchange walkthrough](demo.md)
+The browser regression checks that supporting calls and the saved comparison appear in the interview and match the stored evidence. It also checks a query with no matches, a workflow without token measurements, and the measured returns diagram. Routing accuracy on other questions still needs a separately labeled question set. [Exchange walkthrough](demo.md)
 
 ## Check a partner before using it
 
@@ -43,6 +43,6 @@ Run the browser test against the exchange demo with the gateway enabled. Supply 
 CHAT_MODEL=YOUR_MODEL_ID node tests/exchange-a2ui-browser.mjs http://127.0.0.1:8041
 ```
 
-The optional live check asks three questions and makes two model requests. It asks which source supplied the hold, what changed at dispatch, and where that result repeated. It checks the selected evidence and the rendered conversation link. An engineer should also read the generated prose. The graph can be correct even when a model describes it poorly.
+The optional live check asks which source supplied the hold, what changed at dispatch, and where that result repeated. It checks the selected evidence and the rendered conversation result. The graph can be correct even when a model describes it poorly.
 
 In the walkthrough, Gemma 3 4B identified the customer message as the source of the hold. In development, Qwen2.5 0.5B returned a valid finding ID with an unfamiliar view name on one question and carried an earlier conflict into a later dispatch question. Gemma also described two sandbox arms as a chronological transition. The dispatch answer now names each arm from the receipt. Those cases led us to keep chart values in the renderer and narrow single-match questions to the matching evidence before generation. These observations come from the saved exchange case.

@@ -48,7 +48,7 @@ try {
   const finding = await children.first().locator("span").innerText();
   await children.first().click();
   assert.equal(await map.locator(".network-readout strong").innerText(),finding);
-  await map.getByRole("link",{name:"Inspect this evidence →"}).waitFor();
+  assert.equal(await map.getByRole("link").count(),0);
   await map.getByRole("button",{name:/^See \d+ findings? in /}).click();
   await branches.getByRole("button",{name:"Loaded findings",exact:true}).click();
   await branches.getByRole("heading",{name:"Loaded findings"}).waitFor();
