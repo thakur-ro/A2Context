@@ -257,3 +257,44 @@ Download both JSON files from the pinned revision into `data/scale/mast-95118ac/
 ```sh
 python scripts/audit_mast_archive.py data/scale/mast-95118ac --report data/scale/mast-archive-audit.json
 ```
+
+## Sixth pass: use whole events to review repetition
+
+We evaluated whether a repeat signal can shortlist traces labelled **Step Repetition**. The archive's model annotation applies to the whole trace. The study can check category agreement and link back to exact log excerpts. It cannot tell whether a particular excerpt was the failure that the annotator saw. The logged outputs also do not establish which messages a later model received. [MAST method](https://proceedings.neurips.cc/paper_files/paper/2025/hash/b1041e52d3be19f0a9bc491657488e4a-Abstract-Datasets_and_Benchmarks_Track.html) · [Pinned dataset](https://huggingface.co/datasets/mcemri/MAST-Data/tree/95118ac951421753cf1deb87ddea3b01e693c41b)
+
+We kept duplicate bodies together and excluded three bodies present in the human set and six whose model labels disagreed. The development benchmarks were ProgramDev, ProgramDev-v2, GSM and MMLU. We froze Olympiad, GAIA, Test-C and SWE-Bench-Lite for transfer. The parsers found at least two logged events in 1,039 of 1,107 development traces and 419 of 421 transfer traces. They read explicit roles, phases or tool-argument markers from the export. We scored the separate human set by majority vote for the named Step Repetition category. Its numeric code changes between rounds. Nine of the 19 human exports had two usable events.
+
+| Signal on 421 held-out traces | Label agrees among surfaced traces | Coverage of 138 traces labelled Step Repetition | Top five with label | Average precision |
+| --- | ---: | ---: | ---: | ---: |
+| Raw log length | 138 / 421 | 138 / 138 | 4 / 5 | 0.794 |
+| Repeated raw lines | 115 / 215 | 115 / 138 | 3 / 5 | 0.737 |
+| Exact whole-event repeat | 85 / 95 | 85 / 138 | 5 / 5 | 0.702 |
+| Exact repeat by the same actor and channel within eight events | 64 / 73 | 64 / 138 | 5 / 5 | 0.612 |
+| Near repeat by the same actor and channel within eight events | 67 / 78 | 67 / 138 | 5 / 5 | 0.618 |
+
+The raw-line rule led development average precision, and log length led transfer average precision. The whole-event shortlist agreed more often with the machine labels on the cases it surfaced and found fewer of the positives. Its accuracy differed across workflows. On the human set, raw lines surfaced 16 cases and whole events surfaced four. Each found one of the two positive traces. This small human comparison does not support treating either score as a failure verdict.
+
+### Review the surrounding events with a local model
+
+We selected one exact-event pair and bounded excerpts of the neighboring events for each shortlisted trace. The script retains the two source ranges and their SHA-256 digests. A local Gemma 3 4B runner compared a direct question with a guide that permits abstention. Both prompts failed the JSON output contract on every development case. The one-word retry ran on the same candidates and bound the verdict to the selected pair in code.
+
+On 40 balanced development cases, the direct prompt called every pair redundant. The evidence guide returned 14 redundant calls, ten of which agreed with the model annotations. It abstained on 25 and called one positive case purposeful. Accuracy with abstentions counted as misses selected the direct prompt. It also marked all 95 transfer pairs and all four human pairs redundant, leaving the exact-event ranking unchanged.
+
+We also ran the fixed evidence guide on transfer to check whether abstention improved the shortlist. It kept 72 of 95 pairs, including 64 of the 85 positives and eight of the ten negatives. Precision among the retained pairs was 64 / 72, compared with 85 / 95 for the original shortlist. It abstained on all four human shortlist pairs. Neither reviewer earned a place in automatic ranking. The unreviewed shortlist can guide an investigation, and the full runtime state or a controlled replay is still needed to test why a step repeated.
+
+### Inspect the interval around a match
+
+The dashboard now lets you open **What came between these copies?** on an exact-match recommendation. It reads the recorded input positions between the two copies and shows up to four message previews with their roles. It reports how many intervening positions had evidence, including when there was a gap. The count on a repeat-only overview describes conversations with a matching input. A repeated message in an assembled request and a repeated execution step can have different causes.
+
+The browser check exercised this view on the full Exgentic capture in all six workflows at desktop and mobile widths. It independently read each selected call and verified the intervening positions. The examples ranged from one intervening message to 31. [Run the corpus UI check](scale-study.md#what-the-first-pass-found)
+
+```sh
+python scripts/study_mast_repetition.py data/scale/mast-95118ac \
+  --report data/scale/mast-step-repetition.json
+
+python scripts/review_mast_repeats.py data/scale/mast-95118ac \
+  --study data/scale/mast-step-repetition.json --prompt evidence_guide \
+  --report data/scale/mast-local-repeat-guide-review.json
+```
+
+The first report reproduced exactly. Both one-word runs reproduced all 80 development verdicts and used the same witness pairs on transfer and on the human set. The optional reviewer uses the local completion endpoint and the same Gemma model files as the telecom study. Omit `--prompt` to select the prompt by development accuracy. Add `--structured` to test the original JSON contract. These studies make zero paid model calls.
