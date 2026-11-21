@@ -20,8 +20,15 @@ We searched the web for primary sources in arXiv, NeurIPS, ICLR, ACL Anthology, 
 - `context-render Claude Code source context view` and `Langfuse trace sessions metadata`
 - The 20 November checkpoint follow-up searched for `counterfactual agent trajectory replay intervening on tool observations assistant messages LLM causal tool selection history benchmark paper`. We followed the CAR paper to its implementation and checked the context-edit grammar, forward runner and attribution entry points at the cited revision.
 - The 20 November sufficiency search covered pre-answer RAG context judges and `multi hop question answering remove supporting paragraphs contrastive support DiRe`.
+- The 20 November transfer follow-up searched for `AppWorld benchmark state based evaluation` and `MAST multi agent failure taxonomy trace annotations`. It followed the MAST dataset to the AdaMAST runtime in ATLAS.
 
 We included primary sources that describe an implemented or evaluated method for trace mining, context provenance, instruction conflict, controlled replay, or internal interventions. We included adjacent observability tools where an existing feature could replace part of the design. We excluded broad LLM monitoring and prompt-management products without a documented mechanism bearing on the question. Preprints and product documentation support claims about their described methods and interfaces. Use the linked paper identifiers and named product documentation to reproduce this reading set.
+
+### Learned failure categories and state-based evaluation
+
+The MAST release supplies traces with 14 failure-mode labels. The scalable labels come from a model annotator. A separate human-labeled set supplies a smaller check. AdaMAST in ATLAS already learns categories from traces, checks exact spans, and uses approved categories for runtime reflection. It is a candidate source for failure labels and proposed repairs. NexusWeave's evaluation binds a source edit to a request and checks the measured outcome separately. [MAST paper](https://proceedings.neurips.cc/paper_files/paper/2025/hash/b1041e52d3be19f0a9bc491657488e4a-Abstract-Datasets_and_Benchmarks_Track.html) · [Pinned MAST data](https://huggingface.co/datasets/mcemri/MAST-Data/tree/95118ac951421753cf1deb87ddea3b01e693c41b) · [Pinned ATLAS runtime](https://github.com/multi-agent-systems-failure-taxonomy/ATLAS/tree/546687ad2289d3fe4865b7e02aa2413c8b99821b)
+
+AppWorld supplies a simulator and evaluates task outcomes with programmatic state checks. NexusWeave uses the simulator's tool implementations for two controlled transfers and checks their task-specific state changes. The published AppWorld task suite has its own instructions and evaluators. [AppWorld paper](https://aclanthology.org/2024.acl-long.850/) · [Transfer study](recommendation-loop.md#fifth-pass-compare-the-operation-with-the-source-change)
 
 ### Checking a restored decision
 

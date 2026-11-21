@@ -10,6 +10,7 @@ A recommendation should name a decision, the context that may explain it, and a 
 | [TRACE](https://arxiv.org/abs/2608.09153v1) | Mine historical trajectories and verify which context component to create or update. | Require the actual request source or a named capture gap for a proposed change. |
 | [REFLECT](https://arxiv.org/abs/2606.09071v1) | Replay a targeted patch, then use the intervention result to refine the diagnosis. | Require an unchanged-request control and test the same outcome after one source edit. |
 | [AgentDebugX](https://github.com/AgentDebugX/AgentDebugX) | Diagnose, attribute, prepare a recovery, and rerun it from an integrated CLI and web console. | Reuse its attribution and rerun outputs when a NexusWeave evidence adapter can retain exact provenance. |
+| [AdaMAST runtime in ATLAS](https://github.com/multi-agent-systems-failure-taxonomy/ATLAS/tree/546687ad2289d3fe4865b7e02aa2413c8b99821b) | Learn a failure taxonomy from traces with exact evidence spans and a review step. Use it at checkpoints to decide whether to repair or continue. | Evaluate its categories and evidence references as inputs to an investigation. Keep source verification and outcome comparisons in NexusWeave. |
 | [LangSmith Engine](https://www.langchain.com/blog/how-we-built-langsmith-engine-our-agent-for-improving-agents) | Review recurring patterns from production traces and turn them into evaluators. | Import model-generated and independently scored hypotheses with the same IDs used by the sidecar. |
 
 These systems already do trajectory-level diagnosis and feedback. The NexusWeave research question is whether a small runtime service can connect exact context snapshots before inference to verified interventions and cross-session recommendations without adding model calls to ordinary telemetry intake.
@@ -198,4 +199,61 @@ The local MLX runner used 4-bit quantization with a group size of 64. These hash
 b4bb1430e6090d163d33822dbad1c3e6cb16276f0c8f55cf27a6a240640bfa61  model.safetensors
 ee036bd0fae8bb5791217540f33e0b85f6fd56db37218100ddea01c442fcee24  config.json
 4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795  tokenizer.json
+```
+
+## Fifth pass: compare the operation with the source change
+
+The archived AppWorld runs include repeated reads of notes and payment requests. We tested those operations on task snapshots from the public AppWorld release. The simulator supplies the accounts, tool responses and database state. The experiment supplies a second actor and a fixed user intent. Each outcome is a state assertion checked after the real simulated API call. The script runs two intervention tests inside the task snapshots. It does not score completion of their original user instructions. [AppWorld paper](https://aclanthology.org/2024.acl-long.850/) · [AppWorld package and data setup](https://github.com/StonyBrookNLP/appworld#-installation)
+
+**Payment request.** Pick an affordable pending request and bind the action to its ID. Approve it and verify that the simulator created exactly one transaction. Use that same state as the starting point for the retry control. Verify the original pending status against an up-to-date status projection, then send the stale proposal with its original ID. Measure the response, payer balance and outgoing transaction IDs. When another affordable request fills the list, test the different outcome of approving that request by list position.
+
+**Shared note.** An agent needs to append a handoff to a note. The separate actor leaves the note unchanged, toggles its pinned status, or adds a line. Compare replacing the note from the saved copy, refreshing on any change to the three-field snapshot, refreshing only when the named content fragment changes, and using the API's native append operation. Success requires the note to retain the desired handoff, the intervening text or pinned status, and its original ID. The digest uses the encoded content string at its exact byte range. The simulator supplies the current value for both checks.
+
+### Outcomes
+
+We screened all 732 released task snapshots across 106 simulated accounts. The original splits contain 90 train, 57 dev, 168 normal test and 417 challenge test tasks. Accounts can recur across splits. The payment comparison ran on 713 snapshots, 571 of them in the test splits. Of 19 excluded snapshots, nine had no affordable pending request, eight gave no login token, and two had a payment list that referenced a missing user. The note comparison ran on 724 snapshots, 577 in the test splits. Five snapshots had no notes available and three gave no login token.
+
+The simulator accepted every initial payment. It rejected all 713 retries against the original request ID and preserved the payer's balance and transaction set. The preview detected all 713 stale status fragments. Every refreshed pending list had another ID. A policy that selected an affordable replacement by list position created a different transaction in all 709 eligible cases. The other four lists had no affordable alternative. Advice to refresh the list needs to preserve the request ID. The API already enforces that ID's completed state in these tests.
+
+| Note policy | Unchanged passed | Pin changed passed | Text changed passed | Pin changes that triggered refresh |
+| --- | ---: | ---: | ---: | ---: |
+| Replace from cache | 724 / 724 | 724 / 724 | 0 / 724 | 0 |
+| Refresh on snapshot mismatch | 724 / 724 | 724 / 724 | 724 / 724 | 724 |
+| Refresh on content mismatch | 724 / 724 | 724 / 724 | 724 / 724 | 0 |
+| Native append | 724 / 724 | 724 / 724 | 724 / 724 | 0 |
+
+All 724 text changes triggered both digest checks. Narrowing the comparison kept those detections and avoided refresh recommendations for the pin controls. Both arms read the current simulator state to calculate a digest, so the table counts refresh decisions rather than savings in backend reads. The native append outcome covers the sequential controls in this study. These checks do not estimate failure rates in production or concurrent transaction behavior.
+
+Repeating the first 16 snapshots per split against the updated sidecar reproduced all 64 records, including exclusions, digest results and tool outcomes.
+
+The dashboard now exposes the exact compared byte range when a fragment matches, alongside the ranges for differing fragments. That makes the narrower note check auditable. We kept refresh and dispatch actions out of the default policy because the appropriate action depends on the tool's contract and the declared target.
+
+### Reproduce the transfer
+
+Use a separate AppWorld directory and a built sidecar listening on loopback. The package downloads its public `data-0.1.0.bundle`. Use `--splits train dev` for development and `--splits test_normal test_challenge` for the test tasks. Each report retains task IDs, split manifests and account digests, alongside eligibility and measured outcomes. The preview packets stay under `data/scale/`.
+
+```sh
+APPWORLD_STUDY="$(mktemp -d)"
+export APPWORLD_ROOT="$APPWORLD_STUDY"
+uv venv --python 3.13 "$APPWORLD_STUDY/venv"
+uv pip install --python "$APPWORLD_STUDY/venv/bin/python" appworld==0.1.3.post1 pyarrow==21.0.0
+"$APPWORLD_STUDY/venv/bin/appworld" install
+"$APPWORLD_STUDY/venv/bin/appworld" download data
+mkdir -p data/scale
+
+"$APPWORLD_STUDY/venv/bin/python" scripts/study_appworld_workflow_transfers.py \
+  --sidecar http://127.0.0.1:18062 --packets data/scale/freshness-preview \
+  --report data/scale/appworld-workflow-transfers.json
+```
+
+Upload the `appworld-note-metadata-snapshot.json` and `appworld-note-metadata-content.json` packets in **Before inference**. The first compares the entire projected record and shows a mismatch. The second compares the note text and matches. Expand the fragment details to see the different byte ranges. The payment packet shows that the stale status differs from the simulator. The payment retry outcome comes from the study's app-state checks.
+
+### Prepare the ranking evaluation
+
+The pinned MAST archive has 1,642 model-annotated rows across seven frameworks and eight benchmarks, with 1,537 distinct trajectory texts. Its 65 repeated-text groups must stay together when creating a holdout. Even adding model name to the public framework, benchmark and trace ID leaves 90 excess rows. Including the released trace key and index resolves those identities. The human file contains 19 entries. Three match an archived trajectory byte for byte. Keep all 19 as a standalone human reference set and prevent the three exact matches from appearing in development. Model-annotated categories support a separate, larger comparison of category agreement. [Pinned archive](https://huggingface.co/datasets/mcemri/MAST-Data/tree/95118ac951421753cf1deb87ddea3b01e693c41b) · [Annotation study](https://proceedings.neurips.cc/paper_files/paper/2025/hash/b1041e52d3be19f0a9bc491657488e4a-Abstract-Datasets_and_Benchmarks_Track.html)
+
+Download both JSON files from the pinned revision into `data/scale/mast-95118ac/`. The audit verifies their hashes and reports the duplicated bodies and join counts. Its result reproduced exactly in a second run.
+
+```sh
+python scripts/audit_mast_archive.py data/scale/mast-95118ac --report data/scale/mast-archive-audit.json
 ```
