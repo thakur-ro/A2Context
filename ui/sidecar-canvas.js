@@ -96,6 +96,38 @@ function canvasAnswer(question, records, previous) {
   return { record, view, focused };
 }
 
+function betweenCopies(context, copies) {
+  const positions = copies.map(item => item.evidence.message_index);
+  if (copies.some(item => item.evidence.field !== "gen_ai.input.messages") ||
+      positions.some(position => !Number.isInteger(position)) || positions[0] === positions[1]) return null;
+  const [first,last] = positions.sort((a,b) => a-b);
+  const messages = new Map();
+  for (const item of context) {
+    const {field,message_index:position} = item.evidence;
+    if (field !== "gen_ai.input.messages" || !(position > first && position < last)) continue;
+    if (!messages.has(position)) messages.set(position,[]);
+    messages.get(position).push(item);
+  }
+  const entries = [...messages].sort(([a],[b]) => a-b);
+  const shown = entries.length > 4 ? [...entries.slice(0,2),...entries.slice(-2)] : entries;
+  const gap = last-first-1;
+  return element("details",{className:"canvas-intervening"},
+    element("summary",{text:"What came between these copies?"}),
+    element("p",{text:gap ? "Captured " + entries.length + " of " + plural(gap,"intervening message position") + "." : "The copies are in adjacent messages."}),
+    ...shown.map(([position,parts]) => {
+      const item = parts.find(part => part.kind === "text" && part.text) || parts.find(part => part.text) || parts[0];
+      return element("div", {className:"dialogue-output"},
+        element("strong",{text:"Message " + (position+1) + " · " + (item.role || item.kind.replaceAll("_"," "))}),
+        element("p",{text:item.text ? boundedExcerpt(item.text) : "Message content unavailable."}));
+    }),
+    shown.length < entries.length && element("p",{className:"label",text:"Showing the first and last two captured positions."}));
+}
+
+function boundedExcerpt(text, limit = 240) {
+  const characters = [...text.slice(0,2*(limit+1))];
+  return characters.slice(0,limit).join("") + (characters.length > limit ? "…" : "");
+}
+
 async function partnerAnswer(model, question, records, history, previous, signal) {
   const catalog = records.map((r,i) => ({...r.facts,id:"R" + (i+1)}));
   const shortId = id => catalog[records.findIndex(r => r.facts.id === id)]?.id || null;
@@ -181,10 +213,11 @@ function investigationCanvas(impact, page, models) {
       return;
     }
     const count = plural(facts.conversations,"conversation") + " · " + plural(facts.observations,"observation");
-    const name = view === "recurrence" ? (facts.conversations > 1 ? "Where this repeats" : "Affected requests") : view === "action" ? "What to test next" : facts.title;
-    let description = view === "recurrence" ? "This recommendation appears in " + count.split(" · ")[0] + " in the current scope." :
+    const name = view === "recurrence" ? (facts.conversations > 1 ? "Where this repeats" : record.duplicate ? "Matching requests" : "Affected requests") : view === "action" ? "What to test next" : facts.title;
+    let description = view === "recurrence" ? (record.duplicate ? "This match" : "This recommendation") + " appears in " + count.split(" · ")[0] + " in the current scope." :
       view === "action" ? facts.next : facts.observed;
     let map = view === "evidence" && facts.map;
+    let intervening = null;
     if (view === "evidence" && record.duplicate) {
       const {trace,call,sources} = record.duplicate;
       const captured = await api("trace",{id:trace},true);
@@ -193,13 +226,13 @@ function investigationCanvas(impact, page, models) {
       const copies = sources.map(id => context.find(item => item.id === id));
       if (copies.every(item => item?.text != null && item.text === copies[0].text)) {
         const excerpt = copies[0].text.trim().replaceAll(/\s+/g," ");
-        const characters = [...excerpt];
-        description = "Matching text: “" + characters.slice(0,180).join("") + (characters.length > 180 ? "…" : "") + "”";
+        description = "Matching text: “" + boundedExcerpt(excerpt,180) + "”";
         map = {root:"Two matching locations in this request",arms:copies.map(item => {
           const {field,message_index,part_index} = item.evidence;
           const place = message_index == null ? field : "Message " + (message_index + 1) + ", part " + ((part_index ?? 0) + 1);
           return {label:item.role || item.kind.replaceAll("_"," "),value:place};
         })};
+        intervening = betweenCopies(context, copies);
       }
     }
     const followup = view === "evidence" && facts.conversations > 1 ? "Where else did that repeat?" : null;
@@ -213,16 +246,17 @@ function investigationCanvas(impact, page, models) {
       if (signal.aborted || !home.isConnected) return;
       update();
     }
+    if (intervening) output.append(intervening);
     if (view === "recurrence") {
       if (record.trend?.length) output.append(trend(record.trend));
       const result = await api("occurrences",{...scope,group:facts.id,by_thread:1});
       if (signal.aborted) return;
       const examples = result.rows.slice(0,3).map(row => link(row.thread || "Open conversation",
         url({view:"threads",thread:row.thread_key,focus_trace:row.trace,focus_call:row.call})));
-      if (examples.length) output.append(element("div",{className:"canvas-examples"},element("span",{text:"Affected conversations"}),...examples));
+      if (examples.length) output.append(element("div",{className:"canvas-examples"},element("span",{text:record.duplicate ? "Conversations with this match" : "Affected conversations"}),...examples));
     }
     output.append(element("div",{className:"canvas-answer-foot"},element("span",{text:count}),
-      link(view === "recurrence" ? "See affected requests →" : "Open exact evidence →",view === "recurrence" ? record.group : record.href)));
+      link(view === "recurrence" ? (record.duplicate ? "See matching requests →" : "See affected requests →") : "Open exact evidence →",view === "recurrence" ? record.group : record.href)));
   }
   async function ask(question, selected) {
     if (!question.trim()) return;
@@ -323,11 +357,12 @@ function investigationCanvas(impact, page, models) {
     browseTitle.textContent = "Browse " + count;
     listingTitle.textContent = repeatsOnly ? "Repeated inputs" : "Needs attention";
     browse.textContent = impact.recommendations > 3 ? "See all " + count + " →" : "All " + (repeatsOnly ? "repeat groups" : "recommendations") + " →";
-    lead.replaceChildren(element("p",{text:count + " · " + plural(impact.conversations,"affected conversation")}),
+    const conversations = repeatsOnly ? plural(impact.conversations,"conversation") + " with matching text" : plural(impact.conversations,"affected conversation");
+    lead.replaceChildren(element("p",{text:count + " · " + conversations}),
       element("h2",{text:repeatsOnly ? "Review repeated inputs" : records[0]?.facts.title || "No recommendations match these filters."}),
       repeatsOnly && element("p",{className:"lead-explanation",text:"These are exact text matches. Open an example to see both input locations."}));
     const metric = (value,label) => element("div",{},element("strong",{text:value}),element("span",{text:label}));
-    stats.replaceChildren(metric(impact.conversations,"Affected conversations"),metric(impact.captured_conversations,"Captured conversations"),
+    stats.replaceChildren(metric(impact.conversations,repeatsOnly ? "Conversations with matching text" : "Affected conversations"),metric(impact.captured_conversations,"Captured conversations"),
       metric(impact.factors,"Source factors"));
     const inspectRepeat = "Inspect a repeated input";
     const questions = [repeatsOnly ? inspectRepeat :

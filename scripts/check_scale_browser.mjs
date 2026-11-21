@@ -27,6 +27,7 @@ try {
       const browse = page.getByText(/^Browse \d+ (?:recommendations?|repeat groups?)$/);
       let evidenceMs = null;
       let matchingLocations = false;
+      let neighboringMessages = null;
       if (await browse.isVisible()) {
         await browse.click();
         const open = performance.now();
@@ -34,15 +35,38 @@ try {
         const evidence = page.getByRole("link",{name:"Open exact evidence →"});
         await evidence.waitFor();
         matchingLocations = await page.getByText("Two matching locations in this request",{exact:true}).isVisible();
-        assert.equal(new URL(await evidence.getAttribute("href"),origin).searchParams.get("workflow"),workflow);
+        const evidenceUrl = new URL(await evidence.getAttribute("href"),origin);
+        assert.equal(evidenceUrl.searchParams.get("workflow"),workflow);
+        const verificationStart = performance.now();
+        if (matchingLocations) {
+          const detail = await page.request.get(new URL("/api/sidecar/trace",origin).href,
+            {params:{id:evidenceUrl.searchParams.get("trace")}}).then(response => response.json());
+          const repeat = detail.findings.find(item => item.group === evidenceUrl.searchParams.get("recommendation") &&
+            item.call_id === evidenceUrl.searchParams.get("call"));
+          assert.equal(repeat.kind,"duplicate");
+          const context = detail.trace.calls.find(call => call.id === repeat.call_id).context;
+          const copies = repeat.detail.sources.map(source => context.find(item => item.id === source.id));
+          const [first,last] = copies.map(item => item.evidence.message_index).sort((a,b) => a-b);
+          if (copies.every(item => item.evidence.field === "gen_ai.input.messages") &&
+              Number.isInteger(first) && Number.isInteger(last) && first < last) {
+            const interval = page.locator(".canvas-intervening");
+            await interval.getByText("What came between these copies?").click();
+            const positions = new Set(context.filter(item => item.evidence.field === "gen_ai.input.messages" &&
+              item.evidence.message_index > first && item.evidence.message_index < last).map(item => item.evidence.message_index));
+            neighboringMessages = positions.size;
+            assert.equal(await interval.locator(".dialogue-output").count(),Math.min(4,positions.size));
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+          }
+        }
+        const verificationMs = performance.now() - verificationStart;
         await evidence.click();
         await page.getByRole("heading",{name:"Recommendation",exact:true}).waitFor({timeout:60000});
         assert.ok(new URL(page.url()).searchParams.get("call"));
-        evidenceMs = Math.round(performance.now() - open);
+        evidenceMs = Math.round(performance.now() - open - verificationMs);
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
       assert.deepEqual(errors,[]);
-      console.log(JSON.stringify({workflow,width,readyMs,evidenceMs,matchingLocations,openingApi}));
+      console.log(JSON.stringify({workflow,width,readyMs,evidenceMs,matchingLocations,neighboringMessages,openingApi}));
       await page.close();
     }
   }

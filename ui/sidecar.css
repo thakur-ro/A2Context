@@ -427,6 +427,8 @@ body:has(.canvas-home) { background:#fafafb; min-height:100vh; }
 .canvas-stats { display:flex; flex-wrap:wrap; gap:12px; }
 .canvas-stats strong { margin-right:5px; }
 .canvas-history p,.canvas-feedback button { margin:6px 0; }
+.canvas-intervening .dialogue-output { margin-top:10px; overflow-wrap:anywhere; }
+.canvas-intervening .dialogue-output p { margin:4px 0 0; white-space:pre-wrap; }
 .canvas-setup { padding:12px 16px; background:white; border:1px solid var(--line); border-radius:12px; }
 .canvas-setup pre { white-space:pre-wrap; overflow-wrap:anywhere; }
 @media (max-width:620px) {
