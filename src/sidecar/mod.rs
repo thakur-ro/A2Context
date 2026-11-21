@@ -388,6 +388,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                 | "/api/sidecar/threads"
                 | "/api/sidecar/thread-calls"
                 | "/api/sidecar/impact"
+                | "/api/sidecar/summary"
                 | "/api/sidecar/conflict-examples"
                 | "/api/sidecar/conflict-coverage"
                 | "/api/sidecar/conflict-conversations"

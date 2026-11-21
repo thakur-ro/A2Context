@@ -198,6 +198,17 @@ pub fn derive(
         }
         let mut rules = BTreeMap::<_, Vec<_>>::new();
         let mut texts = BTreeMap::<_, Vec<_>>::new();
+        let assistant_tool_messages: BTreeSet<_> = call
+            .context
+            .iter()
+            .filter(|item| {
+                item.availability == Availability::Included
+                    && item.evidence.field == "gen_ai.input.messages"
+                    && item.kind == "tool_call"
+                    && item.role.as_deref() == Some("assistant")
+            })
+            .filter_map(|item| item.evidence.message_index)
+            .collect();
         for item in &call.context {
             if item.availability != Availability::Included {
                 continue;
@@ -213,7 +224,20 @@ pub fn derive(
                     .push((item, value));
             }
             if let Some(text) = item.text.as_deref().filter(|text| !text.trim().is_empty()) {
-                texts.entry(text).or_default().push(item);
+                // Some exporters insert an empty-text marker alongside an assistant tool call.
+                let empty_tool_message = text.trim_end() == "(no content)"
+                    && item.kind == "text"
+                    && item.role.as_deref() == Some("assistant")
+                    && item.source_id.is_none()
+                    && item.rule.is_none()
+                    && item.evidence.field == "gen_ai.input.messages"
+                    && item
+                        .evidence
+                        .message_index
+                        .is_some_and(|index| assistant_tool_messages.contains(&index));
+                if !empty_tool_message {
+                    texts.entry(text).or_default().push(item);
+                }
             }
         }
         for ((key, scope), mut entries) in rules {
@@ -430,6 +454,39 @@ fn preview(value: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn repeated_tool_message_placeholders_stay_in_evidence_without_a_duplicate_finding() {
+        let input = vec![
+            json!({"role":"assistant","parts":[{"type":"text","content":"(no content)"},
+                {"type":"tool_call","id":"first","name":"lookup","arguments":{}}]}),
+            json!({"role":"assistant","parts":[{"type":"text","content":"(no content)"},
+                {"type":"tool_call","id":"second","name":"lookup","arguments":{}}]}),
+            json!({"role":"assistant","parts":[{"type":"text","content":"(no content)\n\n"},
+                {"type":"tool_call","id":"third","name":"lookup","arguments":{}}]}),
+            json!({"role":"assistant","parts":[{"type":"text","content":"(no content)\n\n"},
+                {"type":"tool_call","id":"fourth","name":"lookup","arguments":{}}]}),
+            json!({"role":"assistant","parts":[{"type":"text","content":"(no content)"}]}),
+            json!({"role":"assistant","parts":[{"type":"text","content":"(no content)"}]}),
+        ];
+        let document = json!({"resourceSpans":[{"scopeSpans":[{"spans":[{
+            "traceId":"11111111111111111111111111111111","spanId":"1111111111111111",
+            "attributes":[
+                {"key":"gen_ai.operation.name","value":{"stringValue":"chat"}},
+                {"key":"gen_ai.input.messages","value":{"stringValue":json!(input).to_string()}}
+            ]
+        }]}]}]});
+        let [run]: [Run; 1] = nexusweave::otlp::import(&document)
+            .unwrap()
+            .try_into()
+            .unwrap();
+        assert_eq!(run.calls[0].context.len(), 10);
+        let observations = derive(&run, &[], &[]).unwrap();
+        assert_eq!(observations.len(), 1);
+        assert_eq!(observations[0].kind, "duplicate");
+        assert_eq!(observations[0].detail["sources"][0]["id"], "input:4:0");
+        assert_eq!(observations[0].detail["sources"][1]["id"], "input:5:0");
+    }
 
     /// Regenerate the pinned eight-session retail sample using docs/guide.md.
     #[test]

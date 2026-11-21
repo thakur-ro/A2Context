@@ -36,6 +36,8 @@ impl Store {
              CREATE INDEX IF NOT EXISTS traces_seen ON traces(seen);
              CREATE INDEX IF NOT EXISTS traces_owner ON traces(org,user,workflow,start);
              CREATE INDEX IF NOT EXISTS traces_thread ON traces(thread_key,start);
+             CREATE INDEX IF NOT EXISTS traces_coverage ON traces(workflow,org,user,thread_key,start,id,calls,with_inputs,with_request,with_rules)
+                 WHERE run IS NOT NULL;
              CREATE TABLE IF NOT EXISTS metadata (
                  trace_id TEXT REFERENCES traces(id) ON DELETE CASCADE, key TEXT, value TEXT, PRIMARY KEY(trace_id,key)
              );
@@ -249,10 +251,10 @@ impl Store {
         let version: i64 = self
             .0
             .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 34 {
+        if version == 35 {
             return Ok(());
         }
-        if !(0..34).contains(&version) {
+        if !(0..35).contains(&version) {
             return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
@@ -273,9 +275,11 @@ impl Store {
                     AND json_extract(p.body,'$.kind')='source_visibility' AND json_array_length(p.body,'$.continuations')>0)) AS has_masks,
                 instr(t.run,'\"sandbox_dispatch\"')>0 AS has_dispatch,
                 EXISTS(SELECT 1 FROM reports p WHERE p.trace_id=t.id AND p.kind='replay-reports'
-                    AND json_extract(p.body,'$.baseline_summary.matched')=0) AS has_unmatched_baseline
+                    AND json_extract(p.body,'$.baseline_summary.matched')=0) AS has_unmatched_baseline,
+                (EXISTS(SELECT 1 FROM observations o WHERE o.trace_id=t.id AND o.kind='duplicate')
+                    AND instr(t.run,'\"text\":\"(no content)')>0) AS has_tool_placeholder
             FROM traces t WHERE t.id>?1 AND t.run IS NOT NULL AND (?2<23 OR (?2<25 AND has_conflict_trials)
-                OR (?2<26 AND has_opening) OR (?2<30 AND has_candidates) OR has_masks OR has_dispatch OR has_unmatched_baseline)
+                OR (?2<26 AND has_opening) OR (?2<30 AND has_candidates) OR has_masks OR has_dispatch OR has_unmatched_baseline OR has_tool_placeholder)
             ORDER BY t.id LIMIT 16",
             )?;
             let ids = stmt
@@ -289,6 +293,7 @@ impl Store {
                         r.get::<_, bool>(5)?,
                         r.get::<_, bool>(6)?,
                         r.get::<_, bool>(7)?,
+                        r.get::<_, bool>(8)?,
                     ))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -303,6 +308,7 @@ impl Store {
                 has_masks,
                 has_dispatch,
                 has_unmatched_baseline,
+                has_tool_placeholder,
             ) in &ids
             {
                 let run = load_run(&tx, id)?;
@@ -324,6 +330,7 @@ impl Store {
                         || *has_masks
                         || *has_dispatch
                         || *has_unmatched_baseline
+                        || *has_tool_placeholder
                     {
                         refresh_findings(&tx, &run)?;
                     }
@@ -332,7 +339,7 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 34)?;
+        self.0.pragma_update(None, "user_version", 35)?;
         Ok(())
     }
 
@@ -710,6 +717,7 @@ impl Store {
             "findings"
                 | "factors"
                 | "impact"
+                | "summary"
                 | "conversations-without-findings"
                 | "opening-coverage"
                 | "opening-sources"
@@ -1185,6 +1193,24 @@ impl Store {
                 'differs',differs,'total',count(*) OVER (),'differing',sum(differs) OVER (),
                 'forward',json(forward),'reverse',json(reverse)) FROM pairs
                 ORDER BY differs DESC,factor,design LIMIT ? OFFSET ?"),
+            "summary" => {
+                // The landing page needs only counts; detailed findings load on demand.
+                sql.push_str(" SELECT json_object('conversations',count(DISTINCT thread_key),
+                    'recommendations',count(DISTINCT group_id),'factors',count(DISTINCT factor),
+                    'repeat_groups',count(DISTINCT group_id) FILTER (WHERE kind='duplicate'),
+                    'captured_conversations',(SELECT count(DISTINCT t.thread_key)
+                        FROM selected t JOIN captured_calls c ON c.trace_id=t.id WHERE t.thread_key IS NOT NULL");
+                for (key, column) in [("trace", "c.trace_id"), ("call", "c.call_id")] {
+                    if let Some(value) = filters.get(key).filter(|s| !s.is_empty()) {
+                        sql.push_str(&format!(" AND {column}=?"));
+                        args.push(value.clone());
+                    }
+                }
+                append_window(&mut sql, &mut args, "c.started", filters)?;
+                sql.push_str(")) FROM events");
+                let row: String = self.0.query_row(&sql, params_from_iter(args), |row| row.get(0))?;
+                return Ok(serde_json::from_str(&row)?);
+            }
             "impact" => {
                 sql.push_str(" SELECT json_object('opening_gap',json((");
                 sql.push_str(super::opening::SUMMARY);
@@ -1276,9 +1302,21 @@ impl Store {
                         WHEN 1.5 THEN 'sandbox_regression' WHEN 2.25 THEN 'sandbox_dispatch' WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
-            "occurrences" => sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
-                'thread_key',thread_key,'observed',observed,'kind',kind,'detail',json(detail)) FROM events
-                ORDER BY observed DESC,trace_id,call_id,n LIMIT ? OFFSET ?"),
+            "occurrences" => {
+                let by_thread = filters.get("by_thread").is_some_and(|value| value == "1");
+                if by_thread {
+                    sql.push_str(", examples AS (SELECT *,row_number() OVER (PARTITION BY thread_key
+                        ORDER BY observed DESC,trace_id,call_id,n) AS sample FROM events WHERE thread_key IS NOT NULL)");
+                }
+                sql.push_str(" SELECT json_object('trace',trace_id,'call',call_id,'thread',thread,
+                    'thread_key',thread_key,'observed',observed,'kind',kind,'detail',json(detail)) ");
+                if by_thread {
+                    sql.push_str("FROM examples WHERE sample=1");
+                } else {
+                    sql.push_str("FROM events");
+                }
+                sql.push_str(" ORDER BY observed DESC,trace_id,call_id,n LIMIT ? OFFSET ?");
+            }
             "findings" => {
                 sql.push_str(", groups AS (SELECT ");
                 let terms = filters.get("terms").map(|text| {

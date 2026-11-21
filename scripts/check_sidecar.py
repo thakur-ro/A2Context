@@ -249,6 +249,9 @@ def check_conversation_population(binary, db):
         send_traces(base, export(early, quiet, later))
         def counts(**filters):
             impact = get(base, "impact", org=org, **filters)
+            summary = get(base, "summary", org=org, **filters)
+            assert summary.pop("repeat_groups") == 0
+            assert summary == {key: impact[key] for key in ("conversations", "captured_conversations", "recommendations", "factors")}
             return tuple(impact[key] for key in ("captured_conversations", "conversations", "without_findings"))
         assert counts() == (2, 1, 1)
         assert counts(before="2026-10-13") == (1, 0, 1)

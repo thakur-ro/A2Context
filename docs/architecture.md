@@ -2,42 +2,52 @@
 
 NexusWeave connects an assembled inference request to a turn, a measured effect, and recurring findings across sessions. A source can be an instruction, a retrieved document, a tool definition, or a fragment of a prompt. A decision can be an answer, a tool choice, or an argument within a tool call.
 
+> The sidecar is the evidence service that runs beside an LLM workflow. It collects telemetry in the background, checks assembled requests on demand, and serves findings that link back to captured inputs and measured experiments.
+
+## Sidecar architecture
+
 ```mermaid
-flowchart TD
-    accTitle: How captured inputs become turn evidence and measured effects
-    accDescr: Check or probe the assembled request before dispatch. Import the recorded inference call and verify its attached reports. Test further source edits and query comparable evidence across calls.
-    A[Assembled request] --> M[Workflow model call]
-    subgraph Pending[Before dispatch]
-        P[Preflight and context screening]
-        S[Candidate and shadow probes]
+flowchart TB
+    accTitle: NexusWeave runtime and its evidence paths
+    accDescr: The workflow owns inference and tool execution. An asynchronous exporter sends telemetry to the Rust sidecar. The sidecar checks pending requests, validates optional experiment reports, and serves findings from SQLite.
+
+    App["Your LLM workflow<br/>Assemble request · call model · dispatch tools"]
+    Export["Asynchronous OTLP exporter"]
+    Observability["Existing observability backend"]
+    Runner["Optional experiment runner<br/>Replay · source edits · runtime probes"]
+
+    App --> Export
+    Export -.->|"Collector fan-out"| Observability
+    Export -->|"OTLP/HTTP"| Ingest
+    App -.->|"Assembled request"| Preview
+    Runner -->|"Measured report"| Reports
+
+    subgraph Sidecar["NexusWeave Rust sidecar · loopback"]
+        Ingest["Bounded worker<br/>Capture policy · normalization · findings"] --> Store[("SQLite<br/>Traces · findings · test evidence")]
+        Reports["Validate report and evidence links"] --> Store
+        Preview["Check sources, rules and tool scope"] -.->|"Read prior comparisons"| Store
     end
-    U[Upstream source text] -->|Optional expected digest| P
-    A --> P
-    A --> S
-    M --> T[Recorded inference span]
-    P -->|Receipt or report| T
-    S -->|Probe report| T
-    T --> V[Normalize and verify evidence]
-    V --> I[Turn and timeline]
-    I --> R[Controlled replay or runtime probe]
-    I --> G[Patterns across sessions]
-    R -->|Measured effect| G
+
+    Store -->|"Scoped queries"| Dashboard["Dashboard<br/>Recommendations · Threads · Traces"]
+    Preview -->|"Preview response"| Dashboard
+
+    style Sidecar fill:#f6f8fb,stroke:#b9c6d6,color:#182e48
+    classDef core fill:#edf3fb,stroke:#6986a8,color:#152b42
+    classDef external fill:#f8f9fa,stroke:#8a939b,color:#202932
+    class Ingest,Reports,Preview,Store,Dashboard core
+    class App,Export,Observability,Runner external
 ```
 
-## Findings alongside inference
+| Path | What the sidecar does | When to use it |
+| --- | --- | --- |
+| **Collect** | Receives OTLP/HTTP, applies capture policy, normalizes messages and tool spans, and groups supported findings with exact evidence links. | Run beside inference with a batch exporter. |
+| **Check before inference** | Accepts an assembled request through `POST /api/sidecar/preview`. Checks declared rules, required source fragments, and a supplied tool-scope contract. It can find prior scoped experiments and return recommendations. | Test in staging or make an explicit check before sending a request. Preview keeps the pending request in memory. |
+| **Measure an edit** | Accepts completed replay and activation reports from external runners. It verifies evidence references and presents the original and edited conditions together. | Test whether changing a source affected a named score, proposal, or outcome. |
+| **Investigate** | Serves scoped recommendations, conversation views, evidence links, and capture coverage. | Open the dashboard to check what was captured, where a problem repeats, or what test has already run. |
 
-```mermaid
-flowchart LR
-    A[Inference workflow] --> B[Asynchronous OTLP exporter]
-    B --> C[Bounded sidecar queue]
-    B --> D[Existing observability backend]
-    C --> E[Normalize and evaluate captured evidence]
-    E --> F[(SQLite trace and finding records)]
-    F --> G[Recommendations, Traces, Threads]
-    H[Explicit replay experiment] --> E
-```
+The application owns its model call, authorization, and tool execution. The default deployment receives telemetry outside the inference request path. Pending checks and experiments are explicit calls. The sidecar’s checks and evidence views make zero model calls. The optional chat gateway and experiment runners provide their own model access.
 
-The sidecar updates recommendations as evidence arrives. Use the request preview to compare inputs and verified probes before the original inference request is sent. [Deployment](sidecar.md) · [Sidecar methods](methods.md)
+The sidecar can live alongside an existing telemetry backend. The Collector can export the same spans to both destinations. The dashboard and APIs listen on loopback and use one trust boundary per deployment. Content capture is opt-in. [Deploy beside your service](../DEPLOYMENT.md) · [Configure capture and Collector fan-out](sidecar.md#fan-out-without-changing-observability-platforms) · [Recommendation research](recommendation-loop.md)
 
 ### What supplies a measurement on the context map?
 

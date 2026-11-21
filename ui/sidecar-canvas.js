@@ -64,7 +64,8 @@ function canvasRecord(card) {
   const baseline = card.kind === "baseline_check" ? detail.measurement : null;
   return { facts, trend:card.trend, href:url({recommendation:card.id, factor:detail.factor, trace, call, report:detail.report_id,
     replay:baseline?.replay_id, decision:baseline?.location.decision_id}),
-    group:url({recommendation:card.id,factor:detail.factor}), dispatch:!!target };
+    group:url({recommendation:card.id,factor:detail.factor}), dispatch:!!target,
+    duplicate:card.kind === "duplicate" ? {trace,call,sources:detail.sources.map(source => source.id)} : null };
 }
 
 function canvasTerms(question) {
@@ -154,8 +155,9 @@ function investigationCanvas(impact, page, models) {
   const past = element("details",{className:"canvas-history"});
   const status = element("p",{className:"canvas-status",role:"status"});
   const browse = link("All recommendations →",url({cards:1}));
+  const listingTitle = element("h2");
   const listing = element("section",{className:"canvas-list","aria-label":"Recommendation cards"},
-    element("div",{className:"canvas-section-title"},element("h2",{text:"Needs attention"}),browse),cards);
+    element("div",{className:"canvas-section-title"},listingTitle,browse),cards);
   const browseTitle = element("summary");
   const drawer = element("details",{className:"canvas-browse"},browseTitle,stats,listing,link("Explore evidence by source",url({explore:1})));
   home.append(lead,output,prompts,form,setup,status,past,drawer);
@@ -179,12 +181,30 @@ function investigationCanvas(impact, page, models) {
       return;
     }
     const count = plural(facts.conversations,"conversation") + " · " + plural(facts.observations,"observation");
-    const name = view === "recurrence" ? "Where this repeats" : view === "action" ? "What to test next" : facts.title;
-    const description = view === "recurrence" ? "This recommendation appears in " + count.split(" · ")[0] + " in the current scope." :
+    const name = view === "recurrence" ? (facts.conversations > 1 ? "Where this repeats" : "Affected requests") : view === "action" ? "What to test next" : facts.title;
+    let description = view === "recurrence" ? "This recommendation appears in " + count.split(" · ")[0] + " in the current scope." :
       view === "action" ? facts.next : facts.observed;
-    const followup = view === "evidence" ? "Where else did that repeat?" : null;
+    let map = view === "evidence" && facts.map;
+    if (view === "evidence" && record.duplicate) {
+      const {trace,call,sources} = record.duplicate;
+      const captured = await api("trace",{id:trace},true);
+      if (signal.aborted) return;
+      const context = captured?.trace.calls.find(row => row.id === call)?.context || [];
+      const copies = sources.map(id => context.find(item => item.id === id));
+      if (copies.every(item => item?.text != null && item.text === copies[0].text)) {
+        const excerpt = copies[0].text.trim().replaceAll(/\s+/g," ");
+        const characters = [...excerpt];
+        description = "Matching text: “" + characters.slice(0,180).join("") + (characters.length > 180 ? "…" : "") + "”";
+        map = {root:"Two matching locations in this request",arms:copies.map(item => {
+          const {field,message_index,part_index} = item.evidence;
+          const place = message_index == null ? field : "Message " + (message_index + 1) + ", part " + ((part_index ?? 0) + 1);
+          return {label:item.role || item.kind.replaceAll("_"," "),value:place};
+        })};
+      }
+    }
+    const followup = view === "evidence" && facts.conversations > 1 ? "Where else did that repeat?" : null;
     const surface = NexusWeaveA2UI.answerSurface({title:name,description:text ? null : description,
-      map:view === "evidence" && facts.map,detail:view === "evidence" ? facts.comparison : null,followup},
+      map,detail:view === "evidence" ? facts.comparison : null,followup},
       () => ask(followup));
     surface.view.className = "canvas-result";
     output.append(surface.view);
@@ -195,17 +215,10 @@ function investigationCanvas(impact, page, models) {
     }
     if (view === "recurrence") {
       if (record.trend?.length) output.append(trend(record.trend));
-      const result = await api("occurrences",{...scope,group:facts.id});
+      const result = await api("occurrences",{...scope,group:facts.id,by_thread:1});
       if (signal.aborted) return;
-      const seen = new Set();
-      const examples = [];
-      for (const row of result.rows) {
-        if (!row.thread_key || seen.has(row.thread_key)) continue;
-        seen.add(row.thread_key);
-        examples.push(link(row.thread || "Open conversation", url({view:"threads",thread:row.thread_key,
-          focus_trace:row.trace,focus_call:row.call})));
-        if (examples.length === 3) break;
-      }
+      const examples = result.rows.slice(0,3).map(row => link(row.thread || "Open conversation",
+        url({view:"threads",thread:row.thread_key,focus_trace:row.trace,focus_call:row.call})));
       if (examples.length) output.append(element("div",{className:"canvas-examples"},element("span",{text:"Affected conversations"}),...examples));
     }
     output.append(element("div",{className:"canvas-answer-foot"},element("span",{text:count}),
@@ -305,25 +318,31 @@ function investigationCanvas(impact, page, models) {
     records = page.rows.map(canvasRecord);
     previous = records.find(r => r.facts.id === previous?.facts.id) || (moreEvidence ? previous : null);
     heading.textContent = scope.workflow || "All workflows";
-    browseTitle.textContent = "Browse " + plural(impact.recommendations,"recommendation");
-    lead.replaceChildren(element("p",{text:plural(impact.recommendations,"recommendation") + " · " + plural(impact.conversations,"affected conversation")}),
-      element("h2",{text:records[0]?.facts.title || "No recommendations match these filters."}));
+    const repeatsOnly = impact.repeat_groups > 0 && impact.repeat_groups === impact.recommendations;
+    const count = plural(impact.recommendations,repeatsOnly ? "repeat group" : "recommendation");
+    browseTitle.textContent = "Browse " + count;
+    listingTitle.textContent = repeatsOnly ? "Repeated inputs" : "Needs attention";
+    browse.textContent = impact.recommendations > 3 ? "See all " + count + " →" : "All " + (repeatsOnly ? "repeat groups" : "recommendations") + " →";
+    lead.replaceChildren(element("p",{text:count + " · " + plural(impact.conversations,"affected conversation")}),
+      element("h2",{text:repeatsOnly ? "Review repeated inputs" : records[0]?.facts.title || "No recommendations match these filters."}),
+      repeatsOnly && element("p",{className:"lead-explanation",text:"These are exact text matches. Open an example to see both input locations."}));
     const metric = (value,label) => element("div",{},element("strong",{text:value}),element("span",{text:label}));
     stats.replaceChildren(metric(impact.conversations,"Affected conversations"),metric(impact.captured_conversations,"Captured conversations"),
       metric(impact.factors,"Source factors"));
-    const questions = [
-      records.some(r => r.facts.kind === kindLabels.conflict) ? "Which instructions disagreed?" : "What needs attention first?",
-      records.some(r => r.dispatch) ? "What changed at dispatch?" : "Where does this repeat?",
-    ];
+    const inspectRepeat = "Inspect a repeated input";
+    const questions = [repeatsOnly ? inspectRepeat :
+      records.some(r => r.facts.kind === kindLabels.conflict) ? "Which instructions disagreed?" : "What needs attention first?"];
+    if (records.some(r => r.dispatch)) questions.push("What changed at dispatch?");
+    else if (records[0]?.facts.conversations > 1) questions.push("Where does this repeat?");
     questions.push("Show the context map");
-    suggestions.replaceChildren(NexusWeaveA2UI.questions(questions, ask));
+    suggestions.replaceChildren(NexusWeaveA2UI.questions(questions,
+      question => ask(question, question === inspectRepeat ? records[0] : undefined)));
     cards.replaceChildren(...records.slice(0,3).map(r => element("article",{className:"canvas-card"},
       NexusWeaveA2UI.recommendation("card-"+r.facts.id,{label:r.facts.kind,title:r.facts.title,description:r.facts.observed}),
       element("div",{className:"canvas-card-foot"},element("span",{text:plural(r.facts.conversations,"conversation")}),
         prompt("Inspect", () => ask(r.facts.title,r))))));
     prompts.hidden = !records.length;
     drawer.hidden = !records.length;
-    if (impact.recommendations > 3) browse.textContent = "See all " + impact.recommendations + " recommendations →";
   };
   home.updateEvidence(impact,page);
   return home;

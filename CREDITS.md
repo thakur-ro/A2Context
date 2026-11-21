@@ -52,6 +52,10 @@ Qwen-Agent’s Nous tool parser and registered tool interface supplied an indepe
 
 Sierra Research’s τ-Bench leaderboard supplies the recorded agent dialogue and reservation lookups for the airline transfer study. The public task split, reference actions and tool signatures come from its pinned benchmark release. The checkout includes checkpoint identifiers, digests, and test results. Reproduction downloads the original data separately. The Exgentic airline census identifies the participant whose telemetry was available in that corpus. [Study and source manifest](examples/airline-transfer/README.md) · [Sierra leaderboard submission](https://github.com/sierra-research/tau2-bench/blob/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/web/leaderboard/public/submissions/claude-opus-4-5_sierra_2026-02-26/submission.json)
 
+The scale study uses the Exgentic v2 corpus for captured model requests and the FreeInference release by William Nixon, Muxin Tian, Yunjia Zheng, Haryadi S. Gunawi, and Juncheng Yang for anonymized request metadata. Their dataset is distributed under CC BY 4.0. The study records exact revisions and imports source data locally. [Exgentic v2](https://huggingface.co/datasets/Exgentic/agent-llm-traces-v2/blob/ccd4c607cb708b4bb9e043bdc63a9013df35a9bc/README.md) · [FreeInference paper](https://doi.org/10.5281/zenodo.23903440) · [Study design](docs/scale-study.md)
+
+The recommendation study compares model-guided diagnosis with checks and evidence from AgentRx, AgentDebugX, TRACE, REFLECT, and LangSmith Engine. Its local pilot uses the MLX Community quantization of Google’s Gemma 3 4B. [Recommendation research](docs/recommendation-loop.md) · [Gemma checkpoint](https://huggingface.co/mlx-community/gemma-3-4b-it-qat-4bit)
+
 ## Interoperability
 
 The local stdio adapter uses the official Rust SDK for Model Context Protocol. [Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk)

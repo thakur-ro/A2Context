@@ -2424,7 +2424,7 @@ async function render(refresh = false) {
       body = element("div",{className:"feed"},link("Back to recommendations",url({})), ...data.rows.map(findingCard));
       pagination(data.next_offset,{cards:1});
     } else if (!query.has("explore") && !pageOffset && location.hash !== "#proposal-coverage") {
-      const [impact, cards] = await Promise.all([api("impact", scope), api("findings", scope)]);
+      const [cards, impact] = await Promise.all([api("findings", scope), api("summary", scope)]);
       if (!cards.rows.length && !Object.keys(scope).length) {
         const health = await api("health");
         const {traces, inference_spans: calls} = health.coverage;
