@@ -1,8 +1,8 @@
 # A2Context
 
-**Find which context edits change an LLM’s answer or tool call.**
+**Find context problems in the requests your LLM workflow already makes.**
 
-A2Context runs beside your LLM workflow. It flags conflicting instructions and missing sources, groups recurring problems across conversations, and shows what happened when someone tested an edit.
+A2Context runs beside your application in development or production. Connect its telemetry to see supported findings directly from usage, without writing test cases or configuring a judge. Follow a finding to the instructions, messages or tool activity behind it. When a controlled experiment is available, you can also see what changed.
 
 **Start here** · [Try the demo](#try-the-demo) · [Check a request before inference](docs/getting-started.md#check-one-request-before-inference) · [Connect your application](docs/getting-started.md#instrument-your-application)
 
