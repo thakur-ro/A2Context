@@ -213,6 +213,12 @@ function orderComparison({ forward, reverse, differs }) {
     element("details", {}, element("summary", { text: "Original trials" }), ...trials));
 }
 
+function sourceCoverageTitle(coverage) {
+  if (coverage.matched) return "Sources captured for " + coverage.name;
+  if (coverage.text_mismatches?.length) return "Source text differs for " + coverage.name;
+  return "Check sources for " + coverage.name;
+}
+
 function requiredSourceList(coverage) {
   return element("ul",{},...coverage.alternatives.map(group => element("li",{
     text:sourceAlternativeText(coverage, group)
@@ -289,7 +295,7 @@ function findingTitle(kind, detail) {
     no_score:"The scoring rule could not grade a baseline reply",
     no_match:"The unchanged request missed the recorded outcome"
   }[detail.reason];
-  if (kind === "source_gap") return "Check sources for " + detail.coverage.name;
+  if (kind === "source_gap") return sourceCoverageTitle(detail.coverage);
   if (kind === "source_mask") return "Mask " + detail.sources.map(sourceName).join(" and ") + " when the recorded tool was " + detail.mask.original.label;
   if (kind === "prefill") {
     if (detail.leader.status === "zero") return "The tested edits left the first-token distribution unchanged";
@@ -1171,7 +1177,9 @@ function recommendationDetail(kind, detail, action, rows = [], hasConflictTrial 
        candidate: "These scores compare two continuations. Free generation can choose a third answer.",
        token: "This comparison holds the output prefix fixed at each position.",
        baseline_check: "The effect of a source edit on the recorded outcome is unavailable for this report.",
-       source_gap: "Missing anchors can reflect incomplete capture even when the text was present.",
+       source_gap: detail.coverage?.text_mismatches?.length
+         ? "The expected digest comes from the workflow. Check it against the source of record."
+         : "Missing anchors can reflect incomplete capture even when the text was present.",
        conflict: hasConflictTrial ? "The declarations establish the disagreement. Each replay below measures one edit on this call." : "The disagreement is visible in the inputs. Its effect on the answer still needs a test.",
        duplicate: "The text matches exactly. Its effect on the answer still needs a test." })[kind];
   return panel(findingTitle(kind, detail), tag(kind),
@@ -2085,10 +2093,11 @@ function pendingPreview() {
         pendingToolScope(report.tool_scope, report.tool_map, report.recommendations.find(r => r.kind === "tool_scope")),
         overlappingAnchors(report.anchor_overlap),
         sources && element("section",{className:"panel","aria-label":"Required source coverage"},
-          element("h2",{text:(sources.matched ? "Sources captured for " : "Check sources for ") + sources.name}),
+          element("h2",{text:sourceCoverageTitle(sources)}),
           requiredSourceList(sources),
-          sourceGap && sourceMismatchEvidence(sourceGap.detail),
-          sourceGap && element("p",{text:sourceGap.action.next})),
+          sourceGap && element("h3",{text:sourceGap.action.title}),
+          sourceGap && element("p",{text:sourceGap.action.next}),
+          sourceGap && sourceMismatchEvidence(sourceGap.detail)),
         gap && element("section",{className:"panel","aria-label":"Rule capture gap"},
           element("h2",{text:"Check capture for " + coverage.scope.key}),
           element("p",{text:coverage.declarations ? coverage.known_values + " of " + coverage.declarations +
@@ -2120,10 +2129,11 @@ function pendingPreview() {
     if (!file) return;
     show(async () => {
       if (file.size > 2 * 1024 * 1024) throw new Error("Choose a JSON request under 2 MiB.");
-      const submitted = JSON.parse(await file.text());
-      const envelope = submitted.attributes ? { request: submitted } : submitted;
+      const raw = await file.text();
+      // Preserve numeric representations covered by evidence digests.
+      const body = JSON.parse(raw)?.attributes ? `{"request":${raw}}` : raw;
       const response = await fetch("/api/sidecar/preview", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(envelope) });
+        body });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
       return result;

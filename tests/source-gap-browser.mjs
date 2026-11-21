@@ -35,7 +35,7 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.goto(new URL("/?user=digest-test&kind=source_gap", base).href);
     await page.getByRole("button",{name:"Show the context map"}).click();
-    await map.getByLabel("Focus a node").selectOption({label:"finding · Check sources for Exchange authorization"});
+    await map.getByLabel("Focus a node").selectOption({label:"finding · Source text differs for Exchange authorization"});
     await map.getByRole("region",{name:"Configured alternatives"}).getByText(/Captured text differs: latest-customer-message/).waitFor();
     await map.getByRole("button",{name:"source · latest-customer-message"}).waitFor();
     assert.equal(await map.locator(".network-node.unconfirmed").count(),1);

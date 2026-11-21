@@ -1,6 +1,7 @@
 // Run with PLAYWRIGHT_MODULE set to the installed playwright-core module and
 // CHROME_BINARY set to a Chrome or Chromium executable.
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import process from "node:process";
 import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
@@ -334,6 +335,8 @@ try {
   assert.equal(preview.recommendations[0].action.title,"Compare captured text with the upstream source");
   await page.locator('input[type="file"]').setInputFiles({name:"changed.json",mimeType:"application/json",
     buffer:Buffer.from(JSON.stringify({request:substitution}))});
+  await required.getByRole("heading",{name:"Source text differs for Expected returns policy"}).waitFor();
+  await required.getByRole("heading",{name:"Compare captured text with the upstream source"}).waitFor();
   await required.getByText(/Captured text differs: retail\/returns-policy/).waitFor();
   await required.getByText("Inspect differing fragments").click();
   await required.getByText("/messages/0/content",{exact:true}).waitFor();
@@ -373,6 +376,21 @@ try {
   await page.getByRole("heading", {name:"Test another source on this request"}).waitFor();
   await page.getByText("Compare the matching proposals", {exact:true}).click();
   assert.deepEqual(await page.locator(".response-pair code").allTextContents(), ["UNKNOWN","UNKNOWN"]);
+
+  const exchangeFile = name => readFile(new URL("../examples/exchange-approval/" + name, import.meta.url), "utf8").then(JSON.parse);
+  const exchangeRequest = await exchangeFile("pending.json");
+  const {shadow: exchangeShadow} = await exchangeFile("pending-measurement.json");
+  const checkpoint = {line_quantity:2};
+  const checksum = createHash("sha256").update('{"line_quantity":2.0}').digest("hex");
+  Object.assign(exchangeShadow.sandbox_dispatch, {checkpoint, target_key:"line_quantity", expected:2,
+    with_guard:{checkpoint_sha256:checksum,status:"blocked",after:checkpoint},
+    without_guard:{checkpoint_sha256:checksum,status:"applied",after:{line_quantity:4}}});
+  const decimalReceipt = JSON.stringify({request:exchangeRequest,shadow:exchangeShadow})
+    .replaceAll('"line_quantity":2','"line_quantity":2.0').replace('"expected":2','"expected":2.0');
+  await page.locator('input[type="file"]').setInputFiles({name:"decimal-receipt.json", mimeType:"application/json", buffer:Buffer.from(decimalReceipt)});
+  const dispatch = page.getByRole("region",{name:"Sandbox dispatch comparison"});
+  await dispatch.getByRole("heading",{name:"The dispatch check preserved the expected state"}).waitFor();
+  assert.deepEqual(await dispatch.getByRole("row",{name:/line_quantity/}).getByRole("cell").allTextContents(),["2","4","2"]);
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
   mobile.on("pageerror", (error) => errors.push(error.message));
