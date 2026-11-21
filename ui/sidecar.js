@@ -2682,12 +2682,12 @@ async function main() {
   for (const key of health.metadata_keys) meta.add(element("option", { value: key, text: key }));
   if (scope.meta_key && !health.metadata_keys.includes(scope.meta_key)) meta.add(element("option", { value: scope.meta_key, text: scope.meta_key }));
   for (const [key, value] of Object.entries(scope)) form.elements.namedItem(key).value = value;
-  await render();
   if (interview) {
     const {workflows} = await api("workflows");
     workspaceWorkflows = workflows;
     workflowNavigation(new URLSearchParams(location.search).get("workflow"));
   }
+  await render();
   if (location.hash === "#proposal-coverage") {
     const coverage = byId("content").querySelector(".proposal-coverage");
     if (coverage) { coverage.open = true; coverage.querySelector("summary").focus(); }

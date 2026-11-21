@@ -729,12 +729,36 @@ impl Store {
         if matches!(view, "traces" | "threads") {
             append_window(&mut sql, &mut args, "t.start", filters)?;
         }
+        let thread_name = filters
+            .get("name")
+            .map(|name| name.trim())
+            .filter(|name| view == "threads" && !name.is_empty());
+        if let Some(name) = thread_name {
+            if name.chars().count() > 160 {
+                return Err("conversation search is limited to 160 characters".into());
+            }
+            sql.push_str(" AND instr(lower(json_extract(t.thread_key,'$[3]')),lower(?))>0");
+            args.push(name.to_owned());
+        }
         sql.push(')');
         let mut offset = filters
             .get("offset")
             .map(|offset| offset.parse::<u32>())
             .transpose()?
             .unwrap_or(0);
+        let page_size = if view == "thread-calls"
+            && !filters.contains_key("focus_trace")
+            && !filters.contains_key("focus_call")
+        {
+            filters
+                .get("limit")
+                .map(|limit| limit.parse::<usize>())
+                .transpose()?
+                .unwrap_or(PAGE)
+                .clamp(1, PAGE)
+        } else {
+            PAGE
+        };
         if matches!(
             view,
             "findings"
@@ -1477,20 +1501,27 @@ impl Store {
                     " ORDER BY start DESC,id LIMIT ? OFFSET ?"
                 });
             }
-            "threads" => sql.push_str(" SELECT json_object('id',thread_key,'thread',json_extract(thread_key,'$[3]'),
+            "threads" => {
+                sql.push_str(" SELECT json_object('id',thread_key,'thread',json_extract(thread_key,'$[3]'),
                       'org',json_extract(thread_key,'$[1]'),'user',json_extract(thread_key,'$[2]'),
                       'start',max(start),'trace_count',count(*)) FROM selected
-                      GROUP BY thread_key ORDER BY max(start) DESC,thread_key LIMIT ? OFFSET ?"),
+                      GROUP BY thread_key ORDER BY ");
+                if let Some(name) = thread_name {
+                    sql.push_str("(lower(json_extract(thread_key,'$[3]'))=lower(?)) DESC,");
+                    args.push(name.to_owned());
+                }
+                sql.push_str("max(start) DESC,thread_key LIMIT ? OFFSET ?");
+            }
             _ => return Err("unknown view".into()),
         }
-        args.extend([(PAGE + 1).to_string(), offset.to_string()]);
+        args.extend([(page_size + 1).to_string(), offset.to_string()]);
         let mut stmt = self.0.prepare(&sql)?;
         let mut rows: Vec<Value> = stmt
             .query_map(params_from_iter(args), |row| row.get::<_, String>(0))?
             .map(|row| Ok(serde_json::from_str(&row?)?))
             .collect::<Result<_>>()?;
-        let next = (rows.len() > PAGE).then(|| offset.saturating_add(PAGE as u32));
-        rows.truncate(PAGE);
+        let next = (rows.len() > page_size).then(|| offset.saturating_add(page_size as u32));
+        rows.truncate(page_size);
         if view == "findings" {
             for row in &mut rows {
                 if filters

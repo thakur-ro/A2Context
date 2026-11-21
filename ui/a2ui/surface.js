@@ -111,6 +111,38 @@ export function briefing({ metrics, themes }) {
   return surface("briefing", components, new Map());
 }
 
+export function evidenceSections(surfaceId, {title, description, sections}) {
+  const children = ["heading"];
+  const components = [{id:"root",component:"Column",children},
+    {id:"heading",component:"Text",text:"## " + title}];
+  const destinations = new Map();
+  if (description) {
+    children.push("description");
+    components.push({id:"description",component:"Text",text:literal(description)});
+  }
+  for (const [i, section] of sections.entries()) {
+    const prefix = `section${i}`;
+    const content = [`${prefix}Title`];
+    children.push(prefix);
+    components.push({id:prefix,component:"Card",child:`${prefix}Content`},
+      {id:`${prefix}Content`,component:"Column",children:content},
+      {id:`${prefix}Title`,component:"Text",text:"### " + section.title});
+    for (const [index, text] of section.lines.entries()) {
+      const id = `${prefix}Line${index}`;
+      content.push(id);
+      components.push({id,component:"Text",text:literal(text)});
+    }
+    if (section.href) {
+      const id = `${prefix}Action`;
+      content.push(id);
+      components.push({id,component:"Button",child:`${id}Label`,action:{event:{name:"openEvidence"}}},
+        {id:`${id}Label`,component:"Text",text:literal(section.action)});
+      destinations.set(id,section.href);
+    }
+  }
+  return surface(surfaceId,components,destinations);
+}
+
 function create(surfaceId, handleAction) {
   const processor = new MessageProcessor([basicCatalog], handleAction);
   processor.processMessages([{ version: "1.0", createSurface: { surfaceId, catalogId: basicCatalog.id } }]);

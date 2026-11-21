@@ -18,6 +18,8 @@ Open the address it prints. The demo loads saved telemetry and measurements into
 2. Type **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
 3. Type **Where else did that repeat?** Two conversations contributed to this finding. **See affected requests** opens the evidence. The state table shows that the earlier boots exchange stayed in place under both conditions.
 
+To follow the recorded conversation directly, type **Open conversation “Wait on the second exchange”**. Start with the verification and order lookups, then ask **What happened next?** to see the next calls. Each result links to its captured call.
+
 The recording uses **Workspace evidence**. The source comparison reads the two declarations, and the dispatch comparison reads the sandbox receipt. The exchange agent’s saved proposals came from Qwen. You can run the walkthrough without installing a model. [Connect a model](chat-canvas.md)
 
 [MP4 for offline viewing](media/exchange-approval.mp4) · [Saved proposals and order states](../examples/exchange-approval/results.json)

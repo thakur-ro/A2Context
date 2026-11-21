@@ -10,6 +10,8 @@ The sidebar lists recorded workflows. Each has a homepage with the same briefing
 | --- | --- | --- |
 | What needs attention? | A short briefing and a few questions to pursue | Scoped counts and recurring themes |
 | What happened here? | An example and the inputs or results relevant to the question | Recorded turns, source locations, and tool observations |
+| Compare two workflows | Counts and coverage in one answer, optionally narrowed to one finding type | A scoped summary for each named workflow |
+| Find and read a recorded conversation | Up to three chronological calls and a prompt for the next calls | Literal search of captured conversation names and paged stored excerpts |
 | Did this happen elsewhere? | A count, a trend when dates are available, and representative conversations | Observations grouped by matching evidence |
 | Did a change help? | A comparison and a short explanation of the measured outcome | Original and edited trials, including incomplete evidence |
 | What should I try next? | One suggested check or experiment | The verified limits of the evidence already shown |
@@ -29,4 +31,4 @@ System appearance is the default. A light or dark selection persists for the wor
 3. Update and record the repository demo. Begin with the briefing, type the first question, and follow the same issue through the source comparison, measured outcome, and recurring cases.
 4. Test the flow with the exchange fixture and the full public workload. Verify counts against the API, exact links, time to first answer, keyboard operation, contrast, small screens, unsupported questions, and provider failures. Review where the ranking or answer chose the wrong evidence and rerun those cases after each change.
 
-The first pass uses the exchange demo and a separate copy of 18,648 recorded Exgentic requests across six workflows. The browser opens a representative finding by typing a question and checks the exact evidence on desktop and mobile. The exchange recording follows the same interview with saved evidence. The next evaluation needs questions outside the known discovery, source, recurrence, and action views, including comparisons between workflows and questions that require inspecting tool activity with no existing finding.
+Browser checks cover the exchange fixture and a separate copy of 18,648 recorded Exgentic requests across 600 conversations and six workflows. The desktop and mobile checks compare the repeat counts for AppWorld and BrowseComp-Plus against the API (74 of 100 and 86 of 100), then open a recorded AppWorld conversation and check the exact call link on its second page. The exchange fixture checks activity with and without captured text. A local Gemma run answered a question about customer verification and cited the recorded tool result. Broader evaluation needs independently labeled questions, particularly ones that require finding relevant evidence across conversations without knowing their titles.

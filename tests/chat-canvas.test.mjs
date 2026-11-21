@@ -9,12 +9,14 @@ const records = [
   {facts:{id:"second", title:"Compare declarations", kind:"Rule conflict"}},
 ];
 
-function context(reply) {
+function context(reply, checkPacket = packet => {
+  assert.deepEqual(packet.catalog.map(row => row.id),["R1","R2"]);
+  assert.equal(packet.history[0].id, "R1");
+}) {
   const env = vm.createContext({kindLabels:{conflict:"Rule conflict",duplicate:"Exact repetition"}, AbortSignal,
     fetch:async (_,request) => {
       const packet = JSON.parse(JSON.parse(request.body).messages[1].content);
-      assert.deepEqual(packet.catalog.map(row => row.id),["R1","R2"]);
-      assert.equal(packet.history[0].id, "R1");
+      checkPacket(packet);
       return {ok:true,json:async () => ({choices:[{message:{content:JSON.stringify(reply)}}]})};
     }});
   vm.runInContext(source, env);
@@ -48,4 +50,20 @@ test("a measured dispatch answer uses the paired target states without a model p
   const answer = await env.partnerAnswer("my-model","What changed at dispatch?",[receipt],[]);
   assert.equal(answer.text,receipt.facts.observed);
   assert.equal(answer.author,"Sandbox replay");
+});
+
+test("conversation interpretation can cite only supplied calls and cannot change their evidence links", async () => {
+  const sections = [{title:"Call 1",lines:["Tool result · read_order · delivered"],href:"?view=traces&call=first"},
+    {title:"Call 2",lines:["Assistant · Order delivered."],href:"?view=traces&call=second"}];
+  const check = packet => {
+    assert.deepEqual(packet.calls.map(call => call.id),["C1","C2"]);
+    assert.equal(packet.calls.some(call => "href" in call),false);
+  };
+  const env = context({answer:"The lookup returned delivered.",sources:["C1"],href:"https://unrelated.invalid"},check);
+  const result = await env.interpretActivity("model","What did it return?",sections);
+  assert.equal(result.evidence[0].href,sections[0].href);
+  const invalid = context({answer:"Wrong call",sources:["C3"]},check);
+  await assert.rejects(invalid.interpretActivity("model","What did it return?",sections),/invalid answer or call reference/);
+  const unknown = context({answer:"Something happened",sources:[]},check);
+  assert.equal(await unknown.interpretActivity("model","Why did it do that?",sections),null);
 });

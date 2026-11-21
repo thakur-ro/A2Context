@@ -61,10 +61,31 @@ try {
   await question.fill("Show recorded activity");
   await question.press("Enter");
   await page.getByRole("button",{name:"Order observation",exact:true}).waitFor();
+  await question.fill("Find conversation order observation");
+  await question.press("Enter");
+  await page.getByRole("heading",{name:"Order observation",exact:true}).waitFor();
+  await page.getByText("Message and result text unavailable",{exact:true}).waitFor();
+  await question.fill("What happened next?");
+  await question.press("Enter");
+  await page.getByRole("heading",{name:"End of the captured conversation"}).waitFor();
   await page.getByRole("link",{name:"Browse conversations",exact:true}).click();
   assert.equal(new URL(page.url()).searchParams.get("workflow"),"tool-observations");
   await page.getByRole("link",{name:/Order observation/}).waitFor();
-  console.log("Verified setup, metadata-only coverage, filtered empty results, and navigation from tool-only activity.");
+  await page.goto(base);
+  await page.getByRole("link",{name:"Tool observations",exact:true}).waitFor();
+  await page.getByRole("button",{name:"Compare all workflows",exact:true}).waitFor();
+  await question.fill("Show recent conversations in Tool observations");
+  await question.press("Enter");
+  await page.getByText("1 captured conversation in Tool observations",{exact:true}).waitFor();
+  await page.getByRole("button",{name:"Order observation",exact:true}).waitFor();
+  await question.fill("Compare Exchange agent and Tool observations");
+  await question.press("Enter");
+  await page.getByRole("heading",{name:"Workflow comparison"}).waitFor();
+  await page.getByText("0 of 3 captured conversations with findings (0%)",{exact:true}).waitFor();
+  await page.getByText("0 of 1 captured conversations with findings (0%)",{exact:true}).waitFor();
+  assert.equal(await page.locator("#filters").isVisible(),false);
+  assert.equal(await page.locator("a2ui-surface.canvas-evidence-sections a2ui-card").count(),2);
+  console.log("Verified setup, recorded activity without findings, and workflow comparison using captured counts.");
 } finally {
   await browser.close();
 }
