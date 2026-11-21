@@ -1,0 +1,7 @@
+# Test whether citation examples influence the IDs in a reply
+
+In the original PaperQA requests, opaque keys label source passages. Separate keys appear in the instructions showing how to format citations. The original provider replies used at least one example key in each of the five sessions. Later application formatting may remove a key. The provider response is the outcome under investigation.
+
+Before running the intervention, fix all five final requests and three seeds (11, 29 and 47). At temperature 0.5 and a 512-token limit, send each original request twice and one edited request. In the edit, replace every mention of each example-only key in the instruction suffix with a deterministic new key of the same prefix and character length. Keep the passages, their keys, question, instructions and sampler otherwise fixed. Check that neither new key appears anywhere in the original. Shuffle arm order within each request and seed. Generate no tool calls or external actions.
+
+Count original example keys, renamed example keys and actual passage keys appearing in parenthetical citations. A paired switch means the original and unchanged repeat both used an original example key, and the edited reply used the corresponding replacement. Report all arms and failed calls. This is a source-specific test of citation behavior on five previously inspected development questions and one local model. A copied identifier alone cannot establish that its accompanying sentence was wrong.
