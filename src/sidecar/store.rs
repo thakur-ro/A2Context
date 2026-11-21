@@ -15,9 +15,21 @@ const MAX_TRACE_BYTES: usize = 2 * 1024 * 1024;
 const MAX_LOAD_BYTES: usize = 16 * 1024 * 1024;
 const MAX_REPORT_BYTES_PER_TRACE: usize = 4 * 1024 * 1024;
 const PAGE: usize = 15;
+const DATABASE_VERSION: i64 = 35;
 
 pub struct Store(Connection);
 type Rejected = (u16, String);
+
+fn supported_version(db: &Connection) -> Result<i64> {
+    let version = db.pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))?;
+    if !(0..=DATABASE_VERSION).contains(&version) {
+        return Err(format!(
+            "unsupported sidecar database version {version}. This binary supports versions 0 through {DATABASE_VERSION}."
+        )
+        .into());
+    }
+    Ok(version)
+}
 
 impl Store {
     pub(super) fn workflows(&self, filters: &BTreeMap<String, String>) -> Result<Vec<String>> {
@@ -41,8 +53,9 @@ impl Store {
 
     pub fn open(path: &Path) -> Result<Self> {
         let db = Connection::open(path)?;
-        super::position_plan::register_pair_id(&db)?;
         db.busy_timeout(Duration::from_secs(2))?;
+        supported_version(&db)?;
+        super::position_plan::register_pair_id(&db)?;
         db.execute_batch(
             "PRAGMA journal_mode=WAL;
              PRAGMA foreign_keys=ON;
@@ -338,14 +351,9 @@ impl Store {
     }
 
     pub fn upgrade_observations(&mut self) -> Result<()> {
-        let version: i64 = self
-            .0
-            .pragma_query_value(None, "user_version", |row| row.get(0))?;
-        if version == 35 {
+        let version = supported_version(&self.0)?;
+        if version == DATABASE_VERSION {
             return Ok(());
-        }
-        if !(0..35).contains(&version) {
-            return Err("unsupported sidecar database version".into());
         }
         if version < 16 {
             self.upgrade_legacy_observations(version)?;
@@ -429,7 +437,8 @@ impl Store {
             tx.commit()?;
             after.clone_from(&last.0);
         }
-        self.0.pragma_update(None, "user_version", 35)?;
+        self.0
+            .pragma_update(None, "user_version", DATABASE_VERSION)?;
         Ok(())
     }
 
@@ -1950,4 +1959,25 @@ fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
 fn storage(error: impl std::fmt::Display) -> Rejected {
     eprintln!("Sidecar storage error: {error}");
     (503, "sidecar storage unavailable".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opening_a_newer_database_preserves_its_contents_and_journal_mode() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("future.sqlite");
+        let db = Connection::open(&path).unwrap();
+        db.execute_batch("CREATE TABLE future_evidence (value TEXT); INSERT INTO future_evidence VALUES ('retained');").unwrap();
+        db.pragma_update(None, "user_version", DATABASE_VERSION + 1)
+            .unwrap();
+        drop(db);
+        let before = std::fs::read(&path).unwrap();
+        assert!(
+            matches!(Store::open(&path), Err(e) if e.to_string().contains("unsupported sidecar database version"))
+        );
+        assert_eq!(before, std::fs::read(&path).unwrap());
+    }
 }
