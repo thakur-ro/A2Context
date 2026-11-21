@@ -102,3 +102,100 @@ python scripts/replay_tool_result_retention.py \
   --sidecar http://127.0.0.1:18058 --endpoint http://127.0.0.1:18059/v1/chat/completions \
   --cases data/scale/tool-result-retention.json --report data/scale/tool-result-replay.json
 ```
+
+## Third pass: verify a result at the point of reuse
+
+We tested whether the elapsed time between first seeing a tool result and proposing the same lookup predicts whether that result is still usable. The sample covers 2,175 pairs of captured responses across all six workflows. It requires lookups by name, identical arguments, both results present, and no recognized explicit error field in either result. These timestamps come from captured model requests, so they are a proxy for result age. The measured outcome is equality of the captured payloads.
+
+The development set contains 1,746 pairs from AppWorld, BrowseCompPlus, and retail. One second was the most permissive candidate threshold with at least one matching reuse and no observed mismatches. It would have skipped 97 lookups in development. We kept that threshold fixed for the 429 pairs from airline, telecom, and SWE-bench. All eight airline reuses matched. In telecom, 22 of 31 reuses differed from the later result. No SWE-bench pair met the time threshold. We dropped the age rule because a short interval can still contain a state change.
+
+### Compare revisions and verify bytes
+
+The controlled replay takes each held-out pair and supplies an origin record with a scope, a revision, and a payload digest. The simulator schedules writes independently of the payload equality check. A write advances the revision even when it leaves the payload unchanged. It also tries a missing revision, a coincident revision under another scope, a write between the check and the conditional read, and a corrupted local payload.
+
+| Policy | Observed behavior in the controlled transfer |
+| --- | --- |
+| Always fetch the full result | Performs a full lookup in every arm. |
+| Reuse after a separate successful revision check | Reuses the old payload in all 429 concurrent-update trials. The new payload differs in 132. |
+| Conditional read with a scoped revision and payload digest | Reuses the stored payload in all 429 unchanged trials. It fetches the current payload in the other six arms, including 297 writes whose later captured payload equals the earlier one. It also fetches when the stored bytes fail the digest check. |
+
+The simulation tests decision rules against explicit state transitions using captured payload digests. A conditional read checks the scoped representation at the origin when it serves the result. A strong ETag is one established mechanism. Scope needs to include the resource and representation chosen by the tool and arguments, along with the application's authorization boundary. Any guarantee applies at the conditional read. [HTTP validators, RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#name-validators) · [HTTP cache validation, RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html#name-validation)
+
+A loopback HTTP fixture exercised this exchange on two recorded pairs from each of the six workflows. In all 12 unchanged controls, the origin returned `304` and the client served the verified cached bytes. It fetched the expected full payload in all 48 controls with a different scope, cache corruption, a revision change with unchanged bytes, or a write after an earlier successful check. Every case contacts the fixture origin. These checks establish transport behavior under the fixture's update rules. They measure neither production latency nor the outcome of an agent task.
+
+### See the evidence in Before inference
+
+The preview script resolves earlier and later results by trace, call, and invocation ID on the content sidecar. It checks the payload digests before constructing the pending request. For this historical comparison, the later captured payload supplies the expected digest. A live workflow would get the expected digest independently from its origin. The sidecar checks the assembled request and makes no model calls.
+
+```sh
+python scripts/study_tool_result_freshness.py \
+  --report data/scale/tool-result-freshness.json data/scale/exgentic-v2/*.parquet
+
+python scripts/preview_tool_result_freshness.py \
+  --sidecar http://127.0.0.1:18058 --study data/scale/tool-result-freshness.json \
+  --output-dir data/scale/freshness-preview
+
+python scripts/check_conditional_tool_origin.py \
+  --sidecar http://127.0.0.1:18058 --study data/scale/tool-result-freshness.json \
+  --report data/scale/conditional-tool-origin.json
+```
+
+The preview verified 36 packets across the six workflows. On **Before inference**, open the telecom `different-cached` packet to inspect which fragment differs. Open the matching `different-refreshed` packet to verify the refreshed bytes. The `different-missing-anchor` packet shows missing evidence even though it carries those bytes.
+
+## Fourth pass: does refreshing a tool result prevent a second charge?
+
+The archive showed a changed `data_refueling_gb` value on a repeat telecom lookup. We tested the consequence in the pinned τ²-Bench telecom simulator. We screened all 2,285 tasks and found 1,120 with one reference top-up and a matching exact-amount assertion. This includes 38 train tasks, 12 test tasks, and 1,070 tasks outside those two splits. The scenarios reuse the same account, line and 2 GB top-up. [Pinned tasks](https://github.com/sierra-research/tau2-bench/blob/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/data/tau2/domains/telecom/tasks.json) · [How benchmark assertions are scored](https://github.com/sierra-research/tau2-bench/blob/c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4/docs/evaluation.md)
+
+Each test replays the task's reference actions to the top-up step and holds the earlier `get_data_usage` response. In the update arm, another channel applies the authorized top-up through the simulator's tool before the agent acts. The unchanged arm leaves it due. The workflow either uses the cached result, always refreshes, or uses NexusWeave to verify the assembled fragment against the current result from the simulator. It then runs the same remaining reference actions and evaluates every original environment assertion. This is a controlled checkpoint experiment with scripted decisions and surroundings.
+
+| Scripted decision input | Unchanged controls passing | Updated controls passing | Additional top-ups after another channel fulfilled the request |
+| --- | ---: | ---: | ---: |
+| Cached result | 1,120 / 1,120 | 0 / 1,120 | 1,120 |
+| Always refresh | 1,120 / 1,120 | 1,120 / 1,120 | 0 |
+| NexusWeave preview and refresh on mismatch | 1,120 / 1,120 | 1,120 / 1,120 | 0 |
+
+The stale arm ended with 4 GB refueled and an additional simulated $4 charge in each updated case. All 6,720 scripted results reproduced. The preview arm reads the current value from the tool backend to establish the expected digest. This test measures request validation and task state. It offers no estimate of saved tool calls or the incidence of stale results in production.
+
+### Refresh the request, then test dispatch separately
+
+We gave a local Gemma 3 4B runner a constructed support turn and asked it to propose a 2 GB charge or finish without one. It proposed the charge for both the stale and refreshed tool results in all three repetitions. The 12 test checkpoints produce two unique model inputs per repetition. We ran each input once per repetition and applied its proposal to each corresponding checkpoint. With the refreshed result alone, all 12 updated checkpoints received a second charge. Checking the then-current refueling amount at dispatch blocked the same proposal in all 12, and all 12 unchanged controls still passed. This test uses the sequential simulator and a cacheable one-turn proposal. A production test should exercise a transaction-scoped idempotency key, concurrent requests, and the application's authorization policy.
+
+In **Before inference**, upload `telecom-refuel-measured.json`. The recommendation names the fragment that differs from the origin. The source edit preserved the proposal. The attached sandbox comparison shows the same proposal taking the line from 2 GB to 4 GB without the dispatch check and leaving it at 2 GB with the check. The suggested next step is to test dispatch on authorized requests. The sidecar verifies that the report refers to the exact request and proposal. The local harness supplies the simulator outcomes.
+
+The measured packet exposed a browser upload bug. Parsing and reserializing the file changed `2.0` to `2`, so the checkpoint digest no longer matched. The dashboard now forwards the uploaded JSON without reserializing it and shows text mismatches separately from unconfirmed source anchors.
+
+### Reproduce the checkpoint study
+
+Reuse the content study sidecar or run a fresh instance on loopback:
+
+```sh
+cargo build --locked
+mkdir -p data/scale
+target/debug/nexusweave sidecar --listen 127.0.0.1:18058 --db data/scale/telecom-preview.sqlite
+```
+
+From another terminal in the NexusWeave checkout, install the pinned simulator dependencies and run the study with Python 3.13:
+
+```sh
+TAU2_CHECKOUT="$(mktemp -d)"
+git clone --filter=blob:none --sparse https://github.com/sierra-research/tau2-bench.git "$TAU2_CHECKOUT"
+git -C "$TAU2_CHECKOUT" sparse-checkout set src/tau2 data/tau2/domains/telecom
+git -C "$TAU2_CHECKOUT" checkout --detach c06b07dd7c4d4ec61ba6ff9bcdf0b15dd7ef36d4
+uv sync --project "$TAU2_CHECKOUT" --frozen --no-install-project --python 3.13
+uv pip install --python "$TAU2_CHECKOUT/.venv/bin/python" audioop-lts==0.2.2 pyarrow==21.0.0
+mkdir -p data/scale
+
+PYTHONPATH="$TAU2_CHECKOUT/src" LITELLM_LOCAL_MODEL_COST_MAP=True PYTHON_DOTENV_DISABLED=1 \
+  "$TAU2_CHECKOUT/.venv/bin/python" scripts/study_telecom_refuel_freshness.py \
+  --sidecar http://127.0.0.1:18058 --split full --report data/scale/telecom-freshness.json
+```
+
+Use `--split test --model-endpoint http://127.0.0.1:18059/v1/chat/completions --model default_model --packets data/scale/freshness-preview` to run the model comparison and generate a preview packet when the proposals are scorable. Set `--binary` if the built CLI is elsewhere. The sampler accepts loopback endpoints only. These runs made zero paid model calls. Promotion to production advice requires an independently scored transfer workflow with different accounts, tools and action effects.
+
+The local MLX runner used 4-bit quantization with a group size of 64. These hashes identify the files used for the three repeated model runs. The upstream revision of this local copy is unconfirmed.
+
+```text
+b4bb1430e6090d163d33822dbad1c3e6cb16276f0c8f55cf27a6a240640bfa61  model.safetensors
+ee036bd0fae8bb5791217540f33e0b85f6fd56db37218100ddea01c442fcee24  config.json
+4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795  tokenizer.json
+```

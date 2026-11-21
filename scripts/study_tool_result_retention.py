@@ -123,6 +123,7 @@ def observed_repeats(row):
                         "repeated_proposal": {
                             "span": span["span_id"], "trace": imported_trace_id(row, span),
                             "location": f"output:{message}:{part}", "invocation": tool_id,
+                            "started_at": span["start_time"],
                         },
                     })
                 proposals[tool_id] = signature
