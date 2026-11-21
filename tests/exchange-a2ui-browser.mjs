@@ -274,6 +274,25 @@ try {
     await canvas.getByRole("table",{name:"Measured source edits by output token"}).waitFor();
     await submit("What about position 6?");
     await canvas.getByRole("heading",{name:/Token 6 of 16/}).waitFor();
+    await page.route("**/api/chat/completions",async route => {
+      const read = route.request().postDataJSON().messages[1].content.startsWith("Available reads:");
+      await route.fulfill({json:{choices:[{message:{content:read ? "SEARCH | verify customer" : '{"sources":[]}'}}]}});
+    });
+    await submit("Did the identity lookup change the answer?");
+    await canvas.getByRole("heading",{name:"No supporting excerpt found"}).waitFor();
+    assert.equal(await canvas.locator("a2ui-card").count(),0);
+    await submit("Show the retrieved excerpts");
+    await canvas.getByRole("heading",{name:"Retrieved excerpts"}).waitFor();
+    await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
+    let failedRequests = 0;
+    await page.route("**/api/chat/completions",async route => {
+      failedRequests++;
+      await route.fulfill({status:503,json:{}});
+    });
+    await submit("What did verify_customer return?");
+    await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
+    await page.getByRole("status").filter({hasText:"Searched with your original wording."}).waitFor();
+    assert.equal(failedRequests,1);
     await page.close();
   }
   if (process.env.CHAT_MODEL) {

@@ -258,7 +258,7 @@ function investigationCanvas(impact, page, models) {
   let loadedPage = page, currentTotal = impact.recommendations;
   let activeScope = {...scope}, currentImpact = impact;
   let records = [], history = [], previous, active, moreEvidence = false;
-  let activity, comparison, measurements, visibleCalls = [];
+  let activity, comparison, measurements, nearby, visibleCalls = [];
   const corrections = new Map();
   const normalize = q => q.trim().toLowerCase().replace(/[?.!]+$/, "");
   past.hidden = true;
@@ -433,6 +433,16 @@ function investigationCanvas(impact, page, models) {
     const summary = repeatedResult ? shown.length + " retrieved calls returned the same result. Showing one example." :
       reply?.unsupported ? "The retrieved excerpts do not establish an answer to this question. " + found : reply?.answer || found;
     const description = summary + (reply?.answer && partial_match ? " The excerpts match some of the search terms." : "") + coverage;
+    if (reply?.unsupported && !search.explicit) {
+      evidenceSections("unsupported-activity","No supporting excerpt found",
+        "I checked " + plural(rows.length,"retrieved call") + ". The recorded excerpts do not establish an answer to this question." + coverage);
+      nearby = sections;
+      visibleCalls = [];
+      previous = activity = comparison = null;
+      remember(question,null,"activity","No supporting excerpt in the retrieved calls.");
+      suggest(["Show the retrieved excerpts"]);
+      return true;
+    }
     evidenceSections("activity-search",rows.length ? "Matching recorded activity" : "No matching activity",description,repeatedResult ? shown.slice(0,1) : shown);
     if (reply?.answer) output.append(element("p",{className:"label",text:"Excerpts selected by " + model}));
     activity = null;
@@ -618,8 +628,18 @@ function investigationCanvas(impact, page, models) {
     input.focus({preventScroll:true});
     status.textContent = "Looking up evidence…";
     const choices = measurements;
+    const related = nearby;
     measurements = null;
+    nearby = null;
     try {
+      if (related && !selected && !selectedConversation && normalize(question) === "show the retrieved excerpts") {
+        evidenceSections("nearby-activity","Retrieved excerpts","These calls matched the search and left the original question open.",related);
+        visibleCalls = related.map(s => s.ref);
+        remember(question,null,"activity","Read the calls checked for the previous question.");
+        suggest(visibleCalls.length ? ["Show call " + visibleCalls[0].number] : []);
+        status.textContent = "";
+        return;
+      }
       if (choices && !selected && !selectedConversation) {
         const pick = /^(?:show |read )?(?:measurement )?(\d+)$/.exec(normalize(question));
         if (pick || normalize(question) === "more measurements") {
@@ -861,7 +881,7 @@ function investigationCanvas(impact, page, models) {
         return;
       }
       if (plan?.view === "search" || (!plan && !selected && !corrected && !answer.direct && search.q)) {
-        const found = await searchActivity(question,{...search,queries:plan?.queries,tool:plan?.tool},activityScope,model,signal);
+        const found = await searchActivity(question,{...search,queries:plan?.queries,tool:plan?.tool},activityScope,usedFallback ? "" : model,signal);
         if (signal.aborted || found) {
           if (!signal.aborted) status.textContent = usedFallback ? "The planner was unavailable. Searched with your original wording." : "";
           return;

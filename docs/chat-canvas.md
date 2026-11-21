@@ -27,6 +27,8 @@ An open-ended question can make two model requests. First the partner chooses a 
 
 The planner receives at most 15 distinct finding descriptions and 16 tool names sampled from the latest 64 scoped calls. Finding interpretation can include recent turns, source names, declared values, state fields, and proposal previews. Activity questions can send excerpts of captured messages and tool results. Choose a provider approved for those data. The gateway allows two concurrent requests and caps each response at 450 tokens. The read selector requests up to 80.
 
+When the retrieved calls leave a question open, the interview says so. Type **Show the retrieved excerpts** to see what it checked. For example, a verification tool can establish that a customer passed the check. Those calls alone cannot establish how the check affected the model’s answer.
+
 ## How an answer becomes a diagram
 
 1. The Rust sidecar groups observations in SQLite and returns the ranked findings and their exact evidence references.
