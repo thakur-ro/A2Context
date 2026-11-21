@@ -12,6 +12,7 @@ The sidebar lists recorded workflows. Each has a homepage with the same briefing
 | What happened here? | An example and the inputs or results relevant to the question | Recorded turns, source locations, and tool observations |
 | Compare two workflows | Counts and coverage in one answer, optionally narrowed to one finding type | A scoped summary for each named workflow |
 | Find and read a recorded conversation | Up to three chronological calls and a prompt for the next calls | Literal search of captured conversation names and paged stored excerpts |
+| Find activity when the title is unknown | Up to four matching excerpts with exact call links | Full-text search of captured user, assistant, and tool previews |
 | Did this happen elsewhere? | A count, a trend when dates are available, and representative conversations | Observations grouped by matching evidence |
 | Did a change help? | A comparison and a short explanation of the measured outcome | Original and edited trials, including incomplete evidence |
 | What should I try next? | One suggested check or experiment | The verified limits of the evidence already shown |
@@ -24,6 +25,8 @@ The Rust sidecar keeps counts and evidence references authoritative. Without a m
 
 System appearance is the default. A light or dark selection persists for the workspace. The interview and linked evidence need readable text, clear focus, and usable layouts on phones and desktops.
 
+Activity search indexes the same bounded excerpts the interview can show. SQLite FTS5 first requires all query terms, then tries any pair or any single term. The interview labels both fallbacks as partial matches. It ranks by BM25 and shows at most one call per conversation, or per trace when no conversation ID was recorded. It uses word matching and English stemming. Capture gaps, excerpt truncation, and paraphrases can prevent a match. A match shows where terms appeared. [SQLite FTS5](https://www.sqlite.org/fts5.html)
+
 ## Delivery and checks
 
 1. Ship the briefing, question composer, scoped evidence replies, and theme controls. Keep bookmarked evidence and routes working during the change.
@@ -32,3 +35,5 @@ System appearance is the default. A light or dark selection persists for the wor
 4. Test the flow with the exchange fixture and the full public workload. Verify counts against the API, exact links, time to first answer, keyboard operation, contrast, small screens, unsupported questions, and provider failures. Review where the ranking or answer chose the wrong evidence and rerun those cases after each change.
 
 Browser checks cover the exchange fixture and a separate copy of 18,648 recorded Exgentic requests across 600 conversations and six workflows. The desktop and mobile checks compare the repeat counts for AppWorld and BrowseComp-Plus against the API (74 of 100 and 86 of 100), then open a recorded AppWorld conversation and check the exact call link on its second page. The exchange fixture checks activity with and without captured text. A local Gemma run answered a question about customer verification and cited the recorded tool result. Broader evaluation needs independently labeled questions, particularly ones that require finding relevant evidence across conversations without knowing their titles.
+
+The same sample found airline, AppWorld, and retail activity for three known-term queries entered without workflow names. Browser checks used both desktop and mobile layouts and verified the links against the stored calls. SQLite `dbstat` reported 8.2 MiB of pages for the index and its keys, excluding the write-ahead log. The three queries exercise retrieval and navigation. Estimating recall on unfamiliar questions requires a separate evaluation.

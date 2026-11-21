@@ -16,7 +16,7 @@ cd NexusWeave
 cargo run --locked -- demo
 ```
 
-Open the address printed in the terminal. The workspace briefing shows how much evidence was captured and which issues recur. Start with **Which instructions disagreed?**, then type **What changed at dispatch?** and **Where else did that repeat?** to follow the same case. Choose **Exchange agent** in the sidebar for its own briefing. Press Ctrl+C to stop.
+Open the address printed in the terminal. Ask **What did verify_customer return?** from the workspace briefing to find the recorded result. Choose **Exchange agent** in the sidebar for its own briefing. Ask **Which instructions disagreed?**, **What changed at dispatch?**, and **Where else did that repeat?** to follow the held exchange. Press Ctrl+C to stop.
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 

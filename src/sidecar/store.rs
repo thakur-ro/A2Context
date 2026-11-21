@@ -76,6 +76,7 @@ impl Store {
         )?;
         db.execute_batch(super::capture::SCHEMA)?;
         db.execute_batch(super::conversation::SCHEMA)?;
+        db.execute_batch(super::activity_search::SCHEMA)?;
         db.execute_batch(super::target_patterns::SCHEMA)?;
         db.execute_batch(super::prefix_patterns::SCHEMA)?;
         db.execute_batch(super::screened::INDEX)?;
@@ -94,6 +95,12 @@ impl Store {
                 "capture settings differ from the existing database. Use a new database.".into(),
             );
         }
+        if !capture {
+            self.0.execute(
+                "UPDATE activity_index_progress SET cursor=NULL WHERE id=1 AND cursor IS NOT NULL",
+                [],
+            )?;
+        }
         Ok(())
     }
 
@@ -101,6 +108,66 @@ impl Store {
         Ok(self
             .0
             .execute("DELETE FROM traces WHERE seen < ?1", [cutoff])?)
+    }
+
+    pub(super) fn backfill_activity_search(&mut self) -> Result<bool> {
+        const BATCH: usize = 24;
+        let tx = self.0.transaction()?;
+        let Some(cursor) = super::activity_search::cursor(&tx)? else {
+            return Ok(false);
+        };
+        let traces = tx
+            .prepare_cached(
+                "SELECT id FROM traces WHERE id>? AND run IS NOT NULL ORDER BY id LIMIT ?",
+            )?
+            .query_map(params![cursor, BATCH], |row| row.get::<_, String>(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        for trace in &traces {
+            let rows = tx
+                .prepare_cached(
+                    "SELECT c.call_id,d.preview FROM captured_calls c
+                LEFT JOIN conversation_calls d USING(trace_id,call_id) WHERE c.trace_id=?",
+                )?
+                .query_map([trace], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+                })?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            let previews = rows
+                .iter()
+                .map(|(call, raw)| {
+                    raw.as_deref()
+                        .and_then(|raw| serde_json::from_str::<Value>(raw).ok())
+                        .map(|data| (call, data))
+                })
+                .collect::<Option<Vec<_>>>();
+            match previews {
+                Some(previews)
+                    if previews
+                        .iter()
+                        .all(|(_, data)| !super::conversation::needs_tool_preview(data)) =>
+                {
+                    for (call, data) in previews {
+                        super::activity_search::index(&tx, trace, call, &data)?;
+                    }
+                }
+                _ => {
+                    if let Some(run) = load_run(&tx, trace)? {
+                        super::conversation::index(&tx, &run)?;
+                    }
+                }
+            }
+        }
+        let next = traces.last().filter(|_| traces.len() == BATCH);
+        tx.execute(
+            "UPDATE activity_index_progress SET cursor=? WHERE id=1",
+            [next],
+        )?;
+        tx.commit()?;
+        Ok(next.is_some())
+    }
+
+    pub(super) fn search_activity(&self, filters: &BTreeMap<String, String>) -> Result<Value> {
+        super::activity_search::search(&self.0, filters)
     }
 
     pub fn ingest(
@@ -1594,10 +1661,7 @@ impl Store {
             let dialogue = &row["dialogue"];
             // Older exports indexed tool spans as empty previews. Read only
             // candidate spans on the current page to avoid rebuilding the index.
-            if dialogue["output_count"] != 0
-                || !dialogue["model"].is_null()
-                || dialogue["inputs"] != 0
-            {
+            if !super::conversation::needs_tool_preview(dialogue) {
                 continue;
             }
             let trace = row["trace"].as_str().ok_or("missing trace")?;
@@ -1619,7 +1683,7 @@ impl Store {
     }
 }
 
-fn append_scope(
+pub(super) fn append_scope(
     sql: &mut String,
     args: &mut Vec<String>,
     filters: &BTreeMap<String, String>,
@@ -1645,7 +1709,7 @@ fn append_scope(
     Ok(())
 }
 
-fn append_window(
+pub(super) fn append_window(
     sql: &mut String,
     args: &mut Vec<String>,
     column: &str,

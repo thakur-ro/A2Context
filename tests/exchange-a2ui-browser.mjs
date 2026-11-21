@@ -38,6 +38,13 @@ try {
     const submit = async text => {await question.fill(text); await question.press("Enter");};
     await submit("Show all workflows");
     await page.getByRole("heading",{name:"Welcome to NexusWeave",exact:true}).waitFor();
+    await submit("What did verify_customer return?");
+    const search = page.getByRole("region",{name:"Answer canvas"});
+    await search.getByRole("heading",{name:"Matching recorded activity"}).waitFor();
+    await search.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
+    assert.ok(await search.getByRole("button",{name:"Open exact call",exact:true}).count());
+    await submit("Search for moonbase icecream");
+    await search.getByRole("heading",{name:"No matching activity"}).waitFor();
     await submit("Which instructions disagreed in Exchange agent?");
     const workspaceEvidence = page.getByRole("link",{name:"Open exact evidence →"});
     await workspaceEvidence.waitFor();

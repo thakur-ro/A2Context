@@ -227,6 +227,29 @@ def check_thread_calls(binary, folder):
             "kind": "tool_execution", "label": "update_order", "text": "Order write rejected",
         }]
         assert not rows[17]["findings"]
+        [hit] = get(base, "activity-search", q="order writes rejected", org="thread-test")["rows"]
+        assert (hit["trace"], hit["call"], hit["thread_id"]) == (rows[17]["trace"], rows[17]["call"], key)
+        assert hit["dialogue"] == rows[17]["dialogue"]
+        assert get(base, "activity-search", q="order rejected", org="another-org")["rows"] == []
+        assert get(base, "activity-search", q="order rejected", after="2026-10-13")["rows"] == []
+        assert get(base, "activity-search", q="order rejected cloudberry")["partial_match"]
+        assert get(base, "activity-search", q='"*"')["rows"] == []
+        unthreaded = deepcopy(tool)
+        unthreaded.update(traceId=f"{391:032x}", spanId=f"{391:016x}")
+        unthreaded["attributes"] = [row for row in unthreaded["attributes"] if row["key"] not in {
+            "gen_ai.conversation.id", "gen_ai.tool.call.result",
+        }] + attrs({"gen_ai.tool.call.result": "Unthreaded shipping receipt"})
+        send_traces(base, export(unthreaded))
+        [hit] = get(base, "activity-search", q="shipping receipt")["rows"]
+        assert hit["call"] == unthreaded["spanId"] and hit["thread_id"] is None
+        distractor = deepcopy(unthreaded)
+        distractor.update(traceId=f"{392:032x}", spanId=f"{392:016x}")
+        for field in distractor["attributes"]:
+            if field["key"] == "gen_ai.tool.call.result":
+                field["value"]["stringValue"] = "Moonbase departure only"
+        send_traces(base, export(distractor))
+        partial = get(base, "activity-search", q="shipping receipt moonbase")
+        assert partial["partial_match"] and [row["call"] for row in partial["rows"]] == [unthreaded["spanId"]]
         focus = {"focus_trace": rows[-1]["trace"], "focus_call": rows[-1]["call"]}
         assert get(base, "thread-calls", thread=key, **focus) == second
         for restriction in [{"user": "other"}, {"org": "other"}, {"workflow": "other"},
@@ -236,20 +259,37 @@ def check_thread_calls(binary, folder):
         for query in ["", "?thread="]:
             assert send(base, "/api/sidecar/thread-calls" + query, expected=None)[0] == 400
     with sqlite3.connect(db) as sql:
+        sql.execute("DROP TRIGGER activity_document_delete")
+        sql.execute("DELETE FROM activity_documents")
+        sql.execute("UPDATE activity_index_progress SET cursor='' WHERE id=1")
+        sql.execute("DELETE FROM conversation_calls WHERE call_id=?", (unthreaded["spanId"],))
         sql.execute("UPDATE conversation_calls SET preview=json_set(preview,'$.outputs',json('[]'),'$.output_count',0) WHERE call_id=?", (tool["spanId"],))
     with server(binary, db, *flags) as base:
         assert get(base, "thread-calls", thread=key, **focus) == second
+        for _ in range(100):
+            found = get(base, "activity-search", q="order writes rejected")
+            if found["index_ready"]:
+                break
+            time.sleep(0.02)
+        assert found["index_ready"] and [row["call"] for row in found["rows"]] == [tool["spanId"]]
+        assert [row["call"] for row in get(base, "activity-search", q="shipping receipt")["rows"]] == [unthreaded["spanId"]]
     with sqlite3.connect(db) as sql:
         sql.execute("DROP TABLE conversation_calls")
         sql.execute("PRAGMA user_version=22")
     with server(binary, db, *flags) as base:
         assert get(base, "thread-calls", thread=key, **focus) == second
+    with sqlite3.connect(db) as sql:
+        sql.execute("UPDATE traces SET seen=0 WHERE id=?", (rows[17]["trace"],))
+    with server(binary, db, *flags) as base:
+        assert not any(row["call"] == tool["spanId"] for row in get(base, "activity-search", q="rejected")["rows"])
     with server(binary, folder / "private-conversation.sqlite") as base:
         send_traces(base, export(spans[0], tool))
         row, tool_row = get(base, "thread-calls", thread=key)["rows"]
         assert "Alternative declaration for page" not in json.dumps(row)
         assert not (row["dialogue"]["user"] or {}).get("text")
         assert "Order write rejected" not in json.dumps(tool_row)
+        assert get(base, "activity-search", q="alternative declaration")["rows"] == []
+        assert get(base, "activity-search", q="rejected")["rows"] == []
 
 
 def check_tool_handoffs(binary, db):
@@ -300,6 +340,8 @@ def check_conversation_population(binary, db):
             impact = get(base, "impact", org=org, **filters)
             summary = get(base, "summary", org=org, **filters)
             assert summary.pop("repeat_groups") == 0
+            assert summary.pop("themes") == ([{"kind": "conflict", "conversations": 1, "groups": 1}]
+                                             if impact["conversations"] else [])
             assert summary == {key: impact[key] for key in ("conversations", "captured_conversations", "recommendations", "factors")}
             return tuple(impact[key] for key in ("captured_conversations", "conversations", "without_findings"))
         assert counts() == (2, 1, 1)

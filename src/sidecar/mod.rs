@@ -1,3 +1,4 @@
+mod activity_search;
 mod capture;
 mod conflict;
 mod conversation;
@@ -270,6 +271,7 @@ fn work(
         metadata: &metadata,
     };
     let mut last_purge = Instant::now();
+    let mut index_wait = Duration::from_millis(25);
     loop {
         if last_purge.elapsed() >= Duration::from_secs(60) {
             if let Err(error) = store.purge(now() - retention * 86_400) {
@@ -277,9 +279,21 @@ fn work(
             }
             last_purge = Instant::now();
         }
-        let (enqueued, mut request) = match receive.recv_timeout(Duration::from_secs(5)) {
+        let (enqueued, mut request) = match receive.recv_timeout(index_wait) {
             Ok(task) => task,
-            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::Timeout) => {
+                if index_wait < Duration::from_secs(5) {
+                    match store.backfill_activity_search() {
+                        Ok(true) => {}
+                        Ok(false) => index_wait = Duration::from_secs(5),
+                        Err(error) => {
+                            eprintln!("Background activity indexing: {error}");
+                            index_wait = Duration::from_secs(1);
+                        }
+                    }
+                }
+                continue;
+            }
             Err(RecvTimeoutError::Disconnected) => break,
         };
         metrics.depth.fetch_sub(1, Relaxed);
@@ -375,6 +389,7 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
             let value = match path {
                 "/api/sidecar/chat-config" => json!({"models":[]}),
                 "/api/sidecar/workflows" => json!({"workflows":store.workflows()?}),
+                "/api/sidecar/activity-search" => store.search_activity(&fields)?,
                 "/api/sidecar/health" => json!({
                     "demo": demo, "content_capture": options.content || demo,
                     "otlp_http_endpoint": format!("http://{}/v1/traces", options.address),

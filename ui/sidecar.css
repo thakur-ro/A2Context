@@ -451,8 +451,11 @@ body[data-workspace="interview"] #title { font-size:clamp(1.75rem,4.5vw,2.7rem);
 .canvas-result a2ui-card a2ui-basic-column { --a2ui-column-gap:3px; }
 .canvas-result a2ui-card a2ui-basic-text:last-child { font-weight:620; }
 .canvas-evidence-sections { --a2ui-column-gap:8px; }
-.canvas-evidence-sections a2ui-card { border:1px solid var(--line); }
+.canvas-evidence-sections a2ui-card { border:1px solid var(--line); border-radius:10px; --a2ui-font-size-l:1rem; --a2ui-line-height-headings:1.4; }
+.canvas-evidence-sections a2ui-card:has(a2ui-basic-button) { --a2ui-card-padding:12px 14px; --a2ui-button-padding:5px 0; }
+.canvas-evidence-sections a2ui-card h3 { font-weight:640; }
 .canvas-evidence-sections a2ui-card a2ui-basic-text { white-space:pre-wrap; }
+.canvas-evidence-sections a2ui-card button { gap:6px; }
 .canvas-answer-foot,.canvas-examples { display:flex; align-items:center; gap:8px 16px; flex-wrap:wrap; }
 .canvas-answer-foot { justify-content:space-between; }
 .canvas-answer-foot { padding-top:12px; border-top:1px solid var(--line); }

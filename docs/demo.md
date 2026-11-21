@@ -14,6 +14,8 @@ cargo run --locked -- demo
 
 Open the address it prints. The demo loads saved telemetry and measurements into a temporary SQLite database. It requires no API key.
 
+From the workspace homepage, type **What did verify_customer return?** to find the tool result without knowing the conversation name.
+
 1. The welcome page shows the workspace totals and recurring themes. Choose **Exchange agent** in the sidebar for its own briefing. Ask **Which instructions disagreed?** to compare the cached approval with the customer’s hold.
 2. Type **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
 3. Type **Where else did that repeat?** Two conversations contributed to this finding. **See affected requests** opens the evidence. The state table shows that the earlier boots exchange stayed in place under both conditions.

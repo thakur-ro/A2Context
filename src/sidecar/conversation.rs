@@ -54,25 +54,32 @@ pub(super) fn preview(call: &Call) -> Value {
 }
 
 pub(super) fn index(tx: &Transaction<'_>, run: &Run) -> rusqlite::Result<()> {
-    if run.conversation_id.as_deref().is_none_or(str::is_empty) {
-        return Ok(());
-    }
-    let mut stmt = tx.prepare_cached("INSERT OR REPLACE INTO conversation_calls(trace_id,call_id,ordinal,nanos,preview) VALUES (?,?,?,?,?)")?;
+    let mut stmt = tx.prepare_cached(
+        "INSERT INTO conversation_calls(trace_id,call_id,ordinal,nanos,preview)
+        VALUES (?,?,?,?,?) ON CONFLICT(trace_id,call_id) DO UPDATE SET
+        ordinal=excluded.ordinal,nanos=excluded.nanos,preview=excluded.preview",
+    )?;
     for (ordinal, call) in run.calls.iter().enumerate() {
         let nanos = call
             .started_at
             .as_deref()
             .and_then(|s| OffsetDateTime::parse(s, &Rfc3339).ok())
             .map(|t| t.nanosecond());
+        let preview = preview(call);
         stmt.execute(params![
             run.id,
             call.id,
             ordinal,
             nanos,
-            preview(call).to_string()
+            preview.to_string()
         ])?;
+        super::activity_search::index(tx, &run.id, &call.id, &preview)?;
     }
     Ok(())
+}
+
+pub(super) fn needs_tool_preview(dialogue: &Value) -> bool {
+    dialogue["output_count"] == 0 && dialogue["model"].is_null() && dialogue["inputs"] == 0
 }
 
 // Only inspect findings for the calls on this page. A source conflict stays independently

@@ -8,9 +8,11 @@ From the workspace briefing, type **Compare** followed by two workflow names. Th
 
 Ask **Show recent conversations in** followed by a workflow name to find activity from the workspace homepage. Type **Find conversation** followed by part of its recorded name. A unique match opens up to three captured calls in the interview, including recorded tool results when available. Type **What happened next?** to read the next calls or ask **What did the tool return?** for the visible results. This works for conversations without a finding. When a model is connected, it can interpret the calls in view and cite them. Each evidence link comes from the store.
 
+When you don’t know the conversation name, ask about a recorded phrase, entity, or tool. In the exchange demo, try **What did verify_customer return?** from the workspace homepage. The answer shows the matching excerpt and links to the exact call. **Search for** followed by a few words explicitly searches captured activity. Add a workflow name after **in** to narrow the search.
+
 ## Connect a model
 
-**Workspace evidence** runs in the browser and uses word matching and a small set of question types. For free-form questions, run the optional Python gateway on the same host as the sidecar. It accepts a model server’s Chat Completions endpoint. This example assumes a model already served on loopback. Substitute the sidecar origin printed by the demo and a model ID your server accepts.
+**Workspace evidence** uses the local sidecar to retrieve findings and recorded excerpts. To interpret the retrieved evidence in plain language, run the optional Python gateway on the same host as the sidecar. It accepts a model server’s Chat Completions endpoint. This example assumes a model already served on loopback. Substitute the sidecar origin printed by the demo and a model ID your server accepts.
 
 ```sh
 python3 examples/chat-partner/serve.py \
