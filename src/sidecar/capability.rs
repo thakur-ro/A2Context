@@ -23,18 +23,43 @@ static DISCOVERY: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^(?:get|list|show|inspect|describe|enumerate|retrieve|return)s?\b[^.!?\n]{0,96}\b(?:schemas?|catalogs?|tables?|columns?|collections?|datasets?|resources?|metadata|indexes)\b").unwrap()
 });
 
-fn discovery(tool: &Value) -> Option<&Value> {
+// Frameworks sometimes prefix the docstring with the callable's own signature.
+fn discovery_description<'a>(name: &str, description: &'a str) -> Option<&'a str> {
+    let text = description.trim_start();
+    if DISCOVERY.is_match(text) {
+        return Some(text);
+    }
+    let (signature, docstring) = text.split_once('\n')?;
+    let result = signature
+        .trim_end()
+        .strip_prefix(name)?
+        .strip_prefix("()")?;
+    if !result.is_empty() {
+        let annotation = result.strip_prefix(" -> ")?;
+        if annotation.is_empty()
+            || !annotation
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || "_.,[] |".contains(c))
+        {
+            return None;
+        }
+    }
+    let docstring = docstring.trim_start();
+    DISCOVERY.is_match(docstring).then_some(docstring)
+}
+
+fn discovery(tool: &Value) -> Option<(&Value, &str)> {
     let f = &tool["function"];
     let params = &f["parameters"];
+    let description = discovery_description(f["name"].as_str()?, f["description"].as_str()?)?;
     (tool["type"] == "function"
         && !f["name"].as_str()?.is_empty()
         && params["type"] == "object"
         && params["properties"].as_object()?.is_empty()
         && params
             .get("required")
-            .is_none_or(|v| v.as_array().is_some_and(Vec::is_empty))
-        && DISCOVERY.is_match(f["description"].as_str()?.trim_start()))
-    .then_some(f)
+            .is_none_or(|v| v.as_array().is_some_and(Vec::is_empty)))
+    .then_some((f, description))
 }
 
 pub(super) fn finding(run: &Run, call: &Call) -> Option<Observation> {
@@ -63,7 +88,7 @@ pub(super) fn finding(run: &Run, call: &Call) -> Option<Observation> {
         return None;
     }
     let catalog = request["tools"].as_array()?;
-    let (index, function) = catalog
+    let (index, (function, description)) = catalog
         .iter()
         .enumerate()
         .find_map(|(i, t)| Some((i, discovery(t)?)))?;
@@ -79,7 +104,7 @@ pub(super) fn finding(run: &Run, call: &Call) -> Option<Observation> {
             catalog_key
         ]),
         call,
-        json!({"tool":function["name"],"description":excerpt(function["description"].as_str()?.trim()),
+        json!({"tool":function["name"],"description":excerpt(description.trim()),
             "catalog":catalog_key, "model":call.model, "pointer":format!("/tools/{index}/function"), "reply":excerpt(text), "decision":reply.id,
             "reply_evidence":reply.evidence, "question_pointer":format!("/messages/{}",messages.len()-1),
             "question": messages.last()?["content"].as_str().map(excerpt), "sources":[]}),
@@ -109,7 +134,7 @@ pub(super) fn index(tx: &Transaction<'_>, run: &Run) -> rusqlite::Result<()> {
         let names: BTreeSet<_> = tools
             .iter()
             .filter_map(discovery)
-            .filter_map(|f| f["name"].as_str())
+            .filter_map(|(f, _)| f["name"].as_str())
             .collect();
         if names.is_empty() {
             continue;

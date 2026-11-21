@@ -152,6 +152,25 @@ def check(binary, browser=False):
             con.execute("PRAGMA user_version=38")
         with server(binary, db, *flags) as base:
             assert card("reference_link") == link_card
+        wrapped = deepcopy(TOOL)
+        description = "Returns a list of available collections."
+        wrapped["function"]["description"] = "catalog_list() -> list[str]\n\n" + description
+        signed = dict(offer, tools=[wrapped])
+        with server(binary, db, *flags) as base:
+            send_traces(base, export(span(30, signed, DECLINE, user="wrapped")))
+            rejected = deepcopy(wrapped)
+            rejected["function"]["description"] = "other_tool() -> str\n" + description
+            send_traces(base, export(span(31, dict(offer, tools=[rejected]), DECLINE, user="wrapped")))
+            def wrapped_card():
+                row, = get(base, "findings", kind="capability_claim", user="wrapped")["rows"]
+                assert row["occurrences"] == 1 and row["evidence"]["detail"]["description"] == description
+                return row
+            expected = wrapped_card()
+        with sqlite3.connect(db) as con:
+            con.execute("DELETE FROM observations WHERE kind='capability_claim'")
+            con.execute("PRAGMA user_version=40")
+        with server(binary, db, *flags) as base:
+            assert wrapped_card() == expected
         with server(binary, Path(tmp)/"redacted.sqlite") as base:
             send_traces(base, batch)
             assert not get(base,"findings")["rows"]

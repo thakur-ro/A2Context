@@ -15,7 +15,7 @@ const MAX_TRACE_BYTES: usize = 2 * 1024 * 1024;
 const MAX_LOAD_BYTES: usize = 16 * 1024 * 1024;
 const MAX_REPORT_BYTES_PER_TRACE: usize = 4 * 1024 * 1024;
 const PAGE: usize = 15;
-const DATABASE_VERSION: i64 = 40;
+const DATABASE_VERSION: i64 = 41;
 
 pub struct Store(Connection);
 type Rejected = (u16, String);
@@ -390,22 +390,21 @@ impl Store {
             while let Some(row) = rows.next()? {
                 after = row.get(0)?;
                 let run: Run = serde_json::from_str(row.get_ref(1)?.as_str()?)?;
-                super::shared_identifiers::update(
-                    &tx,
-                    &after,
-                    Some(&run),
-                    row.get_ref(2)?.as_str()?,
-                    row.get::<_, Option<String>>(3)?.as_deref(),
-                )?;
-                if version < 37 {
-                    super::capability::index(&tx, &run)?;
+                if version < 40 {
+                    super::shared_identifiers::update(
+                        &tx,
+                        &after,
+                        Some(&run),
+                        row.get_ref(2)?.as_str()?,
+                        row.get::<_, Option<String>>(3)?.as_deref(),
+                    )?;
                 }
+                super::capability::index(&tx, &run)?;
                 if run.calls.iter().any(|c| {
                     (version < 39 && super::reference_links::finding(&run, c).is_some())
                         || (version < 38 && !super::tool_proposal::findings(&run, c).is_empty())
-                        || (version < 37
-                            && (super::capability::finding(&run, c).is_some()
-                                || super::citation::finding(&run, c).is_some()))
+                        || super::capability::finding(&run, c).is_some()
+                        || (version < 37 && super::citation::finding(&run, c).is_some())
                 }) {
                     refresh_findings(&tx, &run)?;
                 }
