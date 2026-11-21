@@ -83,6 +83,30 @@ test("a chart read carries the filters that produced it and leaves a tied count 
   assert.equal(env.chartConversationRequest("Can you show the 2nd one?",{...chart,choosing:true}).themes[0].kind,"duplicate");
 });
 
+test("next-test requests distinguish future checks from recorded experiments",() => {
+  const {asksForNextTest:asked,recommendationTopics:topics,rankNextTests:rank} = context();
+  assert.ok(asked("Which experiment would you run before deployment?"));
+  assert.ok(asked("What should we test before another order gets updated?"));
+  assert.equal(asked("Did the experiment change the order?"),false);
+  assert.equal(asked("What did the test before deployment show?"),false);
+  assert.equal(topics("What should I test next?").length,0);
+  const a = {facts:{title:"Inspect the search catalog",next:"Compare available tools."}};
+  const b = {facts:{title:"Check purchase approval",next:"Replay an approved purchase."},receipt:{tool:"write_order"}};
+  assert.equal(rank([a,b],topics("What should I check before a write_order call?"))[0].record,b);
+  assert.ok(rank([a,b],topics("What should we test on Mars?")).every(r => r.score === 0));
+});
+
+test("a partner selects among topical next tests and receives no request when none match",async () => {
+  const first = {facts:{title:"Order dispatch",next:"Replay the approved order."}};
+  const second = {facts:{title:"Order conflict",next:"Isolate the disputed instruction."}};
+  const candidates = [first,second];
+  const env = context("A2",packet => assert.equal(packet.options.length,2));
+  assert.equal(await env.selectNextTest("Which order test should we run?",candidates,null,[],"local"),second);
+  const offline = context("A1",() => assert.fail("Unrelated findings reached the model"));
+  assert.equal(await offline.selectNextTest("What should we test before sending the new satellite to Mars?",candidates,null,[],"local"),undefined);
+  assert.equal(await offline.selectNextTest("What should we test next?",candidates,second,[],"local"),second);
+});
+
 test("the interview can choose a measured view only for a supplied measurement", async () => {
   const measured = {facts:{id:"real",title:"Policy edit",kind:"Token measurements",sources:["policy"]},tokenCard:{}};
   const packet = p => {

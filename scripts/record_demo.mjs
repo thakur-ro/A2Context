@@ -141,6 +141,10 @@ try {
     await read("The exchange workflow has its own stats and a recommended investigation.", 2.6);
     if (model) await page.getByLabel("Analysis partner").selectOption(model);
     caption = "";
+    await typeQuestion("What should we test before the next exchange?");
+    await canvas.locator('[data-view="action"]').getByText(/Replay a valid approved proposal/).waitFor();
+    await read("The hold was protected. The next test checks whether a valid approval can still pass.", 3, canvas, 60);
+    caption = "";
     await typeQuestion("What did the customer ask for, and did the approval check change the outcome?");
     for (let i = 0; i < 15; i++) await frame();
     await canvas.locator('[data-view="message"]').getByText(/Wait, don't swap the puzzle yet/).waitFor();

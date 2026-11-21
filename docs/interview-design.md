@@ -42,6 +42,14 @@ Run the public-sample check against a sidecar serving the imported recordings. I
 node scripts/check_conversation_drilldown.mjs http://127.0.0.1:18052
 ```
 
+### Asking what to test next
+
+“What should I test next?” uses the selected finding. When the answer shows calls, the interview can look up a finding at one of those exact calls. If none has a finding, it says so. From the workspace briefing the same question uses the highest-ranked finding in scope.
+
+For a question that names a topic, workspace evidence ranks available recommendations by the number of distinct topic terms that match their source names, tool, workflow, finding, observation, example or proposed check. Ties keep the incoming finding order. A connected model can choose among up to five matching recommendations, or return no match. The host displays the stored next action and its supporting observation. Retrieval can miss a paraphrase that shares no terms with the available findings, and a shared term alone does not establish relevance.
+
+In the exchange fixture, asking what to test before another order update originally returned excerpts or a comparison of old model outputs. Workspace evidence and local Gemma now show the suggested valid-approval control and the sandbox outcome that motivated it. The control remains a proposed experiment. The same checks cover a refund-policy token experiment, an unrelated topic, and a recorded conversation without findings. [Exchange walkthrough](demo.md#run-the-investigation) · [Browser regression](../tests/exchange-a2ui-browser.mjs)
+
 ### Renderer
 
 A2Context ships the A2UI 1.0 protocol with the Lit renderer and web core pinned to 0.15.0. The protocol describes each surface. The host chooses the layout, type, color and keyboard behavior. The recurrence chart is a custom catalog component with a bounded action that selects a recorded finding. Its counts describe kinds of evidence. For example, a proposal trial records a comparison, and a rule conflict records a disagreement in the inputs. [A2UI 1.0 release](https://developers.googleblog.com/a2ui-10-build-delightful-fast-reliable-agentic-experiences/) · [Renderer package pins](../ui/a2ui/package.json)

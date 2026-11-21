@@ -16,7 +16,7 @@ cd A2Context
 cargo run --locked -- demo
 ```
 
-Open the address printed in the terminal. Ask **What did the customer ask for, and did the approval check change the outcome?** The interview shows the customer’s hold alongside the two recorded outcomes for the puzzle order. Ask **Show the dispatch states** for the sandbox receipt. To follow the original conversation, ask **What did verify_customer return?** and **What happened after that call?** Press Ctrl+C to stop.
+Open the printed address and ask **What should we test before the next exchange?** The sandbox guard protected a held order. The interview recommends replaying a valid approval to check whether the guard also lets that exchange through. Ask **What did the customer ask for, and did the approval check change the outcome?** to see the original message and both order states. Press Ctrl+C to stop.
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 

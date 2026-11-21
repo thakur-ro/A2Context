@@ -787,8 +787,8 @@ function investigationCanvas(impact, page, models) {
     let name = view === "recurrence" ? (facts.conversations > 1 ? "Where this repeats" : record.duplicate ? "Matching requests" : "Affected requests") : view === "action" ? "What to test next" : view === "sources" ? "Inputs in the recorded request" : facts.title;
     let description = view === "recurrence" ? (record.duplicate ? "This match" : "This recommendation") + " appears in " + count.split(" · ")[0] + " in the current scope." :
       view === "action" ? facts.next : facts.observed;
-    let map = view === "evidence" && facts.map;
-    let detail = view === "evidence" ? facts.comparison : null;
+    let map = (view === "evidence" || view === "action") && facts.map;
+    let detail = view === "action" ? "Recorded evidence · " + facts.observed : view === "evidence" ? facts.comparison : null;
     if (view === "proposal") ({title:name,description,map,detail} = proposalComparison(record));
     let intervening = null;
     if (view === "sources") {
@@ -819,7 +819,7 @@ function investigationCanvas(impact, page, models) {
         intervening = betweenCopies(context, copies);
       }
     }
-    const surface = A2ContextA2UI.answerSurface({title:name,description:text ? null : description,
+    const surface = A2ContextA2UI.answerSurface({title:name,description:text && view !== "action" ? null : description,
       map,detail}, () => {});
     surface.className = "canvas-result";
     Object.assign(surface.dataset,{trace:record.capture.trace,call:record.capture.call,group:facts.id,view});
@@ -835,7 +835,7 @@ function investigationCanvas(impact, page, models) {
     }
     output.append(element("p",{className:"canvas-answer-foot",text:count}));
     const followups = [];
-    if ((view === "evidence" || view === "proposal") && record.receipt) followups.push("Show the dispatch states");
+    if (["evidence","proposal","action"].includes(view) && record.receipt) followups.push("Show the dispatch states");
     if (view === "evidence" && record.proposal && record.receipt) followups.push("Compare the recorded proposals");
     if (view === "evidence" && record.tokenCard) followups.push("Show the token-position diagram");
     if (view !== "sources") followups.push("Show the exact inputs");
@@ -1037,11 +1037,12 @@ function investigationCanvas(impact, page, models) {
         if (!signal.aborted) status.textContent = "";
         return;
       }
+      const wantsTest = !selected && asksForNextTest(question);
       const wordMeasurement = /\b(words?|phrases?|tokens?)\b/i.test(question) &&
         /\b(sensitiv\w*|depend\w*|probabilit\w*|influenc\w*|attribut\w*)\b/i.test(question) &&
         /\b(outputs?|answers?|sources?|prompts?|instructions?|polic(?:y|ies)|edit\w*|chang\w*|model)\b/i.test(question);
       const tokenNumber = /\b(?:output token|token|position)\s+#?(\d{1,9})\b/i.exec(question);
-      if (!selected && (wordMeasurement || (tokenNumber && (previous?.tokenCard || /\btoken\b/i.test(question))) ||
+      if (!selected && !wantsTest && (wordMeasurement || (tokenNumber && (previous?.tokenCard || /\btoken\b/i.test(question))) ||
           /\b(token[- ](?:position|level|map|chart|diagram)|source edits (?:across|along) (?:the|this) answer|which source mattered at this (?:word|token))\b/i.test(question))) {
         const filters = named ? {...scope,workflow:named} : (previous?.tokenCard ? previous.filters : scope);
         await showTokenEvidence(question,filters,named ? null : previous,signal,tokenNumber && Number(tokenNumber[1]));
@@ -1141,14 +1142,14 @@ function investigationCanvas(impact, page, models) {
         status.textContent="";
         return;
       }
-      if (!selected && !model && !named && activity && /\b(tools?|return\w*|summari[sz]\w*|calls?|reply|replied|said|respond\w*|happen\w*|answer\w*)\b/.test(normalize(question))) {
+      if (!wantsTest && !selected && !model && !named && activity && /\b(tools?|return\w*|summari[sz]\w*|calls?|reply|replied|said|respond\w*|happen\w*|answer\w*)\b/.test(normalize(question))) {
         await answerFromCalls(question,model,signal);
         if (!signal.aborted) status.textContent = "";
         return;
       }
       let candidates = records;
       let subject = previous;
-      const terms = canvasTerms(question);
+      const terms = wantsTest ? recommendationTopics(question).slice(0,8) : canvasTerms(question);
       if (named) {
         const filters = {...scope,workflow:named};
         const matches = await api("findings",{...filters,...(terms.length && {terms:terms.join(" ")})});
@@ -1170,7 +1171,34 @@ function investigationCanvas(impact, page, models) {
       const corrected = candidates.find(r => r.facts.id === corrections.get(normalize(question)));
       let answer = selected || corrected ? {record:selected || corrected,view:"evidence"} : canvasAnswer(question,candidates,subject);
       let plan = null, usedFallback = false;
-      if (!selected && !corrected) {
+      if (wantsTest) {
+        const calls = named ? [] : visibleCalls;
+        let record = corrected;
+        if (!record) {
+          try { record = await selectNextTest(question,candidates,subject,calls,model,signal); }
+          catch (error) {
+            if (signal.aborted || !model || !recommendationTopics(question).length) throw error;
+            usedFallback = true;
+            record = await selectNextTest(question,candidates,subject,calls,"",signal);
+          }
+        }
+        if (signal.aborted) return;
+        if (!record) {
+          const fromCalls = calls.length && !recommendationTopics(question).length;
+          evidenceSections("no-next-test","No matching recommendation",fromCalls ?
+            "No finding is attached to the displayed calls." : "The available findings do not identify a next check for this request.");
+          previous = null;
+          if (!fromCalls) {
+            activity = comparison = null;
+            visibleCalls = [];
+          }
+          remember(displayQuestion,null,"action","No matching recommendation.");
+          suggest(["Show recorded activity"]);
+          status.textContent = "";
+          return;
+        }
+        plan = {view:"action",record};
+      } else if (!selected && !corrected) {
         const request = normalize(question);
         if (request === "show the exact inputs" && subject) plan = {view:"sources",record:subject};
         else if (request === "which inputs were repeated" && answer.record?.duplicate) plan = answer;
