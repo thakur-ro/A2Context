@@ -31,6 +31,26 @@ The sidecar already captures supported spans, indexes source references and grou
 
 In the first pilot, start from empty state on a previously unseen tool-using workflow and a retrieval workflow. Use normal usage, then have engineers review a small sample after suggestions appear. Compare the proposed recommender with the current feed on the same traffic at the same notification and compute budgets. Report by workflow, including those with zero useful findings. Promote the new ranking only when it improves confirmed usefulness without increasing reviewer burden or exceeding the deployment's agreed latency and cost limits. This review measures A2Context and imposes no eval setup on the team using it.
 
+## A score for the monitored workflow
+
+**Proposed measure.** Report the percentage of assessable runs that passed a named set of operational checks. Start with one capability, such as tool handoffs. An example check asks whether a tool result designated for delivery appears in the next model request with its invocation ID. Apply that check only to runs with a handoff due. Intentional termination, an expected human wait and legitimate result transformations need explicit treatment in the check definition. Publish the check set and version. Teams can use the built-in checks without supplying test cases or grading answers.
+
+For one workflow version, environment and time window, count distinct eligible runs. Use the underlying evidence for recommendations before ranking, suppression or display. Each run receives exactly one status.
+
+| Count | Meaning |
+| --- | --- |
+| $B$ | Evidence establishes at least one monitored incident. Three recommendations about the same run still count once. |
+| $C$ | At least one check applied, and every applicable check completed with a pass. |
+| $U$ | The available evidence leaves the status unresolved. For example, the next request was only partially captured. |
+
+With $N=B+C+U$, the **monitored pass rate** is $100C/(B+C)$ and **assessment coverage** is $100(B+C)/N$. Report both with the counts. When $B+C=0$, show “insufficient evidence.” Use an independent application run count when available to quantify runs missing from telemetry altogether. Otherwise limit the claim to recorded eligible runs. The event-ratio construction follows established service-level indicator practice. [Google SRE Workbook](https://sre.google/workbook/implementing-slos/)
+
+For illustration, 882 passes, 18 affected runs and 100 unresolved runs give a 98% pass rate at 90% coverage. If every unresolved run failed, 88.2% of the eligible cohort passed. If every unresolved run passed, 98.2% passed. These bounds, $[100C/N,\;100(C+U)/N]$, reflect missing evidence even if missingness is related to failure. They assume resolved classifications are correct. They describe this cohort and supply no statistical guarantee about future traffic. [Horowitz and Manski on incomplete data](https://www.sciencedirect.com/science/article/pii/S030440760500062X)
+
+**Validation before publication.** Independently review a random sample within each status, retain sampling probabilities, and estimate false alarms and missed incidents with their denominators. Check agreement on ambiguous cases. Compare periods under the same check set and comparable traffic and run lengths. Report individual check rates alongside the aggregate so frequent low-impact issues cannot conceal rare serious failures. A hypothesis about model influence stays outside the incident count until the operational check's evidence criterion is met.
+
+Our saved failure-localization cohort illustrates the risk of treating silence as a pass. All 2,954 held-out traces contained an injected mistake. The explicit-error signal fired on 233, leaving 2,721 (92.1%) silent. The fraction is exact for that cohort and detector. Calling it agent health would reverse its meaning. [Study and reproduction](recommendation-loop.md#seventh-pass-check-when-a-failure-becomes-visible)
+
 ## What each algorithm returns
 
 | When | Available today | Next work and criterion |
