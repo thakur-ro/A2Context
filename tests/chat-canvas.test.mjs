@@ -100,6 +100,28 @@ test("a source edit and a state replay on the same record have independent evide
   const plan = await env.planInterview("model","What did the model do under the edit?",candidates,{tools:[],hasCalls:false});
   assert.equal(plan.view,"proposal");
   assert.equal(plan.record,record);
+  const combined = read("What did the customer request and how did the approval check change the outcome?");
+  assert.equal(combined.record,record);
+  assert.deepEqual(Array.from(combined.parts),["message","receipt"]);
+  const two = read("Compare the model proposal and the refuel balance.");
+  assert.equal(two.record,other);
+  assert.deepEqual(Array.from(two.parts),["proposal","receipt"]);
+  const tied = env.recordedReplay("What did the user ask, and did the approval check change the outcome?",[record,sameLabel]);
+  assert.equal(tied.view,"chooseReplay");
+  assert.deepEqual(Array.from(tied.records),[record,sameLabel]);
+  const select = reply => context(reply,packet).planInterview("model","Show the request, the attempt, and the consequence together.",candidates,{tools:[],hasCalls:false});
+  const composed = await select("B8");
+  assert.equal(composed.record,record);
+  assert.deepEqual(Array.from(composed.parts),["message","proposal","receipt"]);
+  for (const invalid of ["F1 + F4","B9","B4 + B8","MESSAGE + F99"]) {
+    await assert.rejects(select(invalid),/could not select evidence/);
+  }
+  const partial = context("B1",p => {
+    assert.match(p,/^B1 = .*own words and what took effect/m);
+    assert.doesNotMatch(p,/^B\d+ = .*what the assistant proposed/m);
+  });
+  const twoParts = await partial.planInterview("model","The shopper’s own words next to both end states?",[record],{tools:[],hasCalls:false});
+  assert.deepEqual(Array.from(twoParts.parts),["message","receipt"]);
 });
 
 test("a broad model rewrite preserves the original two-term witness and the partial-match label", async () => {

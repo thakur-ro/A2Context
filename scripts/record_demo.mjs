@@ -142,10 +142,11 @@ try {
     await canvas.getByText("latest-customer-message · Role: user · Version: v1",{exact:true}).waitFor();
     await read("The cache still authorized the exchange. The customer’s message said hold.", 3, canvas, 60);
     caption = "";
-    await typeQuestion("What changed at dispatch?");
+    await typeQuestion("What did the customer ask for, and did the approval check change the outcome?");
     for (let i = 0; i < 15; i++) await frame();
-    await canvas.getByText("exchange requested",{exact:true}).waitFor();
-    await read("The same proposal reached dispatch twice. Checking current approval prevented the write.", 3.5, canvas, 60);
+    await canvas.locator('[data-view="message"]').getByText(/Wait, don't swap the puzzle yet/).waitFor();
+    await canvas.locator('[data-view="receipt"]').getByText("exchange requested",{exact:true}).waitFor();
+    await read("The customer said to hold the puzzle. With the approval check, the order stayed delivered.", 4.2, canvas, 60);
     caption = "";
     await click(page.getByRole("button",{name:"Switch to dark mode"}));
     await typeQuestion("Where else did that repeat?");

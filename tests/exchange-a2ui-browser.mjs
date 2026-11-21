@@ -35,6 +35,27 @@ try {
     assert.equal(await page.locator("#navigation").isVisible(),false);
     assert.equal(await page.locator("html").getAttribute("data-theme"),colorScheme);
     if (process.env.CANVAS_CAPTURE) await page.screenshot({path:process.env.CANVAS_CAPTURE+"-home-"+viewport.width+".png"});
+    const homeInput = page.getByLabel("Question about workflow evidence");
+    const mixed = page.getByRole("region",{name:"Answer canvas"});
+    await homeInput.fill("What did the customer ask for, and did the approval check change the outcome?");
+    await homeInput.press("Enter");
+    const message = mixed.locator('[data-view="message"]');
+    const outcome = mixed.locator('[data-view="receipt"]');
+    await message.getByText(/Wait, don't swap the puzzle yet/).waitFor();
+    await outcome.getByText("exchange requested",{exact:true}).waitFor();
+    await outcome.getByText("delivered",{exact:true}).waitFor();
+    for (const key of ["data-call","data-trace","data-report"]) {
+      const id = await message.getAttribute(key);
+      assert.ok(id);
+      assert.equal(await outcome.getAttribute(key),id);
+    }
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+    const sourceCall = await message.getAttribute("data-call");
+    const callLabel = await message.getByText(/^Call \d+$/).innerText();
+    await homeInput.fill("Show " + callLabel);
+    await homeInput.press("Enter");
+    await mixed.locator(".canvas-reference").waitFor();
+    assert.equal(await mixed.locator(".canvas-reference").getAttribute("data-call"),sourceCall);
     await workflows.getByRole("link",{name:"Exchange agent",exact:true}).click();
     await page.getByRole("heading",{name:"Exchange agent",exact:true}).waitFor();
     assert.equal(await workflows.getByRole("link",{name:"Exchange agent",exact:true}).getAttribute("aria-current"),"page");
@@ -342,6 +363,29 @@ try {
     await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
     await page.getByRole("status").filter({hasText:"Searched with your original wording."}).waitFor();
     assert.equal(failedRequests,1);
+    await page.route("**/api/sidecar/findings*",async route => {
+      const response = await route.fetch();
+      const payload = await response.json();
+      const original = payload.rows.find(row => row.evidence.detail.sandbox_dispatch);
+      if (!original) return route.fulfill({json:payload});
+      const alternative = structuredClone(original);
+      alternative.id += "-other";
+      alternative.evidence.detail.report_id = "another-replay";
+      await route.fulfill({json:{...payload,rows:[alternative,...payload.rows]}});
+    });
+    await page.route("**/api/sidecar/thread-calls*",async route => {
+      const response = await route.fetch();
+      const pageData = await response.json();
+      for (const row of pageData.rows) row.dialogue.user = {availability:"redacted",text:null};
+      await route.fulfill({json:pageData});
+    });
+    await page.goto(base.href);
+    await submit("What did the customer request and did the approval check change the outcome?");
+    await canvas.getByRole("heading",{name:"Which recorded experiment?"}).waitFor();
+    await submit("Use experiment 2");
+    await canvas.getByText("The recording has no readable user message at this call.").waitFor();
+    assert.equal(await canvas.locator('[data-view="receipt"]').getAttribute("data-report"),reportId);
+    assert.equal(await canvas.getByText(/Wait, don't swap the puzzle yet/).count(),0);
     await page.close();
   }
   if (process.env.CHAT_MODEL) {

@@ -61,7 +61,7 @@ function canvasRecord(card, filters = scope) {
     facts.observed = findingDetail(card.kind, detail);
   }
   if (map) facts.map = map;
-  return { facts, filters, trend:card.trend, capture:{trace,call,sources:detail.sources.map(source => source.id)},
+  return { facts, filters, trend:card.trend, capture:{trace,call,workflow:card.evidence.workflow,thread:card.evidence.thread_key,sources:detail.sources.map(source => source.id)},
     dispatch:!!target, receipt:target ? dispatch : null, report:detail.report_id,
     proposal:detail.response_pair?.original && detail.response_pair.edited ? detail.response_pair : null,
     tokenCard:card.kind === "token" ? card : null,
@@ -128,6 +128,22 @@ function canvasAnswer(question, records, previous) {
     previous && view === "recurrence" && /\b(that|this|those|it)\b/.test(q);
   const measured = record && /\b(edit(?:ed|ing|s)?|replays?|interventions?|tokens?)\b/.test(q);
   return { record, view, focused, direct:!!(byKind || sourceQuestion || priority || measured || (previous && followup)) };
+}
+
+function proposalComparison(record) {
+  const pair = record.proposal;
+  const title = pair.changed ? "The recorded model output changed after the edit" : "The recorded model output stayed the same after the edit";
+  let description = "Edited " + record.facts.sources.join(", ") + ".";
+  if (Number.isInteger(pair.baseline_trials) && Number.isInteger(pair.edited_trials)) {
+    description += " " + plural(pair.baseline_trials,"original trial") + " and " + plural(pair.edited_trials,"edited trial") +
+      " completed. The outputs agreed within each condition.";
+  }
+  const map = {root:"Model output from the source-edit experiment",arms:[
+    {label:"Original input",value:proposalLabel(pair.original,pair)},
+    {label:"Edited input",value:proposalLabel(pair.edited,pair)},
+  ]};
+  const detail = pair.original.truncated || pair.edited.truncated ? "The previews are shortened. The comparison uses the complete outputs." : null;
+  return {title,description,map,detail};
 }
 
 function betweenCopies(context, copies) {
@@ -262,7 +278,7 @@ function investigationCanvas(impact, page, models) {
   let loadedPage = page, currentTotal = impact.recommendations;
   let activeScope = {...scope}, currentImpact = impact;
   let records = [], history = [], previous, active, moreEvidence = false;
-  let activity, comparison, measurements, nearby, visibleCalls = [];
+  let activity, comparison, measurements, experiments, nearby, visibleCalls = [];
   const corrections = new Map();
   const normalize = q => q.trim().toLowerCase().replace(/[?.!]+$/, "");
   past.hidden = true;
@@ -613,6 +629,51 @@ function investigationCanvas(impact, page, models) {
     suggest([...(record.proposal ? ["Compare the recorded proposals"] : []),"Where else did that repeat?"]);
   }
 
+  async function showReplayParts({record,parts},question,signal) {
+    const {trace,call,workflow,thread} = record.capture;
+    const filters = {...record.filters,...(workflow && {workflow})};
+    let ref, message;
+    if (parts.includes("message")) {
+      const page = await api("thread-calls",{...filters,...(thread ? {thread} : {trace}),focus_trace:trace,focus_call:call,limit:1});
+      if (signal.aborted) return;
+      const row = page.rows.find(row => row.trace === trace && row.call === call);
+      if (row) ref = {row,filters,number:page.offset+1,thread:thread ? {id:thread,thread:row.thread} : null};
+      message = row?.dialogue.user;
+    }
+    previous = record;
+    activity = comparison = null;
+    visibleCalls = ref ? [ref] : [];
+    const origin = [workflow && workflowName(workflow),record.facts.example].filter(Boolean).join(" · ");
+    if (origin) output.append(element("p",{className:"canvas-scope-name",text:origin}));
+    for (const view of parts) {
+      let content;
+      if (view === "message") content = {title:"Captured user message excerpt",
+        description:message?.availability === "included" && message.text ? message.text : "The recording has no readable user message at this call.",
+        detail:ref && "Call " + ref.number + (message?.truncated ? " · Shortened excerpt" : "")};
+      if (view === "proposal") content = record.proposal ? proposalComparison(record) :
+        {title:"Model output",description:"This experiment has no recorded pair of model outputs."};
+      if (view === "receipt") content = record.receipt ? {title:"Effect of the dispatch check in the sandbox",description:record.facts.observed,map:record.facts.map} :
+        {title:"Sandbox outcome",description:"This experiment has no verified dispatch receipt."};
+      const surface = A2ContextA2UI.answerSurface(content);
+      surface.className = "canvas-result";
+      Object.assign(surface.dataset,{trace,call,group:record.facts.id,report:record.report,view});
+      output.append(surface);
+    }
+    remember(question,record.facts.id,"combined",origin || record.facts.title);
+    suggest([...(ref ? ["Show call " + ref.number] : []),...(record.receipt ? ["Show the dispatch states"] : ["Show the exact inputs"])]);
+  }
+
+  function chooseReplay(plan,offset = 0) {
+    experiments = {plan,offset};
+    const shown = plan.records.slice(offset,offset+3);
+    const labels = shown.map((_,i) => "Use experiment " + (offset+i+1));
+    evidenceSections("choose-replay","Which recorded experiment?","Several experiments match. Choose one to read its evidence together.",
+      shown.map((record,i) => ({title:"Experiment " + (offset+i+1),lines:[
+        [record.capture.workflow,record.facts.example].filter(Boolean).join(" · "),record.facts.title,record.report,
+      ].filter(Boolean)})));
+    suggest([...labels,...(offset+3 < plan.records.length ? ["More experiments"] : [])]);
+  }
+
   async function inspect(record, view, question, text, author, signal) {
     const facts = record?.facts;
     output.replaceChildren(element("div",{className:"canvas-question",text:question}));
@@ -630,20 +691,7 @@ function investigationCanvas(impact, page, models) {
       view === "action" ? facts.next : facts.observed;
     let map = view === "evidence" && facts.map;
     let detail = view === "evidence" ? facts.comparison : null;
-    if (view === "proposal") {
-      const pair = record.proposal;
-      name = pair.changed ? "The recorded model output changed after the edit" : "The recorded model output stayed the same after the edit";
-      description = "Edited " + facts.sources.join(", ") + ".";
-      if (Number.isInteger(pair.baseline_trials) && Number.isInteger(pair.edited_trials)) {
-        description += " " + plural(pair.baseline_trials,"original trial") + " and " + plural(pair.edited_trials,"edited trial") +
-          " completed. The outputs agreed within each condition.";
-      }
-      map = {root:"Model output from the source-edit experiment",arms:[
-        {label:"Original input",value:proposalLabel(pair.original,pair)},
-        {label:"Edited input",value:proposalLabel(pair.edited,pair)},
-      ]};
-      if (pair.original.truncated || pair.edited.truncated) detail = "The previews are shortened. The comparison uses the complete outputs.";
-    }
+    if (view === "proposal") ({title:name,description,map,detail} = proposalComparison(record));
     let intervening = null;
     if (view === "sources") {
       const {trace,call,sources} = record.capture;
@@ -714,10 +762,23 @@ function investigationCanvas(impact, page, models) {
     input.focus({preventScroll:true});
     status.textContent = "Looking up evidence…";
     const choices = measurements;
+    const replayChoices = experiments;
     const related = nearby;
     measurements = null;
+    experiments = null;
     nearby = null;
     try {
+      if (replayChoices && !selected && !selectedConversation) {
+        const {plan,offset} = replayChoices;
+        const choice = /^(?:(?:use|show|read) )?(?:experiment )?(\d+)$/.exec(normalize(question));
+        if (choice || normalize(question) === "more experiments") {
+          const record = choice && plan.records[Number(choice[1])-1];
+          if (record) await showReplayParts({record,parts:plan.parts},question,signal);
+          else chooseReplay(plan,!choice && offset+3 < plan.records.length ? offset+3 : offset);
+          if (!signal.aborted) status.textContent = "";
+          return;
+        }
+      }
       if (related && !selected && !selectedConversation && normalize(question) === "show the retrieved excerpts") {
         evidenceSections("nearby-activity","Retrieved excerpts","These calls matched the search and left the original question open.",related);
         visibleCalls = related.map(s => s.ref);
@@ -952,7 +1013,7 @@ function investigationCanvas(impact, page, models) {
         else if (request === "which inputs were repeated" && answer.record?.duplicate) plan = answer;
         else plan = recordedReplay(question,candidates,subject);
       }
-      const directFinding = answer.focused && answer.direct &&
+      const directFinding = !asksForSeveralReads(question) && answer.focused && answer.direct &&
         (!visibleCalls.length || (answer.record?.dispatch && /\b(dispatch|sandbox)\b/i.test(question)));
       if (!plan && model && !selected && !corrected && !directFinding) {
         try {
@@ -962,6 +1023,16 @@ function investigationCanvas(impact, page, models) {
             lastQuestion:!named ? history.at(-1)?.question : undefined},signal);
         } catch (error) { if (signal.aborted) return; usedFallback = true; }
         if (signal.aborted) return;
+      }
+      if (plan?.view === "chooseReplay") {
+        chooseReplay(plan);
+        status.textContent = "";
+        return;
+      }
+      if (plan?.view === "combined") {
+        await showReplayParts(plan,question,signal);
+        if (!signal.aborted) status.textContent = "";
+        return;
       }
       if (plan?.view === "themes") {
         await showThemes(question,named,signal);

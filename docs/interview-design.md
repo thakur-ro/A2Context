@@ -16,6 +16,7 @@ The workspace homepage helps an engineer decide which workflow or problem to inv
 | What happened before or after this call? | The neighboring call, its position and captured dialogue | A scoped read anchored to the selected trace and call IDs |
 | Did this happen elsewhere? | A count, a trend when dates are available, and representative conversations | Observations grouped by matching evidence |
 | Did a change help? | A comparison and a short explanation of the measured outcome | Original and edited trials, including incomplete evidence |
+| What did the user ask for, and did a check change the outcome? | The last captured user message and both sandbox outcomes in the same answer | The message preview at the replay’s trace and call IDs, and the verified dispatch receipt |
 | Which source mattered at this word? | An interactive token-position diagram when a scored experiment exists | Measured log probabilities for the same output token and preceding output |
 | What should I try next? | One suggested check or experiment | The verified limits of the evidence already shown |
 
@@ -28,6 +29,8 @@ A numbered search result identifies an example. Its number can differ from the c
 The Rust sidecar keeps counts and evidence references authoritative. Without a model, the browser answers a bounded set of question types using those records. A configured model can interpret open-ended questions and choose evidence and views. It works with a bounded catalog of references and cannot supply arbitrary links or overwrite measured values. The A2UI Lit renderer receives the components for each answer. Inferences about source influence need measured evidence under the tested conditions. [A2UI messages](https://a2ui.org/reference/messages/) · [A2UI Basic Catalog](https://a2ui.org/concepts/catalogs/)
 
 The workspace shows the greeting, counts, question composer, suggested prompts, and a frequency chart. Each bar uses all captured conversations in scope as its denominator. The workflow home highlights its recommended investigation. Asking which issues keep coming up renders the chart again for the named workflow.
+
+A replay can answer several parts of a question. In the exchange fixture, editing the confirmation cache left the model’s proposal unchanged. Applying an approval check at dispatch changed the sandbox order state. The interview can show either result, both results, or the user’s recorded message alongside them. All sections refer to one experiment. A missing message or measurement is labeled in place. When multiple experiments tie on the supplied names, the engineer can choose by typing an experiment number.
 
 System appearance is the default. A light or dark selection persists for the workspace. The interview and linked evidence need readable text, clear focus, and usable layouts on phones and desktops.
 
@@ -47,6 +50,16 @@ The call-order check opens one conversation from each of the six Exgentic workfl
 Browser checks cover the exchange fixture and a separate copy of 18,648 recorded Exgentic requests across 600 conversations and six workflows. The desktop and mobile checks compare the repeat counts for AppWorld and BrowseComp-Plus against the API (74 of 100 and 86 of 100), then open a recorded AppWorld conversation and check the exact call link on its second page. The exchange fixture checks activity with and without captured text. A local Gemma run answered a question about customer verification and cited the recorded tool result. Broader evaluation needs independently labeled questions, particularly ones that require finding relevant evidence across conversations without knowing their titles.
 
 The same sample found airline, AppWorld, and retail activity for three known-term queries entered without workflow names. Browser checks used both desktop and mobile layouts and verified the links against the stored calls. SQLite `dbstat` reported 8.2 MiB of pages for the index and its keys, excluding the write-ahead log. The three queries exercise retrieval and navigation. Estimating recall on unfamiliar questions requires a separate evaluation.
+
+### More than one kind of evidence in an answer
+
+Seven questions cover the saved retail exchange and telecom refueling experiments. Three ask for multiple pieces of evidence. The checker opens each question from the workspace, matches the trace, call and report IDs, and compares the displayed messages, proposals and state values with the saved data. All seven passed with workspace evidence and with the local model connected. The named experiments and fields in these questions let the host resolve all seven without a model request. A separate Chrome check asks the user to choose between two equally matched experiments and verifies that a redacted message stays unavailable while its recorded outcome remains visible.
+
+Run the check with the measured telecom packet from the freshness study. The script adds the exchange fixture to a temporary sidecar. Pass `--endpoint` and `--model` to repeat with a connected partner. [Generate the telecom packet](recommendation-loop.md) · [Replay check](../scripts/check_interview_replays.py)
+
+```sh
+python3 scripts/check_interview_replays.py /path/to/telecom-refuel-measured.json
+```
 
 ### Questions phrased in the engineer’s own words
 

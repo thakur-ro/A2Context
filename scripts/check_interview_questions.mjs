@@ -23,12 +23,15 @@ const replays = [
   {base:publicSample,question:"Did the cache edit change the model's answer about the exchange?",workflow:"exchange-agent",view:"proposal"},
   {base:publicSample,question:"Compare the data refueling balance with and without the check.",workflow:"telecom-refuel",view:"receipt"},
   {base:publicSample,question:"Did the model propose something different for refuel_data after the source edit?",workflow:"telecom-refuel",view:"proposal"},
+  {base:publicSample,question:"What did the customer ask for, and did the approval check change the outcome?",workflow:"exchange-agent",view:"combined",parts:["message","receipt"]},
+  {base:publicSample,question:"Compare the model proposal and the data refueling balance after the edit.",workflow:"telecom-refuel",view:"combined",parts:["proposal","receipt"]},
+  {base:publicSample,question:"Show what the caller requested alongside the refuel_data proposal and the refueling balance after the edit.",workflow:"telecom-refuel",view:"combined",parts:["message","proposal","receipt"]},
 ];
 const cases = {development,transfer,replays}[set];
 if (!cases) throw new Error("Choose development, transfer, or replays.");
 
-async function matchesReplay(page, answer, base, workflow, view) {
-  const surface = view === "receipt" ? answer.getByRole("region",{name:"Sandbox dispatch comparison"}) : answer.locator('[data-view="proposal"]');
+async function matchesReplay(page, answer, base, workflow, view, parts) {
+  const surface = parts ? answer.locator("[data-view]").first() : view === "receipt" ? answer.getByRole("region",{name:"Sandbox dispatch comparison"}) : answer.locator('[data-view="proposal"]');
   if (!await surface.count()) return false;
   const trace = await surface.getAttribute("data-trace"), call = await surface.getAttribute("data-call");
   const report = await surface.getAttribute("data-report");
@@ -39,18 +42,37 @@ async function matchesReplay(page, answer, base, workflow, view) {
   const finding = rows.find(r => r.evidence.trace_id === trace && r.evidence.call_id === call && r.evidence.detail.report_id === report);
   if (!finding) return false;
   const {sandbox_dispatch:receipt,response_pair:pair} = finding.evidence.detail;
-  if (view === "proposal") {
-    const arms = await surface.locator("a2ui-card").allInnerTexts();
-    return arms.length === 2 && [pair.original,pair.edited].every((p,i) => arms[i].includes(p.label) && arms[i].includes(p.outcome_preview));
+  if (parts) {
+    const refs = await answer.locator("[data-view]").evaluateAll(nodes => nodes.map(n => [n.dataset.view,n.dataset.trace,n.dataset.call,n.dataset.report]));
+    assert.deepEqual(refs,parts.map(part => [part,trace,call,report]));
+    if (parts.includes("message")) {
+      const captured = await page.request.get(new URL("/api/sidecar/thread-calls",base).href,{params:{trace,workflow,focus_trace:trace,focus_call:call,limit:1}});
+      const [row] = (await captured.json()).rows;
+      assert.equal(row.call,call);
+      const text = row.dialogue.user?.text || "The recording has no readable user message at this call.";
+      assert.equal(await answer.locator('[data-view="message"]').getByText(text,{exact:true}).count(),1);
+    }
+  }
+  if (view === "proposal" || parts?.includes("proposal")) {
+    const arms = await answer.locator('[data-view="proposal"] a2ui-card').allInnerTexts();
+    assert.ok(arms.length === 2 && [pair.original,pair.edited].every((p,i) => arms[i].includes(p.label) && arms[i].includes(p.outcome_preview)));
+    if (view === "proposal") return true;
   }
   const target = receipt.states.find(row => row.key === receipt.target);
+  if (parts) {
+    const arms = answer.locator('[data-view="receipt"] a2ui-card');
+    for (const [i,value] of [target.without_guard,target.with_guard].entries()) {
+      assert.equal(await arms.nth(i).getByText(String(value).replaceAll("_"," "),{exact:true}).count(),1);
+    }
+    return true;
+  }
   const printed = await surface.getByRole("row").filter({has:page.getByRole("rowheader",{name:receipt.target,exact:true})}).getByRole("cell").allInnerTexts();
   return JSON.stringify(printed) === JSON.stringify([target.before,target.without_guard,target.with_guard].map(x => String(x).replaceAll("_"," ")));
 }
 const {chromium} = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({executablePath:process.env.CHROME_BINARY});
 try {
-  for (const {base,question,accept,diagram,receipt,workflow,view} of cases) {
+  for (const {base,question,accept,diagram,receipt,workflow,view,parts} of cases) {
     for (const partner of model === "-" ? [""] : ["",model]) {
       const page = await browser.newPage({reducedMotion:"reduce"});
       try {
@@ -78,7 +100,7 @@ try {
         const elapsed = Math.round(performance.now()-start);
         let matched;
         if (view) {
-          matched = await matchesReplay(page,answer,base,workflow,view);
+          matched = await matchesReplay(page,answer,base,workflow,view,parts);
         } else if (diagram) {
           if (await answer.getByRole("region",{name:"Source edits along the answer"}).count()) await table.waitFor();
           matched = await table.count() === 1 && await table.getByRole("button",{name:/Token 14 ·/}).count() === 1;

@@ -17,7 +17,7 @@ Open the address it prints. The demo loads saved telemetry and measurements into
 From the workspace homepage, type **What did verify_customer return?** to find the tool result without knowing the conversation name. With a model connected, ask **Was the shopper’s identity confirmed?** The recording uses a local model for that question. Type **Show call** and the number next to the result to read the supporting record. [Connect a model](chat-canvas.md#connect-a-model)
 
 1. The welcome page shows workspace totals and recurring themes. Choose **Exchange agent** for its stats and recommended investigation. Ask **Which instructions disagreed?** to compare the cached approval with the customer’s hold.
-2. Type **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
+2. Type **What did the customer ask for, and did the approval check change the outcome?** Read the customer’s hold and the two sandbox outcomes together. Without the check, the puzzle order changed to `exchange_requested`. With the check, it stayed `delivered`.
 3. Type **Where else did that repeat?** Two conversations contributed to this finding. Read an example in the interview, or ask **Show the order states** to see that the earlier boots exchange stayed in place under both conditions.
 
 To follow the conversation directly, type **Read conversation “Wait on the second exchange”**. Ask **What happened before call 2?** to see the verification result, then **What happened after that call?** to return to the lookup. **Show call 2** opens its inputs and results in place.
