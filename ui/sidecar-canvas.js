@@ -18,6 +18,18 @@ function referenceLinkSections(detail) {
   ];
 }
 
+function identifierSections(detail) {
+  return detail.matches.map(match => {
+    const pointer = "/messages/" + match.message + "/content";
+    return {title:match.key, lines:[
+      match.input_excerpt,
+      "Current input · " + pointer + " · UTF-8 bytes " + match.input_bytes.join("–"),
+      "Earlier input · " + pointer + " · UTF-8 bytes " + match.peer_bytes.join("–"),
+      "Reply · " + detail.decision + " · UTF-8 bytes " + match.output_bytes.join("–"),
+    ]};
+  });
+}
+
 function proposalSections(detail) {
   const check = detail.check;
   const sections = [
@@ -116,6 +128,7 @@ function canvasRecord(card, filters = scope) {
   return { facts, filters, trend:card.trend, capture:{trace,call,workflow:card.evidence.workflow,thread:card.evidence.thread_key,sources:detail.sources.map(source => source.id)},
     dispatch:!!target, receipt:target ? dispatch : null, report:detail.report_id,
     capability:card.kind === "capability_claim" ? {claim:detail,example:card.discovery_example} : null,
+    sharedIdentifiers:card.kind === "shared_identifier" ? detail : null,
     referenceLinks:card.kind === "reference_link" ? detail : null,
     missingArgument:card.kind === "missing_tool_argument" ? detail : null,
     citation:card.kind === "example_citation" ? detail : null,
@@ -698,7 +711,11 @@ function investigationCanvas(impact, page, models) {
     if (ref.row.invocation && ref.row.result) sections.unshift({title:"Recorded invocation and result",lines:[
       ref.row.invocation, ref.row.result,
     ]});
+    for (const match of ref.row.identifierMatches || []) {
+      sections.unshift({title:match.key,lines:["Earlier input · /messages/" + match.message + "/content · UTF-8 bytes " + match.peer_bytes.join("–")]});
+    }
     for (const finding of captured?.findings || []) {
+      if (finding.call_id === call && finding.kind === "shared_identifier") sections.unshift(...identifierSections(finding.detail));
       if (finding.call_id === call && finding.kind === "reference_link") sections.unshift(...referenceLinkSections(finding.detail));
       if (finding.call_id === call && finding.kind === "missing_tool_argument") sections.unshift(...proposalSections(finding.detail));
     }
@@ -882,6 +899,20 @@ function investigationCanvas(impact, page, models) {
         description:records.length ? "I couldn’t match that question to captured evidence. Try naming a source, tool, or finding." :
           "This scope has no matching findings. Ask to see recorded activity."}));
       suggest(records.length ? ["What needs attention first?"] : []);
+      return;
+    }
+    if (record.sharedIdentifiers && (view === "evidence" || view === "sources")) {
+      const detail = record.sharedIdentifiers;
+      visibleCalls = [
+        {row:{trace:record.capture.trace,call:record.capture.call,thread:facts.example},number:1,filters:record.filters},
+        {row:{...detail.peer,identifierMatches:detail.matches},number:2,filters:record.filters},
+      ];
+      evidenceSections("shared-identifiers",facts.title,facts.observed,[
+        ...identifierSections(detail),
+        {title:"Reply and current request",lines:[facts.next],action:"Inspect this call",onAction:() => ask("Show call 1")},
+        {title:"Earlier conversation",lines:[detail.peer.thread],action:"Inspect earlier call",onAction:() => ask("Show call 2")},
+      ]);
+      suggest(["Where else did that repeat?","What should I test next?"]);
       return;
     }
     if ((record.missingArgument || record.referenceLinks) && (view === "evidence" || view === "sources")) {

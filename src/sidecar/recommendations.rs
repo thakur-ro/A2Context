@@ -107,6 +107,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Compare the proposed fields with the advertised schema. Inspect the dispatcher response to see whether it rejected or repaired the proposal.",
             "An argument object omitted a field required by the tool definition in the same request.",
         ),
+        "shared_identifier" => (
+            "Verify the cited identifiers",
+            "Check what each identifier refers to in the material retrieved for this question. To test its source, rename it in the shared text and compare replies with unchanged repeats.",
+            "The reply references identifiers found only in input lines shared with an earlier conversation.",
+        ),
         "reference_link" => (
             "Verify the reference before displaying it",
             "Compare the destination with the retrieved document and its source metadata. Check which link the application displayed.",

@@ -17,6 +17,7 @@ mod recommendations;
 mod reference_links;
 mod replacement;
 mod screened;
+mod shared_identifiers;
 mod store;
 mod target_patterns;
 mod targets;
@@ -495,7 +496,8 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                     };
                     let reports = store.replays(id)?;
                     let activations = store.activations(id)?;
-                    let sources = findings::derive(&run, &reports, &activations)?;
+                    let mut sources = findings::derive(&run, &reports, &activations)?;
+                    sources.extend(store.shared_identifier(&run)?);
                     let mut prefill_issues = BTreeMap::new();
                     let mut target_checks = BTreeMap::new();
                     let mut prefix_reviews = BTreeMap::new();

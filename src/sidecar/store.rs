@@ -15,7 +15,7 @@ const MAX_TRACE_BYTES: usize = 2 * 1024 * 1024;
 const MAX_LOAD_BYTES: usize = 16 * 1024 * 1024;
 const MAX_REPORT_BYTES_PER_TRACE: usize = 4 * 1024 * 1024;
 const PAGE: usize = 15;
-const DATABASE_VERSION: i64 = 39;
+const DATABASE_VERSION: i64 = 40;
 
 pub struct Store(Connection);
 type Rejected = (u16, String);
@@ -98,6 +98,7 @@ impl Store {
         )?;
         db.execute_batch(super::tool_reference_score::SCHEMA)?;
         db.execute_batch(super::capability::SCHEMA)?;
+        db.execute_batch(super::shared_identifiers::SCHEMA)?;
         db.execute_batch(super::capture::SCHEMA)?;
         db.execute_batch(super::conversation::SCHEMA)?;
         db.execute_batch(super::activity_search::SCHEMA)?;
@@ -133,9 +134,10 @@ impl Store {
     }
 
     pub fn purge(&self, cutoff: i64) -> Result<usize> {
-        Ok(self
-            .0
-            .execute("DELETE FROM traces WHERE seen < ?1", [cutoff])?)
+        let tx = self.0.unchecked_transaction()?;
+        let removed = super::shared_identifiers::purge(&tx, cutoff)?;
+        tx.commit()?;
+        Ok(removed)
     }
 
     pub(super) fn backfill_activity_search(&mut self) -> Result<bool> {
@@ -381,18 +383,25 @@ impl Store {
         loop {
             let tx = self.0.transaction()?;
             let mut select = tx.prepare(
-                "SELECT id,run FROM traces WHERE id>? AND with_request>0 AND run IS NOT NULL ORDER BY id LIMIT 16",
+                "SELECT id,run,metadata,workflow FROM traces WHERE id>? AND with_request>0 AND run IS NOT NULL ORDER BY id LIMIT 16",
             )?;
             let mut rows = select.query([&after])?;
             let mut visited = false;
             while let Some(row) = rows.next()? {
                 after = row.get(0)?;
                 let run: Run = serde_json::from_str(row.get_ref(1)?.as_str()?)?;
+                super::shared_identifiers::update(
+                    &tx,
+                    &after,
+                    Some(&run),
+                    row.get_ref(2)?.as_str()?,
+                    row.get::<_, Option<String>>(3)?.as_deref(),
+                )?;
                 if version < 37 {
                     super::capability::index(&tx, &run)?;
                 }
                 if run.calls.iter().any(|c| {
-                    super::reference_links::finding(&run, c).is_some()
+                    (version < 39 && super::reference_links::finding(&run, c).is_some())
                         || (version < 38 && !super::tool_proposal::findings(&run, c).is_empty())
                         || (version < 37
                             && (super::capability::finding(&run, c).is_some()
@@ -539,6 +548,29 @@ impl Store {
         }
         self.0.pragma_update(None, "user_version", 16)?;
         Ok(())
+    }
+
+    pub(super) fn shared_identifier(&self, run: &Run) -> Result<Option<findings::Observation>> {
+        let row = self.0.query_row(
+            "SELECT call_id,group_id,detail FROM observations WHERE trace_id=? AND n=-1 AND kind='shared_identifier'",
+            [&run.id], |r| Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?)),
+        ).optional()?;
+        let Some((call_id, group, raw)) = row else {
+            return Ok(None);
+        };
+        let detail = serde_json::from_str(&raw)?;
+        Ok(Some(findings::Observation {
+            observed: run
+                .calls
+                .iter()
+                .find(|c| c.id == call_id)
+                .and_then(|c| c.started_at.clone()),
+            kind: "shared_identifier",
+            group,
+            call_id,
+            action: recommendations::action("shared_identifier", &detail),
+            detail,
+        }))
     }
 
     pub fn trace(&self, id: &str) -> Result<Option<Run>> {
@@ -1478,7 +1510,7 @@ impl Store {
                         WHEN json_extract(detail,'$.sandbox_dispatch.protected')=1 THEN 2.25
                         WHEN kind='source_mask' AND proposal_changed THEN 2.5 WHEN kind='token' THEN 3
                         WHEN kind='prefill' AND json_extract(detail,'$.routing_test') IS NOT NULL THEN -5
-                        WHEN kind='missing_tool_argument' THEN 4.125 WHEN kind='capability_claim' THEN 6.75 WHEN kind='reference_link' THEN 4.375 WHEN kind='example_citation' THEN 4.25 WHEN kind='baseline_check' THEN 4.75 WHEN kind='source_gap' THEN 4.5 WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
+                        WHEN kind='missing_tool_argument' THEN 4.125 WHEN kind='capability_claim' THEN 6.75 WHEN kind='shared_identifier' THEN 6.5 WHEN kind='reference_link' THEN 4.375 WHEN kind='example_citation' THEN 4.25 WHEN kind='baseline_check' THEN 4.75 WHEN kind='source_gap' THEN 4.5 WHEN kind='prefill' THEN 6 WHEN kind='conflict' THEN 4 WHEN kind='candidate' THEN 5 WHEN kind='duplicate' AND json_extract(detail,'$.dialogue_only')=1 THEN 8 WHEN kind='duplicate' THEN 7 WHEN kind='source_mask' THEN 8.5 ELSE 9 END) END AS signal
                 FROM events GROUP BY factor)
                 SELECT json_object('id',g.factor,'sources',json(sources),'org',org,'conversations',conversations,
                     'requests',requests,'changed',changed_requests,'recommendations',recommendations,'routing_inputs',routing_inputs,
@@ -1489,7 +1521,7 @@ impl Store {
                         'pair',t.pair,'group',t.group_id,'baseline_trials',t.baseline_trials,'edit_trials',t.edit_trials,
                         'result',json(t.summary)) END,
                     'signal',CASE signal WHEN -6 THEN 'routing_repeats' WHEN -5 THEN 'routing' WHEN -4 THEN 'order' WHEN -3 THEN 'replacement' WHEN -2 THEN 'joint_proposal' WHEN -1 THEN 'joint' WHEN 0 THEN 'flip' WHEN 1 THEN CASE WHEN varies THEN 'variation' ELSE 'replay' END WHEN 2 THEN 'shadow' WHEN 3 THEN 'token'
-                        WHEN 4.125 THEN 'missing_tool_argument' WHEN 6.75 THEN 'capability_claim' WHEN 4.375 THEN 'reference_link' WHEN 4.25 THEN 'example_citation' WHEN 4.75 THEN 'baseline_check' WHEN 4.5 THEN 'source_gap' WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
+                        WHEN 4.125 THEN 'missing_tool_argument' WHEN 6.75 THEN 'capability_claim' WHEN 6.5 THEN 'shared_identifier' WHEN 4.375 THEN 'reference_link' WHEN 4.25 THEN 'example_citation' WHEN 4.75 THEN 'baseline_check' WHEN 4.5 THEN 'source_gap' WHEN 4 THEN 'conflict' WHEN 5 THEN 'score' WHEN 6 THEN 'prefill' WHEN 7 THEN 'duplicate' WHEN 8 THEN 'dialogue'
                         WHEN 1.5 THEN 'sandbox_regression' WHEN 2.25 THEN 'sandbox_dispatch' WHEN 2.5 THEN 'source_mask' WHEN 8.5 THEN 'source_mask' ELSE 'equal' END)
                 FROM grouped g LEFT JOIN disputed d ON d.factor=g.factor LEFT JOIN tested_factors t ON t.factor=g.factor AND t.priority=1
                 ORDER BY signal,CASE WHEN signal=1 THEN coalesce(t.isolated,0) END DESC,CASE WHEN signal=1 THEN varies END DESC,conversations DESC,requests DESC,latest DESC,g.factor LIMIT ? OFFSET ?"),
@@ -1552,9 +1584,9 @@ impl Store {
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.outcome')='matched_without_check') THEN -2
                              WHEN max(json_extract(detail,'$.sandbox_dispatch.protected'))=1 THEN -2
                              WHEN kind IN ('candidate','prefill') THEN -1
-                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference','example_citation','missing_tool_argument','reference_link') AND count(DISTINCT trace_id)>1 THEN 0
+                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference','example_citation','missing_tool_argument','reference_link','shared_identifier') AND count(DISTINCT trace_id)>1 THEN 0
                              WHEN kind='replay' AND max(abs(json_extract(detail,'$.effect_pp')))>0 THEN 1
-                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference','example_citation','missing_tool_argument','reference_link') THEN 2
+                             WHEN kind IN ('conflict','source_gap','baseline_check','tool_reference','example_citation','missing_tool_argument','reference_link','shared_identifier') THEN 2
                              WHEN kind='capability_claim' AND count(DISTINCT thread_key)>1 THEN 3
                              WHEN kind='duplicate' AND min(coalesce(json_extract(detail,'$.dialogue_only'),0))=1 THEN 5
                              WHEN kind='duplicate' THEN 3
@@ -1929,7 +1961,13 @@ fn save_trace(
     if let Some(run) = run {
         refresh_findings(tx, run)?;
     }
-    Ok(())
+    super::shared_identifiers::update(
+        tx,
+        id,
+        run,
+        &serde_json::to_string(metadata)?,
+        metadata.get("service.name").map(String::as_str),
+    )
 }
 
 fn save_report<T: Report + Serialize>(tx: &Transaction<'_>, report: &T) -> Result<()> {
@@ -1965,7 +2003,10 @@ fn load_reports<T: Report>(db: &Connection, id: &str) -> Result<Vec<T>> {
 }
 
 pub(super) fn refresh_findings(tx: &Transaction<'_>, run: &Run) -> Result<()> {
-    tx.execute("DELETE FROM observations WHERE trace_id=?1", [&run.id])?;
+    tx.execute(
+        "DELETE FROM observations WHERE trace_id=?1 AND n>=0",
+        [&run.id],
+    )?;
     let reports = load_reports(tx, &run.id)?;
     let activations = load_reports(tx, &run.id)?;
     let observations = findings::derive(run, &reports, &activations)?;
