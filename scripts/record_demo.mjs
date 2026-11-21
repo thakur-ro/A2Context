@@ -117,7 +117,7 @@ try {
   }
 
   try {
-    await read("Two of four conversations contain a rule conflict. Open one example.", 3.3);
+    await read("In this synthetic exchange workflow, two conversations contain conflicting instructions.", 3.3);
     caption = "";
     const canvas = page.getByRole("region",{name:"Answer canvas"});
     await click(page.getByRole("region",{name:"Recurring themes"}).getByRole("button",{name:/Rule conflict/}));
@@ -163,17 +163,6 @@ try {
     await typeQuestion("Open the second one");
     await canvas.getByText(/The finding occurred at call \d+/).waitFor();
     await read("The interview opens the matching call in the second conversation.", 2.8, canvas, 60);
-    caption = "";
-    await click(page.getByRole("navigation",{name:"Workflows"}).getByRole("link",{name:"All workflows",exact:true}));
-    await page.getByRole("heading",{name:"Welcome to A2Context",exact:true}).waitFor();
-    await typeQuestion("Which words were sensitive to the refund policy in Returns demo?");
-    const tokens = canvas.getByRole("table",{name:"Measured source edits by output token"});
-    await tokens.waitFor();
-    await read("Editing the refund policy changed the score for the number in the refund time.", 3, tokens, 114);
-    caption = "";
-    await typeQuestion("What about position 6?");
-    await canvas.getByRole("heading",{name:/Token 6 of 16/}).waitFor();
-    await read("At the earlier number, the largest measured change came from editing the returns policy.", 3.2, tokens, 114);
   } finally {
     encoder.stdin.end();
     const [status] = await done;

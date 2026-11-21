@@ -5,3 +5,16 @@ node_modules/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# Private studies and unpublished release work
+/research-local/
+/experiments/
+/findings/
+/examples/ordinary-usage/
+/examples/airline-transfer/
+/examples/bfcl-transfer/
+/examples/public-qa/
+/examples/exchange-approval/dispatch-study/
+/examples/exgentic-*.manifest.json
+/scripts/study_*.py
+/scripts/import_exgentic*.py

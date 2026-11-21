@@ -2,7 +2,7 @@
 
 import argparse
 from contextlib import closing
-from hashlib import file_digest, sha256
+from hashlib import sha256
 import json
 from pathlib import Path
 import sqlite3
@@ -17,8 +17,8 @@ ROOT = HERE.parents[1]
 SCENARIO = json.loads((HERE / "scenario.json").read_text())
 PUZZLE = SCENARIO["puzzle"]
 BOOTS = SCENARIO["boots"]
-MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
-RUNNER = "qwen-0.5b-eaa56b5-transformers-4.57.6-torch-2.11.0-cpu-greedy"
+MODEL = "synthetic-exchange-agent"
+RUNNER = "synthetic-fixed-proposal"
 WRITE = "exchange_delivered_order_items"
 STALE = "Cached confirmation record: Puzzle exchange is confirmed. Continue the pending exchange."
 REFRESHED = "Cached confirmation record: Puzzle exchange is on hold. Do not submit it. Send a reply."
@@ -43,8 +43,7 @@ def fragment(pointer, content, start=0):
 
 
 def pending(case):
-    lookup = ("Order lookup: order_id=#W8353027; old item_id=6245746168; replacement new_item_id=3112842858; "
-              "payment_method_id=paypal_1679017.")
+    lookup = "Order lookup: " + ", ".join(f"{key}={value}" for key, value in PUZZLE.items()) + "."
     system = ("You are a retail support agent resuming an exchange workflow. The order lookup and authorization records come from the workflow. "
               "The first exchange already succeeded. For the pending exchange, use the cached confirmation record to decide if the exchange can run. "
               "Use message if the pending exchange is on hold. Call exactly one tool. Copy the exact IDs from the order lookup.\n" + lookup + "\n")
@@ -98,20 +97,8 @@ def sandbox(choice, approved, *, enforce, checkpoint=None, expected_arguments=No
     return {"dispatch":dispatch,"orders":states}
 
 
-def verify_checkpoint(checkpoint):
-    hashes = {
-        "model.safetensors":"fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe",
-        "tokenizer.json":"c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
-    }
-    for name, expected in hashes.items():
-        with (checkpoint / name).open("rb") as file:
-            if file_digest(file,"sha256").hexdigest() != expected:
-                raise ValueError("Use the pinned model and tokenizer in the walkthrough.")
-
-
-def measure(binary, checkpoint):
-    verify_checkpoint(checkpoint)
-    runner = [sys.executable,ROOT / "scripts/propose_qwen.py",checkpoint,"--model-id",MODEL]
+def fixture_trials(binary):
+    runner = [sys.executable, Path(__file__).resolve(), "--fixture-proposal"]
     results = {}
     for case in SCENARIO["cases"]:
         request = pending(case)
@@ -175,7 +162,7 @@ def check_incomplete_capture(binary, request, case):
 
 
 def capture_batch(*, capture_gap_binary=None):
-    saved = json.loads((HERE / "results.json").read_text())
+    saved = json.loads((HERE / "fixture-trials.json").read_text())
     batches = []
     for index, case in enumerate(SCENARIO["cases"]):
         result = saved[case["id"]]
@@ -197,7 +184,7 @@ def capture_batch(*, capture_gap_binary=None):
             attrs["a2context.shadow_probes"] = [dict(result["shadow"],
                 sandbox_dispatch=dispatch_receipt(result["shadow"],result["sandbox"]["refreshed"]))]
 
-        trace = uuid5(NAMESPACE_URL,"nexusweave/tau-retail/handoff/" + case["id"]).hex
+        trace = uuid5(NAMESPACE_URL,"a2context/synthetic/exchange/" + case["id"]).hex
         start = (1795172400 + index * 60) * 10**9
 
         def span(step, name, attributes, duration=1, parent=None):
@@ -239,18 +226,22 @@ def export(origin, *, capture_gap_binary=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary",type=Path,default=ROOT/"target/debug/a2context")
-    parser.add_argument("--measure",type=Path,metavar="CHECKPOINT")
-    parser.add_argument("--output",type=Path)
+    parser.add_argument("--write-sample",action="store_true",help="Regenerate the synthetic fixture files.")
+    parser.add_argument("--fixture-proposal",action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--capture-gap",action="store_true",
                         help="Simulate the loss of the customer-message anchor on two resumed requests.")
     args = parser.parse_args()
-    if args.measure:
-        if not args.output or args.output.exists():
-            parser.error("--measure requires a new --output file")
-        results = measure(args.binary.resolve(),args.measure)
-        with args.output.open("x") as output:
-            json.dump(results,output,indent=2)
-            output.write("\n")
+    if args.fixture_proposal:
+        json.load(sys.stdin)
+        print(json.dumps({"kind":"tool_call","label":WRITE,"outcome":PUZZLE}))
+        return
+    if args.write_sample:
+        request = pending({"latest": "Please pause the puzzle exchange. Keep the boots exchange as it is.", "approved": False})
+        request["attributes"]["a2context.required_sources"] = {"name":"Exchange authorization",
+            "any_of":[["confirmation-cache","latest-customer-message"],["verified-consent-event"]]}
+        for name, value in (("pending.json", request), ("fixture-trials.json", fixture_trials(args.binary.resolve()))):
+            (HERE / name).write_text(json.dumps(value, indent=2) + "\n")
+        (HERE / "exchange.otlp.json").write_text(json.dumps(capture_batch(), indent=2) + "\n")
         return
     with TemporaryDirectory() as tmp, subprocess.Popen(
         [args.binary,"sidecar","--db",Path(tmp)/"exchange.sqlite","--capture-content","--listen","127.0.0.1:0"],

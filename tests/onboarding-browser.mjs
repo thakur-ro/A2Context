@@ -23,20 +23,9 @@ try {
     "export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf\nexport OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=" + endpoint);
   await setup.getByRole("link",{name:"Inspect a sample exchange request"}).click();
   await page.getByText(/captured inputs · 1 finding$/).waitFor();
-  await page.getByRole("link",{name:"Check another request"}).click();
-  await page.locator('input[type="file"]').setInputFiles("examples/bfcl-transfer/mlx/tool-scope/preview.json");
-  const catalog = page.getByRole("region",{name:"Tool catalog scope"});
-  await catalog.getByRole("heading",{name:"Review tools outside the workflow scope"}).waitFor();
-  await catalog.getByText("3 tool definitions · 2 outside scope · 0 unclassified").waitFor();
-  assert.deepEqual(await catalog.getByRole("listitem").locator("code").allTextContents(),
-    ["/tools/1","/tools/2"]);
-  for (const [renderer, status] of [["liquid","Identical input tokens (192 tokens)"],["community","Different input tokens (192 tokens)"]]) {
-    await page.locator('input[type="file"]').setInputFiles("examples/local-mlx-tool/rendering/"+renderer+"-preview.json");
-    const rendering = page.getByRole("region",{name:"Model input rendering"});
-    await rendering.getByText(status,{exact:false}).waitFor();
-    await rendering.getByText("/messages/2/tool_calls",{exact:true}).waitFor();
-    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
-  }
+  await page.getByLabel("Load a preflight request or a request bundled with probe results")
+    .setInputFiles("examples/preflight-returns.json");
+  await page.getByRole("heading", {name:"Conflicting values for return window days"}).waitFor();
   await page.goto(base);
   await setup.waitFor();
   const sample = await readFile(new URL("../examples/exchange-approval/exchange.otlp.json",import.meta.url),"utf8");

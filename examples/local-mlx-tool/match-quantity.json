@@ -1,4 +1,0 @@
-{
-  "kind": "text_capture",
-  "pattern": "(?i)\\b([0-9]+|no) units?\\b"
-}

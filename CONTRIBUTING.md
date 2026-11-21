@@ -10,7 +10,7 @@ Use stable Rust with `rustfmt` and Clippy, Python 3.11 or later, Node.js 24 and 
 | [src/replay](src/replay) | Request-bound source edits and the checks for candidate scores, independent trials and comparable outcomes |
 | [ui](ui) | Dashboard and drill-down views served by the binary |
 | [schema](schema) | Versioned data contracts for workflow and model adapters |
-| [examples](examples) and [tests](tests) | Runnable integrations, saved studies and regression fixtures |
+| [examples](examples) and [tests](tests) | Runnable integrations and synthetic regression fixtures |
 | [Dockerfile](Dockerfile) and [deploy](deploy) | Shipping image and example pod integration |
 
 ## Check a change
@@ -20,7 +20,7 @@ make check
 make verify-image
 ```
 
-The first command checks formatting, lints, Rust tests, JavaScript and end-to-end findings on saved workflows. It also verifies the saved QA experiments. `make check-qa` runs those comparisons alone with Python and no model download. The second command requires Docker and exercises the actual runtime image. [Exporter validation](docs/validation.md) · [Staging procedure](DEPLOYMENT.md#before-sending-production-traffic)
+The first command checks formatting, lints, Rust and JavaScript tests, and end-to-end findings on synthetic workflows. The second requires Docker and exercises the runtime image.
 
 For a dashboard change, run the same desktop and mobile journeys as CI. They start disposable sidecars, follow the findings and context map to recorded evidence, and check the A2UI demo. Run these commands from the repository root with Node and npm installed.
 
@@ -49,12 +49,12 @@ PLAYWRIGHT_MODULE="$browser_tools/node_modules/playwright-core/index.mjs" \
   make check-release SDK_PYTHON="$sdk_env/bin/python"
 ```
 
-This runs the sidecar integration suite, saved study comparisons, browser journeys, both embedded UI bundle checks, container replacement, Rust API docs and installable crate verification. CI uses the same sidecar, browser, experiment and bundle targets. A local pass covers the host and container you ran it on. [Release and deployment measurements](docs/validation.md)
+This runs the sidecar integration suite, synthetic exchange comparisons, browser journeys, both embedded UI bundle checks, container replacement, Rust API docs and installable crate verification. CI uses the same sidecar, browser and bundle targets. A local pass covers the host and container you ran it on. [Release checks](docs/validation.md)
 
 ## Send a change
 
 Describe the workflow you were inspecting and the expected result. For an importer, include a minimal synthetic input and show which recorded fields it maps to. For a UI change, include the view and a way to reproduce it with a fixture. For a replay change, include the intervention and the outcome the runner scored.
 
-Use synthetic fixtures for reproductions. Keep raw traces, captured requests, credentials, and private replay outputs in the ignored `data/` directory. If an example draws on published data or research, record the source and license in [CREDITS.md](CREDITS.md).
+## Public release scope
 
-See the [evidence schema](schema/evidence-1.json) for the interchange format and the [guide](docs/guide.md) for the import and replay workflows.
+Keep experiment code, run logs, raw traces, findings, draft reports and unpublished benchmarks in the ignored `research-local/` directory. Store captured data under `data/`. Use constructed examples and synthetic regression fixtures for the public tree. Maintainers publish to main when there is a substantial release milestone. Routine research stays on the developer's machine.

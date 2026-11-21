@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "id": "return-window-ablation",
+  "runner_id": "Synthetic rule runner v1",
+  "location": {
+    "run_id": "return-eligibility",
+    "call_id": "check",
+    "decision_id": "eligibility"
+  },
+  "recorded": {
+    "kind": "tool_call",
+    "label": "check_return_eligibility",
+    "outcome": {
+      "window_days": 30
+    }
+  },
+  "baseline_request_sha256": "f5bd007e9e01bb8ec928240a0ec4cf5bef44162182c5630bbb3b5fd050a6c3cb",
+  "baseline": [
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "tool_call",
+        "label": "check_return_eligibility",
+        "outcome": {
+          "window_days": 30
+        }
+      }
+    },
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "tool_call",
+        "label": "check_return_eligibility",
+        "outcome": {
+          "window_days": 30
+        }
+      }
+    },
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "tool_call",
+        "label": "check_return_eligibility",
+        "outcome": {
+          "window_days": 30
+        }
+      }
+    },
+    {
+      "status": "completed",
+      "choice": {
+        "kind": "tool_call",
+        "label": "check_return_eligibility",
+        "outcome": {
+          "window_days": 30
+        }
+      }
+    }
+  ],
+  "baseline_summary": {
+    "attempted": 4,
+    "completed": 4,
+    "matched": 4
+  },
+  "variants": [
+    {
+      "intervention": {
+        "context_id": "returns-policy",
+        "pointer": "/messages/0/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 41
+        },
+        "replacement": "[context omitted]"
+      },
+      "captured_context_sha256": "cb4917a3f3fd1818b204a588dff530e50974c63d5362ff849065565cc97bb2ef",
+      "trials": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 60
+            }
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 60
+            }
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 60
+            }
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 60
+            }
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 4,
+        "completed": 4,
+        "matched": 0
+      },
+      "difference_pp": -100.0
+    },
+    {
+      "intervention": {
+        "context_id": "return-preference",
+        "pointer": "/messages/1/content",
+        "operation": "replace_text_fragment",
+        "text_range": {
+          "start_byte": 0,
+          "end_byte": 41
+        },
+        "replacement": "[context omitted]"
+      },
+      "captured_context_sha256": "6e72ca5b8598ee4a5885e59c2bfe24da91a429688358fcd092ae05752843bc65",
+      "trials": [
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            }
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            }
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            }
+          }
+        },
+        {
+          "status": "completed",
+          "choice": {
+            "kind": "tool_call",
+            "label": "check_return_eligibility",
+            "outcome": {
+              "window_days": 30
+            }
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 4,
+        "completed": 4,
+        "matched": 4
+      },
+      "difference_pp": 0.0
+    }
+  ]
+}

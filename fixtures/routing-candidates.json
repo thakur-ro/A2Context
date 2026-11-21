@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "pending-product-route",
+  "scorer_id": "synthetic-routing-scorer",
+  "assistant_prefix": "<tool_call>\n{{\"name\": \"",
+  "candidates": [
+    {
+      "id": "stock",
+      "continuation": "stock\","
+    },
+    {
+      "id": "price",
+      "continuation": "price\","
+    }
+  ],
+  "interventions": [
+    {
+      "context_id": "request-source:request-type",
+      "pointer": "/messages/1/content",
+      "operation": "replace_text_fragment",
+      "text_range": {
+        "start_byte": 0,
+        "end_byte": 20
+      },
+      "replacement": "Request type: price."
+    },
+    {
+      "context_id": "request-source:store-name",
+      "pointer": "/messages/3/content",
+      "operation": "replace_text_fragment",
+      "text_range": {
+        "start_byte": 0,
+        "end_byte": 40
+      },
+      "replacement": "Background: the store’s name is Rowan."
+    }
+  ]
+}

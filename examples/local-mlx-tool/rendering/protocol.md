@@ -1,7 +1,0 @@
-# Can a captured tool call disappear before the model sees it?
-
-Use the saved numeric inventory case and both local 8-bit LFM2.5 distributions, published by LiquidAI and lmstudio-community. Their template, tokenizer and weight file digests differ. This is a follow-up to a known discrepancy. Record each file manifest. Keep the original request, max-token limit and greedy sampler. Report the exact free answer and generated token IDs for the archived 42-unit request and its registered zero-stock replacement.
-
-First check the application request before any forward pass. Remove only the assistant’s structured tool_calls property and render again. As a positive control, change the result quantity from 42 to 17 without changing another field. Compare prompt bytes and exact token IDs. Identical IDs establish invariance to that specific edit under the tested renderer. No conclusion about use follows from different IDs alone.
-
-Cross the two native renderings with the two checkpoints for each of the original and zero-stock requests. Encode each rendered string with the receiving checkpoint’s tokenizer. Check for differences in the token sequences across tokenizers at fixed text before interpreting checkpoint effects. Record prompt, token and output digests and whether detokenizing the emitted tokens reproduces the reported text. Run twice in separate processes. Report the archive matches and mismatches, with no claim about the identity of the historical runner beyond the evidence that was recorded then.

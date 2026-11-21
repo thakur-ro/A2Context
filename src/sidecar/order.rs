@@ -118,26 +118,3 @@ pub(super) const MATCHED: &str = ", ordered AS (
         (a.m0!=b.m0 OR a.m1!=b.m1) AS differs FROM orientations a JOIN orientations b
         ON a.factor=b.factor AND a.design=b.design AND a.reversed=0 AND b.reversed=1
 )";
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn surrounding_request_and_source_anchor_must_match() {
-        let bundle: Value = serde_json::from_str(include_str!(
-            "../../examples/redundant-routing/measured/local-order.json"
-        ))
-        .unwrap();
-        let mut call: Call = serde_json::from_value(bundle["runs"][0]["calls"][0].clone()).unwrap();
-        let report: replay::Replay = serde_json::from_value(bundle["reports"][0].clone()).unwrap();
-        let design = trial(&call, &report).unwrap()["design"].clone();
-        let body = &mut call.recorded_request.as_mut().unwrap().body;
-        let mut request: Value = serde_json::from_str(body).unwrap();
-        request["messages"][0]["content"] = json!("Follow a different system instruction.");
-        *body = request.to_string();
-        assert_ne!(trial(&call, &report).unwrap()["design"], design);
-        call.context[0].request_fragment.as_mut().unwrap().pointer = "/messages/2/content".into();
-        assert!(trial(&call, &report).is_none());
-    }
-}

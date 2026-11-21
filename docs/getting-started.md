@@ -26,9 +26,9 @@ Open the dashboard address printed by the receiver and reload after the batch ar
 cargo run --locked -- preflight examples/exchange-approval/pending.json
 ```
 
-Look for `exchange_authorization` in the JSON report. The cache declares `approved` and the customer declares `hold` for the same order. From a new sidecar dashboard you can open **Inspect a sample exchange request** to see the same check. Choose **Check another request** to load your own file. This check reads the assembled inputs and makes zero model calls.
+Look for `exchange_authorization` in the JSON report. The cache declares `approved` and the customer declares `hold` for the same order. From a new sidecar dashboard you can open **Inspect a sample exchange request** to see the same check. Use the file picker on the same page to check your own request. This check reads the assembled inputs and makes zero model calls.
 
-To try your own request, pass the JSON your builder will send as `a2context.request.body`. For each source, supply its ID, version and location in that body. For a declared-rule check, give both sources the same rule key and scope and the value each supplied. Pipe the resulting versioned request to `cargo run --locked -- preflight -`. A conflict tells you the inputs disagree. A controlled edit and a measured outcome can tell you whether changing one affected the answer. [Example request](../examples/exchange-approval/pending.json) · [Source declarations](guide.md#declare-context-sources-and-decision-scope)
+To try your own request, pass the JSON your builder will send as `a2context.request.body`. For each source, supply its ID, version and location in that body. For a declared-rule check, give both sources the same rule key and scope and the value each supplied. Pipe the resulting versioned request to `cargo run --locked -- preflight -`. A conflict tells you the inputs disagree. A controlled edit and a measured outcome can tell you whether changing one affected the answer. [Example request](../examples/exchange-approval/pending.json) · [Source declarations](guide.md#check-the-advertised-tools-before-inference)
 
 ## Get a recommendation from a live span
 
@@ -76,9 +76,9 @@ cargo run --locked -- sidecar --db first-workflow.sqlite
    ```
 
 2. **Identify the call.** On the model span, set `gen_ai.operation.name` (for example, `chat`), `gen_ai.request.model` and a stable `gen_ai.conversation.id`. Send one staging request, then check `coverage.inference_spans` at `/api/sidecar/health`.
-3. **Name the inputs you want to compare.** For this step, use the capture-enabled staging receiver above with a separate database and redacted inputs. At request assembly, record the messages and attach `a2context.context.semantics` to that span. In the example, `approval_inputs` takes the two structured values the workflow already has and anchors each declaration to the message part it generated. Replace those inputs with yours. Check that `coverage.with_rules` increases and open the resulting recommendation when the two known values disagree. [Working instrumentation](../examples/exchange-approval/first_span.py) · [Adapter reference](guide.md#declare-context-sources-and-decision-scope)
+3. **Name the inputs you want to compare.** For this step, use the capture-enabled staging receiver above with a separate database and redacted inputs. At request assembly, record the messages and attach `a2context.context.semantics` to that span. In the example, `approval_inputs` takes the two structured values the workflow already has and anchors each declaration to the message part it generated. Replace those inputs with yours. Check that `coverage.with_rules` increases and open the resulting recommendation when the two known values disagree. [Working instrumentation](../examples/exchange-approval/first_span.py) · [Adapter reference](guide.md#check-the-advertised-tools-before-inference)
 
-In metadata-only mode, **Telemetry received** confirms delivery and links to **Threads**. To check the container, storage and exporter before shipping, run the deployment checks. [Verify the shipping image](../DEPLOYMENT.md#check-the-shipping-image-locally)
+In metadata-only mode, **Telemetry received** confirms delivery and shows the count of received inference spans. To check the container, storage and exporter before shipping, run the deployment checks. [Verify the shipping image](../DEPLOYMENT.md#check-the-shipping-image-locally)
 
 ### If the dashboard is empty
 

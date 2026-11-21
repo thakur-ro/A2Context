@@ -13,7 +13,7 @@ fn legacy_preflight_verifies_the_same_saved_receipt() {
         assert!(report.source_coverage.is_some());
         assert_eq!(
             report.receipt.unwrap().fingerprint,
-            "a66880f98a5fb4cb6b107e996668e37287556ad5919a6bda084641ba7babcf74"
+            "5102a0688923c0273593b50c7bbd18158e11a21be7e43fed9843e993ec06b569"
         );
     }
 }

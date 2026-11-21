@@ -212,7 +212,7 @@ pub struct Report {
 ///
 /// let request = serde_json::from_str(include_str!(concat!(
 ///     env!("CARGO_MANIFEST_DIR"),
-///     "/examples/context-screening/request.json"
+///     "/fixtures/screening-request.json"
 /// )))?;
 /// let report = screen_pending(request, &Selection::default(), |_| Ok(None))?;
 /// assert_eq!(report.total_pairs, 21);

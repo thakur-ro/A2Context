@@ -977,8 +977,7 @@ fn browser_asset(path: &str) -> Option<(u16, &'static str, &'static [u8])> {
         "/examples/pending-routing.json" => (
             200,
             "application/json",
-            include_bytes!("../examples/runtime-comparison/pending-routing/request.json")
-                .as_slice(),
+            include_bytes!("../fixtures/routing-request.json").as_slice(),
         ),
         "/styles.css" => (
             200,

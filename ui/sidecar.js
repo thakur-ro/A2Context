@@ -2085,7 +2085,7 @@ function pendingPreview() {
   const output = element("section", { className: "feed", "aria-live": "polite" });
   const input = element("input", { type: "file", accept: "application/json,.json" });
   let sequence = 0;
-  async function show(load, followUp = null) {
+  async function show(load) {
     const currentLoad = ++sequence;
     output.textContent = "Checking the request…";
     try {
@@ -2154,7 +2154,7 @@ function pendingPreview() {
             "No captured declaration matched scope “" + coverage.scope.scope + "”."}),
           element("p",{text:"Check the rule name and source declarations in the request builder."})),
         !prefixReviews.length && dispatchHistory,
-        ...prefixReviews.flatMap((r,i) => [prefixReview(r,report.example_question,i === 0 ? followUp : null),
+        ...prefixReviews.flatMap(r => [prefixReview(r,report.example_question),
           blockInvestigation([{review:r,index:r.reversals[0] || 1}])]),
         ...dispatchCards,
         opening && openingComparison(report.prefill, report.example_question),
@@ -2166,7 +2166,7 @@ function pendingPreview() {
         checked ? history : null,
         report.prefill && !opening && !(testedTop && report.prefill.ranked.length === 1) ? firstTokenPreview(report.prefill, false, testedTop) : null,
         ...current, prefixReviews.length && dispatchHistory, report.screen_suggestion ? screenReview(report.screen_suggestion) : null,
-        checked ? null : history, prefixReviews.length ? null : followUp, ...findings,
+        checked ? null : history, ...findings,
         report.total > 15 ? element("p", { className: "label", text: "Showing the first 15 recommendations." }) : null,
         !gap && !report.render_check && !standalone.length && !targets.length && !report.total && !report.prefill && !checked && !report.screen_suggestion ? element("p", { className: "empty", text: "No supported issues or measured shifts in this request." }) : null].filter(Boolean));
     } catch (error) {
@@ -2188,62 +2188,14 @@ function pendingPreview() {
       return result;
     });
   });
-  const policy = element("button", { type: "button", text: "Try a policy conflict" });
-  policy.addEventListener("click", () => show(() => api("preview-example", { scenario: "policy" }),
-    element("div", {className:"actions"},
-      link("Compare edits at a supplied answer prefix", url({view:"preview", scenario:"prefix-before"}), "action"),
-      link("Compare instructions using a text classifier", url({view:"preview", scenario:"screen"})))));
-  const routing = element("button", { type: "button", text: "Try a measured tool choice" });
-  const prefillLink = link("Check the same edits before the first token", url({ view: "preview", scenario: "prefill" }), "action");
-  const routingLinks = element("div", {className:"actions"},
-    link("Inspect proposals under a stock-only scope",url({view:"preview",scenario:"routing-scope"}),"action"), prefillLink,
-    link("Test instruction text and available tools", url({view:"preview",scenario:"routing-test"}), "action"));
-  routing.addEventListener("click", () => show(() => api("preview-example", { scenario: "routing" }), routingLinks));
-  const history = element("button", { type: "button", text: "Check a new request against earlier edits" });
-  history.addEventListener("click", () => {
-    const scores = element("button", { type: "button", text: "Compare with model scores for this request" });
-    scores.addEventListener("click", () => show(() => api("preview-example", { scenario: "scored-history" })));
-    show(() => api("preview-example", { scenario: "prior-only" }), element("div", {className:"actions"},
-      link("See the tested edit on this request", url({view:"preview",scenario:"checked-history"})), scores));
-  });
-  const scenario = query.get("scenario");
-  const exchange = scope.workflow === "exchange-agent" &&
-    link("Check the next exchange",url({view:"preview",scenario:"exchange-approval"}),"action");
-  const windowQuestions = [["window-earlier", "First question"], ["window-followup", "Follow-up"], ["window-unopened", "Unopened journal"], ["window-fresh", "Fresh question"]];
-  const questions = element("nav", {className:"actions", "aria-label":"Journal questions"},
-    ...windowQuestions.map(([key, label]) => key === scenario ? element("strong", {text:label, "aria-current":"page"}) :
-      link(label, url({view:"preview", scenario:key}))));
-  if (["exchange-approval", "exchange-measured"].includes(scenario)) {
-    const measured = scenario === "exchange-measured";
-    show(() => api("preview-example",{scenario}), measured ? null :
-      link("Inspect saved tool-name scores and proposals", url({view:"preview",scenario:"exchange-measured"}), "action"));
-    return element("div", {className:"feed"}, output,
-      link(measured ? "Back to pending request" : "Check another request",
-        url({view:"preview",scenario:measured ? "exchange-approval" : null})));
-  } else if (scenario === "prefix-before" || scenario === "prefix-checked") {
-    const before = scenario === "prefix-before";
-    show(() => api("preview-example", {scenario}), link(before ? "Compare with freely generated answers" : "See the scores before generation",
-      url({view:"preview",scenario:before ? "prefix-checked" : "prefix-before"}),"action"));
-  } else if (scenario === "opening-before" || scenario === "opening-checked") {
-    show(() => api("preview-example", {scenario}), scenario === "opening-before"
-      ? link("Check the complete proposals",url({view:"preview",scenario:"opening-checked"}),"action")
-      : link("See the pre-generation evidence",url({view:"preview",scenario:"opening-before"})));
-  } else if (scenario === "window-before") {
-    show(() => api("preview-example", {scenario}),
-      link("Compare with generated answers",url({view:"preview",scenario:"window-earlier"}),"action"));
-  } else if (windowQuestions.some(([key]) => key === scenario)) {
-    show(() => api("preview-example", {scenario}), element("div",{className:"feed"}, questions,
-      scenario === "window-earlier" ? link("See the scores before running proposal trials",url({view:"preview",scenario:"window-before"})) : null));
-  } else if (["screen", "scored-history", "checked-history", "warranty", "routing", "policy", "history", "prefill", "routing-test", "routing-scope"].includes(scenario)) {
-    const next = scenario === "screen" ? link("Test a 45-day answer across questions", url({view:"preview", scenario:"window-earlier"}), "action") :
-      scenario === "prefill" ? link("Compare the measured tool proposals", url({ view: "preview", scenario: "routing" }), "action") :
-      scenario === "routing" ? routingLinks : scenario === "checked-history" ?
-        link("Compare the two source edits on this request", url({view:"preview",scenario:"scored-history"}), "action") : null;
-    show(() => api("preview-example", { scenario }), next);
+  const sample = element("button", {type:"button",text:"Try the exchange example"});
+  sample.addEventListener("click", () => show(() => api("preview-example", {scenario:"exchange-approval"})));
+  if (query.get("scenario") === "exchange-approval") {
+    show(() => api("preview-example", {scenario:"exchange-approval"}));
   }
-  return element("div", { className: "feed" }, panel("Review an assembled request",
-    element("label", { text: "Load a preflight request or a request bundled with probe results" }, input),
-    element("div", { className: "actions" }, ...(exchange ? [exchange] : [history, routing, policy]))), output);
+  return element("div", {className:"feed"}, panel("Review an assembled request",
+    element("label",{text:"Load a preflight request or a request bundled with probe results"},input),
+    sample),output);
 }
 
 function traceDetail({ trace, findings, activation_reports, received_tool_results = [], prefill_issues = {}, target_checks = {}, prefix_reviews = {} }) {

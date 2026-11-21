@@ -267,6 +267,7 @@ impl Store {
         tx.commit().map_err(storage)
     }
 
+    #[cfg(test)]
     pub fn seed(
         &mut self,
         runs: &[Run],

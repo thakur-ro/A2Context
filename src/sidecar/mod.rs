@@ -49,7 +49,7 @@ const QUEUE: usize = 8;
 
 #[derive(Clone, Copy)]
 enum Demo {
-    Gallery,
+    Sidecar,
     Exchange,
 }
 
@@ -75,7 +75,7 @@ impl Options {
         while let Some((flag, rest)) = args.split_first() {
             args = match (*flag, rest) {
                 ("--demo", rest) => {
-                    options.demo = Some(Demo::Gallery);
+                    options.demo = Some(Demo::Sidecar);
                     rest
                 }
                 ("--capture-content", rest) => {
@@ -163,23 +163,17 @@ fn start(mut options: Options) -> Result<()> {
     writer.bind_policy(options.content || demo, &options.metadata)?;
     writer.purge(now() - options.retention * 86_400)?;
     writer.upgrade_observations()?;
-    match options.demo {
-        Some(Demo::Gallery) => seed(&mut writer)?,
-        Some(Demo::Exchange) => {
-            let batch = serde_json::from_str(include_str!(
-                "../../examples/exchange-approval/exchange.otlp.json"
-            ))?;
-            let policy = CapturePolicy {
-                content: true,
-                metadata: &options.metadata,
-            };
-            writer
-                .ingest(&batch, &policy, now())
-                .map_err(|(_, message)| message)?;
-            let (run, report) = return_measurement()?;
-            writer.seed(&[run], &[], &[], &[report], now())?;
-        }
-        None => {}
+    if demo {
+        let batch = serde_json::from_str(include_str!(
+            "../../examples/exchange-approval/exchange.otlp.json"
+        ))?;
+        let policy = CapturePolicy {
+            content: true,
+            metadata: &options.metadata,
+        };
+        writer
+            .ingest(&batch, &policy, now())
+            .map_err(|(_, message)| message)?;
     }
     let store = Store::open(&db_path)?;
     let server = Server::http(options.address)?;
@@ -552,124 +546,17 @@ fn route(request: &mut Request, store: &Store, metrics: &Metrics, options: &Opti
                         "replay_reports": reports.len()})
                 }
                 "/api/sidecar/preview-example" => {
-                    let fixture = match fields.get("scenario").map(String::as_str) {
-                        Some(
-                            scenario @ ("window-earlier" | "window-followup" | "window-unopened"
-                            | "window-fresh"),
-                        ) => journal_example(scenario.trim_start_matches("window-"))?,
-                        Some(
-                            scenario @ ("opening-before" | "opening-checked" | "prefix-before"
-                            | "prefix-checked"),
-                        ) => {
-                            let mut example: serde_json::Value = serde_json::from_str(
-                                if scenario.starts_with("prefix-") {
-                                    include_str!("../../examples/context-screening/replay/prefix-study/example.json")
-                                } else {
-                                    include_str!("../../examples/context-screening/replay/opening-followup.json")
-                                },
-                            )?;
-                            if scenario.ends_with("-before") {
-                                example
-                                    .as_object_mut()
-                                    .expect("saved envelope")
-                                    .remove("shadow");
-                            }
-                            example
+                    let raw = match fields.get("scenario").map(String::as_str) {
+                        Some("exchange-approval") => {
+                            include_str!("../../examples/exchange-approval/pending.json")
                         }
-                        Some("window-before") => {
-                            let mut example = journal_example("earlier")?;
-                            example
-                                .as_object_mut()
-                                .expect("saved envelope")
-                                .remove("shadow");
-                            example
+                        Some("policy") | None => {
+                            include_str!("../../examples/preflight-returns.json")
                         }
-                        Some("screen") => {
-                            let sample: serde_json::Value = serde_json::from_str(include_str!(
-                                "../../examples/context-screening/evidence.json"
-                            ))?;
-                            json!({
-                                "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/context-screening/request.json"))?,
-                                "screening":sample[0]["calls"][0]["context_screening"]["report"]
-                            })
-                        }
-                        Some("warranty") => {
-                            serde_json::from_str::<serde_json::Value>(include_str!(
-                                "../../examples/redundant-routing/warranty-probe-results.json"
-                            ))?["example"]
-                                .take()
-                        }
-                        Some("history") => json!({
-                            "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/redundant-routing/pending-maple.json"))?
-                        }),
-                        Some(scenario @ ("prior-only" | "scored-history" | "checked-history")) => {
-                            let mut fixture: serde_json::Value = serde_json::from_str(include_str!(
-                                "../../examples/redundant-routing/candidate-checks/ash-routing-note.json"
-                            ))?;
-                            if scenario != "scored-history" {
-                                fixture
-                                    .as_object_mut()
-                                    .expect("demo envelope")
-                                    .remove("candidate");
-                            }
-                            if scenario == "checked-history" {
-                                let checks: serde_json::Value =
-                                    serde_json::from_str(include_str!(
-                                        "../../examples/redundant-routing/ash-history-check.json"
-                                    ))?;
-                                fixture["request"]["attributes"][replay::prefill::ATTRIBUTE] =
-                                    checks["prefill"].clone();
-                                fixture["shadow"] = checks["shadow"].clone();
-                            }
-                            fixture
-                        }
-                        Some("routing-test") => {
-                            let records: Vec<serde_json::Value> = serde_json::from_str(include_str!(
-                                "../../examples/runtime-comparison/pending-routing/shadow-cohort.json"
-                            ))?;
-                            let probes: serde_json::Value = serde_json::from_str(include_str!(
-                                "../../examples/runtime-comparison/pending-routing/prefill-cohort.json"
-                            ))?;
-                            let id = "routing-south-stock-only";
-                            let record = records
-                                .iter()
-                                .find(|r| r["id"] == id)
-                                .ok_or("Missing routing example")?;
-                            let meta = &record["extra"]["metadata"];
-                            json!({"request":{"version":1,"attributes":{
-                                "gen_ai.request.model":meta["ls_model_name"],
-                                "a2context.request.body":meta["a2context.request.body"],
-                                "a2context.context.semantics":meta["a2context.context.semantics"],
-                                (replay::prefill::ATTRIBUTE):probes[id]
-                            }}})
-                        }
-                        Some("prefill") => json!({
-                            "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/prefill-preview.json"))?,
-                        }),
-                        Some(scenario @ ("routing" | "routing-scope")) => json!({
-                            "allowed_tools":(scenario == "routing-scope").then_some(["stock"]),
-                            "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/request.json"))?,
-                            "candidate": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/report.json"))?,
-                            "shadow": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/runtime-comparison/pending-routing/shadow-report.json"))?,
-                        }),
-                        Some("exchange-approval") => json!({
-                            "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/exchange-approval/pending.json"))?,
-                        }),
-                        Some("exchange-measured") => {
-                            let mut reports: serde_json::Value =
-                                serde_json::from_str(include_str!(
-                                    "../../examples/exchange-approval/pending-measurement.json"
-                                ))?;
-                            json!({
-                                "request":serde_json::from_str::<serde_json::Value>(include_str!("../../examples/exchange-approval/pending.json"))?,
-                                "candidate":reports["candidate"].take(),
-                                "shadow":reports["shadow"].take(),
-                            })
-                        }
-                        _ => json!({
-                            "request": serde_json::from_str::<serde_json::Value>(include_str!("../../examples/preflight-returns.json"))?,
-                        }),
+                        _ => return Ok(None),
                     };
+                    let fixture =
+                        json!({"request":serde_json::from_str::<serde_json::Value>(raw)?});
                     let question = fixture["request"]["attributes"]["a2context.request.body"]
                         .as_str()
                         .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
@@ -896,136 +783,4 @@ fn respond(request: Request, status: u16, content_type: &str, bytes: Vec<u8>) {
                 "default-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
             )),
     );
-}
-
-fn journal_example(name: &str) -> Result<serde_json::Value> {
-    if name == "fresh" {
-        return Ok(serde_json::from_str(include_str!(
-            "../../examples/context-screening/replay/fresh-target-tokens.json"
-        ))?);
-    }
-    let mut envelope: serde_json::Value = serde_json::from_str(match name {
-        "earlier" => include_str!("../../examples/context-screening/replay/earlier-target.json"),
-        "followup" => include_str!("../../examples/context-screening/replay/followup-target.json"),
-        "unopened" => include_str!("../../examples/context-screening/replay/unopened-target.json"),
-        _ => return Err("Unknown journal experiment".into()),
-    })?;
-    let mut scores: serde_json::Value = serde_json::from_str(include_str!(
-        "../../examples/context-screening/replay/target-token-scores.json"
-    ))?;
-    envelope["candidate"] = scores[name].take();
-    Ok(envelope)
-}
-
-fn return_measurement() -> Result<(Run, activation::Report)> {
-    let report: activation::Report = serde_json::from_str(include_str!(
-        "../../examples/runtime-comparison/generation-branches-transformers.json"
-    ))?;
-    let runs: Vec<Run> = serde_json::from_str(include_str!(
-        "../../examples/runtime-comparison/evidence.json"
-    ))?;
-    let run = runs
-        .into_iter()
-        .find(|run| run.id == report.location().run_id)
-        .ok_or("missing saved return-and-refund run")?;
-    Ok((run, report))
-}
-
-fn seed(store: &mut Store) -> Result<()> {
-    let mut runs: Vec<Run> =
-        serde_json::from_str(include_str!("../../fixtures/conversation.json"))?;
-    let mut sessions: Vec<Run> = serde_json::from_str(include_str!("../../fixtures/support.json"))?;
-    for (day, session) in sessions.iter_mut().enumerate() {
-        for (hour, call) in session.calls.iter_mut().enumerate() {
-            if call.started_at.is_none() {
-                call.started_at = Some(format!("2026-10-{:02}T{:02}:00:00Z", 16 + day, 9 + hour));
-            }
-        }
-    }
-    runs.extend(sessions);
-    runs.extend(serde_json::from_str::<Vec<Run>>(include_str!(
-        "../../examples/context-screening/replay/evidence.json"
-    ))?);
-    runs.extend(serde_json::from_str::<Vec<Run>>(include_str!(
-        "../../examples/redundant-routing/measured/evidence.json"
-    ))?);
-    #[derive(serde::Deserialize)]
-    struct OrderExperiment {
-        runs: Vec<Run>,
-        reports: Vec<replay::Replay>,
-    }
-    let experiment: OrderExperiment = serde_json::from_str(include_str!(
-        "../../examples/redundant-routing/measured/local-order.json"
-    ))?;
-    runs.extend(experiment.runs);
-    let mut reports = experiment.reports;
-    reports.extend([
-        serde_json::from_str(include_str!(
-            "../../examples/redundant-routing/measured/unavailable-report.json"
-        ))?,
-        serde_json::from_str(include_str!(
-            "../../examples/redundant-routing/measured/neutral-report.json"
-        ))?,
-        serde_json::from_str(include_str!(
-            "../../examples/context-screening/replay/report.json"
-        ))?,
-        serde_json::from_str(include_str!(
-            "../../examples/context-screening/replay/report-policy.json"
-        ))?,
-    ]);
-    // Wrap the saved pending experiments as synthetic LangSmith captures. The
-    // proposals belong to the shadow runner. No production answer was recorded.
-    for (question, name) in [
-        ("first", "earlier"),
-        ("follow-up", "followup"),
-        ("unopened", "unopened"),
-        ("fresh", "fresh"),
-    ] {
-        let envelope = journal_example(name)?;
-        let attrs = &envelope["request"]["attributes"];
-        let body = attrs["a2context.request.body"]
-            .as_str()
-            .ok_or("missing demo request")?;
-        let capture = json!({"id":format!("journal-window-{question}"),"run_type":"llm",
-            "name":"Journal return question","start_time":"2026-11-20T08:00:00Z",
-            "inputs":serde_json::from_str::<serde_json::Value>(body)?,"extra":{"metadata":{
-                "thread_id":format!("journal-window-{question}"),"organization_id":"journal-window-study",
-                "user_id":"support-17","a2context.span.id":format!("journal-window-{question}"),"ls_model_name":attrs["gen_ai.request.model"],
-                "a2context.request.body":body,"a2context.context.semantics":attrs["a2context.context.semantics"],
-                "a2context.candidate_probes":[envelope["candidate"]],"a2context.shadow_probes":[envelope["shadow"]]}}});
-        runs.extend(a2context::langsmith::import(&capture)?);
-    }
-    let pending = include_str!("../../examples/runtime-comparison/pending-routing/trace.json");
-    runs.extend(a2context::langsmith::import(&serde_json::from_str(
-        pending,
-    )?)?);
-    let pending_shadow =
-        include_str!("../../examples/runtime-comparison/pending-routing/shadow-trace.json");
-    runs.extend(a2context::langsmith::import(&serde_json::from_str(
-        pending_shadow,
-    )?)?);
-    let routing_study = include_str!(
-        "../../examples/runtime-comparison/pending-routing/routing-holdout-results.json"
-    );
-    let mut routing_runs = a2context::langsmith::import(&serde_json::from_str(routing_study)?)?;
-    let sampled =
-        include_str!("../../examples/runtime-comparison/pending-routing/sampled-results.json");
-    routing_runs.extend(a2context::langsmith::import(&serde_json::from_str(
-        sampled,
-    )?)?);
-    let (measured_run, activation) = return_measurement()?;
-    runs.push(measured_run);
-    let tool_report = serde_json::from_str(include_str!(
-        "../../examples/local-mlx-routing/output-token-report.json"
-    ))?;
-    runs.extend(serde_json::from_str::<Vec<Run>>(include_str!(
-        "../../examples/local-mlx-routing/evidence.json"
-    ))?);
-    store.seed(
-        &runs,
-        &routing_runs,
-        &reports,
-        &[activation, tool_report],
-        now(),
-    )
 }

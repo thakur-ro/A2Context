@@ -288,11 +288,9 @@ mod tests {
     #[test]
     fn live_replays_require_a_verified_request_and_restore_by_decision() {
         let directory = tempfile::tempdir().unwrap();
-        let raw = include_str!("../examples/context-screening/replay/report.json");
-        let mut runs: Vec<Run> = serde_json::from_str(include_str!(
-            "../examples/context-screening/replay/evidence.json"
-        ))
-        .unwrap();
+        let raw = include_str!("../fixtures/replay-report.json");
+        let mut runs: Vec<Run> =
+            serde_json::from_str(include_str!("../fixtures/replay-recording.json")).unwrap();
         let mut reports: Vec<replay::Replay> = Vec::new();
         let store = Store::open(directory.path(), &runs, &mut reports).unwrap();
 
@@ -335,55 +333,5 @@ mod tests {
         reader.refresh(runs.iter(), &mut restored).unwrap();
         reader.refresh(runs.iter(), &mut restored).unwrap();
         assert_eq!(restored, reports);
-    }
-
-    #[test]
-    fn validates_and_restores_reports_without_duplicating_retries() {
-        let directory = tempfile::tempdir().unwrap();
-        let raw =
-            include_str!("../examples/runtime-comparison/generation-branches-transformers.json")
-                .trim();
-        let runs: Vec<Run> =
-            serde_json::from_str(include_str!("../examples/runtime-comparison/evidence.json"))
-                .unwrap();
-        let mut reports: Vec<activation::Report> = Vec::new();
-        let store = Store::open(directory.path(), &runs, &mut reports).unwrap();
-        assert_eq!(
-            store
-                .accept(raw, [].into_iter(), &mut reports)
-                .unwrap_err()
-                .0,
-            409
-        );
-        let mut edited: serde_json::Value = serde_json::from_str(raw).unwrap();
-        edited["baseline_answer"] = json!("Different output");
-        assert_eq!(
-            store
-                .accept(&edited.to_string(), runs.iter(), &mut reports)
-                .unwrap_err()
-                .0,
-            400
-        );
-        assert_eq!(fs::read_dir(&store.directory).unwrap().count(), 0);
-
-        assert!(store.accept(raw, runs.iter(), &mut reports).unwrap());
-        assert!(!store.accept(raw, runs.iter(), &mut reports).unwrap());
-        assert_eq!(reports.len(), 1);
-        let path = report_path(&store.directory, &reports[0]).unwrap();
-        assert_eq!(fs::read_to_string(path).unwrap(), raw);
-
-        let mut restored: Vec<activation::Report> = Vec::new();
-        let store = Store::open(directory.path(), &runs, &mut restored).unwrap();
-        assert_eq!(restored, reports);
-        assert!(!store.accept(raw, runs.iter(), &mut restored).unwrap());
-        let changed = raw.replace("qwen-return-and-refund\",", "a-different-case\",");
-        assert_eq!(
-            store
-                .accept(&changed, runs.iter(), &mut restored)
-                .unwrap_err()
-                .0,
-            409
-        );
-        assert_eq!(fs::read_dir(&store.directory).unwrap().count(), 1);
     }
 }

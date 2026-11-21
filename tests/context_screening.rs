@@ -1,18 +1,12 @@
 use a2context::{
     context_screening::{self as screening, Assessment, Selection, Suggestion},
-    inspect, otlp, preflight, turn_evidence, Run,
+    preflight,
 };
 use serde_json::{json, Value};
 
-const REQUEST: &str = include_str!("../examples/context-screening/request.json");
-const EVIDENCE: &str = include_str!("../examples/context-screening/evidence.json");
-
+const REQUEST: &str = include_str!("../fixtures/screening-request.json");
 fn request() -> preflight::Request {
     serde_json::from_str(REQUEST).unwrap()
-}
-
-fn runs() -> Vec<Run> {
-    serde_json::from_str(EVIDENCE).unwrap()
 }
 
 #[test]
@@ -93,94 +87,4 @@ fn requires_agreement_and_rejects_misaligned_or_invalid_scores() {
         Ok(Some(classifier_row(neutral, 3)))
     })
     .is_err());
-}
-
-#[test]
-fn matches_an_unannotated_otlp_call_and_keeps_excerpts_opt_in() {
-    let captured = runs();
-    let saved = captured[0].calls[0]
-        .context_screening
-        .as_ref()
-        .unwrap()
-        .report
-        .as_ref()
-        .unwrap();
-    let mut attrs = request().attributes;
-    attrs.insert("gen_ai.operation.name".into(), json!("chat"));
-    attrs.insert(
-        "a2context.context_screening".into(),
-        serde_json::to_value(saved).unwrap(),
-    );
-    let attributes: Vec<_> = attrs
-        .into_iter()
-        .map(|(key, value)| {
-            let text = value
-                .as_str()
-                .map(str::to_owned)
-                .unwrap_or_else(|| value.to_string());
-            json!({"key":key,"value":{"stringValue":text}})
-        })
-        .collect();
-    let imported = otlp::import(&json!({"resourceSpans":[{"scopeSpans":[{"spans":[{
-        "traceId":"11111111111111111111111111111111", "spanId":"2222222222222222", "attributes": attributes,
-    }]}]}]})).unwrap();
-    assert_eq!(inspect(&imported).unwrap().findings.len(), 0);
-    let summary = query(&imported, false);
-    assert_eq!(summary["context_screening"]["status"], "matched");
-    assert_eq!(summary["context_screening"]["compared_pairs"], 21);
-    assert_eq!(summary["context_screening"]["flagged_pairs"], 7);
-    assert_eq!(summary["rows"][0]["kind"], "context_screen_pair");
-    assert_eq!(summary["rows"][0]["suggestion"], "exact_text_reuse");
-    assert_eq!(
-        summary["rows"][0]["inputs"][0]["anchor"]["message_index"],
-        0
-    );
-    assert!(summary["rows"][0]["inputs"][0]["excerpt"].is_null());
-    assert!(!summary.to_string().contains("Customers can view"));
-    assert_eq!(
-        query(&imported, true)["rows"][0]["inputs"][0]["excerpt"]["text"],
-        "Customers can view their own receipts."
-    );
-}
-
-#[test]
-fn does_not_publish_findings_from_stale_text_or_rewritten_labels() {
-    let mut stale = runs();
-    stale[0].calls[0].context[0]
-        .text
-        .as_mut()
-        .unwrap()
-        .push(' ');
-    let mut changed = runs();
-    changed[0].calls[0]
-        .context_screening
-        .as_mut()
-        .unwrap()
-        .report
-        .as_mut()
-        .unwrap()
-        .pairs[0]
-        .suggestion = Some(Suggestion::PossibleConflict);
-    for invalid in [stale, changed] {
-        let result = query(&invalid, false);
-        assert_eq!(result["context_screening"]["status"], "unverified");
-        assert_ne!(result["rows"][0]["kind"], "context_screen_pair");
-    }
-}
-
-fn query(runs: &[Run], include_excerpts: bool) -> Value {
-    turn_evidence::query(
-        &turn_evidence::Request {
-            run_id: runs[0].id.clone(),
-            call_id: runs[0].calls[0].id.clone(),
-            decision_id: None,
-            include_excerpts,
-            offset: 0,
-            limit: 1,
-        },
-        runs.iter(),
-        &[],
-        include_excerpts,
-    )
-    .unwrap()
 }

@@ -136,29 +136,6 @@ fn links_a_whole_numeric_answer_only_when_one_typed_field_matches() {
 }
 
 #[test]
-fn links_the_identifier_in_the_saved_inventory_answer_without_matching_prose_numbers() {
-    let mut runs: Vec<Run> =
-        serde_json::from_str(include_str!("../examples/local-mlx-tool/evidence.json")).unwrap();
-    runs.retain(|run| run.id == "local-model-inventory-result");
-    let view = inspect(&runs).unwrap();
-    assert_eq!(view.context_links.len(), 1);
-    let link = &view.context_links[0];
-    assert_eq!(link.kind, LinkKind::OutcomeIdentifier);
-    assert_eq!(link.outcome_path, None);
-    assert_eq!(link.context_path.as_deref(), Some("/sku"));
-    assert_eq!(link.excerpt, "MUG-42");
-
-    for prose in [
-        "There are 42 units.",
-        "There are 42 units of MUG-420.",
-        "There are 42 units of XL-MUG-42.",
-    ] {
-        runs[0].calls[0].decisions[0].outcome = json!(prose);
-        assert!(inspect(&runs).unwrap().context_links.is_empty());
-    }
-}
-
-#[test]
 fn groups_tool_result_handoffs_across_distinct_values_and_tracks_the_original_scope() {
     let mut runs = recorded();
     let mut repeat = runs[0].clone();

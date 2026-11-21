@@ -1,47 +1,8 @@
 use a2context::{add_annotations, exgentic, inspect, Annotation, Availability, FindingKind, Run};
-use serde_json::{json, Value};
-use std::process::Command;
+use serde_json::json;
 
 fn support() -> Vec<Run> {
     serde_json::from_str(include_str!("../fixtures/support.json")).unwrap()
-}
-
-#[test]
-fn cli_inspection_links_the_saved_replay_to_the_recorded_policy() {
-    let output = Command::new(env!("CARGO_BIN_EXE_a2context"))
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .args([
-            "inspect",
-            "--replay",
-            "examples/local-mlx/report.json",
-            "examples/local-mlx/evidence.json",
-        ])
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let inspection: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let context = inspection["context_replays"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|item| item["context_id"] == "returns-policy")
-        .unwrap();
-    assert_eq!(context["decision_id"], "return-window");
-    let reference = &context["effects"][0];
-    let group = &inspection["replay_effects"][reference["group_index"].as_u64().unwrap() as usize];
-    let effect = &group["occurrences"][reference["occurrence_index"].as_u64().unwrap() as usize];
-    assert_eq!(effect["location"]["decision_id"], context["decision_id"]);
-    assert_eq!(effect["baseline"]["matched"], 3);
-    assert_eq!(effect["variant"]["matched"], 0);
-    assert_eq!(effect["difference_pp"], -100.0);
-    assert_eq!(
-        inspection["replays"][0]["control_comparison"]["control_context_id"],
-        "store-name"
-    );
 }
 
 #[test]
