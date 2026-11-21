@@ -118,7 +118,7 @@ pub(super) const PAGE: &str = " LIMIT ? OFFSET ?
 ), ranked AS (
     SELECT *, row_number() OVER (PARTITION BY trace_id,call_id,kind ORDER BY priority,n) AS sample,
         count(*) OVER (PARTITION BY trace_id,call_id,kind) AS observations FROM scored
-) SELECT json_object('trace',p.trace_id,'call',p.call_id,'thread',p.thread,'started',p.started,'dialogue',json(p.preview),
+) SELECT json_object('trace',p.trace_id,'call',p.call_id,'thread',p.thread,'started',p.started,'nanos',p.nanos,'dialogue',json(p.preview),
     'findings',json((SELECT json_group_array(json_object('kind',kind,'group',group_id,'count',observations,
         'priority',priority,'source',source,'other_source',other_source,'token_position',token_position,
         'replay',replay,'decision',decision,'context',context,'report',report) ORDER BY priority,n)

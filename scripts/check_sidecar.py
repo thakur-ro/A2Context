@@ -262,6 +262,20 @@ def check_thread_calls(binary, folder):
         assert get(base, "thread-calls", thread=key, **focus) == second
         compact = get(base, "thread-calls", thread=key, limit=3, **focus)
         assert compact["offset"] == 18 and compact["rows"] == rows[18:]
+        # The selected call can fall on either side of an ordinary page boundary.
+        for index in (0, 14, 15, len(rows) - 1):
+            current = rows[index]
+            focus = {"focus_trace": current["trace"], "focus_call": current["call"]}
+            for direction, start, stop in [("before", max(0, index - 1), index + 1), ("after", index, index + 2)]:
+                pair = get(base, "thread-calls", thread=key, limit=2, focus_window=direction, **focus)
+                assert pair["rows"] == rows[start:stop] and pair["offset"] == start
+                local = [r for r in rows if r["trace"] == current["trace"]]
+                pos = local.index(current)
+                trace_page = get(base, "thread-calls", trace=current["trace"], limit=2, focus_window=direction, **focus)
+                assert trace_page["rows"] == (local[max(0,pos-1):pos+1] if direction == "before" else local[pos:pos+2])
+            assert get(base, "thread-calls", thread=key, workflow="other", focus_window="before", **focus)["rows"] == []
+        for query in [{"focus_window":"before"}, {**focus,"focus_window":"elsewhere"}]:
+            assert send(base, "/api/sidecar/thread-calls?" + urlencode({"thread":key,**query}), expected=None)[0] == 400
         for restriction in [{"user": "other"}, {"org": "other"}, {"workflow": "other"},
                             {"meta_key": "deployment.environment.name", "meta_value": "other"},
                             {"after": "2026-10-13"}, {"focus_call": "unknown", "focus_trace": rows[0]["trace"]}]:

@@ -2,6 +2,8 @@
 
 Open the sidecar dashboard to see workspace totals and recurring themes. Pick a suggested question or type your own. Choose a workflow in the sidebar for its stats and recommended investigation, or type **Focus on** followed by its name. Type **Show all workflows** to return to the workspace. A conversation can contribute to several finding groups.
 
+![A2Context workspace with a question field and a chart showing rule conflicts in two of four captured conversations](media/workspace-interview.png)
+
 Ask “Which instructions disagreed?” to compare the values declared by two sources. Ask “Show the exact inputs” for the captured excerpts behind that answer, or “Where else did that repeat?” for counts and representative conversations. A sandbox comparison shows both branches of the same proposal. Ask “Show the order states” for the saved receipt. The appearance control switches between light and dark and remembers the setting on that origin. [Interview design](interview-design.md)
 
 From the workspace briefing, type **Compare** followed by two workflow names. The answer shows captured conversations with findings, the denominator, and the most common finding type. Add **by repeated inputs**, **rule conflicts**, or **source capture gaps** to compare one class. The percentages describe captured evidence. Different workflows can record different amounts of evidence.
@@ -33,7 +35,7 @@ When the retrieved calls leave a question open, the interview says so. Type **Sh
 
 1. The Rust sidecar groups observations in SQLite and returns the ranked findings and their exact evidence references.
 2. For an open question, each available read has an ID. A read can retrieve executions or proposals for a named tool, display a measured comparison, or return to the evidence in the last answer. The host maps the ID to the stored evidence and view. The partner can also suggest two short searches. Each alternative must match all its words in one recorded excerpt. If neither matches, the sidecar can show partial matches to the original wording. A question about tool activity can only quote lines from the retrieved sample. A uniquely identified finding can also be interpreted in plain language.
-3. The browser sends successive A2UI v1.0 component updates to one Lit surface. The heading appears first, followed by the evidence and a follow-up action. A comparison draws both arms together. Selecting a declaration shows the captured role and version. Selecting a sandbox result shows its dispatch status. Choosing another question supersedes the current answer. Reduced-motion preferences show the available components immediately. The sidecar supplies the records, and the browser composes the layout. A model cannot supply a destination URL or replace a measured value. A rule disagreement shows captured declarations. A replay diagram compares the tested conditions. The partner’s prose is an interpretation.
+3. The browser sends an A2UI 1.0 component update when the evidence is ready. A comparison renders both arms together. The recurring-theme chart uses a registered Lit component with the counts from the scoped sidecar summary. One conversation can contribute to several themes. [A2UI catalogs](https://a2ui.org/concepts/catalogs/)
 
 **Choose different evidence** corrects a match for the same question on the open page. Refreshing or switching scope clears that correction and the conversation. This lets an engineer recover a bad match without changing ranking for other users.
 

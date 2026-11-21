@@ -125,10 +125,10 @@ try {
     await canvas.getByText('Tool result · verify_customer · {"verified": true}',{exact:true}).first().waitFor();
     await read("The verification tool recorded a successful check.", 2.4, canvas, 66);
     caption = "";
-    const example = /^Call (\d+)/.exec(await canvas.getByRole("heading",{name:/^Call \d/}).first().innerText())[1];
-    await typeQuestion("Show call " + example);
-    await canvas.getByRole("heading",{name:"Captured call " + example,exact:true}).waitFor();
-    await read("The supporting call appears in the interview.", 2.2, canvas, 66);
+    await typeQuestion("What happened after that call?");
+    await canvas.getByRole("heading",{name:"Next captured call",exact:true}).waitFor();
+    await canvas.getByText(/Tool result · get_order_details/).waitFor();
+    await read("The next recorded call looked up the order and returned its delivery status.", 2.8, canvas, 66);
     caption = "";
     await click(page.getByRole("navigation",{name:"Workflows"}).getByRole("link",{name:"Exchange agent",exact:true}));
     await page.getByRole("heading",{name:"Exchange agent",exact:true}).waitFor();

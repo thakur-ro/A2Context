@@ -20,7 +20,7 @@ From the workspace homepage, type **What did verify_customer return?** to find t
 2. Type **What changed at dispatch?** The model proposed the same exchange after the cache edit. The sandbox compared the same proposal with and without an approval check. Only the checked run kept the puzzle order in its expected state.
 3. Type **Where else did that repeat?** Two conversations contributed to this finding. Read an example in the interview, or ask **Show the order states** to see that the earlier boots exchange stayed in place under both conditions.
 
-To follow the conversation directly, type **Read conversation “Wait on the second exchange”**. Start with the verification and order lookups, then ask **What happened next?** to see the next calls. Ask for a call by number to see its captured inputs and available results.
+To follow the conversation directly, type **Read conversation “Wait on the second exchange”**. Ask **What happened before call 2?** to see the verification result, then **What happened after that call?** to return to the lookup. **Show call 2** opens its inputs and results in place.
 
 From **All workflows**, ask **Which words were sensitive to the refund policy in Returns demo?** The saved experiment opens at position 14. Ask **What about position 6?** to see which edit changed the earlier number. The chart compares probabilities at fixed output prefixes. [What the measurements support](research-preview.md#follow-a-source-through-a-workflow)
 

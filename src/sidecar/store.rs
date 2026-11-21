@@ -775,10 +775,10 @@ impl Store {
     }
 
     pub fn list(&self, view: &str, filters: &BTreeMap<String, String>) -> Result<Value> {
-        // A selected conflict reads its observation, source fields and trial examples across
-        // statements. A late span or attached report must appear in all of them together.
-        let _snapshot = (view == "findings"
+        // Keep a selected finding or a call and its neighbors consistent across reads.
+        let _snapshot = ((view == "findings"
             && filters.get("group").is_some_and(|id| !id.is_empty()))
+            || (view == "thread-calls" && filters.contains_key("focus_call")))
         .then(|| self.0.unchecked_transaction())
         .transpose()?;
         let mut sql = if view == "threads" {
@@ -817,7 +817,7 @@ impl Store {
             .map(|offset| offset.parse::<u32>())
             .transpose()?
             .unwrap_or(0);
-        let page_size = if view == "thread-calls" {
+        let mut page_size = if view == "thread-calls" {
             filters
                 .get("limit")
                 .map(|limit| limit.parse::<usize>())
@@ -1542,14 +1542,24 @@ impl Store {
                 sql.push_str("priority,threads DESC,traces DESC,latest DESC,g.group_id");
             }
             "thread-calls" => {
-                if super::required(filters, "thread")?.is_empty() {
-                    return Err("a conversation key is required".into());
+                let thread = filters.get("thread").filter(|id| !id.is_empty());
+                let trace = filters.get("trace").filter(|id| !id.is_empty());
+                if thread.is_none() && trace.is_none() {
+                    return Err("a conversation key or trace ID is required".into());
                 }
                 sql.push_str(super::conversation::START);
+                if let Some(id) = trace {
+                    sql.push_str(" AND c.trace_id=?");
+                    args.push(id.clone());
+                }
                 append_window(&mut sql, &mut args, "c.started", filters)?;
                 sql.push(')');
                 let order = super::conversation::ORDER;
-                if filters.contains_key("focus_trace") || filters.contains_key("focus_call") {
+                let window = filters.get("focus_window").map(String::as_str);
+                if !matches!(window, None | Some("before" | "after")) {
+                    return Err("focus_window must be before or after".into());
+                }
+                if window.is_some() || filters.contains_key("focus_trace") || filters.contains_key("focus_call") {
                     let mut focus_args = args.clone();
                     focus_args.push(super::required(filters,"focus_trace")?.to_owned());
                     focus_args.push(super::required(filters,"focus_call")?.to_owned());
@@ -1558,7 +1568,15 @@ impl Store {
                     let Some(position) = position else {
                         return Ok(json!({"rows":[],"offset":0,"next_offset":null}));
                     };
-                    offset = position / page_size as u32 * page_size as u32;
+                    offset = match window {
+                        Some("before") => {
+                            let start = position.saturating_sub(page_size as u32 - 1);
+                            page_size = (position - start + 1) as usize;
+                            start
+                        }
+                        Some("after") => position,
+                        _ => position / page_size as u32 * page_size as u32,
+                    };
                 }
                 sql.push_str(", call_page AS MATERIALIZED (SELECT * FROM thread_calls ORDER BY ");
                 sql.push_str(order);

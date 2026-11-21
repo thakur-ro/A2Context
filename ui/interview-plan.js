@@ -23,6 +23,16 @@ function recordedReplay(question, records, subject) {
     {view,record:subject} : null;
 }
 
+// A numbered search result is a reference to a captured call, not its turn number.
+function adjacentCallRequest(question) {
+  const text = question.trim().toLowerCase().replace(/[?!.]+$/, "");
+  const match = /^(?:what (?:happened|came|was recorded)|(?:show|read)(?: me)? (?:the )?(?:call|step)) (?:immediately |right |just )?(before|after)(?: (?:that|this|it|(?:that |this |the selected )?(?:tool )?call|call #?(\d+)))?$/.exec(text);
+  if (match) return {direction:match[1],number:match[2] && Number(match[2])};
+  if (/^(?:what happened next|then what|show the next call)$/.test(text)) return {direction:"after",next:true};
+  if (/^(?:what led up to (?:that|this)(?: call)?|show (?:me )?the previous call)$/.test(text)) return {direction:"before"};
+  return null;
+}
+
 async function planInterview(model, question, candidates, {subject, lastQuestion, hasCalls, tools}, signal) {
   const options = new Map();
   function add(id, label, plan) {
@@ -47,7 +57,12 @@ async function planInterview(model, question, candidates, {subject, lastQuestion
     if (!receipt && !proposal && !tokenCard) finding(facts.title + " (" + facts.kind + ")","evidence",record);
     if (labels.size === 15) break;
   }
-  if (hasCalls) add("SHOWN","Read the calls in the last answer to answer a follow-up",{view:"shown"});
+  add("THEMES","Compare recurring finding types across conversations in this scope by frequency",{view:"themes"});
+  if (hasCalls) {
+    add("SHOWN","Answer from the calls already displayed",{view:"shown"});
+    add("BEFORE","Read the single captured call immediately preceding the selected example in the same recording",{view:"adjacent",direction:"before"});
+    add("AFTER","Read the single captured call immediately following the selected example in the same recording",{view:"adjacent",direction:"after"});
+  }
   if (subject) {
     for (const [id,label,view] of [["INPUTS","Read the original inputs","sources"],["REPEATS","See where it recurred","recurrence"],
       ["NEXT","Get the recommended next experiment","action"]]) add(id,label + " for " + subject.facts.title,{view,record:subject});

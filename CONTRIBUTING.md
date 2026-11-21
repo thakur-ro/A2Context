@@ -33,7 +33,9 @@ PLAYWRIGHT_MODULE="$browser_tools/node_modules/playwright-core/index.mjs" make c
 
 After editing `ui/mcp-app/view.js` or `ui/mcp-app/view.html`, run `npm ci --prefix ui/mcp-app` and `npm run build --prefix ui/mcp-app`. The build refreshes the HTML embedded in the Rust binary and its bundled dependency licenses. Run `npm run check --prefix ui/mcp-app` to verify both generated files before submitting changes.
 
-The dashboard uses A2UI 1.0 for recommendation surfaces. Its official Lit renderer and Basic Catalog are bundled into the Rust binary. After editing `ui/a2ui/surface.js`, run `npm ci --prefix ui/a2ui` and `npm run build --prefix ui/a2ui`. Run `npm run check --prefix ui/a2ui` to verify the bundle and dependency licenses. [A2UI client integration](https://a2ui.org/guides/client-integration/)
+The dashboard embeds the A2UI 1.0 Lit renderer, its Basic Catalog and A2Context’s evidence components in the Rust binary. The catalog defines what the interview can show. The dashboard stylesheet controls layout and appearance. [A2UI client integration](https://a2ui.org/guides/client-integration/)
+
+To check for a renderer release, run `npm outdated --prefix ui/a2ui @a2ui/lit @a2ui/web_core`. After changing a renderer dependency or a component in `ui/a2ui`, run `npm ci --prefix ui/a2ui` and `npm run build --prefix ui/a2ui`. Verify the bundle and its licenses with `npm run check --prefix ui/a2ui`, then run the desktop and mobile journeys above.
 
 ### Check a release candidate on your machine
 

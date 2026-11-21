@@ -16,7 +16,7 @@ cd A2Context
 cargo run --locked -- demo
 ```
 
-Open the address printed in the terminal. Ask **What did verify_customer return?** to find the result, then **Show call 1** to see the supporting record in the same conversation. Choose **Exchange agent** in the sidebar for its stats and recommended investigation. Ask **What changed at dispatch?** and **Show the order states** to inspect the saved comparison. Press Ctrl+C to stop.
+Open the address printed in the terminal. Ask **What did verify_customer return?** Then ask **What happened after that call?** The interview shows the order lookup that followed verification in the same conversation. Choose **Exchange agent** in the sidebar for its stats and recommended investigation. Ask **What changed at dispatch?** and **Show the order states** to inspect the saved comparison. Press Ctrl+C to stop.
 
 [![Dashboard walkthrough following a customer's hold instruction from the confirmation cache to the order database](docs/media/exchange-approval.gif)](docs/media/exchange-approval.mp4)
 

@@ -8,7 +8,9 @@
   },
   "dependencies": {
     "@a2ui/lit": "0.15.0",
-    "@a2ui/web_core": "0.15.0"
+    "@a2ui/web_core": "0.15.0",
+    "lit": "3.3.3",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "esbuild": "0.27.3"

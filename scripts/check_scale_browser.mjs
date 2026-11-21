@@ -6,6 +6,38 @@ const [origin, ...workflows] = process.argv.slice(2);
 if (!origin || !workflows.length) throw new Error("Usage: node scripts/check_scale_browser.mjs URL WORKFLOW [WORKFLOW...]");
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({ executablePath: process.env.CHROME_BINARY });
+async function checkCallOrder(page,workflow) {
+  const read = async (path,params) => {
+    const response = await page.request.get(new URL("/api/sidecar/" + path,origin).href,{params});
+    assert.ok(response.ok());
+    return response.json();
+  };
+  const [thread] = (await read("threads",{workflow})).rows;
+  if (!thread) return 0;
+  const {rows} = await read("thread-calls",{workflow,thread:thread.id,limit:2});
+  if (!rows.length) return 0;
+  const input = page.getByRole("textbox",{name:"Question about workflow evidence"});
+  const canvas = page.getByRole("region",{name:"Answer canvas"});
+  const ask = async question => {await input.fill(question); await input.press("Enter");};
+  await ask('Read conversation "' + thread.thread + '" in ' + workflow);
+  await canvas.getByRole("heading",{name:thread.thread,exact:true}).waitFor();
+  if (rows.length === 1) {
+    await ask("What came after call 1?");
+    await canvas.getByRole("heading",{name:"End of the captured conversation"}).waitFor();
+    return 1;
+  }
+  for (const [index,question,title] of [[0,"What happened before call 2?","Previous captured call"],[1,"What happened after that call?","Next captured call"]]) {
+    await ask(question);
+    await canvas.getByRole("heading",{name:title,exact:true}).waitFor();
+    await ask("Show call " + (index+1));
+    const ref = canvas.locator(".canvas-reference");
+    await ref.waitFor();
+    assert.equal(await ref.getAttribute("data-trace"),rows[index].trace);
+    assert.equal(await ref.getAttribute("data-call"),rows[index].call);
+  }
+  return rows.length;
+}
+
 try {
   const landing = await browser.newPage({viewport:{width:1152,height:850}});
   await landing.goto(origin);
@@ -16,6 +48,12 @@ try {
   assert.ok(workflows.every(workflow => entries.includes(workflow)));
   assert.equal(await landing.locator("#filters").isVisible(),false);
   console.log(JSON.stringify({workspace:true,workflows:entries.filter(Boolean)}));
+  const partner = landing.getByLabel("Analysis partner");
+  if (await partner.isVisible()) await partner.selectOption("");
+  for (const workflow of workflows) {
+    const checkedCalls = await checkCallOrder(landing,workflow);
+    console.log(JSON.stringify({workflow,checkedCalls}));
+  }
   await landing.close();
   for (const workflow of workflows) {
     for (const width of [1152, 390]) {

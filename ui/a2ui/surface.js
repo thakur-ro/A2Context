@@ -1,3 +1,4 @@
+import { evidenceCatalog } from "./theme-frequency.js";
 import { A2uiSurface } from "@a2ui/lit";
 import { MessageProcessor, basicCatalog, setMarkdownRenderer } from "@a2ui/web_core/v1_0";
 
@@ -38,7 +39,7 @@ export function recommendation(surfaceId, { title, heading = "h3", label, descri
   return surface(surfaceId, components, destinations);
 }
 
-// Each batch attaches a complete subtree to the existing surface.
+// Publish the complete comparison together, including both measured arms.
 export function answerSurface({ title, description, detail, map, followup }, onFollowup) {
   const { view, update } = create("answer", ({name, sourceComponentId}) => {
     if (name === "followup") onFollowup();
@@ -47,18 +48,17 @@ export function answerSurface({ title, description, detail, map, followup }, onF
       if (arm?.detail) update([{id:"readout", component:"Text", text:literal(arm.detail)}]);
     }
   });
-  const children = [];
-  function append(id, ...components) {
+  const children = [], components = [{id:"root",component:"Column",children}];
+  function append(id, ...nodes) {
     children.push(id);
-    update([{ id: "root", component: "Column", children: [...children] }, ...components]);
+    components.push(...nodes);
   }
   append("title", { id: "title", component: "Text", text: "## " + title });
-  const steps = [];
-  if (description) steps.push(() => append("description", { id: "description", component: "Text", text: literal(description) }));
+  if (description) append("description", { id: "description", component: "Text", text: literal(description) });
   if (map) {
-    steps.push(() => append("origin", { id: "origin", component: "Text", variant: "caption", text: literal(map.root) }));
+    append("origin", { id: "origin", component: "Text", variant: "caption", text: literal(map.root) });
     // Keep comparisons together so a partially drawn result never implies a missing arm.
-    steps.push(() => append("comparison",
+    append("comparison",
       { id:"comparison", component:"Column", children:["fork","readout"] },
       { id:"readout", component:"Text", text:"" },
       { id: "fork", component: "Row", children: map.arms.map((_, i) => "arm" + i) },
@@ -68,13 +68,14 @@ export function answerSurface({ title, description, detail, map, followup }, onF
         { id: "node" + i, component: "Column", children: ["name" + i, "value" + i] },
         { id: "name" + i, component: "Text", variant: "caption", text: literal(arm.label) },
         { id: "value" + i, component: "Text", text: literal(arm.value) },
-      ])));
+      ]));
   }
-  if (detail) steps.push(() => append("detail", { id: "detail", component: "Text", variant: "caption", text: literal(detail) }));
-  if (followup) steps.push(() => append("next",
+  if (detail) append("detail", { id: "detail", component: "Text", variant: "caption", text: literal(detail) });
+  if (followup) append("next",
     {id: "next", component: "Button", child: "nextLabel", action: {event: {name: "followup"}}},
-    {id: "nextLabel", component: "Text", text: literal(followup)}));
-  return { view, steps };
+    {id: "nextLabel", component: "Text", text: literal(followup)});
+  update(components);
+  return view;
 }
 
 export function questions(labels, ask) {
@@ -90,37 +91,26 @@ export function questions(labels, ask) {
   return view;
 }
 
-export function briefing({ metrics, themes }) {
-  const children = ["metrics"];
-  const components = [
-    {id:"root", component:"Column", children},
-    {id:"metrics", component:"Row", children:metrics.map((_, i) => "metric" + i)},
-    ...metrics.flatMap(({value,label}, i) => [
-      {id:"metric" + i, component:"Column", children:["number" + i,"metricLabel" + i]},
-      {id:"number" + i, component:"Text", text:"### " + value},
-      {id:"metricLabel" + i, component:"Text", text:literal(label), variant:"caption"},
-    ]),
-  ];
-  if (themes.length) {
-    children.push("themes", ...themes.map((_, i) => "theme" + i));
-    components.push({id:"themes", component:"Text", text:"### Recurring themes"}, ...themes.map((text, i) => (
-      {id:"theme" + i, component:"Text", text:literal(text)})));
-  }
-  children.push("question");
-  components.push({id:"question", component:"Text", text:"## What would you like to investigate?"});
-  return surface("briefing", components, new Map());
+function metricComponents(metrics) {
+  return [{id:"metrics", component:"Row", children:metrics.map((_,i) => "metric" + i)},
+    ...metrics.flatMap(({value,label},i) => [
+      {id:"metric" + i,component:"Column",children:["value" + i,"label" + i]},
+      {id:"value" + i,component:"Text",text:"### " + value},
+      {id:"label" + i,component:"Text",text:literal(label),variant:"caption"},
+    ])];
 }
 
-export function workflowBriefing({metrics, recommendation}, investigate) {
-  const children = ["stats"];
-  const components = [{id:"root",component:"Column",children},
-    {id:"stats",component:"Row",children:metrics.map((_,i) => `stat${i}`)},
-    ...metrics.flatMap(({value,label},i) => [
-      {id:`stat${i}`,component:"Card",child:`valueGroup${i}`},
-      {id:`valueGroup${i}`,component:"Column",children:[`value${i}`,`label${i}`]},
-      {id:`value${i}`,component:"Text",text:"### " + value},
-      {id:`label${i}`,component:"Text",text:literal(label),variant:"caption"},
-    ])];
+export function briefing({metrics}) {
+  return surface("briefing",[{id:"root",component:"Column",children:["metrics"]},...metricComponents(metrics)],new Map());
+}
+
+export function themeFrequency(total,themes) {
+  return surface("theme-frequency",[{id:"root",catalogId:evidenceCatalog.id,component:"ThemeFrequency",total,themes}],new Map());
+}
+
+export function workflowBriefing({metrics,recommendation}, investigate) {
+  const children = ["metrics"];
+  const components = [{id:"root",component:"Column",children},...metricComponents(metrics)];
   const actions = new Map();
   if (recommendation) {
     children.push("recommendation");
@@ -169,7 +159,7 @@ export function evidenceSections(surfaceId, {title, description, sections}) {
 }
 
 function create(surfaceId, handleAction) {
-  const processor = new MessageProcessor([basicCatalog], handleAction);
+  const processor = new MessageProcessor([basicCatalog,evidenceCatalog], handleAction);
   processor.processMessages([{ version: "1.0", createSurface: { surfaceId, catalogId: basicCatalog.id } }]);
   const view = new A2uiSurface();
   view.surface = processor.getSurface(surfaceId);

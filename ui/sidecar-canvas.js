@@ -246,7 +246,7 @@ function investigationCanvas(impact, page, models) {
   const heading = byId("title");
   const input = element("input", {type:"text", maxlength:1200, required:"", placeholder:"Ask about this workflow…", "aria-label":"Question about workflow evidence"});
   const picker = element("select", {"aria-label":"Analysis partner"}, element("option",{value:"",text:"Workspace evidence"}),
-    ...models.map(model => element("option",{value:model,text:model})));
+    ...models.map(model => element("option",{value:model,text:model === "default_model" ? "Connected model" : model,title:model})));
   picker.value = models[0] || "";
   picker.hidden = !models.length;
   const send = element("button",{type:"submit","aria-label":"Ask question",text:"↑"});
@@ -256,7 +256,9 @@ function investigationCanvas(impact, page, models) {
   const output = element("section",{className:"canvas-answer",tabindex:"-1","aria-live":"polite","aria-label":"Answer canvas"});
   const past = element("details",{className:"canvas-history"});
   const status = element("p",{className:"canvas-status",role:"status"});
-  home.append(lead,past,output,suggestions,form,status);
+  const invitation = element("h2",{className:"canvas-invitation",text:"What would you like to investigate?"});
+  const themes = element("div",{className:"canvas-themes"});
+  home.append(lead,past,output,invitation,form,suggestions,status,themes);
   let loadedPage = page, currentTotal = impact.recommendations;
   let activeScope = {...scope}, currentImpact = impact;
   let records = [], history = [], previous, active, moreEvidence = false;
@@ -267,6 +269,23 @@ function investigationCanvas(impact, page, models) {
 
   function suggest(labels) {
     suggestions.replaceChildren(...(labels.length ? [A2ContextA2UI.questions(labels, ask)] : []));
+  }
+
+  function themeChart(summary) {
+    return A2ContextA2UI.themeFrequency(summary.captured_conversations,summary.themes.map(({kind,conversations,groups}) =>
+      ({label:kindLabels[kind] || kind,conversations,groups})));
+  }
+
+  async function showThemes(question,named,signal) {
+    const summary = named ? await api("summary",{...activeScope,workflow:named}) : currentImpact;
+    if (signal.aborted) return;
+    const title = named || activeScope.workflow ? workflowName(named || activeScope.workflow) : "All workflows";
+    if (summary.themes?.length) {
+      output.append(element("p",{className:"canvas-scope-name",text:title}),themeChart(summary));
+    } else evidenceSections("no-themes",title,"No finding groups were recorded in this scope.");
+    previous = activity = comparison = null;
+    visibleCalls = [];
+    remember(question,null,"themes","Checked recurring finding types for " + title + ".");
   }
 
   function showBriefing() {
@@ -280,11 +299,10 @@ function investigationCanvas(impact, page, models) {
     const recommended = records[0];
     lead.replaceChildren(workflow ? A2ContextA2UI.workflowBriefing({metrics,recommendation:recommended && {
       title:recommended.facts.title,summary:recommended.facts.next,
-    }},() => recommended.tokenCard ? ask("Show the token-position diagram") : ask(recommended.facts.title,recommended)) : A2ContextA2UI.briefing({
-      metrics,
-      themes: (currentImpact.themes || []).map(({kind,conversations,groups}) =>
-        (kindLabels[kind] || kind) + " · " + (conversations ? plural(conversations,"conversation") : plural(groups,"group"))),
-    }));
+    }},() => recommended.tokenCard ? ask("Show the token-position diagram") : ask(recommended.facts.title,recommended)) : A2ContextA2UI.briefing({metrics}));
+    home.classList.remove("has-answer");
+    invitation.hidden = !!workflow;
+    themes.replaceChildren(...(!workflow && currentImpact.themes?.length ? [themeChart(currentImpact)] : []));
     lead.hidden = false;
     const questions = [];
     if (workflow && currentImpact.themes?.some(theme => theme.kind === "token")) questions.push("Show the token-position diagram");
@@ -353,7 +371,7 @@ function investigationCanvas(impact, page, models) {
       const lines = activityLines(row.dialogue,page.rows[i-1]?.dialogue.user);
       if (!lines.length) lines.push("Message and result text unavailable");
       const number = page.offset+i+1;
-      return {title:"Call " + number + (turn ? " · " + turn : ""),lines,ref:{row,number}};
+      return {title:"Call " + number + (turn ? " · " + turn : ""),lines,ref:{row,number,thread,filters}};
     });
     const description = sections.length > 1 ? `Captured calls ${page.offset+1}–${page.offset+sections.length} in order.` :
       sections.length ? `Captured call ${page.offset+1}.` : focus ? "The matching call is no longer available." : "No calls are available in this scope.";
@@ -421,7 +439,7 @@ function investigationCanvas(impact, page, models) {
     if (signal.aborted || (!rows.length && !search.explicit && !search.queries && !search.tool && index_ready)) return false;
     const sections = rows.map((row,i) => ({
       title:["Call " + (i+1),row.thread || "Unthreaded call",row.workflow && workflowName(row.workflow)].filter(Boolean).join(" · "),
-      lines:activityLines(row.dialogue),ref:{row,number:i+1},
+      lines:activityLines(row.dialogue),ref:{row,number:i+1,thread:row.thread_id ? {id:row.thread_id,thread:row.thread} : null,filters},
     }));
     const reply = await describeActivity(model,question,sections,signal);
     if (signal.aborted) return false;
@@ -445,12 +463,13 @@ function investigationCanvas(impact, page, models) {
       suggest(["Show the retrieved excerpts"]);
       return true;
     }
-    evidenceSections("activity-search",rows.length ? "Matching recorded activity" : "No matching activity",description,repeatedResult ? shown.slice(0,1) : shown);
+    const displayed = repeatedResult ? shown.slice(0,1) : shown;
+    evidenceSections("activity-search",rows.length ? "Matching recorded activity" : "No matching activity",description,displayed);
     if (reply?.answer) output.append(element("p",{className:"label",text:"Excerpts selected by " + model}));
     activity = null;
     comparison = null;
     previous = null;
-    visibleCalls = shown.map(section => section.ref);
+    visibleCalls = displayed.map(section => section.ref);
     remember(question,null,"activity",description);
     const example = visibleCalls[0];
     const suggestions = example ? ["Show call " + example.number] : [];
@@ -481,7 +500,47 @@ function investigationCanvas(impact, page, models) {
       element("summary",{text:"Captured call reference"}),element("code",{text:trace + " / " + call}));
     output.append(reference);
     visibleCalls = [ref];
-    suggest(activity?.next == null ? [] : ["What happened next?"]);
+    suggest(["What happened before that call?","What happened after that call?"]);
+  }
+
+  async function showAdjacent(question, direction, number, signal) {
+    const ref = number == null && visibleCalls.length === 1 ? visibleCalls[0] : visibleCalls.find(call => call.number === number);
+    if (!ref) {
+      evidenceSections("choose-call","Which call?", "Choose a displayed call to read its neighbor in the same recording.",
+        visibleCalls.map(({number,row}) => ({title:"Call " + number,lines:[row.thread || row.trace]})));
+      suggest(visibleCalls.slice(0,3).map(call => "What happened " + direction + " call " + call.number + "?"));
+      return;
+    }
+    const {row,thread,filters} = ref;
+    const page = await api("thread-calls",{...filters,...(thread ? {thread:thread.id} : {trace:row.trace}),
+      focus_trace:row.trace,focus_call:row.call,focus_window:direction,limit:2});
+    if (signal.aborted) return;
+    const index = page.rows.findIndex(call => call.trace === row.trace && call.call === row.call);
+    const neighborIndex = index + (direction === "before" ? -1 : 1);
+    const neighbor = index < 0 ? null : page.rows[neighborIndex];
+    const location = thread?.thread || "this trace";
+    const anchor = page.offset + index + 1;
+    if (!neighbor) {
+      const title = index < 0 ? "Call unavailable" : (direction === "before" ? "Start" : "End") + " of the captured " + (thread ? "conversation" : "trace");
+      const explanation = index < 0 ? "The selected call is no longer in the current scope." :
+        "No call was captured " + direction + " call " + anchor + " in " + location + ".";
+      evidenceSections("conversation-boundary",title,explanation);
+      visibleCalls = index < 0 ? [] : [{...ref,number:anchor}];
+      suggest(index < 0 ? [] : ["What happened " + (direction === "before" ? "after" : "before") + " call " + anchor + "?"]);
+      remember(question,null,"activity",explanation);
+      return;
+    }
+    const adjacent = page.offset + neighborIndex + 1, selected = page.rows[index];
+    const uncertain = neighbor.started == null || selected.started == null ||
+      (neighbor.started === selected.started && (neighbor.nanos == null || selected.nanos == null || neighbor.nanos === selected.nanos));
+    const description = "Call " + adjacent + " is immediately " + direction + " call " + anchor + " in the recorded order for " + location + "." +
+      (uncertain ? " The timestamps do not distinguish their order." : "");
+    const lines = activityLines(neighbor.dialogue);
+    evidenceSections("adjacent-call",direction === "before" ? "Previous captured call" : "Next captured call",description,
+      [{title:"Call " + adjacent + (neighbor.dialogue.turn ? " · " + neighbor.dialogue.turn : ""),lines:lines.length ? lines : ["Message and result text unavailable"]}]);
+    visibleCalls = [{row:neighbor,number:adjacent,thread,filters}];
+    suggest(["Show call " + adjacent,"What happened " + direction + " call " + adjacent + "?"]);
+    remember(question,null,"activity",description);
   }
 
   function chooseMeasurement(choices) {
@@ -616,15 +675,11 @@ function investigationCanvas(impact, page, models) {
     }
     const surface = A2ContextA2UI.answerSurface({title:name,description:text ? null : description,
       map,detail}, () => {});
-    surface.view.className = "canvas-result";
-    Object.assign(surface.view.dataset,{trace:record.capture.trace,call:record.capture.call,group:facts.id,view});
-    if (record.report) surface.view.dataset.report = record.report;
-    output.append(surface.view);
-    for (const update of surface.steps) {
-      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise(resolve => setTimeout(resolve, 160));
-      if (signal.aborted || !home.isConnected) return;
-      update();
-    }
+    surface.className = "canvas-result";
+    Object.assign(surface.dataset,{trace:record.capture.trace,call:record.capture.call,group:facts.id,view});
+    if (record.report) surface.dataset.report = record.report;
+    output.append(surface);
+
     if (intervening) output.append(intervening);
     if (view === "recurrence") {
       if (record.trend?.length) output.append(trend(record.trend));
@@ -651,6 +706,7 @@ function investigationCanvas(impact, page, models) {
     const model = picker.value;
     lead.hidden = true;
     home.classList.add("has-answer");
+    heading.textContent = activeScope.workflow ? workflowName(activeScope.workflow) : "All workflows";
     suggest([]);
     output.replaceChildren(element("div",{className:"canvas-question",text:question}));
     output.setAttribute("aria-busy","true");
@@ -728,6 +784,18 @@ function investigationCanvas(impact, page, models) {
       if (!selected && /^(?:show (?:me )?(?:the )?)?(?:workspace )?(?:briefing|overview|summary)$/.test(normalize(question))) {
         output.replaceChildren();
         showBriefing();
+        status.textContent = "";
+        return;
+      }
+      const adjacent = !selected && !named && visibleCalls.length && adjacentCallRequest(question);
+      if (adjacent && !(adjacent.next && activity && visibleCalls.length > 1)) {
+        await showAdjacent(question,adjacent.direction,adjacent.number,signal);
+        if (!signal.aborted) status.textContent = "";
+        return;
+      }
+      if (!selected && /\b(?:recurring (?:themes|issues|problems)|(?:issues|themes|problems) (?:keep (?:coming up|recurring)|recur most))\b/i.test(question)) {
+        await showThemes(question,named,signal);
+        if (signal.aborted) return;
         status.textContent = "";
         return;
       }
@@ -877,7 +945,13 @@ function investigationCanvas(impact, page, models) {
       }
       const corrected = candidates.find(r => r.facts.id === corrections.get(normalize(question)));
       let answer = selected || corrected ? {record:selected || corrected,view:"evidence"} : canvasAnswer(question,candidates,subject);
-      let plan = !selected && !corrected && recordedReplay(question,candidates,subject), usedFallback = false;
+      let plan = null, usedFallback = false;
+      if (!selected && !corrected) {
+        const request = normalize(question);
+        if (request === "show the exact inputs" && subject) plan = {view:"sources",record:subject};
+        else if (request === "which inputs were repeated" && answer.record?.duplicate) plan = answer;
+        else plan = recordedReplay(question,candidates,subject);
+      }
       const directFinding = answer.focused && answer.direct &&
         (!visibleCalls.length || (answer.record?.dispatch && /\b(dispatch|sandbox)\b/i.test(question)));
       if (!plan && model && !selected && !corrected && !directFinding) {
@@ -888,6 +962,16 @@ function investigationCanvas(impact, page, models) {
             lastQuestion:!named ? history.at(-1)?.question : undefined},signal);
         } catch (error) { if (signal.aborted) return; usedFallback = true; }
         if (signal.aborted) return;
+      }
+      if (plan?.view === "themes") {
+        await showThemes(question,named,signal);
+        if (!signal.aborted) status.textContent = "";
+        return;
+      }
+      if (plan?.view === "adjacent") {
+        await showAdjacent(question,plan.direction,null,signal);
+        if (!signal.aborted) status.textContent = "";
+        return;
       }
       if (plan?.view === "shown") {
         await answerFromCalls(question,model,signal);
