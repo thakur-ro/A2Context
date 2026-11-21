@@ -195,6 +195,7 @@ pub fn derive(
     for call in &run.calls {
         findings.extend(super::capability::finding(run, call));
         findings.extend(super::citation::finding(run, call));
+        findings.extend(super::reference_links::finding(run, call));
         findings.extend(super::tool_proposal::findings(run, call));
         if let Some(issue) = super::tool_reference_score::witness(call) {
             let reason = match issue["matching_prior_calls"].as_u64() {

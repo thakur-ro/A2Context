@@ -47,6 +47,21 @@ def check(binary, browser=False):
                span(9, cited, "The passage says (ref-ef7777)."),
                span(10, {"messages":[{"role":"user","content":PROMPT.replace("## Citation examples", "More text")}]}, ANSWER),
                span(11, {"messages":[{"role":"system","content":"ref-ff9999: another passage"}, *cited["messages"]]}, ANSWER)]
+    instruction = "Use only the supplied documents."
+    supplied = "https://docs.example/source"
+    added = "https://docs.example/other"
+    link_prompt = instruction + "\nFiscalité [source](" + supplied + ")"
+    link_reply = f"Résumé\nSource 1: [source]({supplied})\nReference 2: [details]({added})"
+    def source_request(text):
+        return {"messages":[{"role":"user","content":text}]}
+    links = span(17, source_request(link_prompt), link_reply)
+    exclude.extend([
+        span(18, source_request(link_prompt + " " + added), link_reply),
+        span(19, source_request("Do not " + link_prompt), link_reply),
+        span(20, dict(source_request(link_prompt), web_search_options={}), link_reply),
+        span(21, {"messages":[{"role":"user","content":[{"type":"text","text":link_prompt}]}]}, link_reply),
+        span(22, source_request(link_prompt + " " + added + "-longer"), link_reply),
+    ])
     target = span(12, cited, ANSWER)
     contract = dict(offer, tools=[lookup])
     missing = span(16, contract, "", proposed=True)
@@ -58,12 +73,23 @@ def check(binary, browser=False):
     with TemporaryDirectory() as tmp:
         db = Path(tmp) / "claims.sqlite"
         with server(binary, db, *flags) as base:
-            batch = export(*declines, *exclude, target, foreign, changed, missing)
+            batch = export(*declines, *exclude, target, foreign, changed, missing, links)
             send_traces(base, batch)
             send_traces(base, batch)
             def card(kind, **scope):
                 row, = get(base, "findings", kind=kind, user="usr", **scope)["rows"]
                 return row
+            link_card = card("reference_link")
+            assert link_card["occurrences"] == 1 and link_card["evidence"]["call_id"] == links["spanId"]
+            detail = link_card["evidence"]["detail"]
+            seen, novel = detail["links"]
+            def fragment(text, interval):
+                a,b = interval
+                return text.encode()[a:b].decode()
+            assert fragment(link_prompt,detail["instruction_bytes"]) == detail["instruction"]
+            assert fragment(link_prompt,seen["input"]["bytes"]) == seen["url"] == supplied
+            assert novel["input"] is None and novel["url"] == added
+            assert all(fragment(link_reply,r["output_bytes"]) == r["url"] for r in detail["links"])
             proposal = card("missing_tool_argument")
             witness = proposal["evidence"]["detail"]
             assert proposal["occurrences"] == 1 and witness["check"]["argument_pointer"] == "/item"
@@ -114,13 +140,18 @@ def check(binary, browser=False):
             assert card("capability_claim")["discovery_example"] == comparison
             if browser:
                 script = Path(__file__).with_name("context-claims-browser.mjs")
-                subprocess.run(["node", script, base, "policy-workflow", "policy-workflow", "policy-workflow"], check=True)
+                subprocess.run(["node", script, base, "policy-workflow", "policy-workflow", "policy-workflow", "policy-workflow"], check=True)
         with sqlite3.connect(db) as con:
             con.execute("DELETE FROM observations WHERE kind='missing_tool_argument'")
             con.execute("PRAGMA user_version=37")
         with server(binary, db, *flags) as base:
             assert card("missing_tool_argument") == proposal
             assert card("capability_claim")["discovery_example"] == comparison
+        with sqlite3.connect(db) as con:
+            con.execute("DELETE FROM observations WHERE kind='reference_link'")
+            con.execute("PRAGMA user_version=38")
+        with server(binary, db, *flags) as base:
+            assert card("reference_link") == link_card
         with server(binary, Path(tmp)/"redacted.sqlite") as base:
             send_traces(base, batch)
             assert not get(base,"findings")["rows"]

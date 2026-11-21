@@ -8,7 +8,7 @@ const filterNames = { after: "From", before: "Before", org: "Organization", user
 let scope = Object.fromEntries(Object.keys(filterNames).filter((key) => query.has(key)).map((key) => [key, query.get(key)]));
 const interview = view === "findings" && [...query.keys()].every(key => key === "view" || Object.hasOwn(filterNames, key));
 const kindLabels = { tool_reference:"Tool-result reference", baseline_check:"Replay baseline", source_gap:"Source capture gap", prefill: "First-token test", replacement: "Replacement comparison", conflict: "Rule conflict", duplicate: "Exact repetition", replay: "Verified replay",
-  missing_tool_argument:"Missing tool argument", example_citation:"Citation from an example", capability_claim: "Reported tool limitation", candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
+  reference_link:"Reference link provenance", missing_tool_argument:"Missing tool argument", example_citation:"Citation from an example", capability_claim: "Reported tool limitation", candidate: "Candidate scores", shadow: "Proposal trials", token: "Token measurements", source_mask: "Source mask trials" };
 const recommendationId = query.get("recommendation");
 const sourceHistoryKey = query.get("source_key");
 const factorId = query.get("factor");
@@ -313,6 +313,7 @@ const jointPatterns = {
 };
 
 function findingTitle(kind, detail) {
+  if (kind === "reference_link") return "A cited link first appears in the reply";
   if (kind === "missing_tool_argument") return detail.tool + " proposal omitted " + JSON.stringify(detail.check.field);
   if (kind === "example_citation") return "The reply cited a key from a formatting example";
   if (kind === "capability_claim") return "The reply reported a tool limitation with " + detail.tool + " listed";
@@ -366,6 +367,7 @@ function findingTitle(kind, detail) {
 }
 
 function findingDetail(kind, detail) {
+  if (kind === "reference_link") return "The reply cites a destination absent from the captured messages. Check it against the retrieved source.";
   if (kind === "missing_tool_argument") return "The tool definition required " + detail.check.argument_pointer + ". The captured proposal omitted that field.";
   if (kind === "example_citation") return detail.key + " appeared in the example and in the model’s reply. It did not label any captured passage.";
   if (kind === "capability_claim") return "Reply excerpt: “" + detail.reply + "” · " + detail.pointer + " · " + detail.description;
@@ -588,7 +590,7 @@ function factorRow(factor, featured = false) {
   const signals = { baseline_check:"Replay baseline", source_gap:"Source capture gap", routing_repeats:"Repeats disagreed", routing: factor.routing_inputs > 1 ? "Routing tests on " + plural(factor.routing_inputs, "input") : "Instruction and tool test", prefill: "First-token sensitivity", variation: "Edit effects varied across inputs", order: "Results varied with source order", replacement: "Results varied across wordings", joint_proposal: "Only the joint edit changed the proposal", joint: "Only the joint edit changed the match rate", flip: "Choice flipped", replay: "Replay outcome shifted", shadow: "Proposal comparison",
     token: "Token score shifted", source_mask: "Source masks tested", sandbox_dispatch: "Sandbox state preserved",
     sandbox_regression: "Expected state missed with check", score: "Preference shifted", conflict: "Conflicting rules",
-    missing_tool_argument:"Missing tool argument", capability_claim:"Reported tool limitation", example_citation:"Citation from an example",
+    reference_link:"Reference link provenance", missing_tool_argument:"Missing tool argument", capability_claim:"Reported tool limitation", example_citation:"Citation from an example",
     duplicate: "Repeated input", dialogue: "Repeated dialogue", equal: "Equal match rates" };
   const step = { baseline_check:"Inspect the unchanged-request trials", source_gap:"Inspect unconfirmed source IDs", routing_repeats:"Check why the same edit gave different results", routing: factor.routing_inputs > 1 ? "See where the source edit mattered" : "Compare the four routing setups", prefill: "Review which edits shifted the first token", variation: "Compare where this edit changed the outcome", order: "Compare the two source orders", replacement: "Compare the two replacement texts", joint_proposal: "Check whether both sources mattered", joint: "Inspect the joint edit",
     flip: "Check which edit flipped the choice", replay: "Compare the original and edited outcomes",
@@ -597,7 +599,7 @@ function factorRow(factor, featured = false) {
     sandbox_regression: "Check where dispatch missed the expected state",
     score: "Check which alternative gained ground", conflict: "Compare the conflicting declarations",
     duplicate: "Check whether one copy can be removed", dialogue: "Check the repeated message positions",
-    missing_tool_argument:"Compare required and proposed arguments", capability_claim:"Compare the reply with the available tool", example_citation:"Locate the cited key in the prompt",
+    reference_link:"Check the cited destination", missing_tool_argument:"Compare required and proposed arguments", capability_claim:"Compare the reply with the available tool", example_citation:"Locate the cited key in the prompt",
     equal: "Review the equal match rates" };
   const test = factor.signal === "variation" && factor.position_test;
   const isolated = test && test.result.present.changed === 2 && test.result.replaced.compared === 2 && test.result.replaced.changed === 0;
@@ -624,7 +626,7 @@ function factorRow(factor, featured = false) {
   }
   return element("a", {className:"factor-row", href}, element("div", {},
     element("strong", {text:name}), element("span", {className:"row-extra", text:counts})),
-    element("span", {className:["conflict", "source_gap", "duplicate", "dialogue", "example_citation", "capability_claim", "missing_tool_argument"].includes(factor.signal) ? "basis" : "basis measured", text:signal}),
+    element("span", {className:["conflict", "source_gap", "duplicate", "dialogue", "example_citation", "capability_claim", "missing_tool_argument", "reference_link"].includes(factor.signal) ? "basis" : "basis measured", text:signal}),
     element("span", {className:"arrow", "aria-hidden":"true", text:"→"}));
 }
 

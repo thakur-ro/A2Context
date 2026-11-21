@@ -107,6 +107,11 @@ pub fn action(kind: &str, detail: &Value) -> Action {
             "Compare the proposed fields with the advertised schema. Inspect the dispatcher response to see whether it rejected or repaired the proposal.",
             "An argument object omitted a field required by the tool definition in the same request.",
         ),
+        "reference_link" => (
+            "Verify the reference before displaying it",
+            "Compare the destination with the retrieved document and its source metadata. Check which link the application displayed.",
+            "A numbered reference in the reply used a destination absent from the captured text messages, which included a source-only instruction.",
+        ),
         "example_citation" => (
             "Check where this citation points",
             "Compare the cited key with the labeled passages. Check whether the application displays or removes it, then test a citation example drawn from the current passages.",

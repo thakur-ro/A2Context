@@ -25,6 +25,8 @@ Two implemented checks arose from the first field test. One checks whether an En
 
 The next pilot exposed four rejected tool proposals. A2Context now checks a captured argument object against the required fields of the tool actually advertised in that request. It links the declared field, proposed keys and any matching names on other tools. A separate intervention tested whether the other declaration influenced the generated name. [Algorithm and public API](rust-api.md#check-a-tool-proposal-before-dispatch) · [Pilot and experiment results](../examples/ordinary-usage/transfer/README.md#what-the-next-detector-caught)
 
+For a plain-text chat request that opens a message with an explicit source-only instruction, the sidecar can compare numbered Markdown references in the reply with the literal destinations supplied in the messages. The finding shows the instruction, exact reply offsets, and input offsets for matching destinations. A missing literal is a reason to verify the citation. Identifying an equivalent URL, deciding whether the destination exists, and judging what it supports require other evidence. The check inspects up to 16 reference lines and skips ambiguous URL boundaries, tool-enabled requests, attachments and fenced examples in replies.
+
 | Question | Pilot measure |
 | --- | --- |
 | Did it help the engineer? | For the first five distinct suggestions per workflow, record how many the engineer confirms identified a concrete issue worth acting on. Show useful, dismissed and unreviewed counts and the number actually shown. Record whether the proposed action helped separately. |
