@@ -1449,6 +1449,11 @@ impl Store {
                     sql.push_str("max((SELECT count(*) FROM json_each(?) term WHERE instr(lower(
                         kind || ' ' || coalesce(json_extract(detail,'$.coverage'),'') || ' ' || coalesce(thread,'') || ' ' || coalesce(json_extract(detail,'$.rule'),'') ||
                         ' ' || coalesce(json_extract(detail,'$.sandbox_dispatch.tool'),'') ||
+                        ' ' || coalesce(json_extract(detail,'$.sandbox_dispatch.guard'),'') ||
+                        ' ' || coalesce(json_extract(detail,'$.sandbox_dispatch.target'),'') ||
+                        ' ' || coalesce(json_extract(detail,'$.sandbox_dispatch.runner'),'') ||
+                        ' ' || coalesce(json_extract(detail,'$.response_pair.original.label'),'') ||
+                        ' ' || coalesce(json_extract(detail,'$.response_pair.edited.label'),'') ||
                         ' ' || coalesce((SELECT group_concat(coalesce(json_extract(s.value,'$.source'),json_extract(s.value,'$.id')),' ')
                             FROM json_each(detail,'$.sources') s),'')),term.value)>0)) AS relevance,");
                     args.push(serde_json::to_string(terms)?);

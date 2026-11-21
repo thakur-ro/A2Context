@@ -258,6 +258,19 @@ try {
     await canvas.getByRole("region",{name:"Sandbox dispatch comparison"}).waitFor();
     assert.equal(plans,3);
     assert.equal(page.url(),base.href);
+    const receipt = canvas.getByRole("region",{name:"Sandbox dispatch comparison"});
+    const reportId = await receipt.getAttribute("data-report");
+    assert.ok(reportId);
+    await submit("Compare the recorded proposals");
+    await canvas.getByRole("heading",{name:"The recorded model output stayed the same after the edit"}).waitFor();
+    const pair = canvas.locator('[data-view="proposal"]');
+    assert.equal(await pair.getAttribute("data-report"),reportId);
+    assert.equal(await pair.locator("a2ui-card").filter({hasText:"exchange_delivered_order_items"}).count(),2);
+    await pair.getByText(/1 original trial and 1 edited trial completed/).waitFor();
+    await submit("Show the dispatch states");
+    await receipt.waitFor();
+    assert.equal(await receipt.getAttribute("data-report"),reportId);
+    assert.equal(plans,3);
     // A second experiment exercises disambiguation. Select the genuine recorded report to verify its path.
     await page.route("**/api/sidecar/findings?*",async route => {
       if (new URL(route.request().url()).searchParams.get("kind") !== "token") return route.continue();

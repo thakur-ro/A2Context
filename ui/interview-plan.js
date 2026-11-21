@@ -1,4 +1,28 @@
 // The model selects a read or a view. Only the host can resolve the scoped records and draw them.
+function recordedReplay(question, records, subject) {
+  const contrast = /\b(both|compare|versus|without|before and after|same|different|chang\w*|edit\w*|affect\w*|alter\w*)\b/i.test(question);
+  if (!contrast) return null;
+  const state = /\b(database|stored|persisted|state|states|balance)\b/i.test(question);
+  const proposal = /\b(proposals?|tool choice|tool selection|model.{0,18}(?:answer|reply|output|propos)|agent.{0,18}(?:propos|suggest))\b/i.test(question) ||
+    /\b(?:model|agent|assistant)\b.*\b(?:choose|select|say|suggest|propose)\b/i.test(question);
+  if (state === proposal) return null;
+  const view = state ? "receipt" : "proposal";
+  const eligible = records.filter(record => record[view]);
+  const words = value => value.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+  const query = new Set(words(question));
+  const generic = new Set(["check","guard","state","result","tool","model","source","policy","with","and"]);
+  const scored = eligible.map(record => {
+    const fields = state ? [record.receipt.tool,record.receipt.guard,record.receipt.target,record.receipt.runner] :
+      [...record.facts.sources,record.proposal.original.label,record.proposal.edited.label];
+    const names = new Set(words(fields.filter(Boolean).join(" ")));
+    const score = [...names].filter(word => word.length >= 3 && !generic.has(word) && query.has(word)).length;
+    return {record,score};
+  }).sort((a,b) => b.score-a.score);
+  if (scored[0]?.score && scored[0].score !== scored[1]?.score) return {view,record:scored[0].record};
+  return subject?.[view] && /^(?:compare the (?:recorded )?proposals|show the dispatch states)[.!?]?$/i.test(question.trim()) ?
+    {view,record:subject} : null;
+}
+
 async function planInterview(model, question, candidates, {subject, lastQuestion, hasCalls, tools}, signal) {
   const options = new Map();
   function add(id, label, plan) {
@@ -8,14 +32,19 @@ async function planInterview(model, question, candidates, {subject, lastQuestion
     {view:"search",tool:name}));
   const records = subject ? [subject,...candidates.filter(r => r.facts.id !== subject.facts.id)] : candidates;
   const labels = new Set();
-  for (const record of records) {
-    const {facts,receipt,tokenCard} = record;
-    const label = tokenCard ? "Measure how editing " + facts.sources.join(", ") + " changed the probability of each generated word" :
-      receipt ? "Compare both outcomes of the same proposed " + (receipt.tool || "tool call") + " with and without the dispatch check" :
-      facts.title + " (" + facts.kind + ")";
-    if (labels.has(label)) continue;
+  function finding(label,view,record) {
+    if (labels.has(label) || labels.size === 15) return;
     labels.add(label);
-    add("F" + labels.size,label.slice(0,250),{view:tokenCard ? "tokens" : receipt ? "receipt" : "evidence",record});
+    add("F" + labels.size,label.slice(0,350),{view,record});
+  }
+  for (const record of records) {
+    const {facts,receipt,proposal,tokenCard} = record;
+    if (receipt) finding("Compare both outcomes in stored state for " + receipt.tool + ", with and without " + receipt.guard +
+      ". State field: " + receipt.target + ". Replay: " + receipt.runner,"receipt",record);
+    if (proposal) finding("Compare the model's output when " + facts.sources.join(", ") + " was edited. Read the original and edited " +
+      (proposal.original.kind === "tool_call" ? "tool proposal for " + proposal.original.label : "model reply"),"proposal",record);
+    if (tokenCard) finding("Measure how editing " + facts.sources.join(", ") + " changed the probability of each generated word","tokens",record);
+    if (!receipt && !proposal && !tokenCard) finding(facts.title + " (" + facts.kind + ")","evidence",record);
     if (labels.size === 15) break;
   }
   if (hasCalls) add("SHOWN","Read the calls in the last answer to answer a follow-up",{view:"shown"});
@@ -47,26 +76,34 @@ async function retrieveActivity(filters, query, rewrites, signal, tool) {
   if (tool) return api("activity-search",{...filters,q:tool,tool,match:"all"});
   const original = await api("activity-search",{...filters,q:query});
   if (!rewrites?.length || signal.aborted) return original;
-  const batches = original.partial_match ? [] : [original.rows];
+  const batches = [];
+  if (!original.partial_match && original.rows.length) batches.push(original);
   for (const q of rewrites) {
     if (q.toLowerCase() === query.toLowerCase()) continue;
     const result = await api("activity-search",{...filters,q,match:"all"});
     if (signal.aborted) return original;
-    if (result.rows.length) batches.push(result.rows);
+    if (result.rows.length) batches.push(result);
   }
-  // Interleave exact matches so one phrasing can't fill every slot.
+  if (!batches.length) return original;
+  // Preserve a strong match to the engineer's wording alongside the model's alternatives.
+  if (original.partial_match && original.minimum_matching_terms >= 2) {
+    const singleTerm = batches.findIndex(result => result.minimum_matching_terms === 1);
+    batches.splice(singleTerm < 0 ? batches.length : singleTerm,0,original);
+  }
   const rows = [], seen = new Set();
+  let partial = false;
   for (let i = 0; i < 4; i++) {
     for (const batch of batches) {
-      const row = batch[i];
+      const row = batch.rows[i];
       if (!row) continue;
       const key = row.thread_id || row.trace;
       if (seen.has(key)) continue;
       seen.add(key);
       rows.push(row);
+      partial ||= !!batch.partial_match;
       if (rows.length === 4) break;
     }
     if (rows.length === 4) break;
   }
-  return rows.length ? {...original,rows,partial_match:false} : original;
+  return {...original,rows,partial_match:partial};
 }

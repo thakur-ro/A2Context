@@ -62,7 +62,9 @@ function canvasRecord(card, filters = scope) {
   }
   if (map) facts.map = map;
   return { facts, filters, trend:card.trend, capture:{trace,call,sources:detail.sources.map(source => source.id)},
-    dispatch:!!target, receipt:dispatch, tokenCard:card.kind === "token" ? card : null,
+    dispatch:!!target, receipt:target ? dispatch : null, report:detail.report_id,
+    proposal:detail.response_pair?.original && detail.response_pair.edited ? detail.response_pair : null,
+    tokenCard:card.kind === "token" ? card : null,
     duplicate:card.kind === "duplicate" ? {trace,call,sources:detail.sources.map(source => source.id)} : null };
 }
 
@@ -541,6 +543,17 @@ function investigationCanvas(impact, page, models) {
     remember(question,previous?.facts.id,"tokens",card ? previous.facts.observed : "No recorded token experiment.");
   }
 
+  function showReceipt(record,question) {
+    previous = record;
+    activity = comparison = null;
+    visibleCalls = [];
+    const receipt = sandboxDispatch(record.receipt);
+    Object.assign(receipt.dataset,{trace:record.capture.trace,call:record.capture.call,report:record.report});
+    output.append(receipt);
+    remember(question,record.facts.id,"receipt",record.facts.observed);
+    suggest([...(record.proposal ? ["Compare the recorded proposals"] : []),"Where else did that repeat?"]);
+  }
+
   async function inspect(record, view, question, text, author, signal) {
     const facts = record?.facts;
     output.replaceChildren(element("div",{className:"canvas-question",text:question}));
@@ -553,10 +566,25 @@ function investigationCanvas(impact, page, models) {
       return;
     }
     const count = plural(facts.conversations,"conversation") + " · " + plural(facts.observations,"observation");
-    const name = view === "recurrence" ? (facts.conversations > 1 ? "Where this repeats" : record.duplicate ? "Matching requests" : "Affected requests") : view === "action" ? "What to test next" : view === "sources" ? "Inputs in the recorded request" : facts.title;
+    let name = view === "recurrence" ? (facts.conversations > 1 ? "Where this repeats" : record.duplicate ? "Matching requests" : "Affected requests") : view === "action" ? "What to test next" : view === "sources" ? "Inputs in the recorded request" : facts.title;
     let description = view === "recurrence" ? (record.duplicate ? "This match" : "This recommendation") + " appears in " + count.split(" · ")[0] + " in the current scope." :
       view === "action" ? facts.next : facts.observed;
     let map = view === "evidence" && facts.map;
+    let detail = view === "evidence" ? facts.comparison : null;
+    if (view === "proposal") {
+      const pair = record.proposal;
+      name = pair.changed ? "The recorded model output changed after the edit" : "The recorded model output stayed the same after the edit";
+      description = "Edited " + facts.sources.join(", ") + ".";
+      if (Number.isInteger(pair.baseline_trials) && Number.isInteger(pair.edited_trials)) {
+        description += " " + plural(pair.baseline_trials,"original trial") + " and " + plural(pair.edited_trials,"edited trial") +
+          " completed. The outputs agreed within each condition.";
+      }
+      map = {root:"Model output from the source-edit experiment",arms:[
+        {label:"Original input",value:proposalLabel(pair.original,pair)},
+        {label:"Edited input",value:proposalLabel(pair.edited,pair)},
+      ]};
+      if (pair.original.truncated || pair.edited.truncated) detail = "The previews are shortened. The comparison uses the complete outputs.";
+    }
     let intervening = null;
     if (view === "sources") {
       const {trace,call,sources} = record.capture;
@@ -587,9 +615,10 @@ function investigationCanvas(impact, page, models) {
       }
     }
     const surface = NexusWeaveA2UI.answerSurface({title:name,description:text ? null : description,
-      map,detail:view === "evidence" ? facts.comparison : null}, () => {});
+      map,detail}, () => {});
     surface.view.className = "canvas-result";
-    Object.assign(surface.view.dataset,{trace:record.capture.trace,call:record.capture.call,group:facts.id});
+    Object.assign(surface.view.dataset,{trace:record.capture.trace,call:record.capture.call,group:facts.id,view});
+    if (record.report) surface.view.dataset.report = record.report;
     output.append(surface.view);
     for (const update of surface.steps) {
       if (!matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise(resolve => setTimeout(resolve, 160));
@@ -606,7 +635,8 @@ function investigationCanvas(impact, page, models) {
     }
     output.append(element("p",{className:"canvas-answer-foot",text:count}));
     const followups = [];
-    if (view === "evidence" && record.receipt) followups.push("Show the dispatch states");
+    if ((view === "evidence" || view === "proposal") && record.receipt) followups.push("Show the dispatch states");
+    if (view === "evidence" && record.proposal && record.receipt) followups.push("Compare the recorded proposals");
     if (view === "evidence" && record.tokenCard) followups.push("Show the token-position diagram");
     if (view !== "sources") followups.push("Show the exact inputs");
     if (view !== "recurrence" && facts.conversations > 1) followups.push("Where else did that repeat?");
@@ -731,8 +761,7 @@ function investigationCanvas(impact, page, models) {
         return;
       }
       if (!selected && previous?.receipt && /^(?:show (?:me )?(?:the )?)?(?:order states|dispatch states|sandbox receipt|replay details)$/.test(normalize(question))) {
-        output.append(sandboxDispatch(previous.receipt));
-        suggest(["Where else did that repeat?"]);
+        showReceipt(previous,question);
         status.textContent = "";
         return;
       }
@@ -830,7 +859,7 @@ function investigationCanvas(impact, page, models) {
       const terms = canvasTerms(question);
       if (named) {
         const filters = {...activeScope,workflow:named};
-        const matches = await api("findings",filters);
+        const matches = await api("findings",{...filters,...(terms.length && {terms:terms.join(" ")})});
         if (signal.aborted) return;
         candidates = matches.rows.map(card => canvasRecord(card,filters));
         if (subject?.filters.workflow !== named) subject = null;
@@ -848,10 +877,10 @@ function investigationCanvas(impact, page, models) {
       }
       const corrected = candidates.find(r => r.facts.id === corrections.get(normalize(question)));
       let answer = selected || corrected ? {record:selected || corrected,view:"evidence"} : canvasAnswer(question,candidates,subject);
-      let plan, usedFallback = false;
+      let plan = !selected && !corrected && recordedReplay(question,candidates,subject), usedFallback = false;
       const directFinding = answer.focused && answer.direct &&
         (!visibleCalls.length || (answer.record?.dispatch && /\b(dispatch|sandbox)\b/i.test(question)));
-      if (model && !selected && !corrected && !directFinding) {
+      if (!plan && model && !selected && !corrected && !directFinding) {
         try {
           const {tools} = await api("recent-tool-names",activityScope);
           if (signal.aborted) return;
@@ -871,12 +900,7 @@ function investigationCanvas(impact, page, models) {
         return;
       }
       if (plan?.view === "receipt") {
-        previous = plan.record;
-        activity = comparison = null;
-        visibleCalls = [];
-        output.append(sandboxDispatch(previous.receipt));
-        remember(question,previous.facts.id,"receipt",previous.facts.observed);
-        suggest(["Where else did that repeat?"]);
+        showReceipt(plan.record,question);
         status.textContent = "";
         return;
       }
@@ -903,7 +927,8 @@ function investigationCanvas(impact, page, models) {
       if (signal.aborted) return;
       remember(question,answer.record?.facts.id || null,answer.view,
         answer.text || (answer.record ? (answer.view === "action" ? answer.record.facts.next :
-          answer.view === "recurrence" ? plural(answer.record.facts.conversations,"conversation") : answer.record.facts.observed) : "No matching evidence."));
+          answer.view === "recurrence" ? plural(answer.record.facts.conversations,"conversation") :
+          answer.view === "proposal" ? (answer.record.proposal.changed ? "The recorded model output changed." : "The recorded model output matched.") : answer.record.facts.observed) : "No matching evidence."));
       if (records.length > 1) {
         const correction = element("details",{className:"canvas-feedback"},element("summary",{text:"Choose different evidence"}));
         for (const r of candidates.filter(r => r !== answer.record)) correction.append(prompt(r.facts.title, () => {

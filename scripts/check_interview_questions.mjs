@@ -18,18 +18,47 @@ const transfer = [
   {base:publicSample,question:"Show me a phone customer trying to use the internet abroad.",accept:text => /Tau2 telecom/i.test(text) && /roaming|abroad|international/i.test(text)},
   {base:publicSample,question:"Find a developer working on a broken test suite.",accept:text => /Swebench/i.test(text) && /pytest|failed test|failing test|test failure/i.test(text)},
 ];
-const cases = {development,transfer}[set];
-if (!cases) throw new Error("Choose development or transfer.");
+const replays = [
+  {base:publicSample,question:"Let me see the order database under both versions of the approval check.",workflow:"exchange-agent",view:"receipt"},
+  {base:publicSample,question:"Did the cache edit change the model's answer about the exchange?",workflow:"exchange-agent",view:"proposal"},
+  {base:publicSample,question:"Compare the data refueling balance with and without the check.",workflow:"telecom-refuel",view:"receipt"},
+  {base:publicSample,question:"Did the model propose something different for refuel_data after the source edit?",workflow:"telecom-refuel",view:"proposal"},
+];
+const cases = {development,transfer,replays}[set];
+if (!cases) throw new Error("Choose development, transfer, or replays.");
+
+async function matchesReplay(page, answer, base, workflow, view) {
+  const surface = view === "receipt" ? answer.getByRole("region",{name:"Sandbox dispatch comparison"}) : answer.locator('[data-view="proposal"]');
+  if (!await surface.count()) return false;
+  const trace = await surface.getAttribute("data-trace"), call = await surface.getAttribute("data-call");
+  const report = await surface.getAttribute("data-report");
+  const response = await page.request.get(new URL("/api/sidecar/findings",base).href,{params:{workflow}});
+  assert.equal(response.status(),200);
+  const {rows} = await response.json();
+  assert.ok(rows.some(r => r.evidence.detail.sandbox_dispatch),"Expected a measured dispatch fixture for " + workflow);
+  const finding = rows.find(r => r.evidence.trace_id === trace && r.evidence.call_id === call && r.evidence.detail.report_id === report);
+  if (!finding) return false;
+  const {sandbox_dispatch:receipt,response_pair:pair} = finding.evidence.detail;
+  if (view === "proposal") {
+    const arms = await surface.locator("a2ui-card").allInnerTexts();
+    return arms.length === 2 && [pair.original,pair.edited].every((p,i) => arms[i].includes(p.label) && arms[i].includes(p.outcome_preview));
+  }
+  const target = receipt.states.find(row => row.key === receipt.target);
+  const printed = await surface.getByRole("row").filter({has:page.getByRole("rowheader",{name:receipt.target,exact:true})}).getByRole("cell").allInnerTexts();
+  return JSON.stringify(printed) === JSON.stringify([target.before,target.without_guard,target.with_guard].map(x => String(x).replaceAll("_"," ")));
+}
 const {chromium} = await import(process.env.PLAYWRIGHT_MODULE || "playwright-core");
 const browser = await chromium.launch({executablePath:process.env.CHROME_BINARY});
 try {
-  for (const {base,question,accept,diagram,receipt} of cases) {
-    for (const partner of ["",model]) {
+  for (const {base,question,accept,diagram,receipt,workflow,view} of cases) {
+    for (const partner of model === "-" ? [""] : ["",model]) {
       const page = await browser.newPage({reducedMotion:"reduce"});
       try {
         await page.goto(base);
-        await page.getByLabel("Analysis partner").selectOption(partner);
         const input = page.getByLabel("Question about workflow evidence");
+        await input.waitFor();
+        const picker = page.getByLabel("Analysis partner");
+        if (partner || await picker.isVisible()) await picker.selectOption(partner);
         const answer = page.getByRole("region",{name:"Answer canvas"});
         let requests = 0;
         const queries = [];
@@ -48,7 +77,9 @@ try {
         const text = await first.count() ? await first.innerText() : "";
         const elapsed = Math.round(performance.now()-start);
         let matched;
-        if (diagram) {
+        if (view) {
+          matched = await matchesReplay(page,answer,base,workflow,view);
+        } else if (diagram) {
           if (await answer.getByRole("region",{name:"Source edits along the answer"}).count()) await table.waitFor();
           matched = await table.count() === 1 && await table.getByRole("button",{name:/Token 14 ·/}).count() === 1;
         } else if (receipt) {
@@ -68,6 +99,7 @@ try {
         }
         assert.ok(requests <= (partner ? 2 : 0));
         console.log(JSON.stringify({question,partner:partner || "workspace",matched,requests,ms:elapsed,queries}));
+        if (view) assert.ok(matched,"Expected the measured " + view + " for " + workflow);
       } finally { await page.close(); }
     }
   }

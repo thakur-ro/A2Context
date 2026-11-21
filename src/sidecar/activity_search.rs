@@ -132,6 +132,7 @@ pub(super) fn search(db: &Connection, filters: &BTreeMap<String, String>) -> Res
     let partial = rows.is_empty()
         && terms.len() > 1
         && !filters.get("match").is_some_and(|mode| mode == "all");
+    let mut matched_terms = terms.len();
     if partial && terms.len() > 2 {
         // Prefer a shared pair over an isolated word when the full query misses.
         args[0] = terms
@@ -145,10 +146,15 @@ pub(super) fn search(db: &Connection, filters: &BTreeMap<String, String>) -> Res
             .collect::<Vec<_>>()
             .join(" OR ");
         rows = read(&args)?;
+        matched_terms = 2;
     }
     if partial && rows.is_empty() {
         args[0] = terms.join(" OR ");
         rows = read(&args)?;
+        matched_terms = 1;
     }
-    Ok(json!({"rows":rows,"index_ready":ready,"partial_match":partial}))
+    Ok(
+        json!({"rows":rows,"index_ready":ready,"partial_match":partial,
+        "minimum_matching_terms":if rows.is_empty() { 0 } else { matched_terms }}),
+    )
 }

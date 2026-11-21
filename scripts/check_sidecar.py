@@ -233,6 +233,8 @@ def check_thread_calls(binary, folder):
         assert get(base, "activity-search", q="order rejected", org="another-org")["rows"] == []
         assert get(base, "activity-search", q="order rejected", after="2026-10-13")["rows"] == []
         assert get(base, "activity-search", q="order rejected cloudberry")["partial_match"]
+        assert get(base, "activity-search", q="order rejected cloudberry")["minimum_matching_terms"] == 2
+        assert get(base, "activity-search", q="rejected cloudberry")["minimum_matching_terms"] == 1
         assert get(base, "activity-search", q="order rejected cloudberry", match="all")["rows"] == []
         assert get(base, "recent-tool-names", org="thread-test")["tools"] == ["update_order"]
         assert get(base, "activity-search", q="update_order", tool="update_order")["rows"] == [hit]

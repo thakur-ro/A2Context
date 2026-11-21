@@ -75,6 +75,43 @@ test("planned searches only supply keywords and preserve the host's scope, resul
   assert.equal(result.partial_match,false);
 });
 
+test("a source edit and a state replay on the same record have independent evidence choices", async () => {
+  const record = {facts:{id:"x",sources:["confirmation-cache"]},
+    receipt:{guard:"check-current-approval",runner:"exchange-sqlite",target:"order-4",tool:"exchange_order"},
+    proposal:{original:{kind:"tool_call",label:"exchange_order"},edited:{kind:"tool_call",label:"exchange_order"}}};
+  const other = {facts:{id:"y",sources:["data-allowance"]},
+    receipt:{guard:"check-refuel-at-dispatch",runner:"telecom",target:"data_refueling_gb",tool:"refuel_data"},
+    proposal:{original:{kind:"tool_call",label:"refuel_data"},edited:{kind:"reply",label:"done"}}};
+  const candidates = [other,record];
+  const packet = p => {
+    assert.match(p,/Compare both outcomes.*check-current-approval/);
+    assert.match(p,/Compare the model's output when confirmation-cache was edited/);
+  };
+  const env = context("F4",packet);
+  const read = q => env.recordedReplay(q,candidates);
+  assert.equal(read("Compare the order database with and without the approval check.").record,record);
+  assert.equal(read("Compare the refuel balance with and without the check.").record,other);
+  assert.equal(read("How did editing data-allowance change the model output?").view,"proposal");
+  assert.equal(read("Did the cache change the model’s answer?").record,record);
+  assert.equal(read("Compare the invoice balance before and after."),null);
+  assert.equal(env.recordedReplay("Compare the recorded proposals",candidates,other).record,other);
+  const sameLabel = {...record,facts:{...record.facts,id:"another"}};
+  assert.equal(env.recordedReplay("Compare the order database with and without approval.",[record,sameLabel]),null);
+  const plan = await env.planInterview("model","What did the model do under the edit?",candidates,{tools:[],hasCalls:false});
+  assert.equal(plan.view,"proposal");
+  assert.equal(plan.record,record);
+});
+
+test("a broad model rewrite preserves the original two-term witness and the partial-match label", async () => {
+  const env = context();
+  const pair = {trace:"pair",thread_id:"first"}, broad = {trace:"broad",thread_id:"second"};
+  env.api = async (_,params) => params.q === "failing test suite" ?
+    {rows:[pair],partial_match:true,minimum_matching_terms:2} : {rows:[broad],minimum_matching_terms:1};
+  const result = await env.retrieveActivity({},"failing test suite",["developer"],new AbortController().signal);
+  assert.deepEqual(Array.from(result.rows,r => r.trace),["pair","broad"]);
+  assert.equal(result.partial_match,true);
+});
+
 test("no matching evidence, a follow-up about recurrence, and a new topic select different results", () => {
   const env = context();
   assert.equal(env.canvasAnswer("winter weather forecast",records).record,null);
